@@ -46,6 +46,21 @@ impl Canned {
 }
 
 fn scrape_limits(request: &Request) {
+    if request.method == "POST" {
+        // The immediate webhook a label change posts: `postWebhook`'s
+        // limits, any public host, the redirect handed back.
+        assert!(request.allowed_hosts.is_empty());
+        assert_eq!(
+            (
+                request.max_bytes,
+                request.timeout_ms,
+                request.max_url_length
+            ),
+            (64 * 1024, 10_000, 512)
+        );
+        assert!(!request.follow_redirects);
+        return;
+    }
     assert_eq!(request.max_redirects, 5);
     assert_eq!(request.allowed_hosts, outbound::APPLE_HOSTS);
     if request.url.contains("/lookup?") {

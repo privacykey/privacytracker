@@ -214,7 +214,13 @@ async fn summarise(
         );
         return Ok((hydrated(log, &existing)?, FollowUps::default()));
     }
-    let can_summarise = status == "source_ready" || (force_resummarise && status == "ready");
+    // `canSummariseStoredPolicy`: a clean capture with no summary of its
+    // own (waiting for one, or after a summary run that found no provider
+    // or failed), or on a forced run one already summarised.
+    let can_summarise = status == "source_ready"
+        || status == "needs_ai_config"
+        || status == "analysis_error"
+        || (force_resummarise && status == "ready");
     if !(can_summarise && has_text) {
         log.note(
             "skip",

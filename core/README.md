@@ -2846,9 +2846,10 @@ through the transport like every other fetch, so a webhook can no more
 reach a private address than a scrape can, redirects not followed so
 the body is delivered once, 64 KiB back at most, ten seconds. The three
 call sites: `postImmediateWebhook` from `createNotification` — whose
-ONE caller is `POST /api/dev/seed-notification`, because a scrape
-inserts its change notification itself and fires nothing, on either
-backend — detached from the response on the server and inline in the
+ONE caller was then `POST /api/dev/seed-notification`, because a scrape
+inserted its change notification itself and fired nothing, on either
+backend (a label change posts it now: see the note closing this batch)
+— detached from the response on the server and inline in the
 replay; `maybePostSummaryWebhook` from the 30-minute tick, a day or a
 week after the last, the fifty newest notifications since, the cursor
 moved on an empty window and on a refused post but not on a failed
@@ -2955,6 +2956,31 @@ aborted", the transport here says why. Two callers racing one check:
 Node hands the second the first's promise; the core has it wait and
 answer from what the first wrote, without the first's error. None of
 the three is reachable from the fixture.
+
+**Later: label changes post the immediate webhook (2026-09-19).** A
+scrape that records changes now fires the fan-out once its commit has
+landed, on both backends; the bell row stays inside the commit, so the
+write stream is unchanged. In Node, `commitScrapedAppToDb` calls
+`fireWebhookIfConfigured`, which now imports `postImmediateWebhook`
+statically: the dynamic import cost twelve microtask ticks, enough for
+`scrapeInitialUrls` to request its next app's page before the POST, an
+order the core could only have copied by firing in the middle of the
+next scrape. In the core, the commit hands back what it owes on
+`Outcome::immediate`, and `scrape::fetch::fire_change_webhook` fires it
+as the committing section closes, in `fetch_and_parse_app`, the import
+queue's drain, retry and change-match, and the bulk sync. `fire_immediate`
+reads the config in place and detaches only the POST whenever the
+fetcher can be shared: the background ticks reach a scrape through
+`Locked`, which cannot be detached, and would otherwise have posted
+inline and waited (dropping the POST, under `now_or_never`). Twenty cases
+are appended across the fetch, imports, runners and seed oracles: the
+POST on every path that scrapes, after its own commit and before the
+next app; quiet hours deferring the bell and not the POST; a summary
+frequency and an unchanged resync posting nothing; a failed POST and a
+refused URL never failing the scrape; a Wayback import that writes a
+changed row and posts nothing. Dropping the fire failed exactly the
+sixteen cases that expect a POST; restoring the old spawn rule failed
+exactly the new unit test.
 
 
 ## Status — Phase 5 (the AI policy pipeline)
@@ -3299,7 +3325,7 @@ before it. Prompt nonces come from `Ids::nonce`, the system's random
 bytes in production and the oracle's counter in the replay.
 
 **The oracle — `core/scripts/extract-policy-summary-cases.mjs`.** Runs
-the REAL summarise and `all` phases over 69 scenarios, the sample
+the REAL summarise and `all` phases over 75 scenarios, the sample
 summary over four and the prompt preview over two, against a scratch
 database with a frozen clock, counted ids and nonces, and every provider
 reply canned: an OpenAI completion, a custom endpoint's event stream in
@@ -3307,7 +3333,7 @@ the recorded chunks, an Anthropic message. The shapes are the providers'
 documented formats; there is no key to capture live ones with. Recorded
 per case: every raw fetch with its headers and body, every write in
 order, seven tables, and the result or the thrown message.
-`core/src/server/policy_summary_tests.rs` replays all 75, each body
+`core/src/server/policy_summary_tests.rs` replays all 81, each body
 reaching the reader in the recorded chunks. CI regenerates the fixture
 and fails on drift ("Policy summariser oracle is current").
 
@@ -3338,6 +3364,18 @@ A summarise that meets a failed fetch declines the text the fetch kept,
 an earlier capture, and logs a skip ("Policy skipped: latest fetch
 failed") rather than a new fetch failure, as the fixed Node does. A
 too-short or unsupported fetch was already logged as a skip.
+
+A clean source is also one whose last summary run failed
+(`analysis_error`) or found no provider (`needs_ai_config`): only the
+summarise phase writes those two, over a capture it accepted, and any
+later fetch replaces them, so their text is still the latest clean
+capture. A summarise summarises it, forced or not, as the fixed Node
+does; Node used to decline it and log the earlier failure again
+("Summary failed: ...", or "AI not configured" with a provider set up).
+The cases: a failed AI summary summarised again, forced and unforced,
+and failing again with its own error; one that met no provider,
+summarised once one is set up, and an unforced run that still finds
+none; and a summary with scraping disabled, which does not stop it.
 
 **Node's behaviour, kept.** A refusal is caught by the `try` it is
 thrown in, so it is logged twice and its debug row is inserted twice,

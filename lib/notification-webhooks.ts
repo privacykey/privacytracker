@@ -14,8 +14,11 @@
  *   - notification_webhook_last_sent — epoch ms of last successful summary post
  *
  * Three call sites today:
- *   1. lib/notifications.ts — fires `postImmediateWebhook` when a new
- *      row lands AND frequency is 'immediate'.
+ *   1. lib/notifications.ts — `fireWebhookIfConfigured` fires
+ *      `postImmediateWebhook` when a new row lands AND frequency is
+ *      'immediate': from `createNotification` (policy-text changes, the
+ *      dev seed) and after an App Store scrape commits label changes
+ *      (lib/scraper.ts).
  *   2. instrumentation.ts — fires `maybePostSummaryWebhook` from the
  *      same 30-min tick that runs the scheduled-sync gate, batching
  *      unread notifications if a day / week has elapsed since the

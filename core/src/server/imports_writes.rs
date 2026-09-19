@@ -49,12 +49,15 @@ use crate::{
     jsstr::{js_length, js_slice_prefix, js_trim},
     outbound::{self, Fetcher},
     scrape::{
-        complete, import_app_history, lookup_apps_by_bundle_id, notify, perform as perform_fetch,
+        complete,
+        fetch::fire_change_webhook,
+        import_app_history, lookup_apps_by_bundle_id, notify, perform as perform_fetch,
         persist::{DbAccess, Ids, Outcome, Writer},
         prepare,
         region::normalize_country,
         scrape_initial_urls, search_apps_by_name, AppRow, Fetched, HistoryOptions, ScrapeError,
     },
+    server::webhook_writes::Immediate,
 };
 use axum::{
     http::{header, HeaderValue, Method, StatusCode},
@@ -1083,12 +1086,18 @@ async fn fetch_for_import(
 /// The scrape's completing section, run inside the caller's own: Node
 /// updates the import row the moment `fetchAndParseApp` returns, with no
 /// await between the commit and the update, so the two share a section.
+/// The immediate webhook a label change owes is left in `owed`, for the
+/// caller to fire once that section has closed, whatever the rest of it
+/// did: Node's fires from inside the scrape.
 fn settle_import_scrape(
     cx: &mut Cx,
     url: &str,
     fetched: Result<Fetched, ScrapeError>,
+    owed: &mut Option<Immediate>,
 ) -> Result<Outcome, ScrapeError> {
-    complete(cx.w, url, false, "import", cx.now, fetched?, cx.ids)
+    let mut outcome = complete(cx.w, url, false, "import", cx.now, fetched?, cx.ids)?;
+    *owed = outcome.immediate.take();
+    Ok(outcome)
 }
 
 // ── POST / DELETE /api/imports ───────────────────────────────────────
@@ -1377,9 +1386,10 @@ async fn drain(
             continue;
         };
         let fetched = fetch_for_import(db, fetcher, &url, now).await;
+        let mut owed = None;
         let paused = db.with(|w| -> Result<Option<i64>, String> {
             let cx = &mut section(w, ids, now);
-            match settle_import_scrape(cx, &url, fetched) {
+            match settle_import_scrape(cx, &url, fetched, &mut owed) {
                 Ok(scraped) => {
                     record_item_success(
                         cx,
@@ -1416,8 +1426,9 @@ async fn drain(
                     Ok(None)
                 }
             }
-        })?;
-        if let Some(paused) = paused {
+        });
+        fire_change_webhook(db, fetcher, now, owed).await;
+        if let Some(paused) = paused? {
             result.paused_until = Some(paused);
             break;
         }
@@ -1662,9 +1673,10 @@ async fn retry_outcome(
         });
     };
     let fetched = fetch_for_import(db, fetcher, &url, now).await;
-    db.with(|w| {
+    let mut owed = None;
+    let settled = db.with(|w| {
         let cx = &mut section(w, ids, now);
-        match settle_import_scrape(cx, &url, fetched) {
+        match settle_import_scrape(cx, &url, fetched, &mut owed) {
             Ok(scraped) => {
                 let updated = record_item_success(
                     cx,
@@ -1700,7 +1712,9 @@ async fn retry_outcome(
                 Ok(json!({ "item": errored, "status": "error" }))
             }
         }
-    })
+    });
+    fire_change_webhook(db, fetcher, now, owed).await;
+    settled
 }
 
 // ── POST /api/imports/items/change-match ─────────────────────────────
@@ -1738,9 +1752,10 @@ async fn change_match(
     }
     let fetched = fetch_for_import(db, fetcher, &url, now).await;
     // The scrape's commit and the rewiring: one run in Node.
-    db.with(|w| {
+    let mut owed = None;
+    let response = db.with(|w| {
         let cx = &mut section(w, ids, now);
-        let scraped = match settle_import_scrape(cx, &url, fetched) {
+        let scraped = match settle_import_scrape(cx, &url, fetched, &mut owed) {
             Ok(scraped) => scraped,
             Err(error) => {
                 return json_error(
@@ -1784,7 +1799,9 @@ async fn change_match(
             Ok(body) => json_ok(&body),
             Err(_) => internal_error(),
         }
-    })
+    });
+    fire_change_webhook(db, fetcher, now, owed).await;
+    response
 }
 
 // ── POST /api/search ─────────────────────────────────────────────────

@@ -3,9 +3,10 @@
  *
  * Runs the REAL handlers of the four outbound leftovers — `POST
  * /api/notifications/webhook-test`, `GET /api/update-status`, `GET
- * /api/favicon`, `GET /api/preview` — plus the two places webhook delivery
- * is fired from: `POST /api/dev/seed-notification` (the one caller of
- * `createNotification`, whose fan-out posts an immediate webhook) and the
+ * /api/favicon`, `GET /api/preview` — plus two places webhook delivery is
+ * fired from: `POST /api/dev/seed-notification` (through
+ * `createNotification`, whose fan-out posts an immediate webhook; the
+ * scrape oracles hold the post a label change makes) and the
  * 30-minute summary tick (`maybePostSummaryWebhook`, called directly, as
  * the backup oracle calls the snapshot closure), and the 6-hour update
  * tick (`checkForUpdate()` unforced). Records, per case, the request or

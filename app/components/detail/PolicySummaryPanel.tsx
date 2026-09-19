@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   type AppPolicyAnalysis,
   canSummariseStoredPolicy,
+  describePolicyRunCompletion,
   POLICY_LENSES,
   POLICY_RATING_META,
   POLICY_SOURCE_ORIGIN_META,
@@ -346,12 +347,13 @@ export default function PolicySummaryPanel({
         // Overwrite locally so the resume-polling useEffect doesn't fire a
         // redundant tick after the stream we were already consuming.
         setAnalysis({ ...finalAnalysis, runStatus: "idle" });
-        handle.complete(
-          "done",
-          phase === "fetch"
-            ? tPolicyRun("completion_fetch")
-            : tPolicyRun("completion_summarise")
+        // A run that summarises returns an analysis whether or not it made
+        // a summary, so the tray reads its status before saying so.
+        const completion = describePolicyRunCompletion(
+          phase,
+          finalAnalysis.status
         );
+        handle.complete(completion.status, tPolicyRun(completion.messageKey));
       } else {
         const msg = tPolicyRun("regen_no_analysis");
         setRegenError(msg);

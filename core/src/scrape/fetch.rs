@@ -24,7 +24,10 @@ use crate::{
     jsdate::{self, js_iso_string},
     jsstr::js_trim,
     outbound::{self, Fetcher, Request},
-    server::settings::get_setting_with,
+    server::{
+        settings::get_setting_with,
+        webhook_writes::{self, Immediate},
+    },
 };
 use rusqlite::Connection;
 use serde_json::{json, Value};
@@ -306,9 +309,10 @@ pub(crate) fn complete(
 
 /// `fetchAndParseApp(url, resync, false, trigger)`, end to end: one section
 /// for `prepare`, the network with the connection released, one section
-/// for `complete`. Node awaits nothing between its validation and cooldown
-/// read and its first pacer wait, nor between the parse and its commit, so
-/// these are exactly its interleaving points.
+/// for `complete`, then the immediate webhook a label change owes. Node
+/// awaits nothing between its validation and cooldown read and its first
+/// pacer wait, nor between the parse and its commit, so these are exactly
+/// its interleaving points.
 pub(crate) async fn fetch_and_parse_app(
     db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
@@ -321,7 +325,30 @@ pub(crate) async fn fetch_and_parse_app(
     let trigger = trigger.unwrap_or(if resync { "manual" } else { "import" });
     let prepared = db.with(|w| prepare(w.conn, url, now))?;
     let fetched = perform(fetcher, &prepared, now).await;
-    db.with(|w| complete(w, url, resync, trigger, now, fetched, ids))
+    let mut outcome = db.with(|w| complete(w, url, resync, trigger, now, fetched, ids))?;
+    fire_change_webhook(db, fetcher, now, outcome.immediate.take()).await;
+    Ok(outcome)
+}
+
+/// The immediate webhook for the label changes a scrape committed:
+/// `commitScrapedAppToDb`'s `void fireWebhookIfConfigured(name, changes)`
+/// once its write has landed, with no quiet-hours wait (quiet hours defer
+/// the bell row's `not_before`, never the post). Every caller commits in a
+/// section of its own, sometimes with its own writes after the scrape's
+/// (an import row, the sync state), so this runs as that section closes:
+/// later than Node's fire point only by writes the POST neither reads nor
+/// makes, and before the caller's next request, as in Node. Awaiting it
+/// never holds the caller for the webhook: `fire_immediate` detaches the
+/// POST on the server, and the replay's canned hop answers at once.
+pub(crate) async fn fire_change_webhook(
+    db: &mut dyn DbAccess,
+    fetcher: &dyn Fetcher,
+    now: i64,
+    immediate: Option<Immediate>,
+) {
+    if let Some(immediate) = immediate {
+        webhook_writes::fire_immediate(db, fetcher, now, immediate).await;
+    }
 }
 
 /// `scrapeInitialUrls`: each URL in turn; a rate limit either stops the

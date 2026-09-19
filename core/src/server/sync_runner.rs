@@ -32,7 +32,9 @@ use crate::{
     jsstr::js_slice_prefix,
     outbound::{Fetcher, PublicHttp},
     scrape::{
-        complete, notify, perform as perform_fetch,
+        complete,
+        fetch::fire_change_webhook,
+        notify, perform as perform_fetch,
         persist::{DbAccess, Ids},
         prepare, RandomIds,
     },
@@ -515,8 +517,10 @@ async fn sync_loop(
             Err(error) => Err(error),
         };
         // The commit (or the error row), then the entry and the state:
-        // Node runs them the moment `fetchAndParseApp` resolves.
+        // Node runs them the moment `fetchAndParseApp` resolves. The
+        // immediate webhook a label change owes follows the section.
         let now = clock.now();
+        let mut owed = None;
         let stop = db.with(|w| {
             let cx = &mut Cx { w, ids, now };
             let result =
@@ -524,6 +528,7 @@ async fn sync_loop(
             let entry = &mut state.queue[i];
             match result {
                 Ok(outcome) => {
+                    owed = outcome.immediate;
                     let changed = outcome.changes_detected;
                     entry.status = "done".to_string();
                     entry.finished_at = Some(cx.now);
@@ -566,8 +571,9 @@ async fn sync_loop(
                     Ok(false)
                 }
             }
-        })?;
-        if stop {
+        });
+        fire_change_webhook(db, fetcher, now, owed).await;
+        if stop? {
             return Ok(true);
         }
     }

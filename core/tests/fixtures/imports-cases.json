@@ -30819,6 +30819,2751 @@
         "type": "application/json",
         "retryAfter": null
       }
+    },
+    {
+      "name": "scrape resync with label changes posts the immediate webhook",
+      "route": "/api/scrape",
+      "method": "POST",
+      "param": null,
+      "pathname": "/api/scrape",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.168.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"urls\":[\"https://apps.apple.com/us/app/fixture/id555000111\"],\"resync\":true}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/pt"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "slack"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<!doctype html><html><head><meta property=\"og:title\" content=\"Fixture One on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Fixture Dev\"}}</script></head><body><a aria-label=\"Developer's Privacy Policy\" href=\"https://example.com/privacy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Fixture One\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"version\":\"1.0.0\",\"currentVersionReleaseDate\":\"2026-01-02T03:04:05Z\",\"releaseNotes\":\"Fixture release notes\",\"price\":0,\"currency\":\"USD\",\"formattedPrice\":\"Free\",\"primaryGenreId\":6002,\"primaryGenreName\":\"Utilities\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=555000111&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://hooks.example.com/pt",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"text\":\"📱 Fixture One: New privacy label: \\\"Data Linked to You\\\"\\nNew privacy label: \\\"Data Linked to You\\\"\"}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        UPDATE apps\n           SET name = ?, url = ?, iconUrl = ?, developer = ?, privacyPolicyUrl = ?,\n               lastSynced = ?,\n               currentVersion = COALESCE(?, currentVersion),\n               versionUpdatedAt = COALESCE(?, versionUpdatedAt),\n               whatsNew = COALESCE(?, whatsNew),\n               hasPrivacyDetails = ?,\n               hasAccessibilityLabels = COALESCE(?, hasAccessibilityLabels),\n               priceAmount = COALESCE(?, priceAmount),\n               priceCurrency = COALESCE(?, priceCurrency),\n               priceFormatted = COALESCE(?, priceFormatted),\n               hasIap = COALESCE(?, hasIap),\n               genreId = COALESCE(?, genreId),\n               genreName = COALESCE(?, genreName),\n               ageRating = COALESCE(?, ageRating)\n         WHERE id = ?\n      ",
+          "params": [
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            "https://example.com/icon.png",
+            "Fixture Dev",
+            "https://example.com/privacy",
+            1789473600000,
+            "1.0.0",
+            1767323045000,
+            "Fixture release notes",
+            1,
+            null,
+            0,
+            "USD",
+            "Free",
+            null,
+            6002,
+            "Utilities",
+            "4+",
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "555000111_DATA_LINKED_TO_YOU",
+            "555000111",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You",
+            "Data Linked to You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "555000111_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "555000111_DATA_LINKED_TO_YOU",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "555000111_DATA_USED_TO_TRACK_YOU",
+            "555000111",
+            "DATA_USED_TO_TRACK_YOU",
+            "Data Used to Track You",
+            "Data Used to Track You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "555000111_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "555000111_DATA_USED_TO_TRACK_YOU",
+            "LOCATION",
+            "Location"
+          ]
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed WHERE source_app_id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO privacy_snapshots\n        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n         source, wayback_snapshot_url, triggered_by,\n         app_version, app_version_updated_at)\n      VALUES (?, ?, ?, ?, ?, ?, 'live', NULL, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "manual",
+            "1.0.0",
+            1767323045000
+          ]
+        },
+        {
+          "sql": "UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n        VALUES (?, ?, ?, ?, ?, 0, ?)\n      ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "555000111",
+            "Fixture One",
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            1789473600000,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO activity_log\n        (id, type, status, app_id, app_name, summary, detail,\n         started_at, ended_at, duration_ms)\n      VALUES (?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "resync",
+            "555000111",
+            "Fixture One",
+            "2 changes detected",
+            "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      DELETE FROM activity_log\n       WHERE id IN (\n         SELECT id FROM activity_log\n          ORDER BY started_at DESC\n          LIMIT -1 OFFSET 2000\n       )\n    ",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": "https://example.com/icon.png",
+            "bundleId": null,
+            "developer": "Fixture Dev",
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789473600000,
+            "changeCount": 1,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "1.0.0",
+            "versionUpdatedAt": 1767323045000,
+            "whatsNew": "Fixture release notes",
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": null,
+            "priceAmount": 0,
+            "priceCurrency": "USD",
+            "priceFormatted": "Free",
+            "hasIap": null,
+            "genreId": 6002,
+            "genreName": "Utilities",
+            "ageRating": "4+",
+            "privacyPolicyUrl": "https://example.com/privacy"
+          }
+        ],
+        "privacy_types": [
+          {
+            "id": "555000111_DATA_LINKED_TO_YOU",
+            "app_id": "555000111",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Data Linked to You detail"
+          },
+          {
+            "id": "555000111_DATA_USED_TO_TRACK_YOU",
+            "app_id": "555000111",
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Data Used to Track You detail"
+          }
+        ],
+        "privacy_categories": [
+          {
+            "id": "555000111_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "purpose_id": null,
+            "type_id": "555000111_DATA_LINKED_TO_YOU",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          },
+          {
+            "id": "555000111_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "purpose_id": null,
+            "type_id": "555000111_DATA_USED_TO_TRACK_YOU",
+            "identifier": "LOCATION",
+            "title": "Location"
+          }
+        ],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "manual",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          }
+        ],
+        "imports": [],
+        "import_items": [],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "change_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "created_at": 1789473600000,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "resync",
+            "status": "ok",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "summary": "2 changes detected",
+            "detail": "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/pt"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "slack"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"results\":[{\"id\":\"555000111\",\"name\":\"Fixture One\",\"status\":\"success\",\"isNew\":false,\"changesDetected\":true,\"changeCount\":2,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}]}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "queue run posts a webhook per tracked app with changes",
+      "route": "/api/imports/queue",
+      "method": "POST",
+      "param": null,
+      "pathname": "/api/imports/queue",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.169.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/pt"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "slack"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "1001",
+            "Tracked One",
+            "https://apps.apple.com/us/app/fixture/id1001",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "1002",
+            "Tracked Two",
+            "https://apps.apple.com/us/app/fixture/id1002",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "imp_fixture_a",
+            1789387200000,
+            null,
+            "manual",
+            null,
+            2,
+            2,
+            0,
+            0,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO import_items (id, import_id, query, edited_query, status, app_id, app_name, developer, url, icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti_fixture_1",
+            "imp_fixture_a",
+            "Tracked One",
+            null,
+            "queued",
+            "1001",
+            null,
+            null,
+            "https://apps.apple.com/us/app/fixture/id1001",
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO import_items (id, import_id, query, edited_query, status, app_id, app_name, developer, url, icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti_fixture_2",
+            "imp_fixture_a",
+            "Tracked Two",
+            null,
+            "queued",
+            "1002",
+            null,
+            null,
+            "https://apps.apple.com/us/app/fixture/id1002",
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<!doctype html><html><head><meta property=\"og:title\" content=\"Tracked One on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Fixture Dev\"}}</script></head><body><a aria-label=\"Developer's Privacy Policy\" href=\"https://example.com/privacy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Tracked One\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"version\":\"1.0.0\",\"currentVersionReleaseDate\":\"2026-01-02T03:04:05Z\",\"releaseNotes\":\"Fixture release notes\",\"price\":0,\"currency\":\"USD\",\"formattedPrice\":\"Free\",\"primaryGenreId\":6002,\"primaryGenreName\":\"Utilities\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "body": "ok"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<!doctype html><html><head><meta property=\"og:title\" content=\"Tracked Two on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Fixture Dev\"}}</script></head><body><a aria-label=\"Developer's Privacy Policy\" href=\"https://example.com/privacy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Tracked Two\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"version\":\"1.0.0\",\"currentVersionReleaseDate\":\"2026-01-02T03:04:05Z\",\"releaseNotes\":\"Fixture release notes\",\"price\":0,\"currency\":\"USD\",\"formattedPrice\":\"Free\",\"primaryGenreId\":6002,\"primaryGenreName\":\"Utilities\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/fixture/id1001",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1001&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://hooks.example.com/pt",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"text\":\"📱 Tracked One: New privacy label: \\\"Data Linked to You\\\"\\nNew privacy label: \\\"Data Linked to You\\\"\"}"
+        },
+        {
+          "url": "https://apps.apple.com/us/app/fixture/id1002",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=1002&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://hooks.example.com/pt",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"text\":\"📱 Tracked Two: New privacy label: \\\"Data Linked to You\\\"\\nNew privacy label: \\\"Data Linked to You\\\"\"}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "import_queue_paused_until",
+            "0"
+          ]
+        },
+        {
+          "sql": "UPDATE import_items SET next_attempt_at = 0 WHERE status = 'queued'",
+          "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "import_queue_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "import_queue_running_since",
+            "1789473600000"
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE import_items\n         SET attempt_count = attempt_count + 1,\n             next_attempt_at = ?\n       WHERE id = ? AND status = 'queued'",
+          "params": [
+            1789474200000,
+            "iti_fixture_1"
+          ]
+        },
+        {
+          "sql": "UPDATE import_items\n         SET attempt_count = attempt_count + 1,\n             next_attempt_at = ?\n       WHERE id = ? AND status = 'queued'",
+          "params": [
+            1789474200000,
+            "iti_fixture_2"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "1001"
+          ]
+        },
+        {
+          "sql": "\n        UPDATE apps\n           SET name = ?, url = ?, iconUrl = ?, developer = ?, privacyPolicyUrl = ?,\n               lastSynced = ?,\n               currentVersion = COALESCE(?, currentVersion),\n               versionUpdatedAt = COALESCE(?, versionUpdatedAt),\n               whatsNew = COALESCE(?, whatsNew),\n               hasPrivacyDetails = ?,\n               hasAccessibilityLabels = COALESCE(?, hasAccessibilityLabels),\n               priceAmount = COALESCE(?, priceAmount),\n               priceCurrency = COALESCE(?, priceCurrency),\n               priceFormatted = COALESCE(?, priceFormatted),\n               hasIap = COALESCE(?, hasIap),\n               genreId = COALESCE(?, genreId),\n               genreName = COALESCE(?, genreName),\n               ageRating = COALESCE(?, ageRating)\n         WHERE id = ?\n      ",
+          "params": [
+            "Tracked One",
+            "https://apps.apple.com/us/app/fixture/id1001",
+            "https://example.com/icon.png",
+            "Fixture Dev",
+            "https://example.com/privacy",
+            1789473600000,
+            "1.0.0",
+            1767323045000,
+            "Fixture release notes",
+            1,
+            null,
+            0,
+            "USD",
+            "Free",
+            null,
+            6002,
+            "Utilities",
+            "4+",
+            "1001"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "1001_DATA_LINKED_TO_YOU",
+            "1001",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You",
+            "Data Linked to You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "1001_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "1001_DATA_LINKED_TO_YOU",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "1001_DATA_USED_TO_TRACK_YOU",
+            "1001",
+            "DATA_USED_TO_TRACK_YOU",
+            "Data Used to Track You",
+            "Data Used to Track You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "1001_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "1001_DATA_USED_TO_TRACK_YOU",
+            "LOCATION",
+            "Location"
+          ]
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed WHERE source_app_id = ?",
+          "params": [
+            "1001"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO privacy_snapshots\n        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n         source, wayback_snapshot_url, triggered_by,\n         app_version, app_version_updated_at)\n      VALUES (?, ?, ?, ?, ?, ?, 'live', NULL, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "1001",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "import",
+            "1.0.0",
+            1767323045000
+          ]
+        },
+        {
+          "sql": "UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?",
+          "params": [
+            "1001"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n        VALUES (?, ?, ?, ?, ?, 0, ?)\n      ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "1001",
+            "Tracked One",
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            1789473600000,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO activity_log\n        (id, type, status, app_id, app_name, summary, detail,\n         started_at, ended_at, duration_ms)\n      VALUES (?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "scrape",
+            "1001",
+            "Tracked One",
+            "2 changes detected",
+            "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      DELETE FROM activity_log\n       WHERE id IN (\n         SELECT id FROM activity_log\n          ORDER BY started_at DESC\n          LIMIT -1 OFFSET 2000\n       )\n    ",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE import_items SET status = ?, app_id = ?, app_name = ?, developer = ?, url = ?, icon_url = ?, scrape_error = ?, next_attempt_at = ? WHERE id = ?",
+          "params": [
+            "imported",
+            "1001",
+            "Tracked One",
+            null,
+            "https://apps.apple.com/us/app/fixture/id1001",
+            null,
+            null,
+            null,
+            "iti_fixture_1"
+          ]
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            2,
+            2,
+            0,
+            1,
+            "imp_fixture_a"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "1002"
+          ]
+        },
+        {
+          "sql": "\n        UPDATE apps\n           SET name = ?, url = ?, iconUrl = ?, developer = ?, privacyPolicyUrl = ?,\n               lastSynced = ?,\n               currentVersion = COALESCE(?, currentVersion),\n               versionUpdatedAt = COALESCE(?, versionUpdatedAt),\n               whatsNew = COALESCE(?, whatsNew),\n               hasPrivacyDetails = ?,\n               hasAccessibilityLabels = COALESCE(?, hasAccessibilityLabels),\n               priceAmount = COALESCE(?, priceAmount),\n               priceCurrency = COALESCE(?, priceCurrency),\n               priceFormatted = COALESCE(?, priceFormatted),\n               hasIap = COALESCE(?, hasIap),\n               genreId = COALESCE(?, genreId),\n               genreName = COALESCE(?, genreName),\n               ageRating = COALESCE(?, ageRating)\n         WHERE id = ?\n      ",
+          "params": [
+            "Tracked Two",
+            "https://apps.apple.com/us/app/fixture/id1002",
+            "https://example.com/icon.png",
+            "Fixture Dev",
+            "https://example.com/privacy",
+            1789473600000,
+            "1.0.0",
+            1767323045000,
+            "Fixture release notes",
+            1,
+            null,
+            0,
+            "USD",
+            "Free",
+            null,
+            6002,
+            "Utilities",
+            "4+",
+            "1002"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "1002_DATA_LINKED_TO_YOU",
+            "1002",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You",
+            "Data Linked to You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "1002_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "1002_DATA_LINKED_TO_YOU",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "1002_DATA_USED_TO_TRACK_YOU",
+            "1002",
+            "DATA_USED_TO_TRACK_YOU",
+            "Data Used to Track You",
+            "Data Used to Track You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "1002_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "1002_DATA_USED_TO_TRACK_YOU",
+            "LOCATION",
+            "Location"
+          ]
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed WHERE source_app_id = ?",
+          "params": [
+            "1002"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO privacy_snapshots\n        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n         source, wayback_snapshot_url, triggered_by,\n         app_version, app_version_updated_at)\n      VALUES (?, ?, ?, ?, ?, ?, 'live', NULL, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000006",
+            "1002",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "import",
+            "1.0.0",
+            1767323045000
+          ]
+        },
+        {
+          "sql": "UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?",
+          "params": [
+            "1002"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n        VALUES (?, ?, ?, ?, ?, 0, ?)\n      ",
+          "params": [
+            "00000000-0000-4000-8000-000000000007",
+            "1002",
+            "Tracked Two",
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            1789473600000,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO activity_log\n        (id, type, status, app_id, app_name, summary, detail,\n         started_at, ended_at, duration_ms)\n      VALUES (?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000008",
+            "scrape",
+            "1002",
+            "Tracked Two",
+            "2 changes detected",
+            "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      DELETE FROM activity_log\n       WHERE id IN (\n         SELECT id FROM activity_log\n          ORDER BY started_at DESC\n          LIMIT -1 OFFSET 2000\n       )\n    ",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE import_items SET status = ?, app_id = ?, app_name = ?, developer = ?, url = ?, icon_url = ?, scrape_error = ?, next_attempt_at = ? WHERE id = ?",
+          "params": [
+            "imported",
+            "1002",
+            "Tracked Two",
+            null,
+            "https://apps.apple.com/us/app/fixture/id1002",
+            null,
+            null,
+            null,
+            "iti_fixture_2"
+          ]
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            2,
+            2,
+            0,
+            2,
+            "imp_fixture_a"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            2,
+            2,
+            0,
+            2,
+            "imp_fixture_a"
+          ]
+        },
+        {
+          "sql": "UPDATE imports SET completed_at = ? WHERE id = ?",
+          "params": [
+            1789473600000,
+            "imp_fixture_a"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000009",
+            "import",
+            "ok",
+            null,
+            null,
+            "Imported 2/2 (manual)",
+            "{\"importId\":\"imp_fixture_a\",\"source\":\"manual\",\"sourceLabel\":null,\"total\":2,\"imported\":2,\"matched\":2,\"unmatched\":0,\"errored\":0,\"queued\":0,\"itemCount\":2}",
+            1789387200000,
+            1789473600000,
+            86400000
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read)\n    VALUES (?, ?, ?, ?, ?, 0)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000010",
+            "__import__",
+            "Import finished",
+            "[{\"type\":\"import_completed\",\"description\":\"Imported 2 of 2\",\"importId\":\"imp_fixture_a\",\"status\":\"ok\",\"total\":2,\"imported\":2,\"errored\":0,\"queued\":0,\"unmatched\":0,\"itemCount\":2,\"sourceLabel\":null}]",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "import_queue_running",
+            "false"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "import_queue_last_run",
+            "1789473600000"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "1001",
+            "name": "Tracked One",
+            "url": "https://apps.apple.com/us/app/fixture/id1001",
+            "iconUrl": "https://example.com/icon.png",
+            "bundleId": null,
+            "developer": "Fixture Dev",
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789473600000,
+            "changeCount": 1,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "1.0.0",
+            "versionUpdatedAt": 1767323045000,
+            "whatsNew": "Fixture release notes",
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": null,
+            "priceAmount": 0,
+            "priceCurrency": "USD",
+            "priceFormatted": "Free",
+            "hasIap": null,
+            "genreId": 6002,
+            "genreName": "Utilities",
+            "ageRating": "4+",
+            "privacyPolicyUrl": "https://example.com/privacy"
+          },
+          {
+            "id": "1002",
+            "name": "Tracked Two",
+            "url": "https://apps.apple.com/us/app/fixture/id1002",
+            "iconUrl": "https://example.com/icon.png",
+            "bundleId": null,
+            "developer": "Fixture Dev",
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789473600000,
+            "changeCount": 1,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "1.0.0",
+            "versionUpdatedAt": 1767323045000,
+            "whatsNew": "Fixture release notes",
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": null,
+            "priceAmount": 0,
+            "priceCurrency": "USD",
+            "priceFormatted": "Free",
+            "hasIap": null,
+            "genreId": 6002,
+            "genreName": "Utilities",
+            "ageRating": "4+",
+            "privacyPolicyUrl": "https://example.com/privacy"
+          }
+        ],
+        "privacy_types": [
+          {
+            "id": "1001_DATA_LINKED_TO_YOU",
+            "app_id": "1001",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Data Linked to You detail"
+          },
+          {
+            "id": "1001_DATA_USED_TO_TRACK_YOU",
+            "app_id": "1001",
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Data Used to Track You detail"
+          },
+          {
+            "id": "1002_DATA_LINKED_TO_YOU",
+            "app_id": "1002",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Data Linked to You detail"
+          },
+          {
+            "id": "1002_DATA_USED_TO_TRACK_YOU",
+            "app_id": "1002",
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Data Used to Track You detail"
+          }
+        ],
+        "privacy_categories": [
+          {
+            "id": "1001_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "purpose_id": null,
+            "type_id": "1001_DATA_LINKED_TO_YOU",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          },
+          {
+            "id": "1001_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "purpose_id": null,
+            "type_id": "1001_DATA_USED_TO_TRACK_YOU",
+            "identifier": "LOCATION",
+            "title": "Location"
+          },
+          {
+            "id": "1002_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "purpose_id": null,
+            "type_id": "1002_DATA_LINKED_TO_YOU",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          },
+          {
+            "id": "1002_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "purpose_id": null,
+            "type_id": "1002_DATA_USED_TO_TRACK_YOU",
+            "identifier": "LOCATION",
+            "title": "Location"
+          }
+        ],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "1001",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "app_id": "1002",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          }
+        ],
+        "imports": [
+          {
+            "id": "imp_fixture_a",
+            "created_at": 1789387200000,
+            "completed_at": 1789473600000,
+            "source": "manual",
+            "source_label": null,
+            "total": 2,
+            "matched": 2,
+            "unmatched": 0,
+            "imported": 2,
+            "device_id": null
+          }
+        ],
+        "import_items": [
+          {
+            "id": "iti_fixture_1",
+            "import_id": "imp_fixture_a",
+            "query": "Tracked One",
+            "edited_query": null,
+            "status": "imported",
+            "app_id": "1001",
+            "app_name": "Tracked One",
+            "developer": null,
+            "url": "https://apps.apple.com/us/app/fixture/id1001",
+            "icon_url": null,
+            "country": null,
+            "scrape_error": null,
+            "next_attempt_at": null,
+            "attempt_count": 1,
+            "removed_app_id": null
+          },
+          {
+            "id": "iti_fixture_2",
+            "import_id": "imp_fixture_a",
+            "query": "Tracked Two",
+            "edited_query": null,
+            "status": "imported",
+            "app_id": "1002",
+            "app_name": "Tracked Two",
+            "developer": null,
+            "url": "https://apps.apple.com/us/app/fixture/id1002",
+            "icon_url": null,
+            "country": null,
+            "scrape_error": null,
+            "next_attempt_at": null,
+            "attempt_count": 1,
+            "removed_app_id": null
+          }
+        ],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "1001",
+            "app_name": "Tracked One",
+            "change_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "created_at": 1789473600000,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000007",
+            "app_id": "1002",
+            "app_name": "Tracked Two",
+            "change_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "created_at": 1789473600000,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000010",
+            "app_id": "__import__",
+            "app_name": "Import finished",
+            "change_summary": "[{\"type\":\"import_completed\",\"description\":\"Imported 2 of 2\",\"importId\":\"imp_fixture_a\",\"status\":\"ok\",\"total\":2,\"imported\":2,\"errored\":0,\"queued\":0,\"unmatched\":0,\"itemCount\":2,\"sourceLabel\":null}]",
+            "created_at": 1789473600000,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "scrape",
+            "status": "ok",
+            "app_id": "1001",
+            "app_name": "Tracked One",
+            "summary": "2 changes detected",
+            "detail": "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000008",
+            "type": "scrape",
+            "status": "ok",
+            "app_id": "1002",
+            "app_name": "Tracked Two",
+            "summary": "2 changes detected",
+            "detail": "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000009",
+            "type": "import",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Imported 2/2 (manual)",
+            "detail": "{\"importId\":\"imp_fixture_a\",\"source\":\"manual\",\"sourceLabel\":null,\"total\":2,\"imported\":2,\"matched\":2,\"unmatched\":0,\"errored\":0,\"queued\":0,\"itemCount\":2}",
+            "started_at": 1789387200000,
+            "ended_at": 1789473600000,
+            "duration_ms": 86400000
+          }
+        ],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/pt"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "slack"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          },
+          {
+            "key": "import_queue_paused_until",
+            "value": "0"
+          },
+          {
+            "key": "import_queue_running_since",
+            "value": "1789473600000"
+          },
+          {
+            "key": "import_queue_running",
+            "value": "false"
+          },
+          {
+            "key": "import_queue_last_run",
+            "value": "1789473600000"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"processed\":2,\"succeeded\":2,\"failed\":0,\"rateLimited\":0,\"status\":{\"queued\":0,\"soonestNextAttemptAt\":null,\"oldestNextAttemptAt\":null,\"items\":[],\"pausedUntil\":null,\"running\":false,\"lastRunAt\":1789473600000}}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "retry onto a tracked app posts the immediate webhook",
+      "route": "/api/imports/items/retry",
+      "method": "POST",
+      "param": null,
+      "pathname": "/api/imports/items/retry",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.170.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"itemId\":\"iti_fixture_1\"}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/pt"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "slack"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "imp_fixture_a",
+            1789387200000,
+            null,
+            "manual",
+            null,
+            1,
+            1,
+            0,
+            0,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO import_items (id, import_id, query, edited_query, status, app_id, app_name, developer, url, icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti_fixture_1",
+            "imp_fixture_a",
+            "Fixture One",
+            null,
+            "queued",
+            null,
+            null,
+            null,
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<!doctype html><html><head><meta property=\"og:title\" content=\"Fixture One on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Fixture Dev\"}}</script></head><body><a aria-label=\"Developer's Privacy Policy\" href=\"https://example.com/privacy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Fixture One\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"version\":\"1.0.0\",\"currentVersionReleaseDate\":\"2026-01-02T03:04:05Z\",\"releaseNotes\":\"Fixture release notes\",\"price\":0,\"currency\":\"USD\",\"formattedPrice\":\"Free\",\"primaryGenreId\":6002,\"primaryGenreName\":\"Utilities\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=555000111&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://hooks.example.com/pt",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"text\":\"📱 Fixture One: New privacy label: \\\"Data Linked to You\\\"\\nNew privacy label: \\\"Data Linked to You\\\"\"}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        UPDATE apps\n           SET name = ?, url = ?, iconUrl = ?, developer = ?, privacyPolicyUrl = ?,\n               lastSynced = ?,\n               currentVersion = COALESCE(?, currentVersion),\n               versionUpdatedAt = COALESCE(?, versionUpdatedAt),\n               whatsNew = COALESCE(?, whatsNew),\n               hasPrivacyDetails = ?,\n               hasAccessibilityLabels = COALESCE(?, hasAccessibilityLabels),\n               priceAmount = COALESCE(?, priceAmount),\n               priceCurrency = COALESCE(?, priceCurrency),\n               priceFormatted = COALESCE(?, priceFormatted),\n               hasIap = COALESCE(?, hasIap),\n               genreId = COALESCE(?, genreId),\n               genreName = COALESCE(?, genreName),\n               ageRating = COALESCE(?, ageRating)\n         WHERE id = ?\n      ",
+          "params": [
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            "https://example.com/icon.png",
+            "Fixture Dev",
+            "https://example.com/privacy",
+            1789473600000,
+            "1.0.0",
+            1767323045000,
+            "Fixture release notes",
+            1,
+            null,
+            0,
+            "USD",
+            "Free",
+            null,
+            6002,
+            "Utilities",
+            "4+",
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "555000111_DATA_LINKED_TO_YOU",
+            "555000111",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You",
+            "Data Linked to You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "555000111_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "555000111_DATA_LINKED_TO_YOU",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "555000111_DATA_USED_TO_TRACK_YOU",
+            "555000111",
+            "DATA_USED_TO_TRACK_YOU",
+            "Data Used to Track You",
+            "Data Used to Track You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "555000111_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "555000111_DATA_USED_TO_TRACK_YOU",
+            "LOCATION",
+            "Location"
+          ]
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed WHERE source_app_id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO privacy_snapshots\n        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n         source, wayback_snapshot_url, triggered_by,\n         app_version, app_version_updated_at)\n      VALUES (?, ?, ?, ?, ?, ?, 'live', NULL, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "import",
+            "1.0.0",
+            1767323045000
+          ]
+        },
+        {
+          "sql": "UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n        VALUES (?, ?, ?, ?, ?, 0, ?)\n      ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "555000111",
+            "Fixture One",
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            1789473600000,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO activity_log\n        (id, type, status, app_id, app_name, summary, detail,\n         started_at, ended_at, duration_ms)\n      VALUES (?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "scrape",
+            "555000111",
+            "Fixture One",
+            "2 changes detected",
+            "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      DELETE FROM activity_log\n       WHERE id IN (\n         SELECT id FROM activity_log\n          ORDER BY started_at DESC\n          LIMIT -1 OFFSET 2000\n       )\n    ",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE import_items SET status = ?, app_id = ?, app_name = ?, developer = ?, url = ?, icon_url = ?, scrape_error = ?, next_attempt_at = ? WHERE id = ?",
+          "params": [
+            "imported",
+            "555000111",
+            "Fixture One",
+            null,
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            null,
+            null,
+            null,
+            "iti_fixture_1"
+          ]
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            1,
+            1,
+            0,
+            1,
+            "imp_fixture_a"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            1,
+            1,
+            0,
+            1,
+            "imp_fixture_a"
+          ]
+        },
+        {
+          "sql": "UPDATE imports SET completed_at = ? WHERE id = ?",
+          "params": [
+            1789473600000,
+            "imp_fixture_a"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000005",
+            "import",
+            "ok",
+            null,
+            null,
+            "Imported 1/1 (manual)",
+            "{\"importId\":\"imp_fixture_a\",\"source\":\"manual\",\"sourceLabel\":null,\"total\":1,\"imported\":1,\"matched\":1,\"unmatched\":0,\"errored\":0,\"queued\":0,\"itemCount\":1}",
+            1789387200000,
+            1789473600000,
+            86400000
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read)\n    VALUES (?, ?, ?, ?, ?, 0)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000006",
+            "__import__",
+            "Import finished",
+            "[{\"type\":\"import_completed\",\"description\":\"Imported 1 of 1\",\"importId\":\"imp_fixture_a\",\"status\":\"ok\",\"total\":1,\"imported\":1,\"errored\":0,\"queued\":0,\"unmatched\":0,\"itemCount\":1,\"sourceLabel\":null}]",
+            1789473600000
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": "https://example.com/icon.png",
+            "bundleId": null,
+            "developer": "Fixture Dev",
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789473600000,
+            "changeCount": 1,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "1.0.0",
+            "versionUpdatedAt": 1767323045000,
+            "whatsNew": "Fixture release notes",
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": null,
+            "priceAmount": 0,
+            "priceCurrency": "USD",
+            "priceFormatted": "Free",
+            "hasIap": null,
+            "genreId": 6002,
+            "genreName": "Utilities",
+            "ageRating": "4+",
+            "privacyPolicyUrl": "https://example.com/privacy"
+          }
+        ],
+        "privacy_types": [
+          {
+            "id": "555000111_DATA_LINKED_TO_YOU",
+            "app_id": "555000111",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Data Linked to You detail"
+          },
+          {
+            "id": "555000111_DATA_USED_TO_TRACK_YOU",
+            "app_id": "555000111",
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Data Used to Track You detail"
+          }
+        ],
+        "privacy_categories": [
+          {
+            "id": "555000111_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "purpose_id": null,
+            "type_id": "555000111_DATA_LINKED_TO_YOU",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          },
+          {
+            "id": "555000111_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "purpose_id": null,
+            "type_id": "555000111_DATA_USED_TO_TRACK_YOU",
+            "identifier": "LOCATION",
+            "title": "Location"
+          }
+        ],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          }
+        ],
+        "imports": [
+          {
+            "id": "imp_fixture_a",
+            "created_at": 1789387200000,
+            "completed_at": 1789473600000,
+            "source": "manual",
+            "source_label": null,
+            "total": 1,
+            "matched": 1,
+            "unmatched": 0,
+            "imported": 1,
+            "device_id": null
+          }
+        ],
+        "import_items": [
+          {
+            "id": "iti_fixture_1",
+            "import_id": "imp_fixture_a",
+            "query": "Fixture One",
+            "edited_query": null,
+            "status": "imported",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "developer": null,
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "icon_url": null,
+            "country": null,
+            "scrape_error": null,
+            "next_attempt_at": null,
+            "attempt_count": 0,
+            "removed_app_id": null
+          }
+        ],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "change_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "created_at": 1789473600000,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "app_id": "__import__",
+            "app_name": "Import finished",
+            "change_summary": "[{\"type\":\"import_completed\",\"description\":\"Imported 1 of 1\",\"importId\":\"imp_fixture_a\",\"status\":\"ok\",\"total\":1,\"imported\":1,\"errored\":0,\"queued\":0,\"unmatched\":0,\"itemCount\":1,\"sourceLabel\":null}]",
+            "created_at": 1789473600000,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "scrape",
+            "status": "ok",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "summary": "2 changes detected",
+            "detail": "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "type": "import",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Imported 1/1 (manual)",
+            "detail": "{\"importId\":\"imp_fixture_a\",\"source\":\"manual\",\"sourceLabel\":null,\"total\":1,\"imported\":1,\"matched\":1,\"unmatched\":0,\"errored\":0,\"queued\":0,\"itemCount\":1}",
+            "started_at": 1789387200000,
+            "ended_at": 1789473600000,
+            "duration_ms": 86400000
+          }
+        ],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/pt"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "slack"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"item\":{\"id\":\"iti_fixture_1\",\"importId\":\"imp_fixture_a\",\"query\":\"Fixture One\",\"editedQuery\":null,\"status\":\"imported\",\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"developer\":null,\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"iconUrl\":null,\"country\":null,\"scrapeError\":null,\"removedAppId\":null,\"nextAttemptAt\":null,\"attemptCount\":0},\"status\":\"imported\"}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "change-match onto a tracked app posts the immediate webhook",
+      "route": "/api/imports/items/change-match",
+      "method": "POST",
+      "param": null,
+      "pathname": "/api/imports/items/change-match",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.171.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"itemId\":\"iti_fixture_1\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\"}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/pt"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "slack"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "imp_fixture_a",
+            1789387200000,
+            null,
+            "manual",
+            null,
+            1,
+            0,
+            0,
+            1,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO import_items (id, import_id, query, edited_query, status, app_id, app_name, developer, url, icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti_fixture_1",
+            "imp_fixture_a",
+            "Fixture One",
+            null,
+            "imported",
+            "555000111",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<!doctype html><html><head><meta property=\"og:title\" content=\"Fixture One on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Fixture Dev\"}}</script></head><body><a aria-label=\"Developer's Privacy Policy\" href=\"https://example.com/privacy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Fixture One\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"version\":\"1.0.0\",\"currentVersionReleaseDate\":\"2026-01-02T03:04:05Z\",\"releaseNotes\":\"Fixture release notes\",\"price\":0,\"currency\":\"USD\",\"formattedPrice\":\"Free\",\"primaryGenreId\":6002,\"primaryGenreName\":\"Utilities\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=555000111&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://hooks.example.com/pt",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"text\":\"📱 Fixture One: New privacy label: \\\"Data Linked to You\\\"\\nNew privacy label: \\\"Data Linked to You\\\"\"}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        UPDATE apps\n           SET name = ?, url = ?, iconUrl = ?, developer = ?, privacyPolicyUrl = ?,\n               lastSynced = ?,\n               currentVersion = COALESCE(?, currentVersion),\n               versionUpdatedAt = COALESCE(?, versionUpdatedAt),\n               whatsNew = COALESCE(?, whatsNew),\n               hasPrivacyDetails = ?,\n               hasAccessibilityLabels = COALESCE(?, hasAccessibilityLabels),\n               priceAmount = COALESCE(?, priceAmount),\n               priceCurrency = COALESCE(?, priceCurrency),\n               priceFormatted = COALESCE(?, priceFormatted),\n               hasIap = COALESCE(?, hasIap),\n               genreId = COALESCE(?, genreId),\n               genreName = COALESCE(?, genreName),\n               ageRating = COALESCE(?, ageRating)\n         WHERE id = ?\n      ",
+          "params": [
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            "https://example.com/icon.png",
+            "Fixture Dev",
+            "https://example.com/privacy",
+            1789473600000,
+            "1.0.0",
+            1767323045000,
+            "Fixture release notes",
+            1,
+            null,
+            0,
+            "USD",
+            "Free",
+            null,
+            6002,
+            "Utilities",
+            "4+",
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "555000111_DATA_LINKED_TO_YOU",
+            "555000111",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You",
+            "Data Linked to You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "555000111_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "555000111_DATA_LINKED_TO_YOU",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "555000111_DATA_USED_TO_TRACK_YOU",
+            "555000111",
+            "DATA_USED_TO_TRACK_YOU",
+            "Data Used to Track You",
+            "Data Used to Track You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "555000111_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "555000111_DATA_USED_TO_TRACK_YOU",
+            "LOCATION",
+            "Location"
+          ]
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed WHERE source_app_id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO privacy_snapshots\n        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n         source, wayback_snapshot_url, triggered_by,\n         app_version, app_version_updated_at)\n      VALUES (?, ?, ?, ?, ?, ?, 'live', NULL, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "import",
+            "1.0.0",
+            1767323045000
+          ]
+        },
+        {
+          "sql": "UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n        VALUES (?, ?, ?, ?, ?, 0, ?)\n      ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "555000111",
+            "Fixture One",
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            1789473600000,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO activity_log\n        (id, type, status, app_id, app_name, summary, detail,\n         started_at, ended_at, duration_ms)\n      VALUES (?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "scrape",
+            "555000111",
+            "Fixture One",
+            "2 changes detected",
+            "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      DELETE FROM activity_log\n       WHERE id IN (\n         SELECT id FROM activity_log\n          ORDER BY started_at DESC\n          LIMIT -1 OFFSET 2000\n       )\n    ",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE import_items\n         SET status = 'imported',\n             app_id = ?,\n             app_name = ?,\n             developer = ?,\n             url = ?,\n             icon_url = ?,\n             scrape_error = NULL,\n             removed_app_id = NULL\n       WHERE id = ?",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "Fixture Dev",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            "https://example.com/icon.png",
+            "iti_fixture_1"
+          ]
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            1,
+            1,
+            0,
+            1,
+            "imp_fixture_a"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "UPDATE import_items SET edited_query = ? WHERE id = ?",
+          "params": [
+            "Fixture One",
+            "iti_fixture_1"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": "https://example.com/icon.png",
+            "bundleId": null,
+            "developer": "Fixture Dev",
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789473600000,
+            "changeCount": 1,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "1.0.0",
+            "versionUpdatedAt": 1767323045000,
+            "whatsNew": "Fixture release notes",
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": null,
+            "priceAmount": 0,
+            "priceCurrency": "USD",
+            "priceFormatted": "Free",
+            "hasIap": null,
+            "genreId": 6002,
+            "genreName": "Utilities",
+            "ageRating": "4+",
+            "privacyPolicyUrl": "https://example.com/privacy"
+          }
+        ],
+        "privacy_types": [
+          {
+            "id": "555000111_DATA_LINKED_TO_YOU",
+            "app_id": "555000111",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Data Linked to You detail"
+          },
+          {
+            "id": "555000111_DATA_USED_TO_TRACK_YOU",
+            "app_id": "555000111",
+            "identifier": "DATA_USED_TO_TRACK_YOU",
+            "title": "Data Used to Track You",
+            "detail": "Data Used to Track You detail"
+          }
+        ],
+        "privacy_categories": [
+          {
+            "id": "555000111_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "purpose_id": null,
+            "type_id": "555000111_DATA_LINKED_TO_YOU",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          },
+          {
+            "id": "555000111_DATA_USED_TO_TRACK_YOU_LOCATION",
+            "purpose_id": null,
+            "type_id": "555000111_DATA_USED_TO_TRACK_YOU",
+            "identifier": "LOCATION",
+            "title": "Location"
+          }
+        ],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          }
+        ],
+        "imports": [
+          {
+            "id": "imp_fixture_a",
+            "created_at": 1789387200000,
+            "completed_at": null,
+            "source": "manual",
+            "source_label": null,
+            "total": 1,
+            "matched": 1,
+            "unmatched": 0,
+            "imported": 1,
+            "device_id": null
+          }
+        ],
+        "import_items": [
+          {
+            "id": "iti_fixture_1",
+            "import_id": "imp_fixture_a",
+            "query": "Fixture One",
+            "edited_query": "Fixture One",
+            "status": "imported",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "developer": "Fixture Dev",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "icon_url": "https://example.com/icon.png",
+            "country": null,
+            "scrape_error": null,
+            "next_attempt_at": null,
+            "attempt_count": 0,
+            "removed_app_id": null
+          }
+        ],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "change_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "created_at": 1789473600000,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "scrape",
+            "status": "ok",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "summary": "2 changes detected",
+            "detail": "{\"changeCount\":2,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/pt"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "slack"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"item\":{\"id\":\"iti_fixture_1\",\"importId\":\"imp_fixture_a\",\"query\":\"Fixture One\",\"editedQuery\":\"Fixture One\",\"status\":\"imported\",\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"developer\":\"Fixture Dev\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"iconUrl\":\"https://example.com/icon.png\",\"country\":null,\"scrapeError\":null,\"removedAppId\":null,\"nextAttemptAt\":null,\"attemptCount\":0},\"previousAppRemoved\":null}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "history import with label changes posts no webhook",
+      "route": "/api/apps/[id]/import-history",
+      "method": "POST",
+      "param": "555000111",
+      "pathname": "/api/apps/555000111/import-history",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.172.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/pt"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "slack"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, triggered_by) VALUES (?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "s-live",
+            "555000111",
+            1768003200000,
+            "[]",
+            "[]",
+            "live",
+            "import"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20260720120000\",\"200\"]]"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}]}</script></head><body></body></html>"
+        },
+        {
+          "status": 302,
+          "headers": {
+            "location": "https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20260720120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "wayback.import.app.start",
+            "10.0.172.3",
+            "imports-oracle/1.0",
+            "app=555000111 force=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1784548800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "wayback",
+            "https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, triggered_by)\n    VALUES (?, ?, ?, ?, 0, ?, 'live', 'wayback')\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "555000111",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1789473600000}]"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "wayback_import",
+            "ok",
+            "555000111",
+            "Fixture One",
+            "Wayback import for Fixture One: 1 imported, 22 skipped, 1 snapshot requested",
+            "{\"mode\":\"app\",\"result\":{\"appId\":\"555000111\",\"attempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1781524800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\",\"changeCount\":2},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}]},\"force\":false}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000005",
+            1789473600000,
+            "wayback.import.app.success",
+            "10.0.172.3",
+            "imports-oracle/1.0",
+            "app=555000111 force=0 imported=1 unchanged=0 skipped=22 failed=0",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "s-live",
+            "app_id": "555000111",
+            "scraped_at": 1768003200000,
+            "snapshot_json": "[]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1784548800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Location\"]}]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "555000111",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1789473600000}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "imports": [],
+        "import_items": [],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "wayback_import",
+            "status": "ok",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "summary": "Wayback import for Fixture One: 1 imported, 22 skipped, 1 snapshot requested",
+            "detail": "{\"mode\":\"app\",\"result\":{\"appId\":\"555000111\",\"attempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1781524800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\",\"changeCount\":2},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}]},\"force\":false}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "wayback.import.app.start",
+            "actor_ip": "10.0.172.3",
+            "user_agent": "imports-oracle/1.0",
+            "detail": "app=555000111 force=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "created_at": 1789473600000,
+            "action": "wayback.import.app.success",
+            "actor_ip": "10.0.172.3",
+            "user_agent": "imports-oracle/1.0",
+            "detail": "app=555000111 force=0 imported=1 unchanged=0 skipped=22 failed=0",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/pt"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "slack"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"result\":{\"appId\":\"555000111\",\"attempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\"},{\"targetDate\":1781524800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\",\"changeCount\":2},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}]}}",
+        "type": "application/json",
+        "retryAfter": null
+      }
     }
   ]
 }

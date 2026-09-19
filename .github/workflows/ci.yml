@@ -515,7 +515,7 @@ jobs:
           git diff --exit-code -- core/tests/fixtures/seed-cases.json core/src/server/sample_apps.json
 
       - name: Leftovers oracle is current
-        # Runs the real webhook test, seed notification (the one caller of
+        # Runs the real webhook test, seed notification (through
         # createNotification, whose fan-out posts an immediate webhook),
         # update status, favicon and preview routes, and the webhook
         # summary and update-check ticks called as the server calls them,

@@ -128,7 +128,7 @@ mod wayback_runner;
 #[cfg(test)]
 mod wayback_runner_tests;
 pub mod webhook;
-mod webhook_writes;
+pub(crate) mod webhook_writes;
 mod writes;
 #[cfg(test)]
 mod writes_tests;
