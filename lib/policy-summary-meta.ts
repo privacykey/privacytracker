@@ -31,6 +31,30 @@ export const POLICY_ANALYSIS_STATUSES = [
 
 export type PolicyAnalysisStatus = (typeof POLICY_ANALYSIS_STATUSES)[number];
 
+/**
+ * Whether the summarise phase will summarise an analysis from the text
+ * stored on it: a clean capture waiting for its summary or, on a forced
+ * run (every run the AI Policy tab starts is one), a capture already
+ * summarised. `summariseStoredPolicy` declines everything else and returns
+ * the analysis unchanged, and the tab's Summarise button reads this too, so
+ * it is never offered for a run the server will decline. After a failed or
+ * unusable fetch the stored text is an earlier capture, not the current
+ * policy, and an audit-bundle import holds only an excerpt of it.
+ */
+export function canSummariseStoredPolicy(analysis: {
+  force: boolean;
+  hasSourceText: boolean;
+  model: string | null | undefined;
+  status: string | null | undefined;
+}): boolean {
+  return (
+    analysis.model !== "imported" &&
+    analysis.hasSourceText &&
+    (analysis.status === "source_ready" ||
+      (analysis.force && analysis.status === "ready"))
+  );
+}
+
 export const POLICY_SOURCE_ORIGINS = [
   "direct",
   "browser_retry",

@@ -1160,6 +1160,11 @@ fn activity_summary(result: &Value, scrape_disabled: bool, phase: Phase) -> (&'s
         "ready" if phase == Phase::Fetch => ("ok", "Policy source fetched (cached)".to_string()),
         "ready" => ("ok", "Policy summary ready".to_string()),
         "source_ready" => ("ok", "Policy source fetched".to_string()),
+        // Summarise never fetches, so a fetch error on its result is the
+        // stored one: it declined to summarise the text kept from before.
+        "fetch_error" if phase == Phase::Summarise => {
+            ("partial", "Policy skipped: latest fetch failed".to_string())
+        }
         "fetch_error" => (
             "error",
             error.map_or_else(

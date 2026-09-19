@@ -35,6 +35,7 @@ const WAYBACK_HOSTS = ["archive.org", "web.archive.org"];
 import { appendPolicyChangeEntry, type ChangeEntry } from "./changelog";
 import {
   type AppPolicyAnalysis,
+  canSummariseStoredPolicy,
   type ExternalPolicyReference,
   POLICY_ANALYSIS_STATUSES,
   POLICY_LENSES,
@@ -879,6 +880,12 @@ export async function syncPrivacyPolicyAnalysis(
     } else if (resultStatus === "source_ready") {
       activityStatus = "ok";
       summaryLine = "Policy source fetched";
+    } else if (resultStatus === "fetch_error" && phase === "summarise") {
+      // Summarise never fetches, so a fetch error on its result is the
+      // stored one from an earlier run: it declined to summarise the text
+      // kept from before that failure. Nothing was tried, so nothing failed.
+      activityStatus = "partial";
+      summaryLine = "Policy skipped: latest fetch failed";
     } else if (resultStatus === "fetch_error") {
       activityStatus = "error";
       summaryLine = result.error
@@ -1562,10 +1569,14 @@ async function summariseStoredPolicy(
     return hydratePolicyAnalysis(existing);
   }
 
-  // Can only summarise from a clean fetched source.
-  const canSummariseStoredSource =
-    existing.status === "source_ready" ||
-    (forceResummarise && existing.status === "ready");
+  // Can only summarise from a clean fetched source. The AI Policy tab
+  // offers Summarise by the same rule.
+  const canSummariseStoredSource = canSummariseStoredPolicy({
+    force: forceResummarise,
+    hasSourceText: Boolean(existing.source_text),
+    model: existing.model,
+    status: existing.status,
+  });
   if (!(canSummariseStoredSource && existing.source_text)) {
     logger.event("skip", {
       note: `Cannot summarise — current status is ${existing.status}.`,

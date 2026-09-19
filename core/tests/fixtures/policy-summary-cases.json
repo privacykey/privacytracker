@@ -1255,10 +1255,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000001",
             "policy_summary",
-            "error",
+            "partial",
             "1000000001",
             "Policy Fixture",
-            "Policy fetch failed",
+            "Policy skipped: latest fetch failed",
             "{\"phase\":\"summarise\",\"forceResummarise\":false,\"resultStatus\":\"fetch_error\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null}",
             1789473600000,
             1789473600000,
@@ -1308,10 +1308,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000001",
             "type": "policy_summary",
-            "status": "error",
+            "status": "partial",
             "app_id": "1000000001",
             "app_name": "Policy Fixture",
-            "summary": "Policy fetch failed",
+            "summary": "Policy skipped: latest fetch failed",
             "detail": "{\"phase\":\"summarise\",\"forceResummarise\":false,\"resultStatus\":\"fetch_error\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
@@ -27031,6 +27031,649 @@
             "highlights",
             "lenses"
           ]
+        }
+      }
+    },
+    {
+      "name": "a fetch error with its message cannot be summarised",
+      "kind": "sync",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, developer, privacyPolicyUrl, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "Policy Fixture",
+            "https://apps.apple.com/us/app/fixture/id1000000001",
+            "",
+            "Fixture Developer",
+            "https://example.com/privacy",
+            1786881600000,
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_title, source_content_type, source_text, source_word_count, source_origin, source_final_url, content_hash, analysis_mode, summary_json, previous_summary_json, previous_summary_at, model, error, updated_at, last_run_log, source_fetched_at, run_status, run_started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "https://example.com/privacy",
+            "fetch_error",
+            "example.com",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.",
+            85,
+            "direct",
+            "https://example.com/privacy",
+            "5019ca790442a9e4926f1b511d7158af8d922dc445c14e2a5bbf5a4c89dc0d3b",
+            null,
+            "{\"overview\":\"An older summary.\"}",
+            null,
+            null,
+            null,
+            "HTTP 503",
+            1789300800000,
+            null,
+            1789300800000,
+            "idle",
+            null
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-fixture-key"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_debug_logging",
+            "false"
+          ]
+        }
+      ],
+      "request": {
+        "appId": "1000000001",
+        "appName": "Policy Fixture",
+        "developer": "Fixture Developer",
+        "policyUrl": "https://example.com/privacy"
+      },
+      "options": {
+        "phase": "summarise",
+        "forceResummarise": true
+      },
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?",
+          "params": [
+            1789473600000,
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"skip\",\"at\":1789473600000,\"note\":\"Cannot summarise — current status is fetch_error.\"}]",
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "policy_summary",
+            "partial",
+            "1000000001",
+            "Policy Fixture",
+            "Policy skipped: latest fetch failed",
+            "{\"phase\":\"summarise\",\"forceResummarise\":true,\"resultStatus\":\"fetch_error\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null,\"errorMessage\":\"HTTP 503\"}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET run_status = 'idle'\n      WHERE app_id = ?",
+          "params": [
+            "1000000001"
+          ]
+        }
+      ],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [
+          {
+            "app_id": "1000000001",
+            "policy_url": "https://example.com/privacy",
+            "status": "fetch_error",
+            "source_title": "example.com",
+            "source_content_type": "text/plain; charset=utf-8",
+            "source_text": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.",
+            "source_word_count": 85,
+            "source_origin": "direct",
+            "source_final_url": "https://example.com/privacy",
+            "content_hash": "5019ca790442a9e4926f1b511d7158af8d922dc445c14e2a5bbf5a4c89dc0d3b",
+            "analysis_mode": null,
+            "summary_json": "{\"overview\":\"An older summary.\"}",
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": null,
+            "error": "HTTP 503",
+            "updated_at": 1789300800000,
+            "last_run_log": "[{\"phase\":\"skip\",\"at\":1789473600000,\"note\":\"Cannot summarise — current status is fetch_error.\"}]",
+            "source_fetched_at": 1789300800000,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": "idle",
+            "run_started_at": 1789473600000
+          }
+        ],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "type": "policy_summary",
+            "status": "partial",
+            "app_id": "1000000001",
+            "app_name": "Policy Fixture",
+            "summary": "Policy skipped: latest fetch failed",
+            "detail": "{\"phase\":\"summarise\",\"forceResummarise\":true,\"resultStatus\":\"fetch_error\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null,\"errorMessage\":\"HTTP 503\"}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-fixture-key"
+          },
+          {
+            "key": "ai_debug_logging",
+            "value": "false"
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "status": "fetch_error",
+          "sourceTitle": "example.com",
+          "sourceWordCount": 85,
+          "sourceOrigin": "direct",
+          "sourceFinalUrl": "https://example.com/privacy",
+          "updatedAt": 1789300800000,
+          "sourceFetchedAt": 1789300800000,
+          "summary": {
+            "overview": "An older summary.",
+            "highlights": [
+              "The policy does not address this clearly.",
+              "The policy does not address this clearly.",
+              "The policy does not address this clearly."
+            ],
+            "lenses": [
+              {
+                "key": "collection_scope",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "product_use",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "ads_marketing",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "third_party_sharing",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "tracking_analytics",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "user_controls",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "data_retention",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "children_minors",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              }
+            ]
+          },
+          "previousSummary": null,
+          "error": "HTTP 503",
+          "sourcePreview": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.",
+          "sourceLength": 515,
+          "runStatus": "running",
+          "runStartedAt": 1789473600000
+        }
+      }
+    },
+    {
+      "name": "a too-short fetch cannot be summarised",
+      "kind": "sync",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, developer, privacyPolicyUrl, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "Policy Fixture",
+            "https://apps.apple.com/us/app/fixture/id1000000001",
+            "",
+            "Fixture Developer",
+            "https://example.com/privacy",
+            1786881600000,
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_title, source_content_type, source_text, source_word_count, source_origin, source_final_url, content_hash, analysis_mode, summary_json, previous_summary_json, previous_summary_at, model, error, updated_at, last_run_log, source_fetched_at, run_status, run_started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "https://example.com/privacy",
+            "too_short",
+            "example.com",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.",
+            85,
+            "direct",
+            "https://example.com/privacy",
+            "5019ca790442a9e4926f1b511d7158af8d922dc445c14e2a5bbf5a4c89dc0d3b",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "The fetched privacy-policy text was too short to summarize reliably.",
+            1789300800000,
+            null,
+            1789300800000,
+            "idle",
+            null
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-fixture-key"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_debug_logging",
+            "false"
+          ]
+        }
+      ],
+      "request": {
+        "appId": "1000000001",
+        "appName": "Policy Fixture",
+        "developer": "Fixture Developer",
+        "policyUrl": "https://example.com/privacy"
+      },
+      "options": {
+        "phase": "summarise",
+        "forceResummarise": true
+      },
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?",
+          "params": [
+            1789473600000,
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"skip\",\"at\":1789473600000,\"note\":\"Cannot summarise — current status is too_short.\"}]",
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "policy_summary",
+            "partial",
+            "1000000001",
+            "Policy Fixture",
+            "Policy skipped: too short",
+            "{\"phase\":\"summarise\",\"forceResummarise\":true,\"resultStatus\":\"too_short\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null,\"errorMessage\":\"The fetched privacy-policy text was too short to summarize reliably.\"}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET run_status = 'idle'\n      WHERE app_id = ?",
+          "params": [
+            "1000000001"
+          ]
+        }
+      ],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [
+          {
+            "app_id": "1000000001",
+            "policy_url": "https://example.com/privacy",
+            "status": "too_short",
+            "source_title": "example.com",
+            "source_content_type": "text/plain; charset=utf-8",
+            "source_text": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.",
+            "source_word_count": 85,
+            "source_origin": "direct",
+            "source_final_url": "https://example.com/privacy",
+            "content_hash": "5019ca790442a9e4926f1b511d7158af8d922dc445c14e2a5bbf5a4c89dc0d3b",
+            "analysis_mode": null,
+            "summary_json": null,
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": null,
+            "error": "The fetched privacy-policy text was too short to summarize reliably.",
+            "updated_at": 1789300800000,
+            "last_run_log": "[{\"phase\":\"skip\",\"at\":1789473600000,\"note\":\"Cannot summarise — current status is too_short.\"}]",
+            "source_fetched_at": 1789300800000,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": "idle",
+            "run_started_at": 1789473600000
+          }
+        ],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "type": "policy_summary",
+            "status": "partial",
+            "app_id": "1000000001",
+            "app_name": "Policy Fixture",
+            "summary": "Policy skipped: too short",
+            "detail": "{\"phase\":\"summarise\",\"forceResummarise\":true,\"resultStatus\":\"too_short\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null,\"errorMessage\":\"The fetched privacy-policy text was too short to summarize reliably.\"}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-fixture-key"
+          },
+          {
+            "key": "ai_debug_logging",
+            "value": "false"
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "status": "too_short",
+          "sourceTitle": "example.com",
+          "sourceWordCount": 85,
+          "sourceOrigin": "direct",
+          "sourceFinalUrl": "https://example.com/privacy",
+          "updatedAt": 1789300800000,
+          "sourceFetchedAt": 1789300800000,
+          "summary": null,
+          "previousSummary": null,
+          "error": "The fetched privacy-policy text was too short to summarize reliably.",
+          "sourcePreview": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.",
+          "sourceLength": 515,
+          "runStatus": "running",
+          "runStartedAt": 1789473600000
+        }
+      }
+    },
+    {
+      "name": "an unsupported fetch cannot be summarised",
+      "kind": "sync",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, developer, privacyPolicyUrl, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "Policy Fixture",
+            "https://apps.apple.com/us/app/fixture/id1000000001",
+            "",
+            "Fixture Developer",
+            "https://example.com/privacy",
+            1786881600000,
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_title, source_content_type, source_text, source_word_count, source_origin, source_final_url, content_hash, analysis_mode, summary_json, previous_summary_json, previous_summary_at, model, error, updated_at, last_run_log, source_fetched_at, run_status, run_started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "https://example.com/privacy",
+            "unsupported_content_type",
+            "example.com",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.",
+            85,
+            "direct",
+            "https://example.com/privacy",
+            "5019ca790442a9e4926f1b511d7158af8d922dc445c14e2a5bbf5a4c89dc0d3b",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "Unsupported privacy-policy content type: application/pdf",
+            1789300800000,
+            null,
+            1789300800000,
+            "idle",
+            null
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-fixture-key"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_debug_logging",
+            "false"
+          ]
+        }
+      ],
+      "request": {
+        "appId": "1000000001",
+        "appName": "Policy Fixture",
+        "developer": "Fixture Developer",
+        "policyUrl": "https://example.com/privacy"
+      },
+      "options": {
+        "phase": "summarise",
+        "forceResummarise": true
+      },
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?",
+          "params": [
+            1789473600000,
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"skip\",\"at\":1789473600000,\"note\":\"Cannot summarise — current status is unsupported_content_type.\"}]",
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "policy_summary",
+            "partial",
+            "1000000001",
+            "Policy Fixture",
+            "Policy skipped: unsupported content type",
+            "{\"phase\":\"summarise\",\"forceResummarise\":true,\"resultStatus\":\"unsupported_content_type\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null,\"errorMessage\":\"Unsupported privacy-policy content type: application/pdf\"}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET run_status = 'idle'\n      WHERE app_id = ?",
+          "params": [
+            "1000000001"
+          ]
+        }
+      ],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [
+          {
+            "app_id": "1000000001",
+            "policy_url": "https://example.com/privacy",
+            "status": "unsupported_content_type",
+            "source_title": "example.com",
+            "source_content_type": "text/plain; charset=utf-8",
+            "source_text": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.",
+            "source_word_count": 85,
+            "source_origin": "direct",
+            "source_final_url": "https://example.com/privacy",
+            "content_hash": "5019ca790442a9e4926f1b511d7158af8d922dc445c14e2a5bbf5a4c89dc0d3b",
+            "analysis_mode": null,
+            "summary_json": null,
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": null,
+            "error": "Unsupported privacy-policy content type: application/pdf",
+            "updated_at": 1789300800000,
+            "last_run_log": "[{\"phase\":\"skip\",\"at\":1789473600000,\"note\":\"Cannot summarise — current status is unsupported_content_type.\"}]",
+            "source_fetched_at": 1789300800000,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": "idle",
+            "run_started_at": 1789473600000
+          }
+        ],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "type": "policy_summary",
+            "status": "partial",
+            "app_id": "1000000001",
+            "app_name": "Policy Fixture",
+            "summary": "Policy skipped: unsupported content type",
+            "detail": "{\"phase\":\"summarise\",\"forceResummarise\":true,\"resultStatus\":\"unsupported_content_type\",\"policyUrl\":\"https://example.com/privacy\",\"model\":null,\"errorMessage\":\"Unsupported privacy-policy content type: application/pdf\"}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-fixture-key"
+          },
+          {
+            "key": "ai_debug_logging",
+            "value": "false"
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "status": "unsupported_content_type",
+          "sourceTitle": "example.com",
+          "sourceWordCount": 85,
+          "sourceOrigin": "direct",
+          "sourceFinalUrl": "https://example.com/privacy",
+          "updatedAt": 1789300800000,
+          "sourceFetchedAt": 1789300800000,
+          "summary": null,
+          "previousSummary": null,
+          "error": "Unsupported privacy-policy content type: application/pdf",
+          "sourcePreview": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.",
+          "sourceLength": 515,
+          "runStatus": "running",
+          "runStartedAt": 1789473600000
         }
       }
     }
