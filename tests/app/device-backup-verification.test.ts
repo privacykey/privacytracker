@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import test from "node:test";
 import { verifyBackupArtifactAtRoot } from "../../lib/device-backup-verification";
 
@@ -78,6 +78,47 @@ test("backup verifier rejects nested directories instead of accepting lookalikes
     ok: false,
     reason: "backup_outside_mobile_sync",
   });
+});
+
+test("backup verifier rejects the MobileSync root's own parent", () => {
+  // `relative(root, parent)` is "..", one segment with no separator. The
+  // parent has a non-empty Manifest.db of its own, so the direct-child
+  // check is the only thing standing between it and a verified backup.
+  const parent = join(fixtureRoot(), "MobileSync");
+  const root = join(parent, "Backup");
+  const device = join(root, "device");
+  mkdirSync(device, { recursive: true });
+  writeFileSync(join(device, "Manifest.db"), "sqlite fixture");
+  writeFileSync(join(parent, "Manifest.db"), "sqlite fixture");
+
+  assert.equal(verifyBackupArtifactAtRoot(device, root).ok, true);
+  for (const candidate of [parent, `${root}/..`, `${device}/../..`]) {
+    assert.deepEqual(
+      verifyBackupArtifactAtRoot(candidate, root),
+      { ok: false, reason: "backup_outside_mobile_sync" },
+      candidate
+    );
+  }
+});
+
+test("backup verifier rejects a path that resolves back to the root through ..", () => {
+  const root = fixtureRoot();
+  const device = join(root, "device");
+  mkdirSync(device);
+  writeFileSync(join(device, "Manifest.db"), "sqlite fixture");
+  writeFileSync(join(root, "Manifest.db"), "sqlite fixture");
+
+  for (const candidate of [
+    root,
+    `${device}/..`,
+    `${root}/../${basename(root)}`,
+  ]) {
+    assert.deepEqual(
+      verifyBackupArtifactAtRoot(candidate, root),
+      { ok: false, reason: "backup_outside_mobile_sync" },
+      candidate
+    );
+  }
 });
 
 test("backup verifier refuses symlinks and future manifest timestamps", () => {

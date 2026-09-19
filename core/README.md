@@ -3934,18 +3934,18 @@ then the `device_resync.last_committed_at` setting and a
 `device_sync.commit` audit row. The two keep their limits (30 and 15 a
 minute) and their body caps (512 KiB and 256 KiB).
 
-**The oracle — `core/scripts/extract-device-routes-cases.mjs`.** 140
-cases through the REAL handlers: 40 for the backup, 27 for the gate's
+**The oracle — `core/scripts/extract-device-routes-cases.mjs`.** 143
+cases through the REAL handlers: 43 for the backup, 27 for the gate's
 GET, 29 for its POST, 23 for the preview and 21 for the commit, each
 POST with the five body-reader outcomes and its non-object bodies, and
 the two limited routes with the burst past the limit. The backup check
-reads the disk, so the oracle builds a MobileSync-shaped tree of 14
+reads the disk, so the oracle builds a MobileSync-shaped tree of 15
 entries (two fresh backups, and one each stale, empty, from the future
 and without a manifest; a directory and a symlink where the manifest
 should be; a symlinked backup, a file, a nested backup, one outside the
-root and a manifest beside `Backup/`), sets every manifest time against
-the frozen clock, writes the tree into the fixture as data and spells
-its scratch directory `<BASE>` everywhere.
+root, a manifest beside `Backup/` and one in it), sets every manifest
+time against the frozen clock, writes the tree into the fixture as data
+and spells its scratch directory `<BASE>` everywhere.
 `core/src/server/device_writes_tests.rs` builds the same tree, swaps the
 real directory in and back out, runs each case through `precheck` and
 `perform` (the GET through its own handler) and compares the wire, the
@@ -3968,11 +3968,12 @@ pair act on a list the client sends.
 
 **Node's behaviour, kept, and two bugs filed.** Each bug has its own
 follow-up to fix Node and the core together. The direct-child test
-accepts the MobileSync root's own parent, whose relative form `..` is
+accepted the MobileSync root's own parent, whose relative form `..` is
 one segment with no separator, so a non-empty `Manifest.db` beside
-`Backup/` verifies. And the commit merges any two apps the client names:
-nothing checks that the preview proposed the pair, so a crafted or stale
-request can fold one app into another and delete it. Also kept: a
+`Backup/` verified; that one is fixed (below). And the commit merges
+any two apps the client names: nothing checks that the preview proposed
+the pair, so a crafted or stale request can fold one app into another
+and delete it. Also kept: a
 shortlist entry never stops a remove from reading as orphaning its app,
 through the same failing probe as Phase 4's orphan sweep; the uninstall
 log binds the client's app id as better-sqlite3 does, a number as a REAL
@@ -3991,6 +3992,21 @@ exactly the case that sends one. Live, two faults at once (the backup's
 ECID refusal reworded, and an add's `iconUrl` key renamed) failed
 exactly the probe's two checks for them, 484 of 486 passing. Source
 restored byte for byte after each, fixed tree green.
+
+**The root's parent, refused.** Node's `isDirectChild` and the core's
+`is_direct_child` now refuse a relative form of `..` and also require
+the candidate's dirname to be the root, so the MobileSync folder's
+parent no longer records as a backup, and so can no longer stand in for
+one at the uninstall gate. The oracle's case for it is renamed "the
+root's parent is not a child" and records the 422 with no writes, where
+it used to record a stamp and an activity row. Three cases appended
+after every other hold the same refusal for the parent spelled
+`Backup/..`, the root itself and a dot-dot path back to it, and the
+tree gains a `Manifest.db` in the root so that only the direct-child
+test refuses the root. The 139 other earlier cases are byte-identical in
+place. Negative controls: the old `is_direct_child` fails exactly two
+replay cases, the renamed one and the parent spelled with a dot-dot, and
+the old `isDirectChild` moves exactly those two in the recording.
 
 Rust suite: 281 lib tests pass (278 + 2 unit tests + the replay), plus
 the embed test.

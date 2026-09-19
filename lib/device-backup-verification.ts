@@ -56,8 +56,17 @@ export function getMobileSyncBackupRoot(): string {
 }
 
 function isDirectChild(parent: string, candidate: string): boolean {
+  // `relative` spells the parent's own parent as "..", one segment with no
+  // separator, so the separator test alone would pass it as a child. It
+  // returns "" (never ".") for the parent itself.
   const rel = relative(parent, candidate);
-  return rel.length > 0 && !rel.includes("/") && !rel.includes("\\");
+  return (
+    rel.length > 0 &&
+    rel !== ".." &&
+    !rel.includes("/") &&
+    !rel.includes("\\") &&
+    dirname(candidate) === parent
+  );
 }
 
 /**

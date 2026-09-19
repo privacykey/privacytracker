@@ -100,6 +100,16 @@ Going forward, changes are recorded here as they land.
   app and nothing else. If a restart ever fails after an update installs,
   the banner now says the update is installed and asks you to quit and
   reopen privacytracker to finish.
+- Removing apps from a device in the desktop app no longer accepts Apple's
+  `MobileSync` folder as a device backup. Removal asks for a fresh,
+  verified backup: a folder directly inside
+  `~/Library/Application Support/MobileSync/Backup` that holds a non-empty
+  `Manifest.db`. The "directly inside" check also let through the backup
+  folder's parent, `MobileSync` itself, so a `Manifest.db` placed there
+  could be recorded as a backup and meet that requirement without backing
+  up any device. That folder is now refused, however its path is written.
+  Backups the app makes with Apple Configurator are unaffected. The Rust
+  core, not yet active in any build, does the same.
 - "Rescrape policy" and "Rescrape + summarise" on an app's AI Policy tab
   now fetch the policy even when it was fetched less than an hour ago.
   The per-app scrape throttle in Settings, meant for the background, bulk
