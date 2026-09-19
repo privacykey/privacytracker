@@ -3,8 +3,10 @@
  * the Node database before it is copied for the core, so both servers
  * answer the four policy reads from identical rows under fixed ids:
  *
- * - two analyses: one idle after a run whose log mixes well-formed and
- *   malformed phases, one ready with no run recorded;
+ * - three analyses: one idle after a run whose log mixes well-formed and
+ *   malformed phases, one ready with no run recorded, and one ready for
+ *   the AI probe to summarise again (Phase 5, batch 3b), on the one app
+ *   here with a policy link;
  * - three versions of one app's policy, the second with an archive link,
  *   so the diff reads cover a one-word edit with an appended line, a
  *   changed last line, and the first version's "nothing to compare";
@@ -28,6 +30,7 @@ import BetterSqlite3 from "better-sqlite3";
 
 export const POLICY_APP = "89994001";
 export const POLICY_APP_IDLE = "89994002";
+export const POLICY_APP_AI = "89994003";
 export const POLICY_APP_NONE = "89994009";
 export const POLICY_MANUAL = "pt-policy-manual";
 export const POLICY_MANUAL_OTHER = "pt-policy-manual-2";
@@ -54,24 +57,52 @@ const TEXT_V3 = [
   "We will notify you before this policy changes.",
 ].join("\r\n");
 
+function analysisRow(appId, now, over) {
+  return {
+    app_id: appId,
+    policy_url: "https://example.test/privacy",
+    status: "ready",
+    source_title: "example.test",
+    source_content_type: "text/plain; charset=utf-8",
+    source_text: TEXT_V3,
+    source_word_count: 40,
+    source_origin: "direct",
+    source_final_url: "https://example.test/privacy",
+    content_hash: "pt-policy-hash-v3",
+    analysis_mode: "direct",
+    summary_json: JSON.stringify({ overview: "Parity summary." }),
+    updated_at: now - 60_000,
+    source_fetched_at: now - 60_000,
+    ...over,
+  };
+}
+
 export function policyStatements(now) {
   const statements = [];
   const add = (sql, ...params) => statements.push({ sql, params });
   add("DELETE FROM privacy_policy_versions WHERE id LIKE 'pt-policy-%'");
   add("DELETE FROM manual_app_policy_versions WHERE id LIKE 'pt-policy-%'");
   add("DELETE FROM manual_apps WHERE id LIKE 'pt-policy-%'");
-  for (const id of [POLICY_APP, POLICY_APP_IDLE]) {
+  const names = {
+    [POLICY_APP]: "Policy Parity",
+    [POLICY_APP_IDLE]: "Policy Parity Idle",
+    [POLICY_APP_AI]: "Policy Parity AI",
+  };
+  for (const id of [POLICY_APP, POLICY_APP_IDLE, POLICY_APP_AI]) {
     add("DELETE FROM privacy_policy_analyses WHERE app_id = ?", id);
     add("DELETE FROM apps WHERE id = ?", id);
     add(
-      "INSERT INTO apps (id,name,url,developer,iconUrl,firstSeen,lastSynced) VALUES (?,?,?,?,?,?,?)",
+      "INSERT INTO apps (id,name,url,developer,iconUrl,firstSeen,lastSynced,privacyPolicyUrl) VALUES (?,?,?,?,?,?,?,?)",
       id,
-      id === POLICY_APP ? "Policy Parity" : "Policy Parity Idle",
+      names[id],
       `https://apps.apple.com/us/app/id${id}`,
       "Policy dev",
       null,
       now - 86_400_000,
-      now - 86_400_000
+      now - 86_400_000,
+      // Only the AI probe's app links a policy; it is only ever
+      // summarised from what is stored, never fetched.
+      id === POLICY_APP_AI ? "https://example.test/privacy" : null
     );
   }
   const log = JSON.stringify([
@@ -81,23 +112,7 @@ export function policyStatements(now) {
     { phase: "fetch:direct", at: now - 4000, ms: 1000, error: "x" },
   ]);
   const analysis = (appId, over) => {
-    const row = {
-      app_id: appId,
-      policy_url: "https://example.test/privacy",
-      status: "ready",
-      source_title: "example.test",
-      source_content_type: "text/plain; charset=utf-8",
-      source_text: TEXT_V3,
-      source_word_count: 40,
-      source_origin: "direct",
-      source_final_url: "https://example.test/privacy",
-      content_hash: "pt-policy-hash-v3",
-      analysis_mode: "direct",
-      summary_json: JSON.stringify({ overview: "Parity summary." }),
-      updated_at: now - 60_000,
-      source_fetched_at: now - 60_000,
-      ...over,
-    };
+    const row = analysisRow(appId, now, over);
     const cols = Object.keys(row);
     add(
       `INSERT INTO privacy_policy_analyses (${cols.join(",")}) VALUES (${cols.map(() => "?").join(",")})`,
@@ -110,6 +125,7 @@ export function policyStatements(now) {
     last_run_log: log,
   });
   analysis(POLICY_APP_IDLE, { run_status: null, last_run_log: null });
+  analysis(POLICY_APP_AI, { run_status: null, last_run_log: null });
 
   const version = (id, text, at, archive) =>
     add(
@@ -173,6 +189,40 @@ export function policyStatements(now) {
   manualVersion("pt-policy-mv1", POLICY_MANUAL, TEXT_V1);
   manualVersion("pt-policy-mv2", POLICY_MANUAL_OTHER, TEXT_V2);
   return statements;
+}
+
+/**
+ * Put the AI app's analysis back as this fixture wrote it, on both
+ * servers, while they run. The bundle probe's imports mark it as an
+ * imported excerpt, which neither server will summarise; the AI probe
+ * needs it summarisable. One `now` for every directory, so both hold the
+ * same row.
+ */
+export function resetPolicyAiApp(...dataDirs) {
+  const row = analysisRow(POLICY_APP_AI, Date.now(), {
+    run_status: null,
+    last_run_log: null,
+  });
+  const cols = Object.keys(row);
+  for (const dir of dataDirs) {
+    const db = new BetterSqlite3(path.join(dir, "privacy.db"));
+    try {
+      db.transaction(() => {
+        db.prepare("DELETE FROM privacy_policy_analyses WHERE app_id = ?").run(
+          POLICY_APP_AI
+        );
+        db.prepare(
+          `INSERT INTO privacy_policy_analyses (${cols.join(",")}) VALUES (${cols.map(() => "?").join(",")})`
+        ).run(...cols.map((c) => row[c]));
+        db.prepare("UPDATE apps SET privacyPolicyUrl = ? WHERE id = ?").run(
+          "https://example.test/privacy",
+          POLICY_APP_AI
+        );
+      })();
+    } finally {
+      db.close();
+    }
+  }
 }
 
 export function applyPolicyFixture(dataDir) {

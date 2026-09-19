@@ -63,7 +63,7 @@ use rusqlite::{Connection, OptionalExtension};
 use serde_json::{json, Map, Value};
 
 const DELETE_ANALYSIS: &str = "DELETE FROM privacy_policy_analyses WHERE app_id = ?";
-const DELETE_PLACEHOLDER: &str =
+pub(super) const DELETE_PLACEHOLDER: &str =
     "DELETE FROM privacy_policy_analyses WHERE app_id = ? AND status = 'pending'";
 const MARK_RUNNING: &str = "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?";
 const INSERT_PLACEHOLDER: &str = "\n    INSERT INTO privacy_policy_analyses (\n      app_id, policy_url, status, source_word_count, updated_at,\n      run_status, run_started_at\n    )\n    VALUES (?, '', 'pending', 0, ?, 'running', ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      run_status = 'running',\n      run_started_at = excluded.run_started_at\n  ";
@@ -192,8 +192,9 @@ fn fire_webhook(
 }
 
 pub(crate) struct Synced {
-    /// The hydrated analysis, or null when the policy URL was cleared or
-    /// the kill-switch stopped a first fetch.
+    /// The hydrated analysis, or null when the policy URL was cleared, the
+    /// kill-switch stopped a first fetch, or a summarise found nothing
+    /// fetched.
     pub analysis: Value,
     pub follow_ups: FollowUps,
 }
@@ -211,9 +212,15 @@ pub(crate) struct RunLogger<'a> {
     /// Whether each change is written to the row; `new PolicyRunLogger()`
     /// with no callback, as the sample summary makes one, writes nothing.
     persist: bool,
+    /// `PolicyPhaseStream`: told of each record as it stands when it is
+    /// opened, closed or logged, which the regenerate route streams.
+    sink: Option<PhaseSink<'a>>,
     phases: Vec<Map<String, Value>>,
     current: Option<usize>,
 }
+
+/// `PolicyPhaseStream.emit`.
+pub(crate) type PhaseSink<'a> = &'a mut (dyn FnMut(&Map<String, Value>) + Send);
 
 impl<'a> RunLogger<'a> {
     pub(super) fn new(db: &'a mut dyn DbAccess, clock: &'a dyn Clock, app_id: &str) -> Self {
@@ -222,8 +229,19 @@ impl<'a> RunLogger<'a> {
             clock,
             app_id: app_id.to_string(),
             persist: true,
+            sink: None,
             phases: Vec::new(),
             current: None,
+        }
+    }
+    /// The logger with a phase stream attached, when there is one.
+    pub(super) fn streaming(self, sink: Option<PhaseSink<'a>>) -> Self {
+        Self { sink, ..self }
+    }
+    /// `this.stream?.emit(record)`.
+    fn emit(&mut self, index: usize) {
+        if let Some(sink) = self.sink.as_mut() {
+            sink(&self.phases[index]);
         }
     }
     /// A logger that keeps its phases in memory only. The calls it logs
@@ -264,6 +282,7 @@ impl<'a> RunLogger<'a> {
         }
         self.current = Some(self.phases.len());
         self.phases.push(record);
+        self.emit(self.phases.len() - 1);
         self.flush();
     }
     /// `endPhase`: the open phase gains its duration, and a note or an
@@ -282,6 +301,7 @@ impl<'a> RunLogger<'a> {
         if let Some(error) = error.filter(|e| !e.is_empty()) {
             record.insert("error".into(), json!(error));
         }
+        self.emit(i);
         self.flush();
     }
     /// `toJson`.
@@ -322,6 +342,7 @@ impl PolicyLog for RunLogger<'_> {
             record.insert("error".into(), json!(error));
         }
         self.phases.push(record);
+        self.emit(self.phases.len() - 1);
         self.flush();
     }
 }
@@ -1122,11 +1143,15 @@ async fn fetch_and_store(
 }
 
 /// The activity row's status and summary for a result. `scrape_disabled`
-/// is whether the run log shows the kill-switch stopped the fetch.
+/// is whether the run log shows the kill-switch stopped the fetch; a null
+/// summarise result means there was no policy text to summarise.
 fn activity_summary(result: &Value, scrape_disabled: bool, phase: Phase) -> (&'static str, String) {
     if result.is_null() {
         if scrape_disabled {
             return ("partial", "Policy skipped: scraping disabled".to_string());
+        }
+        if phase == Phase::Summarise {
+            return ("partial", "Policy skipped: nothing fetched yet".to_string());
         }
         return ("ok", "Policy URL cleared".to_string());
     }
@@ -1218,6 +1243,20 @@ pub(crate) async fn sync_policy_analysis(
     request: &PolicyRequest,
     options: SyncOptions,
 ) -> Result<Synced, String> {
+    sync_policy_analysis_streamed(db, ids, fetcher, clock, request, options, None).await
+}
+
+/// `syncPrivacyPolicyAnalysis` with `options.phaseStream`: each phase
+/// record goes to `sink` as the logger opens, closes or logs it.
+pub(crate) async fn sync_policy_analysis_streamed(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    fetcher: &dyn Fetcher,
+    clock: &dyn Clock,
+    request: &PolicyRequest,
+    options: SyncOptions,
+    sink: Option<PhaseSink<'_>>,
+) -> Result<Synced, String> {
     let app_id = request.app_id.as_str();
     let Some(policy_url) = request.policy_url.as_deref().filter(|u| !u.is_empty()) else {
         db.with(|w| w.run(DELETE_ANALYSIS, vec![json!(app_id)]))?;
@@ -1232,7 +1271,9 @@ pub(crate) async fn sync_policy_analysis(
 
     let mut stash: Option<Value> = None;
     let (outcome, scrape_disabled) = {
-        let mut log = RunLogger::new(&mut *db, clock, app_id);
+        // A reborrow for as long as the logger lives: the sink outlives it.
+        let sink = sink.map(|s| &mut *s as &mut (dyn FnMut(&Map<String, Value>) + Send));
+        let mut log = RunLogger::new(&mut *db, clock, app_id).streaming(sink);
         let outcome = run_phase(
             &mut log, ids, fetcher, clock, request, policy_url, options, &mut stash,
         )

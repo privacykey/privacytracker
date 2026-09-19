@@ -863,6 +863,11 @@ export async function syncPrivacyPolicyAnalysis(
       // nothing was tried, so nothing failed.
       activityStatus = "partial";
       summaryLine = "Policy skipped: scraping disabled";
+    } else if (!result && phase === "summarise") {
+      // Summarise found no policy text: it was never fetched, so there was
+      // nothing to summarise and nothing failed.
+      activityStatus = "partial";
+      summaryLine = "Policy skipped: nothing fetched yet";
     } else if (!result) {
       activityStatus = "ok";
       summaryLine = "Policy URL cleared";
@@ -1508,7 +1513,9 @@ async function summariseStoredPolicy(
 
   const existing = getPolicyAnalysisRow(appId);
   if (!existing) {
-    // No stored source yet — fall back to the full loop so we don't silently no-op.
+    // Only a row deleted mid-run lands here: `markPolicyRunStart` seeds one
+    // first, so a policy that was never fetched arrives below as its
+    // placeholder instead.
     logger.event("restart", {
       note: "No stored source; running full fetch + summarise.",
     });
@@ -1516,6 +1523,23 @@ async function summariseStoredPolicy(
       phase: "all",
       phaseStream: undefined,
     });
+  }
+
+  // A policy that was never fetched has no text to summarise. Its only row
+  // is the placeholder `markPolicyRunStart` seeded (or one an earlier run
+  // left behind), and 'pending' is not an analysis status, so returning it
+  // would read back as `analysis_error`: a failed summary logged for a run
+  // with nothing to work from, and an AI Policy tab claiming the text was
+  // fetched. Drop the placeholder and return nothing, as the kill-switch
+  // does for a first fetch.
+  if (existing.status === "pending") {
+    logger.event("skip", {
+      note: "Nothing to summarise: the policy has not been fetched yet. Rescrape the policy first.",
+    });
+    db.prepare(
+      "DELETE FROM privacy_policy_analyses WHERE app_id = ? AND status = 'pending'"
+    ).run(appId);
+    return null;
   }
 
   const forceResummarise = options.forceResummarise === true;

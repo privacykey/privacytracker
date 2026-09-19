@@ -127,16 +127,16 @@ fn canned_reply(reply: &Value) -> Result<RawReply, String> {
     })
 }
 
-struct Canned {
+pub(super) struct Canned {
     replies: Vec<Value>,
     cursor: AtomicUsize,
-    calls: Mutex<Vec<Value>>,
+    pub(super) calls: Mutex<Vec<Value>>,
     explicit_encoding: AtomicBool,
     clock: Arc<AtomicI64>,
 }
 
 impl Canned {
-    fn new(replies: Vec<Value>, clock: Arc<AtomicI64>) -> Self {
+    pub(super) fn new(replies: Vec<Value>, clock: Arc<AtomicI64>) -> Self {
         Self {
             replies,
             cursor: AtomicUsize::new(0),
@@ -145,7 +145,7 @@ impl Canned {
             clock,
         }
     }
-    fn unused(&self) -> usize {
+    pub(super) fn unused(&self) -> usize {
         self.replies
             .len()
             .saturating_sub(self.cursor.load(Ordering::SeqCst))

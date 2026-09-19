@@ -575,6 +575,20 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-policy-summary-cases.mjs
           git diff --exit-code -- core/tests/fixtures/policy-summary-cases.json
 
+      - name: AI routes oracle is current
+        # Runs the real route handlers of POST /api/policy/regenerate
+        # (whole and as an NDJSON phase stream), /api/ai/policy-sample,
+        # /api/ai/test and /api/ai/models over requests as the browser
+        # sends them, with every provider reply canned, a frozen clock and
+        # counted ids and nonces. Records the response on the wire, every
+        # raw fetch, every write, what lands after the response and nine
+        # tables. A diff means one of those routes, or what they call,
+        # changed and core/src/server/routes_ai.rs has not been ported to
+        # match.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-ai-routes-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/ai-routes-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

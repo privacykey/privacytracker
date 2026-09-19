@@ -572,7 +572,7 @@ async fn decode(
                     .as_mut()
                     .fill_buf()
                     .await
-                    .map_err(|_| "terminated")?
+                    .map_err(|e| read_error(&e))?
                     .first()
                     .is_some_and(|b| b & 15 == 8);
                 if zlib {
@@ -716,11 +716,13 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
         // bombs included.
         reader = decode(reader, &reply_headers).await?;
         let mut body = Vec::new();
+        // `reader.read()` rejects with the timeout's `DOMException` or
+        // with `terminated`, as the streamed read does.
         reader
             .take(request.max_bytes as u64 + 1)
             .read_to_end(&mut body)
             .await
-            .map_err(|_| "terminated")?;
+            .map_err(|e| read_error(&e))?;
         if body.len() > request.max_bytes {
             return Err(format!(
                 "safeFetch: response exceeded {} bytes",

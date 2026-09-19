@@ -382,6 +382,7 @@ pub fn routes() -> &'static [RouteSpec] {
         routes.extend(seed_routes());
         routes.extend(leftover_routes());
         routes.extend(policy_routes());
+        routes.extend(ai_routes());
         routes
     })
 }
@@ -854,6 +855,7 @@ pub fn is_async(spec: &RouteSpec) -> bool {
         || super::seed_writes::handles(spec)
         || super::webhook_writes::handles(spec)
         || super::routes_policy::handles(spec)
+        || super::routes_ai::handles(spec)
 }
 
 /// Phase 5, batch 2 — see `routes_policy.rs`. The manual-app scrape
@@ -871,6 +873,41 @@ fn policy_routes() -> Vec<RouteSpec> {
             retry_after: false,
         },
     }]
+}
+
+/// Phase 5, batch 3b — see `routes_ai.rs`. Regenerate limits itself with
+/// a `Retry-After`; the three `/api/ai` routes inline limits (and two of
+/// them the admin token) with their own bodies, which `precheck` runs.
+fn ai_routes() -> Vec<RouteSpec> {
+    let spec =
+        |path: &'static str, method: Method, body_limit: Option<usize>, guard: Guard| RouteSpec {
+            path,
+            method,
+            body_limit,
+            guard,
+        };
+    vec![
+        spec(
+            "/api/policy/regenerate",
+            Method::POST,
+            Some(8 * 1024),
+            Guard::Rate {
+                prefix: "policy.regenerate",
+                limit: 10,
+                message: "Rate limit exceeded for policy regenerate. Try again shortly.",
+                per_param: false,
+                retry_after: true,
+            },
+        ),
+        spec(
+            "/api/ai/policy-sample",
+            Method::POST,
+            Some(16 * 1024),
+            Guard::None,
+        ),
+        spec("/api/ai/test", Method::POST, Some(16 * 1024), Guard::None),
+        spec("/api/ai/models", Method::POST, Some(16 * 1024), Guard::None),
+    ]
 }
 
 /// Phase 4, batch 6 — see `webhook_writes.rs`. The webhook test has no
@@ -1118,6 +1155,10 @@ pub fn precheck(
         ("/api/backup/restore", &Method::POST) => {
             super::backup_writes::restore_precheck(w)?;
         }
+        // Phase 5, batch 3b: the AI routes' own limits and admin token.
+        ("/api/ai/test", _) | ("/api/ai/models", _) | ("/api/ai/policy-sample", _) => {
+            super::routes_ai::precheck(w, ids, limiter, headers, spec, &actor, now)?;
+        }
         _ => {}
     }
     Ok(actor)
@@ -1280,6 +1321,9 @@ pub async fn perform_async(
     }
     if super::routes_policy::handles(req.spec) {
         return super::routes_policy::perform(db, ids, now, fetcher, req, actor).await;
+    }
+    if super::routes_ai::handles(req.spec) {
+        return super::routes_ai::perform(db, ids, now, fetcher, req, actor).await;
     }
     if is_async(req.spec) {
         return super::imports_writes::perform(db, ids, now, fetcher, req, actor).await;

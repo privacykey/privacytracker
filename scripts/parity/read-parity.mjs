@@ -36,6 +36,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 import BetterSqlite3 from "better-sqlite3";
+import { probeAiRoutes } from "./ai-probes.mjs";
 import { primeBackupKey, probeBackupRoutes } from "./backup-probes.mjs";
 import { probeBundleRoutes } from "./bundles-probes.mjs";
 import { applyContentFixture } from "./content-fixture.mjs";
@@ -2001,6 +2002,16 @@ async function main() {
     policyOk = await probePolicyRoutes(args.node, rustBase, TOKEN);
   }
 
+  // The AI routes, against a loopback fake provider: the connection test,
+  // the model list, the sample summary and regenerate, whole and streamed.
+  let aiOk = true;
+  if (args.mutate) {
+    console.log(
+      "\n── AI routes (a loopback fake provider, asked the same things by both) ──"
+    );
+    aiOk = await probeAiRoutes(args.node, rustBase, TOKEN, nodeData, rustData);
+  }
+
   // The backup family, which the differ cannot hold: files out, files in,
   // and a restore that replaces the database. After everything else,
   // because it ends by doing exactly that on both servers.
@@ -2036,6 +2047,7 @@ async function main() {
     bundlesOk &&
     leftoversOk &&
     policyOk &&
+    aiOk &&
     seedOk &&
     discoveryOk &&
     operationsOk &&
