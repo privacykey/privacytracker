@@ -1,8 +1,8 @@
 /**
  * v1 feature-flag migration runner.
  *
- * Runs once on server startup (called from instrumentation.ts). Idempotent
- * end-to-end; safe to retry. The 5 ordered steps:
+ * Runs on server startup (called from instrumentation.ts) until it has
+ * succeeded once. Idempotent end-to-end; safe to retry. The 6 ordered steps:
  *
  *   1. Schema additions    — performed by lib/db.ts on import (CREATE TABLE
  *                            statements + ALTER TABLE migrations). This step
@@ -19,10 +19,15 @@
  *                            don't carry across to the new keys.
  *   5. quarantine check    — un-quarantine rows whose keys are now known;
  *                            quarantine rows whose keys are no longer known.
+ *   6. focus goal rename   — move the old `flag.focus.goal.understand` /
+ *                            `.declutter` values onto `.monitor` / `.cleanup`.
  *
- * Each step writes activity_log rows so the migration is auditable. On
- * failure the runner aborts (no partial migration), and instrumentation.ts
- * surfaces the failure in the migration error UI.
+ * Each step writes activity_log rows so the migration is auditable. A step
+ * that fails ends the run before the version marker is written; the steps
+ * before it keep their writes, as there is no transaction around the run.
+ * instrumentation.ts logs the error and boots on, and the next boot runs the
+ * migration again. So a stored value a step cannot use is dropped with a
+ * warning instead: failing on it would fail the same step at every boot.
  *
  * See https://docs.privacytracker.privacykey.org/develop/feature-flags for the design.
  */
@@ -96,7 +101,8 @@ export class MigrationError extends Error {
  * Run the full feature-flag migration. Idempotent.
  *
  * @returns Per-step durations for logging. Throws MigrationError if any step
- *          fails — instrumentation.ts catches and renders the error UI.
+ *          fails; instrumentation.ts catches and logs it, and the next boot
+ *          runs the migration again.
  */
 export function runFeatureFlagMigration(): StepResult[] {
   // Skip if already at the current version.
@@ -229,7 +235,11 @@ function stepUserIntentMigration(): void {
     return;
   }
 
-  const mapped = INTENT_MAP[oldIntent];
+  // Own entries only: `toString`, `__proto__` and the like are inherited
+  // members, not intents, and would map to a focus with no audience.
+  const mapped = Object.hasOwn(INTENT_MAP, oldIntent)
+    ? INTENT_MAP[oldIntent]
+    : undefined;
   if (!mapped) {
     // Unknown intent value — log a warning but don't fail the migration.
     // Likely a future-proofing issue; user can re-pick via the focus card.
@@ -288,7 +298,7 @@ function stepNotificationPrefsAbsorb(): void {
     return; // already absorbed or never written
   }
 
-  let parsed: Record<string, boolean | string>;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(blob);
   } catch (e) {
@@ -302,6 +312,18 @@ function stepNotificationPrefsAbsorb(): void {
     ).run();
     return;
   }
+  // JSON that is not an object (`null`, an array, a scalar) names no types,
+  // and `Object.hasOwn(null, …)` throws. Drop it the same way.
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    console.warn(
+      "[Migration] notification_prefs is not a JSON object, dropping"
+    );
+    db.prepare(
+      "DELETE FROM app_settings WHERE key = 'notification_prefs'"
+    ).run();
+    return;
+  }
+  const prefs = parsed as Record<string, unknown>;
 
   const now = Date.now();
   const transaction = db.transaction(() => {
@@ -310,10 +332,10 @@ function stepNotificationPrefsAbsorb(): void {
       // forged `notification_prefs` blob (planted via a restore from
       // an untrusted backup) can't introduce keys via prototype-chain
       // pollution and cause us to write the wrong flag default.
-      if (!Object.hasOwn(parsed, legacyKey)) {
+      if (!Object.hasOwn(prefs, legacyKey)) {
         continue;
       }
-      const raw = parsed[legacyKey];
+      const raw = prefs[legacyKey];
       const value =
         raw === true || raw === "on" || raw === "true" ? "on" : "off";
       db.prepare(

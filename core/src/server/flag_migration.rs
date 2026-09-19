@@ -75,8 +75,6 @@ const GOAL_RENAMES: [(&str, &str); 2] = [
 const OVERRIDES_MISSING: &str =
     "feature_flag_overrides table is missing — lib/db.ts did not create it";
 const ANNOTATIONS_MISSING: &str = "annotations table is missing — lib/db.ts did not create it";
-/// V8's `TypeError` for `Object.hasOwn(null, key)`.
-const NULL_TO_OBJECT: &str = "Cannot convert undefined or null to object";
 
 /// One step's entry in the run's result and its closing row.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -285,22 +283,15 @@ fn schema_check(w: &mut Writer, _clock: &dyn Clock) -> Result<(), String> {
     Ok(())
 }
 
-/// `setActiveFocus`, in its own transaction. `audience` is `None` for an
-/// intent that only an inherited `INTENT_MAP` entry answers (`toString`,
-/// `__proto__`): its audience is `undefined`, which better-sqlite3 binds as
-/// NULL, and the first write fails the NOT NULL column.
+/// `setActiveFocus`, in its own transaction.
 fn set_active_focus(
     w: &mut Writer,
     clock: &dyn Clock,
-    audience: Option<&str>,
+    audience: &str,
     monitor: bool,
     cleanup: bool,
 ) -> Result<(), String> {
     transaction(w, |w| {
-        let Some(audience) = audience else {
-            w.run(SET_SETTING, vec![json!("flag.focus.audience"), Value::Null])?;
-            return Ok(());
-        };
         let workflow = infer_focus_workflow(audience, monitor, cleanup, false);
         for (key, value) in [
             ("flag.focus.audience", audience.to_string()),
@@ -318,28 +309,24 @@ fn set_active_focus(
 }
 
 /// Step 2: the legacy intent becomes a focus, then goes. An intent the map
-/// does not know is dropped with a warning.
+/// does not know is dropped with a warning, and that includes an inherited
+/// name such as `toString` or `__proto__`: Node looks the intent up with
+/// `Object.hasOwn(INTENT_MAP, …)`, so only the four entries are known.
 fn user_intent_migration(w: &mut Writer, clock: &dyn Clock) -> Result<(), String> {
     let intent = get_setting_with(w.conn, "user_intent", "").map_err(sql_message)?;
     if intent.is_empty() {
         return Ok(());
     }
-    let mapped = INTENTS.iter().find(|(name, ..)| *name == intent);
-    let inherited = flags::OBJECT_PROTOTYPE_NAMES.contains(&intent.as_str());
-    if mapped.is_none() && !inherited {
+    let Some(&(_, audience, monitor, cleanup)) = INTENTS.iter().find(|(name, ..)| *name == intent)
+    else {
         super::diag::log_warn(format!(
             "[Migration] Unknown user_intent value '{intent}', skipping"
         ));
         w.run(DELETE_INTENT, vec![])?;
         return Ok(());
-    }
+    };
     transaction(w, |w| {
-        match mapped {
-            Some(&(_, audience, monitor, cleanup)) => {
-                set_active_focus(w, clock, Some(audience), monitor, cleanup)?
-            }
-            None => set_active_focus(w, clock, None, false, false)?,
-        }
+        set_active_focus(w, clock, audience, monitor, cleanup)?;
         w.run(DELETE_INTENT, vec![])?;
         Ok(())
     })
@@ -347,9 +334,9 @@ fn user_intent_migration(w: &mut Writer, clock: &dyn Clock) -> Result<(), String
 
 /// Step 3: each notification type the blob names (as an own property)
 /// becomes an override, `on` for `true`, `"on"` or `"true"` and `off` for
-/// anything else; then the blob goes. A blob that is not JSON is dropped
-/// with a warning; one that parses to `null` fails the step, as
-/// `Object.hasOwn(null, …)` throws.
+/// anything else; then the blob goes. A blob that is not JSON, or is JSON
+/// but not an object (`null`, an array, a scalar), is dropped with a
+/// warning and no transaction.
 fn notification_prefs_absorb(w: &mut Writer, clock: &dyn Clock) -> Result<(), String> {
     let blob = get_setting_with(w.conn, "notification_prefs", "").map_err(sql_message)?;
     if blob.is_empty() {
@@ -365,15 +352,15 @@ fn notification_prefs_absorb(w: &mut Writer, clock: &dyn Clock) -> Result<(), St
             return Ok(());
         }
     };
+    let Value::Object(prefs) = parsed else {
+        super::diag::log_warn("[Migration] notification_prefs is not a JSON object, dropping");
+        w.run(DELETE_PREFS, vec![])?;
+        return Ok(());
+    };
     let now = clock.now();
     transaction(w, |w| {
-        if parsed.is_null() {
-            return Err(NULL_TO_OBJECT.to_string());
-        }
         for (legacy, flag) in NOTIFICATION_TYPE_KEYS {
-            // Only an object has these as own properties; an array, a
-            // string or a number has none of them.
-            let Some(raw) = parsed.as_object().and_then(|m| m.get(legacy)) else {
+            let Some(raw) = prefs.get(legacy) else {
                 continue;
             };
             let on = *raw == Value::Bool(true) || matches!(raw.as_str(), Some("on" | "true"));
