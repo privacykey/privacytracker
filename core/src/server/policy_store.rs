@@ -21,10 +21,11 @@
 //! **Hydration reads the row it was handed.** Node returns
 //! `hydratePolicyAnalysis(row)` with the row read when it was written, so
 //! a log event written after it (the History write's) is on the stored row
-//! but not in the returned analysis, and the kill-switch and the throttle
-//! return the row as it was before their own log line. The analysis also
+//! but not in the returned analysis. The kill-switch and the throttle
+//! return the row as it stands after their own log line (`hydrate_kept`),
+//! which is how the bulk runner counts a throttled app. The analysis also
 //! says the run is still `running`: the marker is cleared in a `finally`
-//! after the value is built. All three are Node's and kept.
+//! after the value is built. Both are Node's and kept.
 //!
 //! Until batch 3 routes `POST /api/policy/regenerate` and batch 4 the bulk
 //! runner, the replay is the only caller.
@@ -481,6 +482,25 @@ pub(super) fn hydrate(conn: &Connection, app_id: &str, row: &Value) -> Result<Va
     hydrate_policy_analysis(conn, app_id, row).map_err(|e| e.to_string())
 }
 
+/// What the kill-switch and the throttle return: the row as it stands
+/// after their write, their own log line last, which is how the bulk
+/// runner tells a throttled app. The write's own read of the row; when the
+/// write was refused (not fatal), the row read again, since the run log is
+/// written on its own and may have landed; failing that, the row as read
+/// before the skip.
+fn hydrate_kept(
+    w: &mut Writer,
+    app_id: &str,
+    written: Result<Value, String>,
+    stored: &Value,
+) -> Result<Value, String> {
+    let row = match written {
+        Ok(row) => row,
+        Err(_) => read_row(w.conn, app_id)?.unwrap_or_else(|| stored.clone()),
+    };
+    hydrate(w.conn, app_id, &row)
+}
+
 /// `markPolicyRunStart`: the marker on the existing row, or a placeholder
 /// row when there is none. Refused by the foreign key for an app the
 /// library does not track.
@@ -740,7 +760,7 @@ async fn fetch_and_store(
                 .with(|w| w.run(DELETE_PLACEHOLDER, vec![json!(app_id)]))?;
             return Ok((Value::Null, FollowUps::default()));
         }
-        let Some(row) = existing else {
+        let Some(stored) = existing else {
             return Ok((Value::Null, FollowUps::default()));
         };
         let keep = Persist::keep(
@@ -750,10 +770,12 @@ async fn fetch_and_store(
             col(existing, "source_fetched_at"),
         );
         let json = log.to_json();
-        let _ = log
+        let written = log
             .db()
             .with(|w| persist(w, app_id, policy_url, keep, now, json));
-        let analysis = log.db().with(|w| hydrate(w.conn, app_id, row))?;
+        let analysis = log
+            .db()
+            .with(|w| hydrate_kept(w, app_id, written, stored))?;
         return Ok((analysis, FollowUps::default()));
     }
 
@@ -789,11 +811,13 @@ async fn fetch_and_store(
                 fetched_at,
             );
             let json = log.to_json();
-            let _ = log
+            let written = log
                 .db()
                 .with(|w| persist(w, app_id, policy_url, keep, now, json));
-            let row = existing.expect("the throttle reads a stored row");
-            let analysis = log.db().with(|w| hydrate(w.conn, app_id, row))?;
+            let stored = existing.expect("the throttle reads a stored row");
+            let analysis = log
+                .db()
+                .with(|w| hydrate_kept(w, app_id, written, stored))?;
             return Ok((analysis, FollowUps::default()));
         }
     }

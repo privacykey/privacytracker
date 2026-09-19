@@ -150,6 +150,11 @@ const wipe = () => {
   for (const name of TABLES) {
     db.exec(`DELETE FROM "${name}"`);
   }
+  for (const { name } of db
+    .prepare("SELECT name FROM sqlite_master WHERE type='trigger'")
+    .all()) {
+    db.exec(`DROP TRIGGER "${name}"`);
+  }
   db.pragma("foreign_keys = ON");
 };
 const DUMPED = [
@@ -830,6 +835,25 @@ try {
   await store("a fetch time in the future does not throttle", {
     setup: [app(), recent(-5 * MIN), version("ver-v1", V1, BASE_NOW - 2 * DAY)],
     replies: [plain(V1), AVAIL_NONE, SAVE_FAIL],
+  });
+
+  // What the kill-switch and the throttle return when their write is
+  // refused: the row as it stands. Only that upsert names `updated_at`, so
+  // the trigger refuses it while the run log's own update lands. Store
+  // cases take no forwarded address, so these shift no later case.
+  const refuseWrite = sql(
+    "CREATE TRIGGER refuse_analysis_write BEFORE UPDATE OF updated_at ON privacy_policy_analyses BEGIN SELECT RAISE(ABORT, 'analysis write refused'); END"
+  );
+  await store("the kill-switch's refused write returns the row as it stands", {
+    setup: [
+      app(),
+      analysis(),
+      setting("policy_scrape_disabled", "true"),
+      refuseWrite,
+    ],
+  });
+  await store("the throttle's refused write returns the row as it stands", {
+    setup: [app(), recent(10 * MIN), refuseWrite],
   });
 
   // ══ ROUTES ═══════════════════════════════════════════════════════
