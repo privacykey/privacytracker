@@ -1765,7 +1765,7 @@ the settings-style writers and the plumbing every write shares (batch
 1), the library writers (2), the import pipeline (3), the bulk runners
 and the scheduler (4), and the health check, diagnostics, backup and
 teardown routes (5). The cfgutil device actions belong with the desktop
-cutover, and the AI routes with Phase 5.
+cutover (ported in Phase 6, batch 2a), and the AI routes with Phase 5.
 
 **The gate changes shape.** Phase 2's reads were compared live against
 Node by `read-parity.mjs`; Phase 3's modules were gated by Node oracles
@@ -2985,7 +2985,8 @@ exactly the new unit test.
 ## Status — Phase 5 (the AI policy pipeline)
 
 Phase 4 closed with the write side of the API in Rust, outside the
-cfgutil device actions (the desktop cutover's) and the AI routes. Phase 5
+cfgutil device actions (the desktop cutover's, ported in Phase 6, batch
+2a) and the AI routes. Phase 5
 is the AI routes and everything behind them: `lib/privacy-policy.ts`
 (5,043 lines, the largest module in the port) and the eight modules
 around it — the policy source, its store and versions, the summariser and
@@ -3772,3 +3773,113 @@ tick without catching: exactly the tick test. Source restored byte for
 byte after each, fixed tree green.
 
 Rust suite: 278 lib tests pass (270 + 8), plus the embed test.
+
+### Batch 2a — the device routes (+5 handlers)
+
+`core/src/server/device_writes.rs` ports the five routes Phase 4 set
+aside as host dependent, with `lib/device-actions.ts`,
+`lib/device-backup-verification.ts` and `lib/device-sync.ts` under them.
+None of them touches hardware: cfgutil runs in the Tauri shell, and these
+routes record what it did, decide what it may do next, and diff and apply
+a device's app list.
+
+**The backup record.** `POST /api/device-actions/backup` refuses any
+audience but `self` before it reads the body, then wants an ECID
+(trimmed, one `0x` dropped, 8 to 24 hex digits) and a path, and verifies
+the backup in Node's order: an absolute path, Apple's MobileSync root
+present, the path not a symlink, its real path a direct child of the
+root's, a directory, and in it a `Manifest.db` that is not a symlink,
+resolves inside it, is a regular file, is not empty and was last
+modified at a positive time no later than now. Each refusal is a 422
+naming the check. A verified backup is stamped under
+`cfgutil_last_backup_<ECID>`, upper case, dated by the manifest when that
+is older than now (a time the client sends is ignored), and logged as a
+`cfgutil_backup` activity row.
+
+**The uninstall gate.** `GET /api/device-actions/uninstall` answers the
+gate and the stamp it read, and writes nothing. `POST` logs an uninstall
+the shell performed, once the same gate allows it. The gate runs in
+Node's order: whose device it is (a recorded owner audience must match
+the focus, and a device that is not the user's own also needs the
+permission acknowledgement; no owner, or no device with that ECID, falls
+back to audience `self`), then `flag.devopts.cfgutil_uninstall`, then,
+unless the caller acknowledged going without, a stamp whose backup still
+verifies and is no more than a day old, counting from the older of the
+stamp and the manifest.
+
+**The re-sync.** `POST /api/device-sync/preview` cleans the client's list
+(at most 2,000 entries; anything without a string app id skipped; the
+first of a repeated id kept), fills in a missing bundle id from the
+library, and diffs the list against the device's links: the adds, the
+removes (each saying whether unlinking would orphan the app), the
+unchanged count, and the bundle-id merges, where a new app id carries the
+bundle id of an app already on the device. `POST /api/device-sync/commit`
+applies a selection in one transaction: the merges first (the old id's
+annotations, verdicts, shortlist entries and snapshots moved to the new
+one, whose own conflicting verdicts and shortlist entries are dropped
+first, then the old id's links copied and the old app deleted), then the
+adds, the removes with the orphan sweep, and the device's sync time;
+then the `device_resync.last_committed_at` setting and a
+`device_sync.commit` audit row. The two keep their limits (30 and 15 a
+minute) and their body caps (512 KiB and 256 KiB).
+
+**The oracle — `core/scripts/extract-device-routes-cases.mjs`.** 140
+cases through the REAL handlers: 40 for the backup, 27 for the gate's
+GET, 29 for its POST, 23 for the preview and 21 for the commit, each
+POST with the five body-reader outcomes and its non-object bodies, and
+the two limited routes with the burst past the limit. The backup check
+reads the disk, so the oracle builds a MobileSync-shaped tree of 14
+entries (two fresh backups, and one each stale, empty, from the future
+and without a manifest; a directory and a symlink where the manifest
+should be; a symlinked backup, a file, a nested backup, one outside the
+root and a manifest beside `Backup/`), sets every manifest time against
+the frozen clock, writes the tree into the fixture as data and spells
+its scratch directory `<BASE>` everywhere.
+`core/src/server/device_writes_tests.rs` builds the same tree, swaps the
+real directory in and back out, runs each case through `precheck` and
+`perform` (the GET through its own handler) and compares the wire, the
+write stream and the ten tables. CI regenerates the fixture ("Device
+routes oracle is current"). The replay passed on its first run.
+
+**The live gate.** `probeDeviceRoutes` in
+`scripts/parity/device-probes.mjs`, run by `read-parity.mjs --mutate`,
+holds what both servers answer on the same host over the same fixture
+library: the gate with and without an ECID; the backup's refusals, the
+artifact one included, since a path that is not there reads the same
+host folder from both; the uninstall log refused while its flag is off;
+the preview's refusals and a real diff over a fixture device; and the
+commit's refusals. A commit that lands is left to the oracle, because it
+stamps the device with each server's own clock. The four routes stay in
+the differ's quarantine, with their reasons rewritten in
+`scripts/parity/manifest.mjs`: none of them drives hardware, but the
+backup and the gate read the host's MobileSync folder, and the re-sync
+pair act on a list the client sends.
+
+**Node's behaviour, kept, and two bugs filed.** Each bug has its own
+follow-up to fix Node and the core together. The direct-child test
+accepts the MobileSync root's own parent, whose relative form `..` is
+one segment with no separator, so a non-empty `Manifest.db` beside
+`Backup/` verifies. And the commit merges any two apps the client names:
+nothing checks that the preview proposed the pair, so a crafted or stale
+request can fold one app into another and delete it. Also kept: a
+shortlist entry never stops a remove from reading as orphaning its app,
+through the same failing probe as Phase 4's orphan sweep; the uninstall
+log binds the client's app id as better-sqlite3 does, a number as a REAL
+and a boolean or an object refused (the statement recorded, no row
+written, the route still answering `ok`); and a `null` body to that log
+is Next's bare 500.
+
+**Negative controls, predicted before running.** The direct-child test
+refusing `..`: exactly the root's-parent case. No permission check:
+exactly the two cases with another person's device and no
+acknowledgement (none recorded, and a stamp of zero). No bundle-id
+backfill: exactly the four preview cases whose answer uses a bundle id
+the library filled in. No verdict-conflict delete in a merge: exactly the
+two cases that apply a merge. A numeric app id bound as an integer:
+exactly the case that sends one. Live, two faults at once (the backup's
+ECID refusal reworded, and an add's `iconUrl` key renamed) failed
+exactly the probe's two checks for them, 484 of 486 passing. Source
+restored byte for byte after each, fixed tree green.
+
+Rust suite: 281 lib tests pass (278 + 2 unit tests + the replay), plus
+the embed test.

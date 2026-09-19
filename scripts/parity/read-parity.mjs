@@ -41,6 +41,7 @@ import { primeBackupKey, probeBackupRoutes } from "./backup-probes.mjs";
 import { probeBundleRoutes } from "./bundles-probes.mjs";
 import { applyContentFixture } from "./content-fixture.mjs";
 import { probeContentReads } from "./content-probes.mjs";
+import { probeDeviceRoutes } from "./device-probes.mjs";
 import { applyDevicesFixture, probeDeviceReads } from "./devices-fixture.mjs";
 import {
   validateErrorLog,
@@ -2025,6 +2026,16 @@ async function main() {
     );
   }
 
+  // The device actions and the device re-sync: the gate, the refusals and
+  // a real diff, alike on both. Nothing here writes.
+  let deviceRoutesOk = true;
+  if (args.mutate) {
+    console.log(
+      "\n── device routes (the uninstall gate, the refusals, a preview diff) ──"
+    );
+    deviceRoutesOk = await probeDeviceRoutes(args.node, rustBase, TOKEN);
+  }
+
   // The backup family, which the differ cannot hold: files out, files in,
   // and a restore that replaces the database. After everything else,
   // because it ends by doing exactly that on both servers.
@@ -2062,6 +2073,7 @@ async function main() {
     policyOk &&
     aiOk &&
     policySyncOk &&
+    deviceRoutesOk &&
     seedOk &&
     discoveryOk &&
     operationsOk &&

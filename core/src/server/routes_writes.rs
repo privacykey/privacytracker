@@ -285,3 +285,9 @@ wrapper!(
     "/api/notifications/webhook-test",
     POST
 );
+
+// Phase 6, batch 2a — see `device_writes.rs`.
+wrapper!(device_backup_post, "/api/device-actions/backup", POST);
+wrapper!(device_uninstall_post, "/api/device-actions/uninstall", POST);
+wrapper!(device_sync_preview_post, "/api/device-sync/preview", POST);
+wrapper!(device_sync_commit_post, "/api/device-sync/commit", POST);

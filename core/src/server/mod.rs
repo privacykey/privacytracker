@@ -30,6 +30,9 @@ mod changelog;
 mod content_tests;
 mod csp_reports;
 mod deployment;
+mod device_writes;
+#[cfg(test)]
+mod device_writes_tests;
 #[cfg(test)]
 mod devices_tests;
 pub(crate) mod diag;
@@ -414,7 +417,8 @@ fn routes() -> Router<AppState> {
         )
         .route("/api/changelog", get(routes_stats::changelog))
         // Stored device reads: ownership, exact ECID lookup, import history
-        // and app links. No cfgutil calls or mutation handlers are enabled.
+        // and app links. cfgutil itself runs in the Tauri shell; the device
+        // actions below record what it did and gate what it may do next.
         .route(
             "/api/devices",
             get(routes_devices::devices).post(routes_writes::devices_post),
@@ -437,6 +441,23 @@ fn routes() -> Router<AppState> {
             get(routes_devices::tracked_apps),
         )
         .route("/api/devices/for-app/{appId}", get(routes_devices::for_app))
+        // Phase 6, batch 2a: the device actions and the device re-sync.
+        .route(
+            "/api/device-actions/backup",
+            post(routes_writes::device_backup_post),
+        )
+        .route(
+            "/api/device-actions/uninstall",
+            get(device_writes::uninstall_get).post(routes_writes::device_uninstall_post),
+        )
+        .route(
+            "/api/device-sync/preview",
+            post(routes_writes::device_sync_preview_post),
+        )
+        .route(
+            "/api/device-sync/commit",
+            post(routes_writes::device_sync_commit_post),
+        )
         .route("/api/activity", get(routes_content::activity))
         .route(
             "/api/notifications",

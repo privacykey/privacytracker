@@ -384,7 +384,7 @@ pub(super) fn locale_string(ms: i64) -> String {
 // ── Import ───────────────────────────────────────────────────────────
 
 /// A bundle field as better-sqlite3 would bind it.
-fn bind(v: Option<&Value>) -> Result<Value, &'static str> {
+pub(super) fn bind(v: Option<&Value>) -> Result<Value, &'static str> {
     Ok(match v {
         // `undefined` and `null` both bind as NULL.
         None | Some(Value::Null) => Value::Null,
