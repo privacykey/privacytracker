@@ -676,6 +676,24 @@ fn sync_resume_notification(
 
 // ── instrumentation.ts ───────────────────────────────────────────────
 
+/// The feature-flag migration, which `register()` runs before anything
+/// else writes (Phase 6, batch 2b). A failure is logged and the server
+/// comes up anyway, without the version marker, so the next boot retries.
+pub(crate) fn migrate_flags(db: &mut dyn DbAccess, clock: &dyn Clock) {
+    let mut ids = RandomIds;
+    match db.with(|w| super::flag_migration::run(w, &mut ids, clock)) {
+        Ok(steps) if !steps.is_empty() => {
+            let total_ms: i64 = steps.iter().map(|s| s.duration_ms).sum();
+            log::info!(
+                "[Migration] feature-flag v1 complete — {} steps in {total_ms}ms",
+                steps.len()
+            );
+        }
+        Ok(_) => {}
+        Err(e) => super::diag::log_error(format!("[Migration] feature-flag v1 failed: {e}")),
+    }
+}
+
 /// The boot writes `register()` makes before any ticker: the runtime
 /// marker, then the stale import-queue and health-check locks cleared —
 /// a fresh process owns no run.
@@ -840,6 +858,7 @@ pub(crate) async fn resume_app_store_sync(
 /// dropped with the runtime; either way its writes are whole transactions.
 pub(crate) fn start_background(state: AppState, stop: CancellationToken) {
     let desktop = crate::host_env::var("PRIVACYTRACKER_RUNTIME").is_ok_and(|v| v == "desktop");
+    migrate_flags(&mut state.db_access(), &Live);
     boot(&mut state.db_access(), Live.now(), desktop);
 
     // What the deferred policy fetch's timer runs with, its stop included.

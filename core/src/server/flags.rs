@@ -61,7 +61,7 @@ pub const KILL_SWITCH: &str = "flag.devopts.feature_flag_system.enabled";
 /// so the rule lookup does not throw. `__proto__` is included: the accessor
 /// returns `Object.prototype`, and indexing that with a flag key is
 /// `undefined` like the rest.
-const OBJECT_PROTOTYPE_NAMES: &[&str] = &[
+pub(super) const OBJECT_PROTOTYPE_NAMES: &[&str] = &[
     "constructor",
     "hasOwnProperty",
     "isPrototypeOf",

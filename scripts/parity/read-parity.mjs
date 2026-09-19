@@ -439,6 +439,39 @@ function assertBackfillWontFire(dataDir) {
   return { apps, devices };
 }
 
+/**
+ * Put back the feature-flag migration's marker, which the seed's
+ * `/api/reset` deleted, before the copy. Returns whether it was missing.
+ *
+ * Node runs the migration (`lib/migrations/v1_feature_flags.ts`) at BOOT,
+ * and since Phase 6, batch 2b so does the core. The Node server here booted
+ * on an empty directory and migrated it; the seed then wiped
+ * `app_settings`, marker included, and Node's running process never reads
+ * the marker again. Copied as it is, the core's boot would migrate the copy
+ * a second time (overrides from the seeded state, the quarantine re-run)
+ * and every flag read would differ by an artefact of boot order, like the
+ * unknown-device backfill above. The migration's own parity is the job of
+ * its oracle, `core/scripts/extract-flag-migration-cases.mjs`.
+ */
+function restoreMigrationMarker(dataDir) {
+  const db = new BetterSqlite3(path.join(dataDir, "privacy.db"));
+  try {
+    const present = db
+      .prepare("SELECT 1 FROM app_settings WHERE key = ?")
+      .get("feature_flag_migration_version");
+    if (present) {
+      return false;
+    }
+    db.prepare("INSERT INTO app_settings (key, value) VALUES (?, ?)").run(
+      "feature_flag_migration_version",
+      "2"
+    );
+    return true;
+  } finally {
+    db.close();
+  }
+}
+
 /** Start pt-core and resolve with its base URL once it reports listening. */
 function startRust(dataDir) {
   return new Promise((resolve, reject) => {
@@ -1771,6 +1804,11 @@ async function main() {
     backupKeyOk = await primeBackupKey(args.node, TOKEN);
   }
 
+  if (restoreMigrationMarker(nodeData)) {
+    console.log(
+      "restored the flag migration's marker the seed's reset deleted, so the core's boot does not migrate the copy"
+    );
+  }
   console.log(
     "checkpointing the Node database and copying it for the Rust side…"
   );

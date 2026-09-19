@@ -112,8 +112,8 @@ fn an_embedded_server_runs_on_its_host_environment_and_stops_within_the_grace() 
             assert_eq!(mode(&data_dir), 0o700, "data directory");
             assert_eq!(mode(&db_path), 0o600, "database file");
         }
-        let runtime: String = rusqlite::Connection::open(&db_path)
-            .unwrap()
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        let runtime: String = conn
             .query_row(
                 "SELECT value FROM app_settings WHERE key = 'runtime_environment'",
                 [],
@@ -121,6 +121,26 @@ fn an_embedded_server_runs_on_its_host_environment_and_stops_within_the_grace() 
             )
             .expect("runtime_environment was written at boot");
         assert_eq!(runtime, "desktop");
+
+        // The feature-flag migration ran first, on the fresh database: its
+        // marker, and six steps' rows plus the closing one.
+        let version: String = conn
+            .query_row(
+                "SELECT value FROM app_settings WHERE key = 'feature_flag_migration_version'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("the migration wrote its marker at boot");
+        assert_eq!(version, "2");
+        let rows: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM activity_log WHERE type = 'migration' AND status = 'ok'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(rows, 13, "migration activity rows");
+        drop(conn);
 
         // One server per process: a different environment is refused.
         let mut other = host.clone();

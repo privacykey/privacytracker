@@ -42,6 +42,9 @@ pub mod diff;
 mod discovery_tests;
 mod export;
 mod favicon;
+mod flag_migration;
+#[cfg(test)]
+mod flag_migration_tests;
 pub mod flags;
 mod forwarded;
 mod gate;
