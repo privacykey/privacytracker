@@ -349,6 +349,19 @@ Going forward, changes are recorded here as they land.
     pages in light, dark and high-contrast mode, including the matrix's
     hover panel.
 
+- The settings migration the app runs at startup no longer fails at every
+  start on a database restored from a backup or edited by hand whose old
+  notification settings (`notification_prefs`) are `null`, or whose old
+  onboarding choice (`user_intent`) is the name of a built-in property
+  such as `toString`. The app never saves either value itself, but either
+  one stopped the migration at the same step every time: the steps after
+  it never ran, among them moving the old goal settings to their new
+  names, and each start added failed `migration` entries to the activity
+  log and an error to the server log. Such a value is now dropped with a
+  warning, as notification settings that cannot be read already were,
+  and the migration finishes. The Rust core, not yet active in any build,
+  does the same.
+
 - Rust core: the data directory and database path are process-wide
   configuration (a `OnceLock`, resolved once from `PRIVACYTRACKER_DATA_DIR`
   or `<cwd>/data` exactly as `lib/db.ts` resolves them at module scope),
@@ -371,7 +384,7 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
-- Rust core Phase 6, batch 2b: the feature-flag migration, which Node runs once at startup, now runs when the Rust server starts too, in the same place: before the boot writes and before any timer. It turns the legacy `user_intent` into a focus and the legacy `notification_prefs` blob into per-type overrides, drops the retired callout overrides, brings the override quarantine up to date with the flag registry and moves the old goal keys to their new names, writing the same activity rows and version marker, so an install that reaches the Rust server before it ever ran the migration ends up exactly as it would on Node. Gated by a new oracle that runs the real Node migration over 43 cases, replayed by the core and regenerated in CI, with a boot test and the embed test covering the startup wiring; six negative controls fail exactly as predicted. The port keeps a Node bug, with its own follow-up: two stored values (a `notification_prefs` of `null`, and a `user_intent` naming an inherited property such as `toString`) fail the migration on every boot. Rust remains inactive in Node, Tauri and Docker builds. Developer-facing only.
+- Rust core Phase 6, batch 2b: the feature-flag migration, which Node runs once at startup, now runs when the Rust server starts too, in the same place: before the boot writes and before any timer. It turns the legacy `user_intent` into a focus and the legacy `notification_prefs` blob into per-type overrides, drops the retired callout overrides, brings the override quarantine up to date with the flag registry and moves the old goal keys to their new names, writing the same activity rows and version marker, so an install that reaches the Rust server before it ever ran the migration ends up exactly as it would on Node. Gated by a new oracle that runs the real Node migration over 45 cases, replayed by the core and regenerated in CI, with a boot test and the embed test covering the startup wiring; six negative controls fail exactly as predicted. The port first kept a Node bug, in which two stored values (a `notification_prefs` of `null`, and a `user_intent` naming an inherited property such as `toString`) failed the migration on every boot; its follow-up fixed Node and the core together (see Fixed). Rust remains inactive in Node, Tauri and Docker builds. Developer-facing only.
 
 - Rust core Phase 6, batch 2a: the five device routes Phase 4 set aside, so the Rust server can back the desktop app's device features. `POST /api/device-actions/backup` records a backup cfgutil made once it verifies on disk (a non-empty, non-symlinked `Manifest.db` in a direct child of Apple's MobileSync folder); `GET /api/device-actions/uninstall` answers whether an uninstall may go ahead (whose device it is, the uninstall flag, and a verified backup no more than a day old unless the user acknowledged going without) and `POST` logs one the shell performed; and `POST /api/device-sync/preview` and `POST /api/device-sync/commit` diff a device's app list against the library and apply the selection, bundle-id merges included. None of them touches hardware: cfgutil stays in the Tauri shell. Gated by a new oracle that runs the real Node handlers over 140 cases and a recorded MobileSync-shaped tree, replayed by the core and regenerated in CI, and by a live probe that compares both servers' answers on the same host; five negative controls fail exactly as predicted. The Rust port keeps two Node bugs, each with its own follow-up: the MobileSync folder's parent passes the direct-child check, and the commit merges any two apps a client names. Rust remains inactive in Node, Tauri and Docker builds. Developer-facing only.
 
