@@ -907,7 +907,7 @@
       "empty": true,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -922,7 +922,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -2103,7 +2103,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":true,\"new_privacy_types\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":true,\"new_privacy_types\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -2156,7 +2156,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":false},\"stored\":{\"label_changes\":false,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":false,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":false,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -4536,6 +4536,182 @@
       "expected": {
         "status": 200,
         "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]},{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]},{\"type\":\"added\",\"title\":\"New type\",\"details\":[]},{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-4\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599960,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-5\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599950,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-8\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599920,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-9\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599910,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-12\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599880,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-13\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599870,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-16\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599840,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-17\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599830,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-20\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599800,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-21\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599790,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-24\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599760,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-25\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599750,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-28\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599720,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-29\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599710,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":27}",
+        "type": "application/json",
+        "disposition": null
+      },
+      "survivingNotes": [
+        "pt-content-note-0",
+        "pt-content-note-1",
+        "pt-content-note-2",
+        "pt-content-note-3"
+      ]
+    },
+    {
+      "name": "prefs blob under the flags {\"labelChanges\":false,\"policyUpdates\":false,\"versionUpdates\":false,\"aiTimeout\":\"no\",\"bad\":true}",
+      "route": "/api/notification-prefs",
+      "search": "",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+          "params": [
+            "notification_prefs",
+            "{\"labelChanges\":false,\"policyUpdates\":false,\"versionUpdates\":false,\"aiTimeout\":\"no\",\"bad\":true}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.label_changes",
+            "on",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.policy_updates",
+            "on",
+            1789473600000
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": {
+        "status": 200,
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "type": "application/json",
+        "disposition": null
+      },
+      "survivingNotes": [
+        "pt-content-note-0",
+        "pt-content-note-1",
+        "pt-content-note-2",
+        "pt-content-note-3"
+      ]
+    },
+    {
+      "name": "prefs blob under the flags {\"aiTimeout\":false,\"importCompleted\":false,\"profileMismatch\":true}",
+      "route": "/api/notification-prefs",
+      "search": "",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+          "params": [
+            "notification_prefs",
+            "{\"aiTimeout\":false,\"importCompleted\":false,\"profileMismatch\":true}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.label_changes",
+            "on",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.policy_updates",
+            "on",
+            1789473600000
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": {
+        "status": 200,
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":false,\"manualAppsPrompt\":true,\"aiTimeout\":false},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":false,\"manualAppsPrompt\":true,\"aiTimeout\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "type": "application/json",
+        "disposition": null
+      },
+      "survivingNotes": [
+        "pt-content-note-0",
+        "pt-content-note-1",
+        "pt-content-note-2",
+        "pt-content-note-3"
+      ]
+    },
+    {
+      "name": "prefs blob under the flags [false]",
+      "route": "/api/notification-prefs",
+      "search": "",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+          "params": [
+            "notification_prefs",
+            "[false]"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.label_changes",
+            "on",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.policy_updates",
+            "on",
+            1789473600000
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": {
+        "status": 200,
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "type": "application/json",
+        "disposition": null
+      },
+      "survivingNotes": [
+        "pt-content-note-0",
+        "pt-content-note-1",
+        "pt-content-note-2",
+        "pt-content-note-3"
+      ]
+    },
+    {
+      "name": "prefs blob under the flags broken",
+      "route": "/api/notification-prefs",
+      "search": "",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key,value) VALUES (?,?)",
+          "params": [
+            "notification_prefs",
+            "broken"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.label_changes",
+            "on",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.policy_updates",
+            "on",
+            1789473600000
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": {
+        "status": 200,
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
         "type": "application/json",
         "disposition": null
       },

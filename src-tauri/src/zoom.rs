@@ -133,9 +133,8 @@ fn persist_debounced(level: f64) {
         if GENERATION.load(Ordering::SeqCst) != generation {
             return;
         }
-        let url = format!("{base_url}/api/settings/desktop");
         let body = format!("{{\"zoom_level\":{level}}}");
-        match ureq::post(&url)
+        match crate::sidecar::post(&base_url, "/api/settings/desktop")
             .timeout(Duration::from_secs(3))
             .set("content-type", "application/json")
             .send_string(&body)

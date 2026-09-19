@@ -203,7 +203,10 @@ for (const phase of ["fetch", "all"] as const) {
     });
 
     // This run did fetch, and the fetch failed: that is its failure.
-    assert.ok(fetchedUrls.includes(POLICY_URL), fetchedUrls.join(", "));
+    assert.ok(
+      fetchedUrls.some((url) => url === POLICY_URL),
+      fetchedUrls.join(", ")
+    );
     assert.equal(result?.status, "fetch_error");
     const rows = getRecentActivity({ type: "policy_summary" });
     assert.equal(rows.length, 1);
@@ -269,7 +272,7 @@ test("the AI Policy tab offers Summarise exactly where the server summarises", a
       `${label}: offered ${offered}, summarised ${summarised}`
     );
     // Summarise never fetches the policy itself.
-    assert.ok(!fetchedUrls.includes(POLICY_URL));
+    assert.ok(!fetchedUrls.some((url) => url === POLICY_URL));
     if (offered) {
       offeredRows.push(label);
     }

@@ -142,10 +142,11 @@ function bulkSummaryLine(totals: SyncBulkTotals): string {
 function activityTypeFor(
   initiator: "manual" | "scheduled" | "resume"
 ): "manual_sync" | "scheduled_sync" {
-  // Resume is re-finishing whatever the original initiator started — we
-  // don't know which one. Treating it as 'scheduled_sync' keeps the
-  // activity timeline readable (users rarely kick off manual syncs, so
-  // resumes are more likely to be continuations of scheduled work).
+  // A restart resume records as 'scheduled_sync' whoever started the run:
+  // nobody pressed Sync now in this process, the "resumed after restart"
+  // row instrumentation.ts writes first is 'scheduled_sync' too, and the
+  // Upgrading docs ("Reading the activity log") say so. The summary's
+  // "(resumed after restart)" marks it, not the type.
   return initiator === "manual" ? "manual_sync" : "scheduled_sync";
 }
 
@@ -161,6 +162,11 @@ export async function runBulkSync(
   let state: SyncBulkState;
   if (options.resumeState) {
     state = options.resumeState;
+    // The blob still names whoever started the run. Record who runs it
+    // now, before the first write: the resume summary, the `bulk-resumed`
+    // mode and TaskCenter's card all read `initiator`, and a resumed run
+    // that kept 'manual' or 'scheduled' was never labelled as one.
+    state.initiator = options.initiator;
     // Flip any `in_progress` entries back to `pending` — those were the
     // app(s) mid-flight when the previous process died. We'll redo them.
     for (const entry of state.queue) {
@@ -209,6 +215,7 @@ export async function runBulkSync(
   // between scheduler.ts (which imports activity) and scraper.ts (which
   // also imports activity indirectly via db).
   const { fetchAndParseApp, AppleRateLimitError } = await import("./scraper");
+  // A resumed run's snapshots say 'scheduled', like its activity row.
   const trigger: "manual" | "scheduled" =
     state.initiator === "manual" ? "manual" : "scheduled";
 

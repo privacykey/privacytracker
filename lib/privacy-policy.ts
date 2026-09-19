@@ -1017,10 +1017,12 @@ async function fetchAndStorePolicySource(
     // Persist the log entry so the AI Policy tab can surface "disabled" the
     // same way it surfaces throttle messages, but leave every other field
     // on the row untouched — `source_fetched_at`, the hash, the existing
-    // summary all stay as they were. Mirrors the throttle path below.
+    // summary all stay as they were. Mirrors the throttle path below,
+    // including the row it returns.
     if (existing) {
+      let row: PolicyAnalysisRow | null = null;
       try {
-        persistPolicyAnalysis({
+        row = persistPolicyAnalysis({
           appId,
           policyUrl,
           status: existing.status as PolicyAnalysisStatus,
@@ -1044,7 +1046,9 @@ async function fetchAndStorePolicySource(
       } catch {
         // Non-fatal — log persistence is a nice-to-have.
       }
-      return hydratePolicyAnalysis(existing);
+      return hydratePolicyAnalysis(
+        row ?? getPolicyAnalysisRow(appId) ?? existing
+      );
     }
     return null;
   }
@@ -1090,8 +1094,9 @@ async function fetchAndStorePolicySource(
       // Persist the log entry so the UI can surface the throttle message
       // on the AI Policy tab, but do NOT touch `source_fetched_at`, the
       // hash, or the changelog. Throttle hits are invisible to History.
+      let row: PolicyAnalysisRow | null = null;
       try {
-        persistPolicyAnalysis({
+        row = persistPolicyAnalysis({
           appId,
           policyUrl,
           status: existing.status,
@@ -1115,7 +1120,14 @@ async function fetchAndStorePolicySource(
       } catch {
         // Non-fatal — log persistence is a nice-to-have; throttle still fires.
       }
-      return hydratePolicyAnalysis(existing);
+      // Return the row as it now stands, this run's `throttled` line last:
+      // the bulk runner counts an app as throttled by that line, and
+      // `existing` was read before it, carrying the previous run's log. A
+      // refused write is read again, since the run log is written on its
+      // own and may still have landed.
+      return hydratePolicyAnalysis(
+        row ?? getPolicyAnalysisRow(appId) ?? existing
+      );
     }
   }
 
@@ -1503,7 +1515,8 @@ async function fetchAndStorePolicySource(
  * summarises (`canSummariseStoredPolicy`): the earlier capture a failed or
  * unusable fetch keeps, or an imported excerpt. A clean capture whose last
  * summary run failed or found no AI provider is summarised again. Returns
- * null when no policy was ever fetched.
+ * null when no policy was ever fetched. A new summary moves the one it
+ * replaces into previous_*; a failed run keeps it as the summary.
  */
 async function summariseStoredPolicy(
   request: PolicyAnalysisRequest,
@@ -1659,16 +1672,18 @@ async function summariseStoredPolicy(
     // always-visible fallback block in the UI still deep-links both
     // registries' search pages.
 
-    // The "what changed" panel needs to know the prior summary. If the
-    // fetch phase already snapshotted the about-to-be-replaced summary into
-    // previous_*, keep it. Otherwise — e.g. someone called the summarise
-    // phase directly without going through fetch — promote any existing
-    // summary here as a last-resort fallback.
+    // The "what changed" panel diffs against the summary this run replaces.
+    // That is the row's own summary when it has one: a forced resummarise
+    // of a ready row, or the summary a failed run kept. Otherwise it is the
+    // one the fetch phase already moved into previous_* when it stored new
+    // text. This is the fetch phase's rule, so each run walks the diff
+    // forward. Preferring a stored previous summary dropped the current one
+    // whenever both existed, and the panel compared against an older one.
     const previousSummaryJson =
-      existing.previous_summary_json ?? existing.summary_json ?? null;
-    const previousSummaryAt =
-      existing.previous_summary_at ??
-      (existing.summary_json ? existing.updated_at : null);
+      existing.summary_json ?? existing.previous_summary_json ?? null;
+    const previousSummaryAt = existing.summary_json
+      ? existing.updated_at
+      : (existing.previous_summary_at ?? null);
 
     const row = persistPolicyAnalysis({
       appId,
@@ -1695,6 +1710,12 @@ async function summariseStoredPolicy(
   } catch (error) {
     const message = getErrorMessage(error);
     logger.endPhase({ error: message });
+    // A failed run replaces nothing. The summary the row had stays, with
+    // the mode and model that made it, as a failed fetch keeps its summary:
+    // the status and the error record the failure, and the AI Policy tab
+    // shows the summary under "The latest AI refresh failed". With no
+    // summary to keep, the row names the model that failed.
+    const hasSummary = Boolean(existing.summary_json);
     const row = persistPolicyAnalysis({
       appId,
       policyUrl,
@@ -1706,11 +1727,13 @@ async function summariseStoredPolicy(
       sourceOrigin: normalizeSourceOrigin(existing.source_origin),
       sourceFinalUrl: existing.source_final_url ?? null,
       contentHash: existing.content_hash,
-      analysisMode: null,
-      summaryJson: null,
+      analysisMode: hasSummary
+        ? normalizeAnalysisMode(existing.analysis_mode)
+        : null,
+      summaryJson: existing.summary_json ?? null,
       previousSummaryJson: existing.previous_summary_json ?? null,
       previousSummaryAt: existing.previous_summary_at ?? null,
-      model: aiConfig.model,
+      model: hasSummary ? (existing.model ?? null) : aiConfig.model,
       error: message,
       updatedAt: now,
       lastRunLogJson: logger.toJson(),

@@ -222,8 +222,18 @@ export async function probeContentReads(
     }
     check(
       "resolved preferences and notification suppression respect all four flags",
+      // `prefs` also carries the seven camelCase keys; the five without a
+      // flag come from the legacy blob, so only the flag keys and their two
+      // aliases follow the overrides.
       (await compare("/api/notification-prefs", (j) =>
-        Object.values(j.prefs).every((v) => v === false)
+        [
+          "label_changes",
+          "policy_updates",
+          "accessibility_changes",
+          "new_privacy_types",
+          "labelChanges",
+          "policyUpdates",
+        ].every((k) => j.prefs[k] === false)
       )) &&
         (await compare(
           "/api/notifications",

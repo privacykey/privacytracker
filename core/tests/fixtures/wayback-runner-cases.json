@@ -10476,14 +10476,14 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\",\"startedAt\":1789473599000},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":true}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\",\"startedAt\":1789473599000},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":true}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":true}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":true}"
           ]
         },
         {
@@ -10500,7 +10500,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},\"streamRequested\":true}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},\"streamRequested\":true}"
           ]
         },
         {
@@ -10512,7 +10512,7 @@
             "555000222",
             "Fixture Two",
             "Wayback import for Fixture Two: 23 skipped, 1 snapshot requested",
-            "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000222\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000222\",\"captureDate\":1789473600000}]},\"resumedRun\":false}",
+            "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000222\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000222\",\"captureDate\":1789473600000}]},\"resumedRun\":true}",
             1789473600000,
             1789473600000,
             0
@@ -10522,7 +10522,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000333\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},\"streamRequested\":true}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000333\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},\"streamRequested\":true}"
           ]
         },
         {
@@ -10563,7 +10563,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":46,\"imported\":1,\"unchanged\":0,\"skipped\":45,\"failed\":0,\"snapshotsRequested\":2},\"streamRequested\":true}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":46,\"imported\":1,\"unchanged\":0,\"skipped\":45,\"failed\":0,\"snapshotsRequested\":2},\"streamRequested\":true}"
           ]
         },
         {
@@ -10575,7 +10575,7 @@
             "555000333",
             "Fixture Three",
             "Wayback import for Fixture Three: 1 imported, 22 skipped, 1 snapshot requested",
-            "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000333\",\"attempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1781524800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\",\"changeCount\":0},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000333\",\"captureDate\":1789473600000}]},\"resumedRun\":false}",
+            "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000333\",\"attempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1781524800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\",\"changeCount\":0},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000333\",\"captureDate\":1789473600000}]},\"resumedRun\":true}",
             1789473600000,
             1789473600000,
             0
@@ -10589,8 +10589,8 @@
             "ok",
             null,
             null,
-            "Wayback import across 3 apps: 1 imported, 45 skipped, 2 snapshots requested",
-            "{\"mode\":\"bulk\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":46,\"imported\":1,\"unchanged\":0,\"skipped\":45,\"failed\":0,\"snapshotsRequested\":2},\"runId\":\"run-fixture-1\"}",
+            "Wayback import (resumed) across 3 apps: 1 imported, 45 skipped, 2 snapshots requested",
+            "{\"mode\":\"bulk-resumed\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":46,\"imported\":1,\"unchanged\":0,\"skipped\":45,\"failed\":0,\"snapshotsRequested\":2},\"runId\":\"run-fixture-1\"}",
             1789470000000,
             1789473600000,
             3600000
@@ -10601,7 +10601,7 @@
           "params": [
             "00000000-0000-4000-8000-000000000009",
             1789473600000,
-            "wayback.import.bulk.success",
+            "wayback.import.bulk.resumed.success",
             "",
             "",
             "apps=3 imported=1 unchanged=0 skipped=45 failed=0",
@@ -10776,7 +10776,7 @@
             "app_id": "555000222",
             "app_name": "Fixture Two",
             "summary": "Wayback import for Fixture Two: 23 skipped, 1 snapshot requested",
-            "detail": "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000222\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000222\",\"captureDate\":1789473600000}]},\"resumedRun\":false}",
+            "detail": "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000222\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000222\",\"captureDate\":1789473600000}]},\"resumedRun\":true}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -10788,7 +10788,7 @@
             "app_id": "555000333",
             "app_name": "Fixture Three",
             "summary": "Wayback import for Fixture Three: 1 imported, 22 skipped, 1 snapshot requested",
-            "detail": "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000333\",\"attempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1781524800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\",\"changeCount\":0},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000333\",\"captureDate\":1789473600000}]},\"resumedRun\":false}",
+            "detail": "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000333\",\"attempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_drift\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\"},{\"targetDate\":1781524800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000333\",\"changeCount\":0},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000333\",\"captureDate\":1789473600000}]},\"resumedRun\":true}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -10799,8 +10799,8 @@
             "status": "ok",
             "app_id": null,
             "app_name": null,
-            "summary": "Wayback import across 3 apps: 1 imported, 45 skipped, 2 snapshots requested",
-            "detail": "{\"mode\":\"bulk\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":46,\"imported\":1,\"unchanged\":0,\"skipped\":45,\"failed\":0,\"snapshotsRequested\":2},\"runId\":\"run-fixture-1\"}",
+            "summary": "Wayback import (resumed) across 3 apps: 1 imported, 45 skipped, 2 snapshots requested",
+            "detail": "{\"mode\":\"bulk-resumed\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":46,\"imported\":1,\"unchanged\":0,\"skipped\":45,\"failed\":0,\"snapshotsRequested\":2},\"runId\":\"run-fixture-1\"}",
             "started_at": 1789470000000,
             "ended_at": 1789473600000,
             "duration_ms": 3600000
@@ -10810,7 +10810,7 @@
           {
             "id": "00000000-0000-4000-8000-000000000009",
             "created_at": 1789473600000,
-            "action": "wayback.import.bulk.success",
+            "action": "wayback.import.bulk.resumed.success",
             "actor_ip": "",
             "user_agent": "",
             "detail": "apps=3 imported=1 unchanged=0 skipped=45 failed=0",
@@ -10976,28 +10976,28 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"pending\"},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"pending\"},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"failed\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"error\":\"App no longer has a URL — may have been deleted.\"},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":1,\"snapshotsRequested\":0},\"streamRequested\":false}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"failed\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"error\":\"App no longer has a URL — may have been deleted.\"},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":1,\"snapshotsRequested\":0},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000111\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"failed\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"error\":\"App no longer has a URL — may have been deleted.\"},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":1,\"snapshotsRequested\":0},\"streamRequested\":false}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000111\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"failed\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"error\":\"App no longer has a URL — may have been deleted.\"},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":1,\"snapshotsRequested\":0},\"streamRequested\":false}"
           ]
         },
         {
@@ -11014,7 +11014,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "wayback_bulk_state",
-            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"failed\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"error\":\"App no longer has a URL — may have been deleted.\"},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":1,\"snapshotsRequested\":1},\"streamRequested\":false}"
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000222\",\"appName\":\"Gone\",\"status\":\"failed\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"error\":\"App no longer has a URL — may have been deleted.\"},{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":1,\"snapshotsRequested\":1},\"streamRequested\":false}"
           ]
         },
         {
@@ -11026,7 +11026,7 @@
             "555000111",
             "Fixture One",
             "Wayback import for Fixture One: 23 skipped, 1 snapshot requested",
-            "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000111\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}]},\"resumedRun\":false}",
+            "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000111\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}]},\"resumedRun\":true}",
             1789473600000,
             1789473600000,
             0
@@ -11040,8 +11040,8 @@
             "partial",
             null,
             null,
-            "Wayback import across 2 apps: 0 imported, 23 skipped, 1 failed, 1 snapshot requested",
-            "{\"mode\":\"bulk\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":1,\"snapshotsRequested\":1},\"runId\":\"run-fixture-1\"}",
+            "Wayback import (resumed) across 2 apps: 0 imported, 23 skipped, 1 failed, 1 snapshot requested",
+            "{\"mode\":\"bulk-resumed\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":1,\"snapshotsRequested\":1},\"runId\":\"run-fixture-1\"}",
             1789470000000,
             1789473600000,
             3600000
@@ -11052,7 +11052,7 @@
           "params": [
             "00000000-0000-4000-8000-000000000006",
             1789473600000,
-            "wayback.import.bulk.success",
+            "wayback.import.bulk.resumed.success",
             "",
             "",
             "apps=2 imported=0 unchanged=0 skipped=23 failed=1",
@@ -11149,7 +11149,7 @@
             "app_id": "555000111",
             "app_name": "Fixture One",
             "summary": "Wayback import for Fixture One: 23 skipped, 1 snapshot requested",
-            "detail": "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000111\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}]},\"resumedRun\":false}",
+            "detail": "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000111\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}]},\"resumedRun\":true}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -11160,8 +11160,8 @@
             "status": "partial",
             "app_id": null,
             "app_name": null,
-            "summary": "Wayback import across 2 apps: 0 imported, 23 skipped, 1 failed, 1 snapshot requested",
-            "detail": "{\"mode\":\"bulk\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":1,\"snapshotsRequested\":1},\"runId\":\"run-fixture-1\"}",
+            "summary": "Wayback import (resumed) across 2 apps: 0 imported, 23 skipped, 1 failed, 1 snapshot requested",
+            "detail": "{\"mode\":\"bulk-resumed\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":0,\"targetsAttempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":1,\"snapshotsRequested\":1},\"runId\":\"run-fixture-1\"}",
             "started_at": 1789470000000,
             "ended_at": 1789473600000,
             "duration_ms": 3600000
@@ -11171,7 +11171,7 @@
           {
             "id": "00000000-0000-4000-8000-000000000006",
             "created_at": 1789473600000,
-            "action": "wayback.import.bulk.success",
+            "action": "wayback.import.bulk.resumed.success",
             "actor_ip": "",
             "user_agent": "",
             "detail": "apps=2 imported=0 unchanged=0 skipped=23 failed=1",
@@ -11198,6 +11198,374 @@
         ]
       },
       "expected": null
+    },
+    {
+      "name": "control resume a paused queue a restart had resumed",
+      "kind": "route",
+      "delay": null,
+      "route": "/api/wayback/import-all",
+      "method": "PATCH",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.46.5",
+        "user-agent": "wayback-oracle/1.0"
+      },
+      "body": "{\"action\":\"resume\"}",
+      "adminToken": null,
+      "repeat": 1,
+      "awaitRun": true,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "runtime_environment",
+            ""
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000222",
+            "Fixture Two",
+            "https://apps.apple.com/us/app/fixture/id555000222",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789471800000,\"currentAppId\":null,\"status\":\"paused\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":1,\"targetsAttempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1},\"streamRequested\":false,\"pausedAt\":1789473540000,\"pauseCause\":\"user\"}"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"]]"
+        },
+        {
+          "status": 302,
+          "headers": {
+            "location": "https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000222"
+          },
+          "body": ""
+        }
+      ],
+      "hooks": [],
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000222&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000222",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":1,\"targetsAttempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_import_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":1,\"targetsAttempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":23,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "wayback.import.bulk.resume_requested",
+            "10.0.46.5",
+            "wayback-oracle/1.0",
+            "runId=run-fixture-1",
+            1
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, triggered_by)\n    VALUES (?, ?, ?, ?, 0, ?, 'live', 'wayback')\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000222",
+            1789473600000,
+            "[]",
+            "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000222\",\"target_date\":1789473600000}]"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"done\",\"startedAt\":1789473595000,\"finishedAt\":1789473596000,\"imported\":1,\"unchanged\":0,\"skipped\":22,\"failed\":0,\"snapshotsRequested\":1},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1}],\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":46,\"imported\":1,\"unchanged\":0,\"skipped\":45,\"failed\":0,\"snapshotsRequested\":2},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "wayback_import",
+            "ok",
+            "555000222",
+            "Fixture Two",
+            "Wayback import for Fixture Two: 23 skipped, 1 snapshot requested",
+            "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000222\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000222\",\"captureDate\":1789473600000}]},\"resumedRun\":false}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "wayback_import",
+            "ok",
+            null,
+            null,
+            "Wayback import across 2 apps: 1 imported, 45 skipped, 2 snapshots requested",
+            "{\"mode\":\"bulk\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":46,\"imported\":1,\"unchanged\":0,\"skipped\":45,\"failed\":0,\"snapshotsRequested\":2},\"runId\":\"run-fixture-1\"}",
+            1789470000000,
+            1789473600000,
+            3600000
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000005",
+            1789473600000,
+            "wayback.import.bulk.success",
+            "10.0.46.5",
+            "wayback-oracle/1.0",
+            "apps=2 imported=1 unchanged=0 skipped=45 failed=0",
+            1
+          ]
+        },
+        {
+          "sql": "DELETE FROM app_settings WHERE key = ?",
+          "params": [
+            "wayback_bulk_state"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_import_running",
+            "false"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "555000222",
+            "name": "Fixture Two",
+            "url": "https://apps.apple.com/us/app/fixture/id555000222",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000222",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[]",
+            "changes_detected": 0,
+            "changes_summary": "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000222\",\"target_date\":1789473600000}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "type": "wayback_import",
+            "status": "ok",
+            "app_id": "555000222",
+            "app_name": "Fixture Two",
+            "summary": "Wayback import for Fixture Two: 23 skipped, 1 snapshot requested",
+            "detail": "{\"mode\":\"bulk-app\",\"result\":{\"appId\":\"555000222\",\"attempted\":23,\"imported\":0,\"unchanged\":0,\"skipped\":23,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1612137600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1615809600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1623758400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1631707200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1639569600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1647345600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1655294400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1663243200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1671105600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1678881600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1686830400000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1694779200000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1702641600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1710504000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1718452800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1726401600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1734264000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1742040000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1749988800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1757937600000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1765800000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1773576000000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1781524800000,\"outcome\":\"skipped_no_capture\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000222\",\"captureDate\":1789473600000}]},\"resumedRun\":false}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "wayback_import",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Wayback import across 2 apps: 1 imported, 45 skipped, 2 snapshots requested",
+            "detail": "{\"mode\":\"bulk\",\"totals\":{\"appsAttempted\":2,\"appsWithImports\":1,\"targetsAttempted\":46,\"imported\":1,\"unchanged\":0,\"skipped\":45,\"failed\":0,\"snapshotsRequested\":2},\"runId\":\"run-fixture-1\"}",
+            "started_at": 1789470000000,
+            "ended_at": 1789473600000,
+            "duration_ms": 3600000
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "wayback.import.bulk.resume_requested",
+            "actor_ip": "10.0.46.5",
+            "user_agent": "wayback-oracle/1.0",
+            "detail": "runId=run-fixture-1",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "created_at": 1789473600000,
+            "action": "wayback.import.bulk.success",
+            "actor_ip": "10.0.46.5",
+            "user_agent": "wayback-oracle/1.0",
+            "detail": "apps=2 imported=1 unchanged=0 skipped=45 failed=0",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          },
+          {
+            "key": "wayback_import_running",
+            "value": "false"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"ok\":true,\"status\":\"running\",\"summary\":{\"total\":2,\"pending\":0,\"inProgress\":1,\"done\":1,\"failed\":0,\"remaining\":1}}",
+        "type": "application/json",
+        "retryAfter": null
+      }
     }
   ]
 }

@@ -46,6 +46,83 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- In the desktop app, "Sync now" and "Import Wayback history" on the menu
+  bar icon now start a sync and a Wayback import, and the zoom level set
+  from the View menu (Zoom In, Zoom Out, Actual Size) is kept when the app
+  is quit and reopened. Until now the two menu items did nothing and the
+  zoom went back to 100% at every launch, with nothing on screen to say
+  why: the app's own requests to its built-in server carried no `Origin`
+  header, so the server refused them as cross-origin, the check that stops
+  a website from driving it. Developer builds also forgot whether the Web
+  Inspector was open, for the same reason. "Sync now" on the menu bar icon
+  also asked for a server route that does not exist. It now starts the
+  same sync as "Sync now" in Settings.
+- An App Store sync, Wayback import or privacy-policy sync that the app
+  finishes after a restart is now shown as resumed. The run picked up
+  where it had stopped, but it went on looking like the run that was
+  interrupted: Background tasks never listed it as "Resumed after
+  restart", the Wayback import settings never showed their "Resumed after
+  restart." note, and its Activity log entry never ended with "(resumed
+  after restart)" (for the Wayback import, never began "Wayback import
+  (resumed)"). All of these now appear. A resumed App Store sync is logged
+  as a scheduled sync even when the run it finishes was started by hand,
+  as the upgrade guide describes, and the apps it syncs after the restart
+  show "Scheduled sync" in their history.
+- "Install & restart" in the desktop app's update banner now restarts into
+  the new version. The update installed, but the restart after it was
+  refused ("process.restart not allowed. Plugin not found") because the
+  desktop app was built without Tauri's process plugin, so the banner said
+  "Install failed" and offered a manual download of the version that had
+  just been installed. The plugin is now included, allowed to restart the
+  app and nothing else. If a restart ever fails after an update installs,
+  the banner now says the update is installed and asks you to quit and
+  reopen privacytracker to finish.
+- "Rescrape policy" and "Rescrape + summarise" on an app's AI Policy tab
+  now fetch the policy even when it was fetched less than an hour ago.
+  The per-app scrape throttle in Settings, meant for the background, bulk
+  and import runs, held back these buttons too: within its cooldown (60
+  minutes by default) a click fetched and summarised nothing, yet the task
+  tray said "Policy re-fetched" or "Summary updated" and the Activity log
+  recorded a fetch or a new summary. The buttons now pass the throttle.
+  Onboarding's policy step and background runs still respect it, and
+  "Disable policy scraping" still stops the buttons.
+- "Re-scrape all policies" and "Summarise all policies" in Settings now
+  count the apps the policy scrape throttle skipped. The throttle skips a
+  privacy policy fetched within its cooldown (60 minutes by default), but
+  a bulk run judged each app by the log of its previous policy run
+  instead of this one. An app skipped after a fetch was counted as a
+  success: the run's summary, its toast and the Activity log said "Bulk
+  policy scrape: 2 ok, 1 failed" when one of the two had not been
+  fetched, and only a second skip in a row came out as throttled. Skipped
+  apps are now always counted as throttled ("1 ok, 1 failed, 1
+  throttled") and marked ⏸ in the background-task tray. A single app's
+  policy refresh that the throttle skips (`POST /api/policy/regenerate`)
+  now answers with that run's own log and update time, as the app's
+  policy status already reported.
+- A failed "Summarise" on an app's AI Policy tab no longer deletes the
+  summary it was refreshing. When the AI call failed, the tab dropped the
+  summary it was showing and said the AI summary could not be generated,
+  and that summary was gone for good. It now stays on the tab, under "The
+  latest AI refresh failed, so this summary may be out of date.", still
+  credited to the AI model that made it, and the next summary that works
+  shows under "What changed" how it differs from it. That comparison was
+  also off when a refresh worked: for a policy summarised more than once
+  before, "What changed" compared the new summary with an older one, not
+  with the one it replaced. The Rust core, not yet active in any build,
+  does the same.
+- The "Privacy policy updates" checkbox in Settings → Notifications now
+  turns policy notifications on, and stays ticked. Before, it always showed
+  unticked, ticking it did not turn them on, and the box unticked itself
+  once the change was saved. The other checkboxes in that section also
+  went back to their defaults after a save or a reload, and now keep what
+  you chose. Saving the section no longer resets label change
+  notifications that were turned on or off elsewhere in the app.
+  Accessibility change and new data type notifications have no checkbox
+  there, so saving it still resets them to their defaults. The bell now
+  shows policy notifications, and counts them as unread, when they are on,
+  and hides the types you turn off: before, it went by the defaults
+  whatever was set. The Rust core, not yet active in any build, reads and
+  saves these settings the same way.
 - A notification webhook set to "Each change" now posts App Store changes.
   When a sync found an app's privacy labels, accessibility labels or age
   rating changed, it wrote the bell notification but posted nothing: only

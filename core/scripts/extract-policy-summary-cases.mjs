@@ -811,7 +811,7 @@ try {
     options: { forceResummarise: true },
     replies: [openaiJson(MODEL_SUMMARY)],
   });
-  await sync("a stored previous summary is kept over the current one", {
+  await sync("the current summary becomes the previous one over a stored one", {
     setup: [
       app(),
       analysis({
@@ -1530,6 +1530,70 @@ try {
     options: { forceResummarise: true },
     replies: [openaiJson(MODEL_SUMMARY)],
   });
+
+  // ── A failed resummarise keeps the summary it was replacing ──
+  // Appended after every other case, so none of their recordings move. A
+  // summary run that fails replaces nothing: the summary stays, with the
+  // mode and model that made it (not the configured model that failed),
+  // and only the status, the error and the run log record the failure. The
+  // next run that makes a summary moves the kept one into previous_*, as it
+  // moves any summary it replaces, and so does a forced resummarise that
+  // succeeds first time.
+  const CURRENT = JSON.stringify({ overview: "The summary on the tab." });
+  const summarised = (over = {}) =>
+    analysis({
+      status: "ready",
+      analysis_mode: "direct",
+      summary_json: CURRENT,
+      previous_summary_json: PREVIOUS,
+      previous_summary_at: BASE_NOW - 9 * DAY,
+      model: "gpt-4o",
+      ...over,
+    });
+  const keptAfterFailure = (over = {}) =>
+    summarised({
+      status: "analysis_error",
+      error: "OpenAI request failed (500): overloaded",
+      updated_at: BASE_NOW - DAY,
+      ...over,
+    });
+  await sync("a failed forced resummarise keeps the summary it was replacing", {
+    setup: [app(), summarised(), ...aiSettings()],
+    options: { forceResummarise: true },
+    replies: [status(500, { "content-type": "text/plain" }, "overloaded")],
+  });
+  await sync(
+    "a forced resummarise keeps the summary it replaces over an older one",
+    {
+      setup: [app(), summarised(), ...aiSettings()],
+      options: { forceResummarise: true },
+      replies: [openaiJson(MODEL_SUMMARY)],
+    }
+  );
+  await sync("a summary a failed run kept becomes the previous one", {
+    setup: [app(), keptAfterFailure(), ...aiSettings()],
+    options: { forceResummarise: true },
+    replies: [openaiJson(MODEL_SUMMARY)],
+  });
+  await sync(
+    "an unforced summarise retries a failed run that kept its summary",
+    {
+      setup: [app(), keptAfterFailure(), ...aiSettings()],
+      replies: [openaiJson(MODEL_SUMMARY)],
+    }
+  );
+  await sync(
+    "an unchanged fetch after a failed resummarise is its kept summary",
+    {
+      setup: [
+        app(),
+        keptAfterFailure({ source_text: paragraphs(30).join("\n\n") }),
+        ...aiSettings(),
+      ],
+      phase: "all",
+      replies: [plain(paragraphs(30).join("\n\n")), AVAIL_NONE, SAVE_OK],
+    }
+  );
 
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;
   const stray = text

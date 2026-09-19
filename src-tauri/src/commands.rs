@@ -132,9 +132,8 @@ pub fn set_tray_visible(app: AppHandle, visible: bool) -> Result<(), String> {
 pub(crate) fn persist_devtools_open(open: bool) {
     let base_url = crate::state().sidecar_base_url.clone();
     std::thread::spawn(move || {
-        let url = format!("{base_url}/api/settings/desktop");
         let body = format!("{{\"devtools_open\":{}}}", open);
-        match ureq::post(&url)
+        match crate::sidecar::post(&base_url, "/api/settings/desktop")
             .timeout(Duration::from_secs(3))
             .set("content-type", "application/json")
             .send_string(&body)

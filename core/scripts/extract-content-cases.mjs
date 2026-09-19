@@ -387,6 +387,26 @@ await run(
   "",
   [stmt("ALTER TABLE feature_flag_overrides RENAME TO missing_flags")]
 );
+// The camelCase keys under a working resolver: the legacy blob fills the
+// five without a flag, and labelChanges / policyUpdates follow their flags
+// whatever the blob says. Appended last, so no earlier case moves.
+for (const raw of [
+  '{"labelChanges":false,"policyUpdates":false,"versionUpdates":false,"aiTimeout":"no","bad":true}',
+  '{"aiTimeout":false,"importCompleted":false,"profileMismatch":true}',
+  "[false]",
+  "broken",
+]) {
+  await run(
+    `prefs blob under the flags ${raw}`,
+    "/api/notification-prefs",
+    "",
+    [
+      setting("notification_prefs", raw),
+      flag("notifications.types.label_changes", "on"),
+      flag("notifications.types.policy_updates", "on"),
+    ]
+  );
+}
 
 writeFileSync(
   new URL("../tests/fixtures/content-cases.json", import.meta.url),

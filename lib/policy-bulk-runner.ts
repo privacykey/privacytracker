@@ -99,7 +99,9 @@ function classifyOutcome(
 /**
  * Detect "throttle hit, returned prior state" by looking at the last
  * entry in the analysis's run log. Copied from the original route so
- * resumed and streamed runs classify the same way.
+ * resumed and streamed runs classify the same way. The store returns a
+ * throttled analysis as the row stands after the skip, so the last entry
+ * is the skip's own `throttled` line.
  */
 function wasThrottled(lastRunLog: unknown): boolean {
   if (!Array.isArray(lastRunLog) || lastRunLog.length === 0) {
@@ -203,6 +205,11 @@ export async function runBulkPolicySync(
   let state: PolicyBulkState;
   if (options.resumeState) {
     state = options.resumeState;
+    // The blob still names whoever started the run. Record who runs it
+    // now, before the first write: the resume summary and audit action
+    // and TaskCenter's card all read `initiator`, and a resumed run that
+    // kept 'manual' or 'automatic' was never labelled as one.
+    state.initiator = options.initiator;
     // Flip any `in_progress` entries back to `pending` — those were the
     // app(s) mid-flight when the previous process died. We'll redo them.
     for (const entry of state.queue) {

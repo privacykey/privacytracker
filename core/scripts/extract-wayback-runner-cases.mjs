@@ -938,6 +938,19 @@ try {
     ],
     replies: emptyRun(F1),
   });
+
+  // ── Appended last: each case takes the next forwarded address, so a
+  // case added in the middle would shift every later case's headers. ──
+  // A queue a restart had resumed, since parked: the user's Resume queue
+  // makes it their run again, "manual" rather than "resume".
+  await run("control resume a paused queue a restart had resumed", {
+    route,
+    method: "PATCH",
+    setup: [...fleet, paused({ initiator: "resume" })],
+    json: { action: "resume" },
+    replies: emptyRun(F2),
+    awaitRun: true,
+  });
 } finally {
   db.close();
   rmSync(dir, { recursive: true, force: true });

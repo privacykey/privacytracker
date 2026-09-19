@@ -22,6 +22,12 @@ tauri-plugin-shell = "2"
 # Updater is wired up so we don't have to add it later. The release CI signs
 # update manifests with an ed25519 key whose public half ships in tauri.conf.json.
 tauri-plugin-updater = "2"
+# Backs relaunch() from @tauri-apps/plugin-process, which lib/tauri-updater.ts
+# calls once the updater has installed a new version. Without it the relaunch
+# is rejected and a finished install reads as a failure. The capability grants
+# restart only (process:allow-restart). Keep it on the npm package's major and
+# minor: the tauri CLI refuses to build when the two drift apart.
+tauri-plugin-process = "2"
 # "Start at login" + "launch hidden in tray" both live behind this plugin. It
 # writes a LaunchAgent plist on macOS and a Run registry key on Windows. We
 # pass CLI args ("--hidden") that main.rs honours to know which boot path it's on.

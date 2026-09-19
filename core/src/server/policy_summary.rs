@@ -4,7 +4,8 @@
 //! - `summariseStoredPolicy`: nothing to do when the stored summary is
 //!   current, an imported excerpt, or not a clean source; the needs-config
 //!   row when no provider is set; otherwise the summary, stored with the
-//!   one it replaces, or the error it failed with.
+//!   one it replaces, or the error it failed with, stored beside the
+//!   summary it was replacing.
 //! - `buildPolicySummary`: one call when the policy fits the model's
 //!   direct limit; otherwise the policy in chunks, each chunk's notes
 //!   stored as soon as they arrive (so a run that dies at the merge
@@ -22,8 +23,9 @@ use super::{
     policy::{normalize_policy_summary, parse_stored_chunk_notes},
     policy_ai::{call_ai_json, get_ai_runtime_config, AiCall},
     policy_store::{
-        col, hydrate, persist, read_row, setting, sha256_hex, source_origin, sync_policy_analysis,
-        FollowUps, Persist, Phase, PolicyRequest, RunLogger, SyncOptions, DELETE_PLACEHOLDER,
+        analysis_mode, col, hydrate, persist, read_row, setting, sha256_hex, source_origin,
+        sync_policy_analysis, FollowUps, Persist, Phase, PolicyRequest, RunLogger, SyncOptions,
+        DELETE_PLACEHOLDER,
     },
     sync_runner::Clock,
 };
@@ -97,11 +99,11 @@ fn persist_from(
                 source_origin: source_origin(&col(existing, "source_origin")),
                 source_final_url: col(existing, "source_final_url"),
                 content_hash: col(existing, "content_hash"),
-                analysis_mode: fields.analysis_mode.map_or(Value::Null, |m| json!(m)),
-                summary_json: fields.summary_json.map_or(Value::Null, |s| json!(s)),
+                analysis_mode: fields.analysis_mode,
+                summary_json: fields.summary_json,
                 previous_summary_json: fields.previous_summary_json,
                 previous_summary_at: fields.previous_summary_at,
-                model: fields.model.map_or(Value::Null, |m| json!(m)),
+                model: fields.model,
                 error: fields.error.map_or(Value::Null, |e| json!(e)),
                 source_fetched_at: fetched_at,
             },
@@ -112,14 +114,15 @@ fn persist_from(
     })
 }
 
-/// What a summarise-phase write sets; the rest is the stored source.
+/// What a summarise-phase write sets, each column the value bound; the
+/// rest is the stored source.
 struct SummaryFields {
     status: &'static str,
-    analysis_mode: Option<&'static str>,
-    summary_json: Option<String>,
+    analysis_mode: Value,
+    summary_json: Value,
     previous_summary_json: Value,
     previous_summary_at: Value,
-    model: Option<String>,
+    model: Value,
     error: Option<String>,
 }
 
@@ -214,9 +217,10 @@ async fn summarise(
         );
         return Ok((hydrated(log, &existing)?, FollowUps::default()));
     }
-    // `canSummariseStoredPolicy`: a clean capture with no summary of its
-    // own (waiting for one, or after a summary run that found no provider
-    // or failed), or on a forced run one already summarised.
+    // `canSummariseStoredPolicy`: a clean capture whose summary is owed
+    // (waiting for one, or after a summary run that found no provider or
+    // failed, whether or not the failed run kept an earlier summary), or
+    // on a forced run one already summarised.
     let can_summarise = status == "source_ready"
         || status == "needs_ai_config"
         || status == "analysis_error"
@@ -243,11 +247,11 @@ async fn summarise(
             policy_url,
             SummaryFields {
                 status: "needs_ai_config",
-                analysis_mode: None,
-                summary_json: None,
+                analysis_mode: Value::Null,
+                summary_json: Value::Null,
                 previous_summary_json: col(Some(&existing), "previous_summary_json"),
                 previous_summary_at: col(Some(&existing), "previous_summary_at"),
-                model: None,
+                model: Value::Null,
                 error: Some(NEEDS_CONFIG_ERROR.to_string()),
             },
             now,
@@ -290,20 +294,19 @@ async fn summarise(
     let analysis = match built {
         Ok((summary, mode)) => {
             log.end_phase(Some(format!("Summary ready ({mode}).")), None);
-            // `existing.previous_summary_json ?? existing.summary_json ?? null`
-            // and its time: a summarise run on its own promotes the current
-            // summary to the previous one.
-            let previous_summary_json = defined(col(Some(&existing), "previous_summary_json"))
-                .or_else(|| defined(col(Some(&existing), "summary_json")))
+            // `existing.summary_json ?? existing.previous_summary_json ?? null`
+            // and its time, the fetch phase's rule: the summary this run
+            // replaces, which is the row's own when it has one (a forced
+            // resummarise, or the summary a failed run kept) and otherwise
+            // the one a fetch of new text already moved aside.
+            let previous_summary_json = defined(col(Some(&existing), "summary_json"))
+                .or_else(|| defined(col(Some(&existing), "previous_summary_json")))
                 .unwrap_or(Value::Null);
-            let previous_summary_at = defined(col(Some(&existing), "previous_summary_at"))
-                .unwrap_or_else(|| {
-                    if has_summary {
-                        col(Some(&existing), "updated_at")
-                    } else {
-                        Value::Null
-                    }
-                });
+            let previous_summary_at = if has_summary {
+                col(Some(&existing), "updated_at")
+            } else {
+                col(Some(&existing), "previous_summary_at")
+            };
             persist_from(
                 log,
                 &existing,
@@ -311,11 +314,11 @@ async fn summarise(
                 policy_url,
                 SummaryFields {
                     status: "ready",
-                    analysis_mode: Some(mode),
-                    summary_json: Some(summary.to_string()),
+                    analysis_mode: json!(mode),
+                    summary_json: json!(summary.to_string()),
                     previous_summary_json,
                     previous_summary_at,
-                    model: Some(config.model.clone()),
+                    model: json!(config.model),
                     error: None,
                 },
                 now,
@@ -323,6 +326,10 @@ async fn summarise(
         }
         Err(message) => {
             log.end_phase(None, Some(message.clone()));
+            // A failed run replaces nothing: the summary stays, with the
+            // mode and model that made it, as a failed fetch keeps its
+            // summary. With no summary to keep, the row names the model
+            // that failed.
             persist_from(
                 log,
                 &existing,
@@ -330,11 +337,19 @@ async fn summarise(
                 policy_url,
                 SummaryFields {
                     status: "analysis_error",
-                    analysis_mode: None,
-                    summary_json: None,
+                    analysis_mode: if has_summary {
+                        analysis_mode(&col(Some(&existing), "analysis_mode"))
+                    } else {
+                        Value::Null
+                    },
+                    summary_json: col(Some(&existing), "summary_json"),
                     previous_summary_json: col(Some(&existing), "previous_summary_json"),
                     previous_summary_at: col(Some(&existing), "previous_summary_at"),
-                    model: Some(config.model.clone()),
+                    model: if has_summary {
+                        col(Some(&existing), "model")
+                    } else {
+                        json!(config.model)
+                    },
                     error: Some(message),
                 },
                 now,

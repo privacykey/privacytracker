@@ -1363,6 +1363,53 @@ try {
     json: { appId: APP, phase: "summarise", stream: true },
   });
 
+  // ── The scrape throttle, and the tab's clicks that pass it ──
+  // Appended after every other case: each case takes the next forwarded
+  // address, so one added earlier would move every case after it. The row
+  // was fetched ten minutes ago, inside the default sixty-minute throttle.
+  // The AI Policy tab sends `bypassThrottle: true`; onboarding's policy step
+  // and API callers send nothing and keep the throttle.
+  const recentReady = () =>
+    analysis({
+      status: "ready",
+      source_text: V1,
+      summary_json: JSON.stringify({ overview: "An older summary." }),
+      model: "gpt-4.1-mini",
+      updated_at: BASE_NOW - 10 * MIN,
+      source_fetched_at: BASE_NOW - 10 * MIN,
+    });
+  await route(
+    "regenerate: a bypass that is not the boolean true keeps the throttle",
+    {
+      route: REGEN,
+      setup: [app(), recentReady()],
+      json: { appId: APP, phase: "fetch", bypassThrottle: "true" },
+    }
+  );
+  await route("regenerate: a rescrape from the tab passes the throttle", {
+    route: REGEN,
+    setup: [app(), recentReady()],
+    json: { appId: APP, phase: "fetch", bypassThrottle: true },
+    replies: [plain(V1), AVAIL_NONE, SAVE_OK],
+  });
+  await route(
+    "regenerate: stream a rescrape and summary that passes the throttle",
+    {
+      route: REGEN,
+      setup: [app(), recentReady(), ...aiSettings()],
+      json: { appId: APP, stream: true, bypassThrottle: true },
+      replies: [plain(V1), AVAIL_NONE, SAVE_OK, openaiJson(MODEL_SUMMARY)],
+    }
+  );
+  await route(
+    "regenerate: the kill-switch refuses a fetch that bypasses the throttle",
+    {
+      route: REGEN,
+      setup: [app(), recentReady(), setting("policy_scrape_disabled", "true")],
+      json: { appId: APP, phase: "fetch", bypassThrottle: true },
+    }
+  );
+
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;
   const stray = text
     .match(

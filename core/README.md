@@ -1220,7 +1220,10 @@ arbitrary JSON details (including JavaScript number precision and key order).
 Notifications limit to 30 rows before applying the four resolved type flags,
 include synthetic rows, respect quiet-hours deferral, and count all eligible
 unread rows. Their malformed-JSON error path matches Next's empty HTTP 500.
-Preferences use the same resolver and legacy stored-boolean fallback.
+Preferences answer the four resolved flags, then the seven camelCase types
+Settings and the bell read: the legacy blob over the defaults, with label
+changes and policy updates taken from their flags. They fall back to the
+legacy stored booleans alone when the resolver throws.
 
 User tasks derive completion from existing profile, verdict, visit, history,
 sync-schedule and device-resync facts. Focus/workflow inclusion, opt-in
@@ -1820,8 +1823,10 @@ API key; a masked webhook value round-trips untouched, and `configured`
 with nothing stored is an invalid URL. The desktop route applies both
 the short and the legacy key when a body carries both, and skips a value
 it will not store rather than refusing. `/api/notification-prefs`
-projects four booleans onto flag overrides and, when the resolver throws
-on a garbage audience, answers from the legacy blob instead. The focus
+projects four booleans onto flag overrides, reading `labelChanges` and
+`policyUpdates` (what Settings sends) when the snake_case key is not a
+boolean, and, when the resolver throws on a garbage audience, answers
+from the legacy blob instead. The focus
 write is one transaction of seven rows; the profile and layout writes
 record an activity row only across a preset boundary, with the previous
 state read before the write. The override clear with `?surface=` (empty)
@@ -2194,7 +2199,7 @@ closure. Cooperative control mid-run is exercised through the network
 stub: a case's `hooks` name a fetch at which the stub first calls the
 PATCH route — a cancel then aborts that request, reported the way `fetch`
 reports an aborted one — or, with `afterMs`, a moment after the reply is
-served, during the backoff sleep. 45 cases: the POST busy on the mutex
+served, during the backoff sleep. 46 cases: the POST busy on the mutex
 and on a leftover blob, over no apps, over two apps, throttled once
 (backoff, retry) and twice (paused), with one app failing, forced over a
 paused queue, a stale lock and a running one, cancelled mid-run, the
@@ -2202,7 +2207,10 @@ overwritten pause and the backoff-window pause, and the burst; the same
 run streamed, streamed and cancelled, streamed and throttled; every PATCH
 branch; the DELETE; and the resume over nothing, a paused queue, a
 pending pause, a cancelled queue, a stale lock, a finished queue, a
-crashed run (the in-flight app redone) and a queue naming a deleted app.
+crashed run (the in-flight app redone) and a queue naming a deleted app;
+and, appended with the fix that records a resumed run's initiator, the
+PATCH resume of a queue a restart had resumed, which is the user's run
+again (`manual`, not `resume`).
 `core/src/server/wayback_runner_tests.rs` replays each through a shared
 id counter and a hooked fetcher that issues the same PATCH at the same
 fetch (stalling a cancelled request as an aborted one never returns) and
@@ -3116,7 +3124,12 @@ policy-updates toggle on, flags its History row for review and raises a
 bell notification: #271's rules, recorded from the fixed Node. With
 policy scraping switched off, a first run drops the placeholder, returns
 no analysis and logs a skip rather than a failure, as the fixed Node
-does. Nothing outside the replay calls the store yet. Batch 3 routes
+does. The kill-switch over a stored analysis and the throttle return the
+row as it stands after their own log line, read again if their write is
+refused. Both used to return it as read before that line, with the
+previous run's log, so batch 4a's bulk runner counted an app skipped
+after a fetch as a success; Node and the core were fixed together.
+Nothing outside the replay calls the store yet. Batch 3 routes
 `POST /api/policy/regenerate`, and batch 4 the bulk runner and the
 triggers.
 
@@ -3169,7 +3182,7 @@ spelled as JavaScript spells them and integer-like keys first. The
 attribution is in `core/V8-LICENSE`.
 
 **The oracle — `core/scripts/extract-policy-store-cases.mjs`.** Runs the
-REAL fetch phase of `syncPrivacyPolicyAnalysis` over 34 scenarios and
+REAL fetch phase of `syncPrivacyPolicyAnalysis` over 36 scenarios and
 the REAL five route handlers over 35 requests, against a scratch
 database with a frozen clock, counted ids and the raw `fetch` stubbed by
 recorded replies, never the network. Recorded per case: every raw fetch
@@ -3197,15 +3210,17 @@ throws on the foreign key before any write; a corrupt latest snapshot
 a reset connection with its hint and an out-of-range entity; an
 unusable body and an unsupported content type; the kill-switch on a
 first fetch, over a stored summary, and overridden by `bypassThrottle`;
-and the throttle skipping, rounding its minutes, honouring its setting,
-off for minutes that are not positive and when disabled, holding only a
-ready analysis, elapsed, and facing a fetch time in the future. The
-route cases cover each read found, missing and refused, each rate
-limit, the diff of a one-word edit, an appended line, a changed last
-line, a long policy truncated and a first version with nothing before
-it, a manual version asked for under another app, and the scrape's
-first capture, same text, changed text, unusable page, fetch failure,
-refused URL, missing URL, unknown app, long id and limit.
+the throttle skipping, rounding its minutes, honouring its setting, off
+for minutes that are not positive and when disabled, holding only a
+ready analysis, elapsed, and facing a fetch time in the future; and the
+kill-switch and the throttle with their write refused, which a trigger
+does while the run log's own update lands. The route cases cover each
+read found, missing and refused, each rate limit, the diff of a
+one-word edit, an appended line, a changed last line, a long policy
+truncated and a first version with nothing before it, a manual version
+asked for under another app, and the scrape's first capture, same text,
+changed text, unusable page, fetch failure, refused URL, missing URL,
+unknown app, long id and limit.
 
 **The clock moves with the network.** Each fetch the code awaits
 advances the frozen clock one second, so a timestamp Node takes before a
@@ -3239,12 +3254,10 @@ on; the oracle holds that path.
 is still `running`, because Node clears the marker in a `finally` after
 building the value. It is the row as written, so a log event written
 after it is on the stored row but not in the value: the error branches
-return no History event, and the kill-switch and the throttle return
-the log from before their own line. The backfill's "Seeded previous
-policy text" note is logged on every changed rescrape, including when
-the earlier text already had its version and the upsert only touched
-it. A throttled skip's activity row says "Policy source fetched
-(cached)".
+return no History event. The backfill's "Seeded previous policy text"
+note is logged on every changed rescrape, including when the earlier
+text already had its version and the upsert only touched it. A
+throttled skip's activity row says "Policy source fetched (cached)".
 
 **Negative controls, predicted before running.** The fetch-error branch
 hydrating a fresh read instead of the row it wrote: exactly the four
@@ -3279,7 +3292,8 @@ landed a clean new source. The summarise phase is
 summary that is current, an audit-bundle excerpt or anything but a clean
 source, writes the needs-config row when no provider is set, and
 otherwise stores the summary with the one it replaces, or the error it
-failed with. `buildPolicySummary` sends a policy that fits the model's
+failed with beside the summary it was replacing. `buildPolicySummary`
+sends a policy that fits the model's
 direct limit in one call (40,000 characters, or 8,000 for a model that
 needs chunks) and otherwise cuts it into chunks, stores each chunk's
 notes the moment they arrive, reuses them when a retried run finds them
@@ -3325,7 +3339,7 @@ before it. Prompt nonces come from `Ids::nonce`, the system's random
 bytes in production and the oracle's counter in the replay.
 
 **The oracle — `core/scripts/extract-policy-summary-cases.mjs`.** Runs
-the REAL summarise and `all` phases over 75 scenarios, the sample
+the REAL summarise and `all` phases over 80 scenarios, the sample
 summary over four and the prompt preview over two, against a scratch
 database with a frozen clock, counted ids and nonces, and every provider
 reply canned: an OpenAI completion, a custom endpoint's event stream in
@@ -3333,7 +3347,7 @@ the recorded chunks, an Anthropic message. The shapes are the providers'
 documented formats; there is no key to capture live ones with. Recorded
 per case: every raw fetch with its headers and body, every write in
 order, seven tables, and the result or the thrown message.
-`core/src/server/policy_summary_tests.rs` replays all 81, each body
+`core/src/server/policy_summary_tests.rs` replays all 86, each body
 reaching the reader in the recorded chunks. CI regenerates the fixture
 and fails on drift ("Policy summariser oracle is current").
 
@@ -3376,6 +3390,28 @@ The cases: a failed AI summary summarised again, forced and unforced,
 and failing again with its own error; one that met no provider,
 summarised once one is set up, and an unforced run that still finds
 none; and a summary with scraping disabled, which does not stop it.
+
+A summary run that fails replaces nothing: the error is stored beside
+the summary the run was replacing, with the mode and model that made
+it, as the fixed Node does. Node used to store no summary and keep only
+the older previous one, so a failed Summarise lost the summary on the AI
+Policy tab. With no summary to keep, the row still names the model that
+failed. And the summary a run replaces now becomes the previous one even
+when an older one is stored, the fetch phase's rule: a forced
+resummarise, and the first run to work after a failure, used to keep
+the older one and drop the summary the tab showed. A failed run's
+status still asks for a summary, so the next summarise makes one,
+forced or not, and a later fetch that finds the text unchanged is a
+cache hit that makes the kept summary ready again. The cases: a failed
+forced resummarise, a forced resummarise over an older previous
+summary, the next summary after a failure, forced and unforced, and an
+unchanged fetch after a failure. One earlier case moves, by design: a
+source waiting for a summary that held both a summary and an older one
+kept the older one as the previous (it was "a stored previous summary
+is kept over the current one"). It now records the summary it
+replaces, and is renamed for it. The control on the previous summary's
+time below now fails five cases, not one: every run that replaces a
+summary of its own.
 
 **Node's behaviour, kept.** A refusal is caught by the `try` it is
 thrown in, so it is logged twice and its debug row is inserted twice,
@@ -3427,7 +3463,10 @@ model-list routes that sit beside it:
   with the message, each with its audit row. On the server the streamed
   run is spawned off the request with an owned accessor, id source,
   fetcher and clock, and its lines go out as they come. A client that
-  goes away does not stop the run, as in Node.
+  goes away does not stop the run, as in Node. The run passes the scrape
+  throttle only when the body's `bypassThrottle` is the boolean `true`,
+  which the AI Policy tab sends and onboarding's policy step does not;
+  the kill-switch refuses a fetch either way.
 - `POST /api/ai/policy-sample`: six a minute; the provider; the model
   (trimmed, at most 200 UTF-16 units); the key, where Settings' mask
   `__SET__` stands for the stored one; the base URL normalised and
@@ -3453,8 +3492,8 @@ message rather than `terminated`, as the streamed read already did; the
 recording caught it.
 
 **The oracle — `core/scripts/extract-ai-routes-cases.mjs`.** Runs the
-four REAL route handlers over 123 requests built as the browser sends
-them (27 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
+four REAL route handlers over 127 requests built as the browser sends
+them (31 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
 provider replies canned in the documented formats, a frozen clock that
 each awaited fetch moves on, counted ids and nonces, and Save Page Now
 held until the response is complete. Recorded per case: the response
@@ -3485,6 +3524,12 @@ redirect; and regenerate refused, summarised, fetched, both, streamed (a
 summary, a failed fetch, a capture and its summary, a chunked summary,
 two timeouts) and failing where the run marker is refused, whole and
 streamed.
+
+Four cases cover the scrape throttle, on a policy fetched ten minutes
+ago: a `bypassThrottle` that is not the boolean `true` keeps it; the AI
+Policy tab's rescrape passes it, answered whole, and so does its
+rescrape and summary, streamed; and the kill-switch refuses a fetch
+that bypasses it.
 
 **The live gate.** `scripts/parity/ai-probes.mjs`, under `--mutate`,
 starts a fake provider on loopback that answers the OpenAI-compatible
@@ -3584,18 +3629,18 @@ refused with a `Retry-After` on both. A run itself would fetch every
 tracked app's developer site, which a parity run must not depend on, so
 it stays with the oracle.
 
-**Node's behaviour, kept, and two bugs filed.** Each bug has its own
-follow-up to fix Node and the core together. A throttled app is never
-counted as throttled: the analysis the store returns carries the log from
-before its own `throttled` line, so the runner's check of the last entry
-fails and the app counts as succeeded, and every summary says 0
-throttled. And a resumed run keeps the blob's original initiator, so
-`state.initiator === "resume"` is never true for a real resume, in this
-runner or the other two: TaskCenter's "Resumed after restart" card and
-the Wayback section's pill never appear, and "(resumed after restart)"
-never reaches the activity log. Also kept: a blob that does not parse is
-left in place when the resume heals a stale lock, since it is not a
-state.
+A throttled app counts as throttled, as the fixed Node does. The runner
+tells one by the last line of the returned run log, and the store used
+to return the row as read before its own `throttled` line (batch 2),
+with the previous run's log: an app skipped after a fetch counted as
+succeeded, and only a second skip in a row counted as throttled. The
+buffered and streamed fleet runs are re-recorded: charlie Chat's
+`app-done` says `throttled: true`, and the totals, the state blob, the
+activity row and the audit row count one success and one throttled app
+where they counted two successes. The runner itself is unchanged.
+
+**Node's behaviour, kept.** A blob that does not parse is left in place
+when the resume heals a stale lock, since it is not a state.
 
 **Negative controls, predicted before running.** The two skip reasons
 swapped: exactly the resumed-queue case. No `attempted` count: exactly

@@ -859,11 +859,13 @@ fn ndjson_response(body: Body) -> Response {
 }
 
 /// What the route found before any run: the refusal, or the request to
-/// run with its phase and whether to stream.
+/// run with its phase, whether to stream and whether it passes the scrape
+/// throttle.
 struct Ready {
     app_id: String,
     phase: Phase,
     stream: bool,
+    bypass_throttle: bool,
     request: PolicyRequest,
 }
 
@@ -888,6 +890,10 @@ fn prepare(w: &mut Writer, body: BodyOutcome) -> Result<Result<Ready, Response>,
         _ => Phase::All,
     };
     let stream = prop(&body, "stream") == Some(&Value::Bool(true));
+    // Only the AI Policy tab's clicks ask, and only the boolean `true`
+    // counts. The kill-switch below refuses a fetch either way; the store's
+    // own gate would let a bypass through.
+    let bypass_throttle = prop(&body, "bypassThrottle") == Some(&Value::Bool(true));
     if phase != Phase::Summarise
         && get_setting_with(w.conn, "policy_scrape_disabled", "false").map_err(|e| e.to_string())?
             == "true"
@@ -928,6 +934,7 @@ fn prepare(w: &mut Writer, body: BodyOutcome) -> Result<Result<Ready, Response>,
         app_id,
         phase,
         stream,
+        bypass_throttle,
         request: PolicyRequest {
             app_id: id,
             app_name: name.unwrap_or_default(),
@@ -938,12 +945,13 @@ fn prepare(w: &mut Writer, body: BodyOutcome) -> Result<Result<Ready, Response>,
 }
 
 /// The options the route runs with: an explicit regenerate always wants
-/// fresh work and a fresh summary.
-fn options(phase: Phase) -> SyncOptions {
+/// fresh work and a fresh summary, and passes the scrape throttle when the
+/// body asks.
+fn options(phase: Phase, bypass_throttle: bool) -> SyncOptions {
     SyncOptions {
         phase,
         force_resummarise: true,
-        bypass_throttle: false,
+        bypass_throttle,
     }
 }
 
@@ -1038,7 +1046,7 @@ async fn regenerate(
         fetcher,
         &*clock,
         &ready.request,
-        options(ready.phase),
+        options(ready.phase, ready.bypass_throttle),
     )
     .await;
     match synced {
@@ -1090,7 +1098,7 @@ async fn stream_run(
             fetcher,
             clock,
             &ready.request,
-            options(ready.phase),
+            options(ready.phase, ready.bypass_throttle),
             Some(&mut sink),
         )
         .await

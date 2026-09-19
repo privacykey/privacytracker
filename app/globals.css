@@ -27298,6 +27298,16 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   color: var(--accent-error, #ef4444);
 }
 
+/* Installed, but the automatic relaunch failed. Not an error: the update is
+   on disk and a restart finishes it, so plain text colour, not the red. */
+.update-banner__notice {
+  flex-basis: 100%;
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
 @media (max-width: 640px) {
   .update-banner__inner {
     padding: 10px 14px;
@@ -27325,7 +27335,8 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   .update-banner__label,
   .update-banner__summary,
   .update-banner__link,
-  .update-banner__cmd {
+  .update-banner__cmd,
+  .update-banner__notice {
     color: CanvasText;
   }
 }

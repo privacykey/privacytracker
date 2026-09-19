@@ -319,6 +319,9 @@ pub(crate) async fn run_bulk_policy_sync(
     let mut follow_ups = vec![];
     let mut state: Value = match options.resume_state.clone() {
         Some(mut state) => {
+            // The blob still names whoever started the run; record who runs
+            // it now, before the first write, so a resume reads as one.
+            set(&mut state, "initiator", json!(options.initiator));
             if let Some(queue) = state["queue"].as_array_mut() {
                 for entry in queue {
                     if get(entry, "status") == Some(&json!("in_progress")) {

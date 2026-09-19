@@ -18,7 +18,6 @@ use super::{
     activity_log::record_activity,
     auth::{admin_token_configured, request_has_valid_admin_token},
     body::{body_error_response, BodyOutcome},
-    flags::{context_from_db, resolve_flag},
     guard::{actor_from, record_audit, require_mutation_guard, Actor, AdminRule, GuardOptions},
     json::{json_error, json_ok, json_response},
     layout::{match_dashboard_preset, presets, read_layout, reconcile_layout, Layout},
@@ -34,6 +33,7 @@ use super::{
     settings::get_setting_with,
     stats::truthy,
     trust::is_network_exposed,
+    user_content::{enabled_types, notification_alias, resolved_notification_prefs},
     webhook::mask_webhook_url,
 };
 use crate::{
@@ -1895,28 +1895,20 @@ fn sanitize_prefs(input: &Value) -> Map<String, Value> {
     out
 }
 
-/// `readResolvedPrefs`: the four flags through the resolver, or the
-/// legacy blob when the resolver throws.
+/// `readResolvedPrefs`: the four flags through the resolver followed by
+/// the seven camelCase keys, or the legacy blob alone when the resolver
+/// throws.
 fn resolved_prefs(cx: &Cx) -> Value {
-    let resolved = context_from_db(cx.w.conn).ok().and_then(|ctx| {
-        let mut out = Map::new();
-        for (kind, flag) in NOTIFICATION_FLAGS {
-            out.insert(
-                kind.to_string(),
-                json!(resolve_flag(flag, &ctx).ok()? == "on"),
-            );
-        }
-        Some(Value::Object(out))
-    });
-    resolved.unwrap_or_else(|| {
-        let raw = cx.get("notification_prefs", "");
-        let parsed = if raw.is_empty() {
-            Value::Null
-        } else {
-            serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null)
-        };
-        Value::Object(sanitize_prefs(&parsed))
-    })
+    let raw = cx.get("notification_prefs", "");
+    let parsed = if raw.is_empty() {
+        Value::Null
+    } else {
+        serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null)
+    };
+    match enabled_types(cx.w.conn) {
+        Ok(enabled) => resolved_notification_prefs(enabled, &parsed),
+        Err(_) => Value::Object(sanitize_prefs(&parsed)),
+    }
 }
 
 fn prefs_response(cx: &Cx) -> Response {
@@ -1951,8 +1943,15 @@ fn notification_prefs(cx: &mut Cx, body: BodyOutcome) -> Response {
             return Ok(());
         }
         let clean = sanitize_prefs(raw);
+        // The flag's own key wins; the camelCase alias Settings sends is
+        // read only when that key is not a boolean.
+        let boolean = |key: &str| {
+            raw.as_object()
+                .and_then(|o| o.get(key))
+                .filter(|v| v.is_boolean())
+        };
         for (kind, flag) in NOTIFICATION_FLAGS {
-            match raw.as_object().and_then(|o| o.get(kind)) {
+            match boolean(kind).or_else(|| notification_alias(kind).and_then(boolean)) {
                 Some(Value::Bool(true)) => set_override(cx, flag, "on")?,
                 Some(Value::Bool(false)) => set_override(cx, flag, "off")?,
                 _ => clear_override(cx, flag)?,

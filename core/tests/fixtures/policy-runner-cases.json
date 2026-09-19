@@ -1303,7 +1303,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473602000,\"finishedAt\":1789473603000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"ready\"}],\"totals\":{\"attempted\":3,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473602000,\"finishedAt\":1789473603000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"throttled\",\"analysisStatus\":\"ready\"}],\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":1,\"skipped\":0},\"streamRequested\":false}"
           ]
         },
         {
@@ -1314,8 +1314,8 @@
             "partial",
             null,
             null,
-            "Bulk policy scrape: 2 ok, 1 failed",
-            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
+            "Bulk policy scrape: 1 ok, 1 failed, 1 throttled",
+            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":1,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
             1789473600000,
             1789473603000,
             3000
@@ -1329,7 +1329,7 @@
             "policy.sync-all.success",
             "10.8.12.3",
             "policy-runner-oracle/1.0",
-            "phase=fetch force=0 attempted=3 ok=2 fail=1 throttled=0",
+            "phase=fetch force=0 attempted=3 ok=1 fail=1 throttled=1",
             1
           ]
         },
@@ -1671,8 +1671,8 @@
             "status": "partial",
             "app_id": null,
             "app_name": null,
-            "summary": "Bulk policy scrape: 2 ok, 1 failed",
-            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
+            "summary": "Bulk policy scrape: 1 ok, 1 failed, 1 throttled",
+            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":1,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473603000,
             "duration_ms": 3000
@@ -1695,7 +1695,7 @@
             "action": "policy.sync-all.success",
             "actor_ip": "10.8.12.3",
             "user_agent": "policy-runner-oracle/1.0",
-            "detail": "phase=fetch force=0 attempted=3 ok=2 fail=1 throttled=0",
+            "detail": "phase=fetch force=0 attempted=3 ok=1 fail=1 throttled=1",
             "success": 1
           }
         ],
@@ -1711,7 +1711,7 @@
         "type": "application/json",
         "retryAfter": null,
         "cacheControl": null,
-        "body": "{\"totals\":{\"attempted\":3,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"phase\":\"fetch\",\"force\":false,\"durationMs\":3000}"
+        "body": "{\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":1,\"skipped\":0},\"phase\":\"fetch\",\"force\":false,\"durationMs\":3000}"
       }
     },
     {
@@ -2310,7 +2310,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473602000,\"finishedAt\":1789473603000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"ready\"}],\"totals\":{\"attempted\":3,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473602000,\"finishedAt\":1789473603000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"throttled\",\"analysisStatus\":\"ready\"}],\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":1,\"skipped\":0},\"streamRequested\":true}"
           ]
         },
         {
@@ -2321,8 +2321,8 @@
             "partial",
             null,
             null,
-            "Bulk policy scrape: 2 ok, 1 failed",
-            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
+            "Bulk policy scrape: 1 ok, 1 failed, 1 throttled",
+            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":1,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
             1789473600000,
             1789473603000,
             3000
@@ -2336,7 +2336,7 @@
             "policy.sync-all.success",
             "10.8.13.3",
             "policy-runner-oracle/1.0",
-            "phase=fetch force=0 attempted=3 ok=2 fail=1 throttled=0",
+            "phase=fetch force=0 attempted=3 ok=1 fail=1 throttled=1",
             1
           ]
         },
@@ -2678,8 +2678,8 @@
             "status": "partial",
             "app_id": null,
             "app_name": null,
-            "summary": "Bulk policy scrape: 2 ok, 1 failed",
-            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
+            "summary": "Bulk policy scrape: 1 ok, 1 failed, 1 throttled",
+            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":1,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473603000,
             "duration_ms": 3000
@@ -2702,7 +2702,7 @@
             "action": "policy.sync-all.success",
             "actor_ip": "10.8.13.3",
             "user_agent": "policy-runner-oracle/1.0",
-            "detail": "phase=fetch force=0 attempted=3 ok=2 fail=1 throttled=0",
+            "detail": "phase=fetch force=0 attempted=3 ok=1 fail=1 throttled=1",
             "success": 1
           }
         ],
@@ -2718,7 +2718,7 @@
         "type": "application/x-ndjson; charset=utf-8",
         "retryAfter": null,
         "cacheControl": "no-store, no-transform",
-        "body": "{\"type\":\"batch-start\",\"total\":3,\"phase\":\"fetch\",\"force\":false,\"startedAt\":1789473600000,\"initiator\":\"manual\",\"runId\":\"00000000-0000-4000-8000-000000000002\"}\n{\"type\":\"app-start\",\"appId\":\"2000000001\",\"name\":\"Alpha Notes\",\"index\":0,\"total\":3}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Requesting alpha.example\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetch:direct-result\",\"at\":1789473601000,\"note\":\"HTTP 200\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetch:plain-text\",\"at\":1789473601000,\"note\":\"3,129 chars, no HTML follow-up.\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Fetched 502 words via direct from alpha.example.\",\"ms\":1000}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"archive-existing\",\"at\":1789473602000,\"note\":\"No existing Wayback snapshot found.\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"changelog\",\"at\":1789473602000,\"note\":\"Recorded policy first event in History.\"}}\n{\"type\":\"app-done\",\"appId\":\"2000000001\",\"name\":\"Alpha Notes\",\"status\":\"source_ready\",\"throttled\":false,\"index\":0,\"total\":3}\n{\"type\":\"app-start\",\"appId\":\"2000000002\",\"name\":\"Bravo Maps\",\"index\":1,\"total\":3}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetching\",\"at\":1789473602000,\"note\":\"Requesting bravo.example\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetch:normalize\",\"at\":1789473602000,\"note\":\"URL already in preferred language; no rewrite needed.\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetch:direct\",\"at\":1789473602000,\"note\":\"GET bravo.example\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetch:direct-result\",\"at\":1789473603000,\"note\":\"HTTP 404\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetch:direct-error\",\"at\":1789473603000,\"error\":\"HTTP 404 fetching privacy policy\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetching\",\"at\":1789473602000,\"note\":\"Requesting bravo.example\",\"ms\":1000,\"error\":\"HTTP 404 fetching privacy policy\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"changelog\",\"at\":1789473603000,\"note\":\"Recorded failed rescrape in History.\"}}\n{\"type\":\"app-done\",\"appId\":\"2000000002\",\"name\":\"Bravo Maps\",\"status\":\"fetch_error\",\"throttled\":false,\"index\":1,\"total\":3}\n{\"type\":\"app-start\",\"appId\":\"2000000003\",\"name\":\"charlie Chat\",\"index\":2,\"total\":3}\n{\"type\":\"phase\",\"appId\":\"2000000003\",\"phase\":{\"phase\":\"throttled\",\"at\":1789473603000,\"note\":\"Skipped scrape — last fetch was 10 min ago (cooldown 60 min, 50 min remaining). Disable Policy Scrape Throttle in Settings to override.\"}}\n{\"type\":\"app-done\",\"appId\":\"2000000003\",\"name\":\"charlie Chat\",\"status\":\"ready\",\"throttled\":false,\"index\":2,\"total\":3}\n{\"type\":\"summary\",\"totals\":{\"attempted\":3,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"phase\":\"fetch\",\"force\":false,\"durationMs\":3000}\n"
+        "body": "{\"type\":\"batch-start\",\"total\":3,\"phase\":\"fetch\",\"force\":false,\"startedAt\":1789473600000,\"initiator\":\"manual\",\"runId\":\"00000000-0000-4000-8000-000000000002\"}\n{\"type\":\"app-start\",\"appId\":\"2000000001\",\"name\":\"Alpha Notes\",\"index\":0,\"total\":3}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Requesting alpha.example\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetch:direct-result\",\"at\":1789473601000,\"note\":\"HTTP 200\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetch:plain-text\",\"at\":1789473601000,\"note\":\"3,129 chars, no HTML follow-up.\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Fetched 502 words via direct from alpha.example.\",\"ms\":1000}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"archive-existing\",\"at\":1789473602000,\"note\":\"No existing Wayback snapshot found.\"}}\n{\"type\":\"phase\",\"appId\":\"2000000001\",\"phase\":{\"phase\":\"changelog\",\"at\":1789473602000,\"note\":\"Recorded policy first event in History.\"}}\n{\"type\":\"app-done\",\"appId\":\"2000000001\",\"name\":\"Alpha Notes\",\"status\":\"source_ready\",\"throttled\":false,\"index\":0,\"total\":3}\n{\"type\":\"app-start\",\"appId\":\"2000000002\",\"name\":\"Bravo Maps\",\"index\":1,\"total\":3}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetching\",\"at\":1789473602000,\"note\":\"Requesting bravo.example\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetch:normalize\",\"at\":1789473602000,\"note\":\"URL already in preferred language; no rewrite needed.\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetch:direct\",\"at\":1789473602000,\"note\":\"GET bravo.example\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetch:direct-result\",\"at\":1789473603000,\"note\":\"HTTP 404\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetch:direct-error\",\"at\":1789473603000,\"error\":\"HTTP 404 fetching privacy policy\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"fetching\",\"at\":1789473602000,\"note\":\"Requesting bravo.example\",\"ms\":1000,\"error\":\"HTTP 404 fetching privacy policy\"}}\n{\"type\":\"phase\",\"appId\":\"2000000002\",\"phase\":{\"phase\":\"changelog\",\"at\":1789473603000,\"note\":\"Recorded failed rescrape in History.\"}}\n{\"type\":\"app-done\",\"appId\":\"2000000002\",\"name\":\"Bravo Maps\",\"status\":\"fetch_error\",\"throttled\":false,\"index\":1,\"total\":3}\n{\"type\":\"app-start\",\"appId\":\"2000000003\",\"name\":\"charlie Chat\",\"index\":2,\"total\":3}\n{\"type\":\"phase\",\"appId\":\"2000000003\",\"phase\":{\"phase\":\"throttled\",\"at\":1789473603000,\"note\":\"Skipped scrape — last fetch was 10 min ago (cooldown 60 min, 50 min remaining). Disable Policy Scrape Throttle in Settings to override.\"}}\n{\"type\":\"app-done\",\"appId\":\"2000000003\",\"name\":\"charlie Chat\",\"status\":\"ready\",\"throttled\":true,\"index\":2,\"total\":3}\n{\"type\":\"summary\",\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":1,\"skipped\":0},\"phase\":\"fetch\",\"force\":false,\"durationMs\":3000}\n"
       }
     },
     {
@@ -8385,14 +8385,14 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000002\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"pending\",\"startedAt\":1789470800000},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000002\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"pending\",\"startedAt\":1789470800000},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000002\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000002\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
           ]
         },
         {
@@ -8512,14 +8512,14 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473601000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473601000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473601000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000003\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473601000},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":4,\"succeeded\":1,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473601000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000003\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473601000},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":4,\"succeeded\":1,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
           ]
         },
         {
@@ -8663,35 +8663,35 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":4,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":4,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000004\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473603000},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":5,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000004\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473603000},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":5,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":true}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":5,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":1},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":5,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":1},\"streamRequested\":true}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000099\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473603000}],\"totals\":{\"attempted\":6,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":1},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000099\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473603000}],\"totals\":{\"attempted\":6,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":1},\"streamRequested\":true}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"skipped\"}],\"totals\":{\"attempted\":6,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":2},\"streamRequested\":true}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473603000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789470600000,\"finishedAt\":1789470700000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473601000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473603000,\"finishedAt\":1789473603000,\"outcome\":\"skipped\"}],\"totals\":{\"attempted\":6,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":2},\"streamRequested\":true}"
           ]
         },
         {
@@ -8702,8 +8702,8 @@
             "partial",
             null,
             null,
-            "Bulk policy scrape: 2 ok, 1 failed, 2 skipped",
-            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":6,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":2},\"runId\":\"run-fixture-1\"}",
+            "Bulk policy scrape: 2 ok, 1 failed, 2 skipped (resumed after restart)",
+            "{\"mode\":\"bulk-resumed\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":6,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":2},\"runId\":\"run-fixture-1\"}",
             1789470000000,
             1789473603000,
             3603000
@@ -8714,7 +8714,7 @@
           "params": [
             "00000000-0000-4000-8000-000000000009",
             1789473603000,
-            "policy.sync-all.success",
+            "policy.sync-all.resumed.success",
             "",
             "",
             "phase=fetch force=0 attempted=6 ok=2 fail=1 throttled=0",
@@ -9045,8 +9045,8 @@
             "status": "partial",
             "app_id": null,
             "app_name": null,
-            "summary": "Bulk policy scrape: 2 ok, 1 failed, 2 skipped",
-            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":6,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":2},\"runId\":\"run-fixture-1\"}",
+            "summary": "Bulk policy scrape: 2 ok, 1 failed, 2 skipped (resumed after restart)",
+            "detail": "{\"mode\":\"bulk-resumed\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":6,\"succeeded\":2,\"failed\":1,\"throttled\":0,\"skipped\":2},\"runId\":\"run-fixture-1\"}",
             "started_at": 1789470000000,
             "ended_at": 1789473603000,
             "duration_ms": 3603000
@@ -9057,7 +9057,7 @@
           {
             "id": "00000000-0000-4000-8000-000000000009",
             "created_at": 1789473603000,
-            "action": "policy.sync-all.success",
+            "action": "policy.sync-all.resumed.success",
             "actor_ip": "",
             "user_agent": "",
             "detail": "phase=fetch force=0 attempted=6 ok=2 fail=1 throttled=0",
@@ -9267,14 +9267,14 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"phase\":\"all\",\"force\":true,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":0,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"all\",\"force\":true,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":0,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"phase\":\"all\",\"force\":true,\"currentAppId\":\"2000000001\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"all\",\"force\":true,\"currentAppId\":\"2000000001\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
           ]
         },
         {
@@ -9463,7 +9463,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473603000,\"phase\":\"all\",\"force\":true,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"ready\"}],\"totals\":{\"attempted\":1,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473603000,\"phase\":\"all\",\"force\":true,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473603000,\"outcome\":\"succeeded\",\"analysisStatus\":\"ready\"}],\"totals\":{\"attempted\":1,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
           ]
         },
         {
@@ -9474,8 +9474,8 @@
             "ok",
             null,
             null,
-            "Bulk policy summarise: 1 ok",
-            "{\"mode\":\"bulk\",\"phase\":\"all\",\"force\":true,\"totals\":{\"attempted\":1,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"runId\":\"run-fixture-1\"}",
+            "Bulk policy summarise: 1 ok (resumed after restart)",
+            "{\"mode\":\"bulk-resumed\",\"phase\":\"all\",\"force\":true,\"totals\":{\"attempted\":1,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"runId\":\"run-fixture-1\"}",
             1789470000000,
             1789473603000,
             3603000
@@ -9486,7 +9486,7 @@
           "params": [
             "00000000-0000-4000-8000-000000000011",
             1789473603000,
-            "policy.sync-all.success",
+            "policy.sync-all.resumed.success",
             "",
             "",
             "phase=all force=1 attempted=1 ok=1 fail=0 throttled=0",
@@ -9663,8 +9663,8 @@
             "status": "ok",
             "app_id": null,
             "app_name": null,
-            "summary": "Bulk policy summarise: 1 ok",
-            "detail": "{\"mode\":\"bulk\",\"phase\":\"all\",\"force\":true,\"totals\":{\"attempted\":1,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"runId\":\"run-fixture-1\"}",
+            "summary": "Bulk policy summarise: 1 ok (resumed after restart)",
+            "detail": "{\"mode\":\"bulk-resumed\",\"phase\":\"all\",\"force\":true,\"totals\":{\"attempted\":1,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"runId\":\"run-fixture-1\"}",
             "started_at": 1789470000000,
             "ended_at": 1789473603000,
             "duration_ms": 3603000
@@ -9675,7 +9675,7 @@
           {
             "id": "00000000-0000-4000-8000-000000000011",
             "created_at": 1789473603000,
-            "action": "policy.sync-all.success",
+            "action": "policy.sync-all.resumed.success",
             "actor_ip": "",
             "user_agent": "",
             "detail": "phase=all force=1 attempted=1 ok=1 fail=0 throttled=0",
@@ -9804,14 +9804,14 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":0,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":0,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000001\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000001\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
           ]
         },
         {
@@ -9931,7 +9931,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"manual\",\"updatedAt\":1789473601000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473601000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473601000,\"outcome\":\"failed\",\"analysisStatus\":\"fetch_error\"}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":1,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
           ]
         },
         {
@@ -9942,8 +9942,8 @@
             "partial",
             null,
             null,
-            "Bulk policy scrape: 0 ok, 1 failed",
-            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":1,\"throttled\":0,\"skipped\":0},\"runId\":\"run-fixture-1\"}",
+            "Bulk policy scrape: 0 ok, 1 failed (resumed after restart)",
+            "{\"mode\":\"bulk-resumed\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":1,\"throttled\":0,\"skipped\":0},\"runId\":\"run-fixture-1\"}",
             1789470000000,
             1789473601000,
             3601000
@@ -9954,7 +9954,7 @@
           "params": [
             "00000000-0000-4000-8000-000000000005",
             1789473601000,
-            "policy.sync-all.success",
+            "policy.sync-all.resumed.success",
             "",
             "",
             "phase=fetch force=0 attempted=1 ok=0 fail=1 throttled=0",
@@ -10081,8 +10081,8 @@
             "status": "partial",
             "app_id": null,
             "app_name": null,
-            "summary": "Bulk policy scrape: 0 ok, 1 failed",
-            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":1,\"throttled\":0,\"skipped\":0},\"runId\":\"run-fixture-1\"}",
+            "summary": "Bulk policy scrape: 0 ok, 1 failed (resumed after restart)",
+            "detail": "{\"mode\":\"bulk-resumed\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":1,\"throttled\":0,\"skipped\":0},\"runId\":\"run-fixture-1\"}",
             "started_at": 1789470000000,
             "ended_at": 1789473601000,
             "duration_ms": 3601000
@@ -10093,7 +10093,7 @@
           {
             "id": "00000000-0000-4000-8000-000000000005",
             "created_at": 1789473601000,
-            "action": "policy.sync-all.success",
+            "action": "policy.sync-all.resumed.success",
             "actor_ip": "",
             "user_agent": "",
             "detail": "phase=fetch force=0 attempted=1 ok=0 fail=1 throttled=0",
@@ -10285,42 +10285,42 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000004\",\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\",\"startedAt\":1789471600000},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000004\",\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\",\"startedAt\":1789471600000},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000004\",\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000004\",\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":1},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":1},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000099\",\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":1},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000099\",\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":1},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":2},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":2},\"streamRequested\":false}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000001\",\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"attempted\":4,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":2},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000001\",\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"attempted\":4,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":2},\"streamRequested\":false}"
           ]
         },
         {
@@ -10464,7 +10464,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"automatic\",\"updatedAt\":1789473602000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"}],\"totals\":{\"attempted\":4,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":2},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"run-fixture-2\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473602000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000004\",\"appName\":\"Delta Tools\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000099\",\"appName\":\"Gone App\",\"policyUrl\":\"https://gone.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\"},{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"}],\"totals\":{\"attempted\":4,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":2},\"streamRequested\":false}"
           ]
         },
         {
@@ -10475,8 +10475,8 @@
             "ok",
             null,
             null,
-            "Bulk policy scrape: 1 ok, 2 skipped",
-            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":4,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":2},\"runId\":\"run-fixture-2\"}",
+            "Bulk policy scrape: 1 ok, 2 skipped (resumed after restart)",
+            "{\"mode\":\"bulk-resumed\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":4,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":2},\"runId\":\"run-fixture-2\"}",
             1789470000000,
             1789473602000,
             3602000
@@ -10487,7 +10487,7 @@
           "params": [
             "00000000-0000-4000-8000-000000000005",
             1789473602000,
-            "policy.sync-all.success",
+            "policy.sync-all.resumed.success",
             "",
             "",
             "phase=fetch force=0 attempted=4 ok=1 fail=0 throttled=0",
@@ -10525,7 +10525,7 @@
           "phase": "fetch",
           "force": false,
           "startedAt": 1789470000000,
-          "initiator": "automatic",
+          "initiator": "resume",
           "runId": "run-fixture-2"
         },
         {
@@ -10811,8 +10811,8 @@
             "status": "ok",
             "app_id": null,
             "app_name": null,
-            "summary": "Bulk policy scrape: 1 ok, 2 skipped",
-            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":4,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":2},\"runId\":\"run-fixture-2\"}",
+            "summary": "Bulk policy scrape: 1 ok, 2 skipped (resumed after restart)",
+            "detail": "{\"mode\":\"bulk-resumed\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":4,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":2},\"runId\":\"run-fixture-2\"}",
             "started_at": 1789470000000,
             "ended_at": 1789473602000,
             "duration_ms": 3602000
@@ -10823,7 +10823,7 @@
           {
             "id": "00000000-0000-4000-8000-000000000005",
             "created_at": 1789473602000,
-            "action": "policy.sync-all.success",
+            "action": "policy.sync-all.resumed.success",
             "actor_ip": "",
             "user_agent": "",
             "detail": "phase=fetch force=0 attempted=4 ok=1 fail=0 throttled=0",

@@ -310,6 +310,9 @@ pub(crate) async fn run_bulk_sync(
 ) -> Result<RunResult, String> {
     let mut state = match resume {
         Some(mut state) => {
+            // The blob still names whoever started the run; record who runs
+            // it now, before the first write, so a resume reads as one.
+            state.initiator = initiator.to_string();
             for entry in &mut state.queue {
                 if entry.status == "in_progress" {
                     entry.status = "pending".to_string();
