@@ -386,7 +386,7 @@ pub(super) fn source_origin(value: &Value) -> Value {
 }
 
 /// `normalizeAnalysisMode`.
-fn analysis_mode(value: &Value) -> Value {
+pub(super) fn analysis_mode(value: &Value) -> Value {
     match value.as_str() {
         Some(mode @ ("direct" | "chunked")) => json!(mode),
         _ => Value::Null,

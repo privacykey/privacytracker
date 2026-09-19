@@ -46,6 +46,17 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- A failed "Summarise" on an app's AI Policy tab no longer deletes the
+  summary it was refreshing. When the AI call failed, the tab dropped the
+  summary it was showing and said the AI summary could not be generated,
+  and that summary was gone for good. It now stays on the tab, under "The
+  latest AI refresh failed, so this summary may be out of date.", still
+  credited to the AI model that made it, and the next summary that works
+  shows under "What changed" how it differs from it. That comparison was
+  also off when a refresh worked: for a policy summarised more than once
+  before, "What changed" compared the new summary with an older one, not
+  with the one it replaced. The Rust core, not yet active in any build,
+  does the same.
 - A notification webhook set to "Each change" now posts App Store changes.
   When a sync found an app's privacy labels, accessibility labels or age
   rating changed, it wrote the bell notification but posted nothing: only

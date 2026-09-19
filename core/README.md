@@ -3279,7 +3279,8 @@ landed a clean new source. The summarise phase is
 summary that is current, an audit-bundle excerpt or anything but a clean
 source, writes the needs-config row when no provider is set, and
 otherwise stores the summary with the one it replaces, or the error it
-failed with. `buildPolicySummary` sends a policy that fits the model's
+failed with beside the summary it was replacing. `buildPolicySummary`
+sends a policy that fits the model's
 direct limit in one call (40,000 characters, or 8,000 for a model that
 needs chunks) and otherwise cuts it into chunks, stores each chunk's
 notes the moment they arrive, reuses them when a retried run finds them
@@ -3325,7 +3326,7 @@ before it. Prompt nonces come from `Ids::nonce`, the system's random
 bytes in production and the oracle's counter in the replay.
 
 **The oracle — `core/scripts/extract-policy-summary-cases.mjs`.** Runs
-the REAL summarise and `all` phases over 75 scenarios, the sample
+the REAL summarise and `all` phases over 80 scenarios, the sample
 summary over four and the prompt preview over two, against a scratch
 database with a frozen clock, counted ids and nonces, and every provider
 reply canned: an OpenAI completion, a custom endpoint's event stream in
@@ -3333,7 +3334,7 @@ the recorded chunks, an Anthropic message. The shapes are the providers'
 documented formats; there is no key to capture live ones with. Recorded
 per case: every raw fetch with its headers and body, every write in
 order, seven tables, and the result or the thrown message.
-`core/src/server/policy_summary_tests.rs` replays all 81, each body
+`core/src/server/policy_summary_tests.rs` replays all 86, each body
 reaching the reader in the recorded chunks. CI regenerates the fixture
 and fails on drift ("Policy summariser oracle is current").
 
@@ -3376,6 +3377,28 @@ The cases: a failed AI summary summarised again, forced and unforced,
 and failing again with its own error; one that met no provider,
 summarised once one is set up, and an unforced run that still finds
 none; and a summary with scraping disabled, which does not stop it.
+
+A summary run that fails replaces nothing: the error is stored beside
+the summary the run was replacing, with the mode and model that made
+it, as the fixed Node does. Node used to store no summary and keep only
+the older previous one, so a failed Summarise lost the summary on the AI
+Policy tab. With no summary to keep, the row still names the model that
+failed. And the summary a run replaces now becomes the previous one even
+when an older one is stored, the fetch phase's rule: a forced
+resummarise, and the first run to work after a failure, used to keep
+the older one and drop the summary the tab showed. A failed run's
+status still asks for a summary, so the next summarise makes one,
+forced or not, and a later fetch that finds the text unchanged is a
+cache hit that makes the kept summary ready again. The cases: a failed
+forced resummarise, a forced resummarise over an older previous
+summary, the next summary after a failure, forced and unforced, and an
+unchanged fetch after a failure. One earlier case moves, by design: a
+source waiting for a summary that held both a summary and an older one
+kept the older one as the previous (it was "a stored previous summary
+is kept over the current one"). It now records the summary it
+replaces, and is renamed for it. The control on the previous summary's
+time below now fails five cases, not one: every run that replaces a
+summary of its own.
 
 **Node's behaviour, kept.** A refusal is caught by the `try` it is
 thrown in, so it is logged twice and its debug row is inserted twice,
