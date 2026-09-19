@@ -230,6 +230,7 @@ wrapper!(apps_delete, "/api/apps", DELETE);
 wrapper!(wayback_import_all_post, "/api/wayback/import-all", POST);
 wrapper!(wayback_import_all_patch, "/api/wayback/import-all", PATCH);
 wrapper!(wayback_import_all_delete, "/api/wayback/import-all", DELETE);
+wrapper!(policy_sync_all_post, "/api/policy/sync-all", POST);
 
 // ── Phase 4, batch 5a ────────────────────────────────────────────────
 

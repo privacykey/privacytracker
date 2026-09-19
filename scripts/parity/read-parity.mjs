@@ -56,7 +56,7 @@ import {
 } from "./operations-fixture.mjs";
 import { probeOperationsReads } from "./operations-probes.mjs";
 import { applyPolicyFixture } from "./policy-fixture.mjs";
-import { probePolicyRoutes } from "./policy-probes.mjs";
+import { probePolicyRoutes, probePolicySyncRoute } from "./policy-probes.mjs";
 import { probeSeedRoute } from "./seed-probes.mjs";
 import {
   applySinceInstallFixture,
@@ -2012,6 +2012,19 @@ async function main() {
     aiOk = await probeAiRoutes(args.node, rustBase, TOKEN, nodeData, rustData);
   }
 
+  // The bulk policy sync: what both answer before any run, and its limit.
+  let policySyncOk = true;
+  if (args.mutate) {
+    console.log("\n── bulk policy sync (the refusals and the limit, alike) ──");
+    policySyncOk = await probePolicySyncRoute(
+      args.node,
+      rustBase,
+      TOKEN,
+      nodeData,
+      rustData
+    );
+  }
+
   // The backup family, which the differ cannot hold: files out, files in,
   // and a restore that replaces the database. After everything else,
   // because it ends by doing exactly that on both servers.
@@ -2048,6 +2061,7 @@ async function main() {
     leftoversOk &&
     policyOk &&
     aiOk &&
+    policySyncOk &&
     seedOk &&
     discoveryOk &&
     operationsOk &&

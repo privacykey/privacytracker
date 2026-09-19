@@ -589,6 +589,21 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-ai-routes-cases.mjs
           git diff --exit-code -- core/tests/fixtures/ai-routes-cases.json
 
+      - name: Policy runner oracle is current
+        # Runs the real runBulkPolicySync through POST /api/policy/sync-all
+        # (buffered and as an NDJSON stream), directly as the deferred
+        # post-update fetch starts it, and through the 12 s resume closure
+        # captured from instrumentation.ts register(), with every fetch
+        # canned, a frozen clock and counted ids. Records the response or
+        # the result, the frames, every raw fetch, every write, what lands
+        # after the run and nine tables. A diff means the runner, its state
+        # blob, the sync-all route or the resume changed and
+        # core/src/server/policy_runner.rs or runner_writes.rs has not been
+        # ported to match.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-policy-runner-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/policy-runner-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

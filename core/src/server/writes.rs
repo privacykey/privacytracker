@@ -569,6 +569,19 @@ fn runner_routes() -> Vec<RouteSpec> {
             },
         ),
         spec("/api/wayback/import-all", Method::DELETE, None, Guard::None),
+        // Phase 5, batch 4a — see `policy_runner.rs`.
+        spec(
+            "/api/policy/sync-all",
+            Method::POST,
+            Some(2 * 1024),
+            Guard::Rate {
+                prefix: "policy.sync-all",
+                limit: 4,
+                message: "Rate limit exceeded for bulk policy sync. Try again shortly.",
+                per_param: false,
+                retry_after: true,
+            },
+        ),
     ]
 }
 
