@@ -3343,10 +3343,6 @@ its "Summary ready" note lands on no phase. The stored `updated_at` is
 the time before the first AI call. The chunk slicer, a backtracking
 `[\s\S]{1,n}(?:\s|$)` scan, never matches the head of an unbroken run
 longer than a slice, so those characters are summarised by no chunk.
-And the summarise phase on an app with nothing stored meets the run
-marker's `pending` placeholder, which reads as `analysis_error` and
-logs "Policy summary failed": the same Node quirk #275 fixed for the
-kill-switch, reached by another path.
 
 **Negative controls, predicted before running.** The stream decoder
 flushing a trailing partial character: exactly the stream that ends

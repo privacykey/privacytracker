@@ -46,6 +46,16 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Asking for an AI summary of an app whose privacy policy has never been
+  fetched no longer shows up as a failure. With no policy text to work
+  from, the summarise-only request (`POST /api/policy/regenerate` with
+  `phase: "summarise"`) was written to the Activity log as an error,
+  "Policy summary failed", answered with an analysis marked as a failed
+  AI run, and left an empty entry behind that made the app's AI Policy tab
+  say the policy was fetched but the AI summary could not be generated. It
+  is now logged as "Policy skipped: nothing fetched yet", answers with no
+  analysis and stores nothing, so the AI Policy tab says no policy
+  analysis is stored yet.
 - A privacy-policy summary that came in with an imported audit bundle no
   longer reads as a failed AI refresh. The app's AI Policy tab showed it
   under "The latest AI refresh failed, so this summary may be out of

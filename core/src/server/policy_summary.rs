@@ -23,7 +23,7 @@ use super::{
     policy_ai::{call_ai_json, get_ai_runtime_config, AiCall},
     policy_store::{
         col, hydrate, persist, read_row, setting, sha256_hex, source_origin, sync_policy_analysis,
-        FollowUps, Persist, Phase, PolicyRequest, RunLogger, SyncOptions,
+        FollowUps, Persist, Phase, PolicyRequest, RunLogger, SyncOptions, DELETE_PLACEHOLDER,
     },
     sync_runner::Clock,
 };
@@ -184,6 +184,20 @@ async fn summarise(
         .await?;
         return Ok((synced.analysis, synced.follow_ups));
     };
+    // A policy that was never fetched has no text to summarise: its only
+    // row is the run marker's placeholder (or one an earlier run left
+    // behind), whose `pending` would hydrate as `analysis_error`. It is
+    // dropped, and nothing is returned, as the kill-switch does for a
+    // first fetch.
+    if col(Some(&existing), "status") == "pending" {
+        log.note(
+            "skip",
+            "Nothing to summarise: the policy has not been fetched yet. Rescrape the policy first.",
+        );
+        log.db()
+            .with(|w| w.run(DELETE_PLACEHOLDER, vec![json!(app_id)]))?;
+        return Ok((Value::Null, FollowUps::default()));
+    }
     let hydrated =
         |log: &mut RunLogger<'_>, row: &Value| log.db().with(|w| hydrate(w.conn, app_id, row));
     let status = existing.get("status").cloned().unwrap_or(Value::Null);
