@@ -81,14 +81,19 @@ export interface RunPolicyBulkResult {
 /**
  * Classify a `syncPrivacyPolicyAnalysis` outcome into one of the four
  * bulk-totals buckets. Mirrors the logic the inlined route used before
- * the refactor so UI consumers see identical accounting.
+ * the refactor so UI consumers see identical accounting. A skip is
+ * counted by the gate that made it: the stored status it hands back
+ * describes an earlier run, and nothing was fetched in this one.
  */
 function classifyOutcome(
   analysisStatus: string | undefined,
-  throttled: boolean
+  skip: GateSkip | null
 ): PolicyAppOutcome {
-  if (throttled) {
+  if (skip === "throttled") {
     return "throttled";
+  }
+  if (skip === "disabled") {
+    return "skipped";
   }
   if (analysisStatus === "ready" || analysisStatus === "source_ready") {
     return "succeeded";
@@ -96,19 +101,25 @@ function classifyOutcome(
   return "failed";
 }
 
+/** The two gates that skip a fetch and return the stored analysis. */
+type GateSkip = "throttled" | "disabled";
+
 /**
- * Detect "throttle hit, returned prior state" by looking at the last
- * entry in the analysis's run log. Copied from the original route so
- * resumed and streamed runs classify the same way. The store returns a
- * throttled analysis as the row stands after the skip, so the last entry
- * is the skip's own `throttled` line.
+ * Detect "a gate skipped the fetch and returned the prior state" by
+ * looking at the last entry in the analysis's run log. Copied from the
+ * original route so resumed and streamed runs classify the same way. The
+ * store returns a skipped analysis as the row stands after the skip, so
+ * the last entry is the skip's own line: `throttled` for the per-app
+ * throttle, `disabled` for the kill-switch switched on mid-run.
  */
-function wasThrottled(lastRunLog: unknown): boolean {
+function gateSkip(lastRunLog: unknown): GateSkip | null {
   if (!Array.isArray(lastRunLog) || lastRunLog.length === 0) {
-    return false;
+    return null;
   }
   const tail = lastRunLog.at(-1) as { phase?: string } | undefined;
-  return tail?.phase === "throttled";
+  return tail?.phase === "throttled" || tail?.phase === "disabled"
+    ? tail.phase
+    : null;
 }
 
 /**
@@ -333,12 +344,13 @@ export async function runBulkPolicySync(
           }
         );
         const analysisStatus = analysis?.status ?? "unknown";
-        const throttled = analysis ? wasThrottled(analysis.lastRunLog) : false;
+        const skip = analysis ? gateSkip(analysis.lastRunLog) : null;
+        const throttled = skip === "throttled";
         // No analysis back for an app with a policy URL means nothing was
         // stored and nothing was tried: the kill-switch stopped a first
         // fetch. That is a skip, not a failure.
         const outcome = analysis
-          ? classifyOutcome(analysisStatus, throttled)
+          ? classifyOutcome(analysisStatus, skip)
           : "skipped";
 
         entry.status = "done";

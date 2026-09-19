@@ -911,6 +911,33 @@ try {
     options: automatic,
     replies: [...firstCapture(B, TEXT.b)],
   });
+  // Scraping switched off while a run is under way: the trigger switches
+  // it off as the first app's new policy version lands. Every app after
+  // that meets the store's kill-switch and is handed back as stored, and
+  // is counted and logged as a skip whatever it stored: Bravo's stored
+  // fetch error is not a failure, charlie Chat's summary is not a success.
+  await run(
+    "runner: scraping switched off mid-run skips what the rest stored",
+    {
+      kind: "runner",
+      setup: [
+        app(A),
+        app(B),
+        app(C),
+        snapshot(A),
+        analysis(B, TEXT.b, {
+          status: "fetch_error",
+          error: "HTTP 404 Not Found",
+        }),
+        analysis(C, TEXT.c),
+        sql(
+          "CREATE TRIGGER kill_switch_mid_run AFTER INSERT ON privacy_policy_versions BEGIN INSERT OR REPLACE INTO app_settings (key, value) VALUES ('policy_scrape_disabled', 'true'); END"
+        ),
+      ],
+      options: automatic,
+      replies: [...firstCapture(A, TEXT.a)],
+    }
+  );
 
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;
   const stray = text

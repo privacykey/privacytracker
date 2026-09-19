@@ -1283,10 +1283,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000008",
             "policy_summary",
-            "ok",
+            "partial",
             "2000000003",
             "charlie Chat",
-            "Policy source fetched (cached)",
+            "Policy skipped: throttled",
             "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://charlie.example/privacy\",\"model\":\"gpt-4.1-mini\"}",
             1789473603000,
             1789473603000,
@@ -1656,10 +1656,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000008",
             "type": "policy_summary",
-            "status": "ok",
+            "status": "partial",
             "app_id": "2000000003",
             "app_name": "charlie Chat",
-            "summary": "Policy source fetched (cached)",
+            "summary": "Policy skipped: throttled",
             "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://charlie.example/privacy\",\"model\":\"gpt-4.1-mini\"}",
             "started_at": 1789473603000,
             "ended_at": 1789473603000,
@@ -2290,10 +2290,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000008",
             "policy_summary",
-            "ok",
+            "partial",
             "2000000003",
             "charlie Chat",
-            "Policy source fetched (cached)",
+            "Policy skipped: throttled",
             "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://charlie.example/privacy\",\"model\":\"gpt-4.1-mini\"}",
             1789473603000,
             1789473603000,
@@ -2663,10 +2663,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000008",
             "type": "policy_summary",
-            "status": "ok",
+            "status": "partial",
             "app_id": "2000000003",
             "app_name": "charlie Chat",
-            "summary": "Policy source fetched (cached)",
+            "summary": "Policy skipped: throttled",
             "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://charlie.example/privacy\",\"model\":\"gpt-4.1-mini\"}",
             "started_at": 1789473603000,
             "ended_at": 1789473603000,
@@ -6896,10 +6896,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000003",
             "policy_summary",
-            "ok",
+            "partial",
             "2000000002",
             "Bravo Maps",
-            "Policy source fetched (cached)",
+            "Policy skipped: scraping disabled",
             "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://bravo.example/privacy\",\"model\":\"gpt-4.1-mini\"}",
             1789473600000,
             1789473600000,
@@ -6916,7 +6916,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "policy_bulk_state",
-            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\",\"analysisStatus\":\"unknown\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"succeeded\",\"analysisStatus\":\"ready\"}],\"totals\":{\"attempted\":2,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":1},\"streamRequested\":false}"
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\",\"analysisStatus\":\"unknown\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"skipped\",\"analysisStatus\":\"ready\"}],\"totals\":{\"attempted\":2,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":2},\"streamRequested\":false}"
           ]
         },
         {
@@ -6927,8 +6927,8 @@
             "ok",
             null,
             null,
-            "Bulk policy scrape: 1 ok, 1 skipped",
-            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":2,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":1},\"runId\":\"00000000-0000-4000-8000-000000000001\"}",
+            "Bulk policy scrape: 0 ok, 2 skipped",
+            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":2,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":2},\"runId\":\"00000000-0000-4000-8000-000000000001\"}",
             1789473600000,
             1789473600000,
             0
@@ -6942,7 +6942,7 @@
             "policy.sync-all.success",
             "",
             "",
-            "phase=fetch force=0 attempted=2 ok=1 fail=0 throttled=0",
+            "phase=fetch force=0 attempted=2 ok=0 fail=0 throttled=0",
             1
           ]
         },
@@ -7025,10 +7025,10 @@
           "type": "summary",
           "totals": {
             "attempted": 2,
-            "succeeded": 1,
+            "succeeded": 0,
             "failed": 0,
             "throttled": 0,
-            "skipped": 1
+            "skipped": 2
           },
           "phase": "fetch",
           "force": false,
@@ -7136,10 +7136,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000003",
             "type": "policy_summary",
-            "status": "ok",
+            "status": "partial",
             "app_id": "2000000002",
             "app_name": "Bravo Maps",
-            "summary": "Policy source fetched (cached)",
+            "summary": "Policy skipped: scraping disabled",
             "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://bravo.example/privacy\",\"model\":\"gpt-4.1-mini\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
@@ -7151,8 +7151,8 @@
             "status": "ok",
             "app_id": null,
             "app_name": null,
-            "summary": "Bulk policy scrape: 1 ok, 1 skipped",
-            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":2,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":1},\"runId\":\"00000000-0000-4000-8000-000000000001\"}",
+            "summary": "Bulk policy scrape: 0 ok, 2 skipped",
+            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":2,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":2},\"runId\":\"00000000-0000-4000-8000-000000000001\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -7166,7 +7166,7 @@
             "action": "policy.sync-all.success",
             "actor_ip": "",
             "user_agent": "",
-            "detail": "phase=fetch force=0 attempted=2 ok=1 fail=0 throttled=0",
+            "detail": "phase=fetch force=0 attempted=2 ok=0 fail=0 throttled=0",
             "success": 1
           }
         ],
@@ -7186,10 +7186,10 @@
         "result": {
           "totals": {
             "attempted": 2,
-            "succeeded": 1,
+            "succeeded": 0,
             "failed": 0,
             "throttled": 0,
-            "skipped": 1
+            "skipped": 2
           },
           "durationMs": 0
         }
@@ -11581,6 +11581,1019 @@
             "failed": 1,
             "throttled": 0,
             "skipped": 0
+          },
+          "durationMs": 2000
+        }
+      }
+    },
+    {
+      "name": "runner: scraping switched off mid-run skips what the rest stored",
+      "kind": "runner",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, developer, privacyPolicyUrl, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "2000000001",
+            "Alpha Notes",
+            "https://apps.apple.com/us/app/fixture/id2000000001",
+            "",
+            "Alpha Notes Developer",
+            "https://alpha.example/privacy",
+            1786881600000,
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, developer, privacyPolicyUrl, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "2000000002",
+            "Bravo Maps",
+            "https://apps.apple.com/us/app/fixture/id2000000002",
+            "",
+            "Bravo Maps Developer",
+            "https://bravo.example/privacy",
+            1786881600000,
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, developer, privacyPolicyUrl, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "2000000003",
+            "charlie Chat",
+            "https://apps.apple.com/us/app/fixture/id2000000003",
+            "",
+            "charlie Chat Developer",
+            "https://charlie.example/privacy",
+            1786881600000,
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary) VALUES (?, ?, ?, ?, ?, ?)",
+          "params": [
+            "snap-2000000001",
+            "2000000001",
+            1789387200000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            0,
+            "[]"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_title, source_content_type, source_text, source_word_count, source_origin, source_final_url, content_hash, analysis_mode, summary_json, previous_summary_json, previous_summary_at, model, error, updated_at, last_run_log, source_fetched_at, run_status, run_started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "2000000002",
+            "https://bravo.example/privacy",
+            "fetch_error",
+            "bravo.example",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (bravo).\n\nOur service is not directed to children under 13. Section 7 (bravo).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (bravo).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (bravo).\n\nOur service is not directed to children under 13. Section 15 (bravo).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (bravo).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (bravo).\n\nOur service is not directed to children under 13. Section 23 (bravo).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (bravo).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (bravo).",
+            502,
+            "direct",
+            "https://bravo.example/privacy",
+            "79bf971a8ad18e9b7eb07ec27855cd6d10b8507c36ebd97506b82e9dc6cce32f",
+            "direct",
+            "{\"overview\":\"An earlier summary.\"}",
+            null,
+            null,
+            "gpt-4.1-mini",
+            "HTTP 404 Not Found",
+            1789300800000,
+            null,
+            1789300800000,
+            "idle",
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_title, source_content_type, source_text, source_word_count, source_origin, source_final_url, content_hash, analysis_mode, summary_json, previous_summary_json, previous_summary_at, model, error, updated_at, last_run_log, source_fetched_at, run_status, run_started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "2000000003",
+            "https://charlie.example/privacy",
+            "ready",
+            "charlie.example",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (charlie).\n\nOur service is not directed to children under 13. Section 7 (charlie).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (charlie).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (charlie).\n\nOur service is not directed to children under 13. Section 15 (charlie).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (charlie).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (charlie).\n\nOur service is not directed to children under 13. Section 23 (charlie).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (charlie).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (charlie).",
+            502,
+            "direct",
+            "https://charlie.example/privacy",
+            "6606ca61bc78df97e2cf26e796dbbacfe7ef8babacfc5f10767057818348b9c6",
+            "direct",
+            "{\"overview\":\"An earlier summary.\"}",
+            null,
+            null,
+            "gpt-4.1-mini",
+            null,
+            1789300800000,
+            null,
+            1789300800000,
+            "idle",
+            null
+          ]
+        },
+        {
+          "sql": "CREATE TRIGGER kill_switch_mid_run AFTER INSERT ON privacy_policy_versions BEGIN INSERT OR REPLACE INTO app_settings (key, value) VALUES ('policy_scrape_disabled', 'true'); END",
+          "params": []
+        }
+      ],
+      "headers": {
+        "x-forwarded-for": "10.8.34.3",
+        "user-agent": "policy-runner-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": null,
+      "repeat": 1,
+      "options": {
+        "initiator": "automatic",
+        "phase": "fetch",
+        "force": false
+      },
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/plain; charset=utf-8"
+          },
+          "body": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (alpha).\n\nOur service is not directed to children under 13. Section 7 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (alpha).\n\nOur service is not directed to children under 13. Section 15 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (alpha).\n\nOur service is not directed to children under 13. Section 23 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (alpha)."
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"url\":\"https://alpha.example/privacy\",\"archived_snapshots\":{}}"
+        },
+        {
+          "status": 302,
+          "headers": {
+            "location": "https://web.archive.org/web/20260915120005/https://alpha.example/privacy"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://alpha.example/privacy",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml,text/plain;q=0.9,*/*;q=0.8"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://archive.org/wayback/available?url=https%3A%2F%2Falpha.example%2Fprivacy",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://alpha.example/privacy",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":0,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"automatic\",\"updatedAt\":1789473600000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000001\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_policy_analyses (\n      app_id, policy_url, status, source_word_count, updated_at,\n      run_status, run_started_at\n    )\n    VALUES (?, '', 'pending', 0, ?, 'running', ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      run_status = 'running',\n      run_started_at = excluded.run_started_at\n  ",
+          "params": [
+            "2000000001",
+            1789473600000,
+            1789473600000
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Requesting alpha.example\"}]",
+            "2000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Requesting alpha.example\"},{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"}]",
+            "2000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Requesting alpha.example\"},{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"},{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"}]",
+            "2000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Requesting alpha.example\"},{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"},{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"},{\"phase\":\"fetch:direct-result\",\"at\":1789473601000,\"note\":\"HTTP 200\"}]",
+            "2000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Requesting alpha.example\"},{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"},{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"},{\"phase\":\"fetch:direct-result\",\"at\":1789473601000,\"note\":\"HTTP 200\"},{\"phase\":\"fetch:plain-text\",\"at\":1789473601000,\"note\":\"3,129 chars, no HTML follow-up.\"}]",
+            "2000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Fetched 502 words via direct from alpha.example.\",\"ms\":1000},{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"},{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"},{\"phase\":\"fetch:direct-result\",\"at\":1789473601000,\"note\":\"HTTP 200\"},{\"phase\":\"fetch:plain-text\",\"at\":1789473601000,\"note\":\"3,129 chars, no HTML follow-up.\"}]",
+            "2000000001"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_versions (\n       id, app_id, content_hash, first_fetched_at, last_fetched_at,\n       policy_url, source_final_url, source_title, source_content_type,\n       source_origin, source_word_count, source_text\n     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "2000000001",
+            "9112899ff560f1ffe7e3de9855774bc69bc2ceeedc8115e022f332b5daf4c121",
+            1789473600000,
+            1789473600000,
+            "https://alpha.example/privacy",
+            "https://alpha.example/privacy",
+            "alpha.example",
+            "text/plain; charset=utf-8",
+            "direct",
+            502,
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (alpha).\n\nOur service is not directed to children under 13. Section 7 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (alpha).\n\nOur service is not directed to children under 13. Section 15 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (alpha).\n\nOur service is not directed to children under 13. Section 23 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (alpha)."
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Fetched 502 words via direct from alpha.example.\",\"ms\":1000},{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"},{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"},{\"phase\":\"fetch:direct-result\",\"at\":1789473601000,\"note\":\"HTTP 200\"},{\"phase\":\"fetch:plain-text\",\"at\":1789473601000,\"note\":\"3,129 chars, no HTML follow-up.\"},{\"phase\":\"archive-existing\",\"at\":1789473602000,\"note\":\"No existing Wayback snapshot found.\"}]",
+            "2000000001"
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary)\n    VALUES (?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "2000000001",
+            1789473602000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            0,
+            "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy first downloaded from alpha.example.\",\"details\":[\"502 words, fetched via direct.\",\"Summarise from the AI Policy tab to generate ratings.\"],\"policy_event\":\"first\",\"policy_version_id\":\"00000000-0000-4000-8000-000000000002\"}]"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Fetched 502 words via direct from alpha.example.\",\"ms\":1000},{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"},{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"},{\"phase\":\"fetch:direct-result\",\"at\":1789473601000,\"note\":\"HTTP 200\"},{\"phase\":\"fetch:plain-text\",\"at\":1789473601000,\"note\":\"3,129 chars, no HTML follow-up.\"},{\"phase\":\"archive-existing\",\"at\":1789473602000,\"note\":\"No existing Wayback snapshot found.\"},{\"phase\":\"changelog\",\"at\":1789473602000,\"note\":\"Recorded policy first event in History.\"}]",
+            "2000000001"
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_policy_analyses (\n      app_id,\n      policy_url,\n      status,\n      source_title,\n      source_content_type,\n      source_text,\n      source_word_count,\n      source_origin,\n      source_final_url,\n      content_hash,\n      analysis_mode,\n      summary_json,\n      previous_summary_json,\n      previous_summary_at,\n      model,\n      error,\n      updated_at,\n      last_run_log,\n      source_fetched_at\n    )\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      policy_url = excluded.policy_url,\n      status = excluded.status,\n      source_title = excluded.source_title,\n      source_content_type = excluded.source_content_type,\n      source_text = excluded.source_text,\n      source_word_count = excluded.source_word_count,\n      source_origin = excluded.source_origin,\n      source_final_url = excluded.source_final_url,\n      content_hash = excluded.content_hash,\n      analysis_mode = excluded.analysis_mode,\n      summary_json = excluded.summary_json,\n      previous_summary_json = excluded.previous_summary_json,\n      previous_summary_at = excluded.previous_summary_at,\n      model = excluded.model,\n      error = excluded.error,\n      updated_at = excluded.updated_at,\n      last_run_log = excluded.last_run_log,\n      source_fetched_at = excluded.source_fetched_at\n  ",
+          "params": [
+            "2000000001",
+            "https://alpha.example/privacy",
+            "source_ready",
+            "alpha.example",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (alpha).\n\nOur service is not directed to children under 13. Section 7 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (alpha).\n\nOur service is not directed to children under 13. Section 15 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (alpha).\n\nOur service is not directed to children under 13. Section 23 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (alpha).",
+            502,
+            "direct",
+            "https://alpha.example/privacy",
+            "9112899ff560f1ffe7e3de9855774bc69bc2ceeedc8115e022f332b5daf4c121",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            1789473600000,
+            "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Fetched 502 words via direct from alpha.example.\",\"ms\":1000},{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"},{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"},{\"phase\":\"fetch:direct-result\",\"at\":1789473601000,\"note\":\"HTTP 200\"},{\"phase\":\"fetch:plain-text\",\"at\":1789473601000,\"note\":\"3,129 chars, no HTML follow-up.\"},{\"phase\":\"archive-existing\",\"at\":1789473602000,\"note\":\"No existing Wayback snapshot found.\"},{\"phase\":\"changelog\",\"at\":1789473602000,\"note\":\"Recorded policy first event in History.\"}]",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "policy_summary",
+            "ok",
+            "2000000001",
+            "Alpha Notes",
+            "Policy source fetched",
+            "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"source_ready\",\"policyUrl\":\"https://alpha.example/privacy\",\"model\":null}",
+            1789473600000,
+            1789473602000,
+            2000
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET run_status = 'idle'\n      WHERE app_id = ?",
+          "params": [
+            "2000000001"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"automatic\",\"updatedAt\":1789473602000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"pending\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":1,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"automatic\",\"updatedAt\":1789473602000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000002\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473602000},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":0},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?",
+          "params": [
+            1789473602000,
+            "2000000002"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"disabled\",\"at\":1789473602000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
+            "2000000002"
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_policy_analyses (\n      app_id,\n      policy_url,\n      status,\n      source_title,\n      source_content_type,\n      source_text,\n      source_word_count,\n      source_origin,\n      source_final_url,\n      content_hash,\n      analysis_mode,\n      summary_json,\n      previous_summary_json,\n      previous_summary_at,\n      model,\n      error,\n      updated_at,\n      last_run_log,\n      source_fetched_at\n    )\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      policy_url = excluded.policy_url,\n      status = excluded.status,\n      source_title = excluded.source_title,\n      source_content_type = excluded.source_content_type,\n      source_text = excluded.source_text,\n      source_word_count = excluded.source_word_count,\n      source_origin = excluded.source_origin,\n      source_final_url = excluded.source_final_url,\n      content_hash = excluded.content_hash,\n      analysis_mode = excluded.analysis_mode,\n      summary_json = excluded.summary_json,\n      previous_summary_json = excluded.previous_summary_json,\n      previous_summary_at = excluded.previous_summary_at,\n      model = excluded.model,\n      error = excluded.error,\n      updated_at = excluded.updated_at,\n      last_run_log = excluded.last_run_log,\n      source_fetched_at = excluded.source_fetched_at\n  ",
+          "params": [
+            "2000000002",
+            "https://bravo.example/privacy",
+            "fetch_error",
+            "bravo.example",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (bravo).\n\nOur service is not directed to children under 13. Section 7 (bravo).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (bravo).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (bravo).\n\nOur service is not directed to children under 13. Section 15 (bravo).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (bravo).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (bravo).\n\nOur service is not directed to children under 13. Section 23 (bravo).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (bravo).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (bravo).",
+            502,
+            "direct",
+            "https://bravo.example/privacy",
+            "79bf971a8ad18e9b7eb07ec27855cd6d10b8507c36ebd97506b82e9dc6cce32f",
+            "direct",
+            "{\"overview\":\"An earlier summary.\"}",
+            null,
+            null,
+            "gpt-4.1-mini",
+            "HTTP 404 Not Found",
+            1789473602000,
+            "[{\"phase\":\"disabled\",\"at\":1789473602000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
+            1789300800000
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000005",
+            "policy_summary",
+            "partial",
+            "2000000002",
+            "Bravo Maps",
+            "Policy skipped: scraping disabled",
+            "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"fetch_error\",\"policyUrl\":\"https://bravo.example/privacy\",\"model\":\"gpt-4.1-mini\",\"errorMessage\":\"HTTP 404 Not Found\"}",
+            1789473602000,
+            1789473602000,
+            0
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET run_status = 'idle'\n      WHERE app_id = ?",
+          "params": [
+            "2000000002"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"automatic\",\"updatedAt\":1789473602000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473602000,\"finishedAt\":1789473602000,\"outcome\":\"skipped\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":1},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"automatic\",\"updatedAt\":1789473602000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":\"2000000003\",\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473602000,\"finishedAt\":1789473602000,\"outcome\":\"skipped\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"in_progress\",\"startedAt\":1789473602000}],\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":1},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?",
+          "params": [
+            1789473602000,
+            "2000000003"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"disabled\",\"at\":1789473602000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
+            "2000000003"
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_policy_analyses (\n      app_id,\n      policy_url,\n      status,\n      source_title,\n      source_content_type,\n      source_text,\n      source_word_count,\n      source_origin,\n      source_final_url,\n      content_hash,\n      analysis_mode,\n      summary_json,\n      previous_summary_json,\n      previous_summary_at,\n      model,\n      error,\n      updated_at,\n      last_run_log,\n      source_fetched_at\n    )\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      policy_url = excluded.policy_url,\n      status = excluded.status,\n      source_title = excluded.source_title,\n      source_content_type = excluded.source_content_type,\n      source_text = excluded.source_text,\n      source_word_count = excluded.source_word_count,\n      source_origin = excluded.source_origin,\n      source_final_url = excluded.source_final_url,\n      content_hash = excluded.content_hash,\n      analysis_mode = excluded.analysis_mode,\n      summary_json = excluded.summary_json,\n      previous_summary_json = excluded.previous_summary_json,\n      previous_summary_at = excluded.previous_summary_at,\n      model = excluded.model,\n      error = excluded.error,\n      updated_at = excluded.updated_at,\n      last_run_log = excluded.last_run_log,\n      source_fetched_at = excluded.source_fetched_at\n  ",
+          "params": [
+            "2000000003",
+            "https://charlie.example/privacy",
+            "ready",
+            "charlie.example",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (charlie).\n\nOur service is not directed to children under 13. Section 7 (charlie).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (charlie).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (charlie).\n\nOur service is not directed to children under 13. Section 15 (charlie).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (charlie).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (charlie).\n\nOur service is not directed to children under 13. Section 23 (charlie).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (charlie).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (charlie).",
+            502,
+            "direct",
+            "https://charlie.example/privacy",
+            "6606ca61bc78df97e2cf26e796dbbacfe7ef8babacfc5f10767057818348b9c6",
+            "direct",
+            "{\"overview\":\"An earlier summary.\"}",
+            null,
+            null,
+            "gpt-4.1-mini",
+            null,
+            1789473602000,
+            "[{\"phase\":\"disabled\",\"at\":1789473602000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
+            1789300800000
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000006",
+            "policy_summary",
+            "partial",
+            "2000000003",
+            "charlie Chat",
+            "Policy skipped: scraping disabled",
+            "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://charlie.example/privacy\",\"model\":\"gpt-4.1-mini\"}",
+            1789473602000,
+            1789473602000,
+            0
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET run_status = 'idle'\n      WHERE app_id = ?",
+          "params": [
+            "2000000003"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"automatic\",\"updatedAt\":1789473602000,\"phase\":\"fetch\",\"force\":false,\"currentAppId\":null,\"queue\":[{\"appId\":\"2000000001\",\"appName\":\"Alpha Notes\",\"policyUrl\":\"https://alpha.example/privacy\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473602000,\"outcome\":\"succeeded\",\"analysisStatus\":\"source_ready\"},{\"appId\":\"2000000002\",\"appName\":\"Bravo Maps\",\"policyUrl\":\"https://bravo.example/privacy\",\"status\":\"done\",\"startedAt\":1789473602000,\"finishedAt\":1789473602000,\"outcome\":\"skipped\",\"analysisStatus\":\"fetch_error\"},{\"appId\":\"2000000003\",\"appName\":\"charlie Chat\",\"policyUrl\":\"https://charlie.example/privacy\",\"status\":\"done\",\"startedAt\":1789473602000,\"finishedAt\":1789473602000,\"outcome\":\"skipped\",\"analysisStatus\":\"ready\"}],\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":2},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000007",
+            "policy_summary",
+            "ok",
+            null,
+            null,
+            "Bulk policy scrape: 1 ok, 2 skipped",
+            "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":2},\"runId\":\"00000000-0000-4000-8000-000000000001\"}",
+            1789473600000,
+            1789473602000,
+            2000
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000008",
+            1789473602000,
+            "policy.sync-all.success",
+            "",
+            "",
+            "phase=fetch force=0 attempted=3 ok=1 fail=0 throttled=0",
+            1
+          ]
+        },
+        {
+          "sql": "DELETE FROM app_settings WHERE key = ?",
+          "params": [
+            "policy_bulk_state"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "false"
+          ]
+        }
+      ],
+      "late": [
+        {
+          "sql": "UPDATE privacy_policy_versions SET archive_url = ?, archive_submitted_at = ? WHERE id = ?",
+          "params": [
+            "https://web.archive.org/web/20260915120005/https://alpha.example/privacy",
+            1789473602000,
+            "00000000-0000-4000-8000-000000000002"
+          ]
+        }
+      ],
+      "frames": [
+        {
+          "type": "batch-start",
+          "total": 3,
+          "phase": "fetch",
+          "force": false,
+          "startedAt": 1789473600000,
+          "initiator": "automatic",
+          "runId": "00000000-0000-4000-8000-000000000001"
+        },
+        {
+          "type": "app-start",
+          "appId": "2000000001",
+          "name": "Alpha Notes",
+          "index": 0,
+          "total": 3
+        },
+        {
+          "type": "phase",
+          "appId": "2000000001",
+          "phase": {
+            "phase": "fetching",
+            "at": 1789473600000,
+            "note": "Requesting alpha.example"
+          }
+        },
+        {
+          "type": "phase",
+          "appId": "2000000001",
+          "phase": {
+            "phase": "fetch:normalize",
+            "at": 1789473600000,
+            "note": "URL already in preferred language; no rewrite needed."
+          }
+        },
+        {
+          "type": "phase",
+          "appId": "2000000001",
+          "phase": {
+            "phase": "fetch:direct",
+            "at": 1789473600000,
+            "note": "GET alpha.example"
+          }
+        },
+        {
+          "type": "phase",
+          "appId": "2000000001",
+          "phase": {
+            "phase": "fetch:direct-result",
+            "at": 1789473601000,
+            "note": "HTTP 200"
+          }
+        },
+        {
+          "type": "phase",
+          "appId": "2000000001",
+          "phase": {
+            "phase": "fetch:plain-text",
+            "at": 1789473601000,
+            "note": "3,129 chars, no HTML follow-up."
+          }
+        },
+        {
+          "type": "phase",
+          "appId": "2000000001",
+          "phase": {
+            "phase": "fetching",
+            "at": 1789473600000,
+            "note": "Fetched 502 words via direct from alpha.example.",
+            "ms": 1000
+          }
+        },
+        {
+          "type": "phase",
+          "appId": "2000000001",
+          "phase": {
+            "phase": "archive-existing",
+            "at": 1789473602000,
+            "note": "No existing Wayback snapshot found."
+          }
+        },
+        {
+          "type": "phase",
+          "appId": "2000000001",
+          "phase": {
+            "phase": "changelog",
+            "at": 1789473602000,
+            "note": "Recorded policy first event in History."
+          }
+        },
+        {
+          "type": "app-done",
+          "appId": "2000000001",
+          "name": "Alpha Notes",
+          "status": "source_ready",
+          "throttled": false,
+          "index": 0,
+          "total": 3
+        },
+        {
+          "type": "app-start",
+          "appId": "2000000002",
+          "name": "Bravo Maps",
+          "index": 1,
+          "total": 3
+        },
+        {
+          "type": "phase",
+          "appId": "2000000002",
+          "phase": {
+            "phase": "disabled",
+            "at": 1789473602000,
+            "note": "Policy scraping is disabled in Settings. Re-enable to fetch."
+          }
+        },
+        {
+          "type": "app-done",
+          "appId": "2000000002",
+          "name": "Bravo Maps",
+          "status": "fetch_error",
+          "throttled": false,
+          "index": 1,
+          "total": 3
+        },
+        {
+          "type": "app-start",
+          "appId": "2000000003",
+          "name": "charlie Chat",
+          "index": 2,
+          "total": 3
+        },
+        {
+          "type": "phase",
+          "appId": "2000000003",
+          "phase": {
+            "phase": "disabled",
+            "at": 1789473602000,
+            "note": "Policy scraping is disabled in Settings. Re-enable to fetch."
+          }
+        },
+        {
+          "type": "app-done",
+          "appId": "2000000003",
+          "name": "charlie Chat",
+          "status": "ready",
+          "throttled": false,
+          "index": 2,
+          "total": 3
+        },
+        {
+          "type": "summary",
+          "totals": {
+            "attempted": 3,
+            "succeeded": 1,
+            "failed": 0,
+            "throttled": 0,
+            "skipped": 2
+          },
+          "phase": "fetch",
+          "force": false,
+          "durationMs": 2000
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "2000000001",
+            "name": "Alpha Notes",
+            "url": "https://apps.apple.com/us/app/fixture/id2000000001",
+            "iconUrl": "",
+            "bundleId": null,
+            "developer": "Alpha Notes Developer",
+            "firstSeen": 1786881600000,
+            "lastSynced": 1789387200000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": "https://alpha.example/privacy"
+          },
+          {
+            "id": "2000000002",
+            "name": "Bravo Maps",
+            "url": "https://apps.apple.com/us/app/fixture/id2000000002",
+            "iconUrl": "",
+            "bundleId": null,
+            "developer": "Bravo Maps Developer",
+            "firstSeen": 1786881600000,
+            "lastSynced": 1789387200000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": "https://bravo.example/privacy"
+          },
+          {
+            "id": "2000000003",
+            "name": "charlie Chat",
+            "url": "https://apps.apple.com/us/app/fixture/id2000000003",
+            "iconUrl": "",
+            "bundleId": null,
+            "developer": "charlie Chat Developer",
+            "firstSeen": 1786881600000,
+            "lastSynced": 1789387200000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": "https://charlie.example/privacy"
+          }
+        ],
+        "privacy_policy_analyses": [
+          {
+            "app_id": "2000000002",
+            "policy_url": "https://bravo.example/privacy",
+            "status": "fetch_error",
+            "source_title": "bravo.example",
+            "source_content_type": "text/plain; charset=utf-8",
+            "source_text": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (bravo).\n\nOur service is not directed to children under 13. Section 7 (bravo).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (bravo).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (bravo).\n\nOur service is not directed to children under 13. Section 15 (bravo).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (bravo).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (bravo).\n\nOur service is not directed to children under 13. Section 23 (bravo).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (bravo).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (bravo).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (bravo).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (bravo).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (bravo).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (bravo).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (bravo).",
+            "source_word_count": 502,
+            "source_origin": "direct",
+            "source_final_url": "https://bravo.example/privacy",
+            "content_hash": "79bf971a8ad18e9b7eb07ec27855cd6d10b8507c36ebd97506b82e9dc6cce32f",
+            "analysis_mode": "direct",
+            "summary_json": "{\"overview\":\"An earlier summary.\"}",
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": "gpt-4.1-mini",
+            "error": "HTTP 404 Not Found",
+            "updated_at": 1789473602000,
+            "last_run_log": "[{\"phase\":\"disabled\",\"at\":1789473602000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
+            "source_fetched_at": 1789300800000,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": "idle",
+            "run_started_at": 1789473602000
+          },
+          {
+            "app_id": "2000000003",
+            "policy_url": "https://charlie.example/privacy",
+            "status": "ready",
+            "source_title": "charlie.example",
+            "source_content_type": "text/plain; charset=utf-8",
+            "source_text": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (charlie).\n\nOur service is not directed to children under 13. Section 7 (charlie).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (charlie).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (charlie).\n\nOur service is not directed to children under 13. Section 15 (charlie).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (charlie).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (charlie).\n\nOur service is not directed to children under 13. Section 23 (charlie).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (charlie).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (charlie).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (charlie).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (charlie).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (charlie).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (charlie).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (charlie).",
+            "source_word_count": 502,
+            "source_origin": "direct",
+            "source_final_url": "https://charlie.example/privacy",
+            "content_hash": "6606ca61bc78df97e2cf26e796dbbacfe7ef8babacfc5f10767057818348b9c6",
+            "analysis_mode": "direct",
+            "summary_json": "{\"overview\":\"An earlier summary.\"}",
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": "gpt-4.1-mini",
+            "error": null,
+            "updated_at": 1789473602000,
+            "last_run_log": "[{\"phase\":\"disabled\",\"at\":1789473602000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
+            "source_fetched_at": 1789300800000,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": "idle",
+            "run_started_at": 1789473602000
+          },
+          {
+            "app_id": "2000000001",
+            "policy_url": "https://alpha.example/privacy",
+            "status": "source_ready",
+            "source_title": "alpha.example",
+            "source_content_type": "text/plain; charset=utf-8",
+            "source_text": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (alpha).\n\nOur service is not directed to children under 13. Section 7 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (alpha).\n\nOur service is not directed to children under 13. Section 15 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (alpha).\n\nOur service is not directed to children under 13. Section 23 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (alpha).",
+            "source_word_count": 502,
+            "source_origin": "direct",
+            "source_final_url": "https://alpha.example/privacy",
+            "content_hash": "9112899ff560f1ffe7e3de9855774bc69bc2ceeedc8115e022f332b5daf4c121",
+            "analysis_mode": null,
+            "summary_json": null,
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": null,
+            "error": null,
+            "updated_at": 1789473600000,
+            "last_run_log": "[{\"phase\":\"fetching\",\"at\":1789473600000,\"note\":\"Fetched 502 words via direct from alpha.example.\",\"ms\":1000},{\"phase\":\"fetch:normalize\",\"at\":1789473600000,\"note\":\"URL already in preferred language; no rewrite needed.\"},{\"phase\":\"fetch:direct\",\"at\":1789473600000,\"note\":\"GET alpha.example\"},{\"phase\":\"fetch:direct-result\",\"at\":1789473601000,\"note\":\"HTTP 200\"},{\"phase\":\"fetch:plain-text\",\"at\":1789473601000,\"note\":\"3,129 chars, no HTML follow-up.\"},{\"phase\":\"archive-existing\",\"at\":1789473602000,\"note\":\"No existing Wayback snapshot found.\"},{\"phase\":\"changelog\",\"at\":1789473602000,\"note\":\"Recorded policy first event in History.\"}]",
+            "source_fetched_at": 1789473600000,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": "idle",
+            "run_started_at": 1789473600000
+          }
+        ],
+        "privacy_policy_versions": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "2000000001",
+            "content_hash": "9112899ff560f1ffe7e3de9855774bc69bc2ceeedc8115e022f332b5daf4c121",
+            "first_fetched_at": 1789473600000,
+            "last_fetched_at": 1789473600000,
+            "policy_url": "https://alpha.example/privacy",
+            "source_final_url": "https://alpha.example/privacy",
+            "source_title": "alpha.example",
+            "source_content_type": "text/plain; charset=utf-8",
+            "source_origin": "direct",
+            "source_word_count": 502,
+            "source_text": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 3 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 4 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 5 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 6 (alpha).\n\nOur service is not directed to children under 13. Section 7 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 8 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 11 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 12 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 13 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 14 (alpha).\n\nOur service is not directed to children under 13. Section 15 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 16 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 19 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 20 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 21 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 22 (alpha).\n\nOur service is not directed to children under 13. Section 23 (alpha).\n\nWe do not use your information for interest-based advertising or marketing. Section 24 (alpha).\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25 (alpha).\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26 (alpha).\n\nWe share information with service providers and partners who process it on our behalf. Section 27 (alpha).\n\nWe use cookies and analytics tools to understand how the app is used. Section 28 (alpha).\n\nYou may request access to or deletion of your personal information at any time. Section 29 (alpha).\n\nWe retain your information for as long as necessary to provide the service. Section 30 (alpha).",
+            "archive_url": "https://web.archive.org/web/20260915120005/https://alpha.example/privacy",
+            "archive_submitted_at": 1789473602000
+          }
+        ],
+        "privacy_snapshots": [
+          {
+            "id": "snap-2000000001",
+            "app_id": "2000000001",
+            "scraped_at": 1789387200000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": null,
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "2000000001",
+            "scraped_at": 1789473602000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy first downloaded from alpha.example.\",\"details\":[\"502 words, fetched via direct.\",\"Summarise from the AI Policy tab to generate ratings.\"],\"policy_event\":\"first\",\"policy_version_id\":\"00000000-0000-4000-8000-000000000002\"}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": null,
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "policy_summary",
+            "status": "ok",
+            "app_id": "2000000001",
+            "app_name": "Alpha Notes",
+            "summary": "Policy source fetched",
+            "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"source_ready\",\"policyUrl\":\"https://alpha.example/privacy\",\"model\":null}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473602000,
+            "duration_ms": 2000
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "type": "policy_summary",
+            "status": "partial",
+            "app_id": "2000000002",
+            "app_name": "Bravo Maps",
+            "summary": "Policy skipped: scraping disabled",
+            "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"fetch_error\",\"policyUrl\":\"https://bravo.example/privacy\",\"model\":\"gpt-4.1-mini\",\"errorMessage\":\"HTTP 404 Not Found\"}",
+            "started_at": 1789473602000,
+            "ended_at": 1789473602000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "type": "policy_summary",
+            "status": "partial",
+            "app_id": "2000000003",
+            "app_name": "charlie Chat",
+            "summary": "Policy skipped: scraping disabled",
+            "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://charlie.example/privacy\",\"model\":\"gpt-4.1-mini\"}",
+            "started_at": 1789473602000,
+            "ended_at": 1789473602000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000007",
+            "type": "policy_summary",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Bulk policy scrape: 1 ok, 2 skipped",
+            "detail": "{\"mode\":\"bulk\",\"phase\":\"fetch\",\"force\":false,\"totals\":{\"attempted\":3,\"succeeded\":1,\"failed\":0,\"throttled\":0,\"skipped\":2},\"runId\":\"00000000-0000-4000-8000-000000000001\"}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473602000,
+            "duration_ms": 2000
+          }
+        ],
+        "ai_debug_log": [],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000008",
+            "created_at": 1789473602000,
+            "action": "policy.sync-all.success",
+            "actor_ip": "",
+            "user_agent": "",
+            "detail": "phase=fetch force=0 attempted=3 ok=1 fail=0 throttled=0",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "policy_scrape_disabled",
+            "value": "true"
+          },
+          {
+            "key": "policy_sync_running",
+            "value": "false"
+          }
+        ]
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "totals": {
+            "attempted": 3,
+            "succeeded": 1,
+            "failed": 0,
+            "throttled": 0,
+            "skipped": 2
           },
           "durationMs": 2000
         }

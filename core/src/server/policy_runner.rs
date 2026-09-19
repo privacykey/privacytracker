@@ -260,20 +260,25 @@ fn bulk_summary_line(phase: &Value, totals: &Value) -> String {
     format!("Bulk policy {verb}: {}", parts.join(", "))
 }
 
-/// `wasThrottled`: the returned run log's last entry is a throttle hit.
-fn was_throttled(analysis: &Value) -> bool {
+/// `gateSkip`: the returned run log's last entry, when it is a gate's
+/// skip: `throttled` for the per-app throttle, `disabled` for the
+/// kill-switch switched on mid-run.
+fn gate_skip(analysis: &Value) -> Option<&str> {
     analysis
         .get("lastRunLog")
         .and_then(Value::as_array)
         .and_then(|log| log.last())
         .and_then(|tail| tail.get("phase"))
-        == Some(&json!("throttled"))
+        .and_then(Value::as_str)
+        .filter(|phase| matches!(*phase, "throttled" | "disabled"))
 }
 
-/// `classifyOutcome`.
-fn classify_outcome(status: &Value, throttled: bool) -> &'static str {
-    if throttled {
+/// `classifyOutcome`: a skip is counted by the gate that made it.
+fn classify_outcome(status: &Value, skip: Option<&str>) -> &'static str {
+    if skip == Some("throttled") {
         "throttled"
+    } else if skip == Some("disabled") {
+        "skipped"
     } else if status == "ready" || status == "source_ready" {
         "succeeded"
     } else {
@@ -595,11 +600,16 @@ async fn walk(
                     .filter(|s| !s.is_null())
                     .cloned()
                     .unwrap_or_else(|| json!("unknown"));
-                let throttled = truthy(&analysis) && was_throttled(&analysis);
+                let skip = if truthy(&analysis) {
+                    gate_skip(&analysis)
+                } else {
+                    None
+                };
+                let throttled = skip == Some("throttled");
                 // No analysis for an app with a link: the kill-switch stopped
                 // a first fetch, which is a skip, not a failure.
                 let outcome = if truthy(&analysis) {
-                    classify_outcome(&analysis_status, throttled)
+                    classify_outcome(&analysis_status, skip)
                 } else {
                     "skipped"
                 };

@@ -3815,6 +3815,8 @@
       "title_regenerate": "重新生成隐私政策摘要",
       "subtitle_with_phase": "{name} · {phase}",
       "completion_fetch": "政策已重新抓取",
+      "completion_fetch_failed": "政策抓取失败",
+      "completion_fetch_unusable": "政策文本无法使用",
       "completion_summarise": "摘要已更新",
       "completion_summary_failed": "摘要生成失败",
       "completion_summary_not_updated": "摘要未更新",
@@ -4053,7 +4055,7 @@
     "privacy_policy_link": "隐私政策 ↗",
     "label_definitions_link": "标签定义",
     "apple_app_hint": "这是一款 Apple 应用。Apple 自家应用（包括信息、地图、Safari、邮件、健康等）的隐私标签请见 <apple>apple.com/au/privacy/labels ↗</apple>。关于本页术语的定义，请参阅<defs>应用内定义参考</defs>。",
-    "policy_fetch_scope_note": "政策文本仅在此标签页按需抓取 — 不会被单个应用的「重新同步」按钮或「设置」中的「全部同步」任务重新抓取。",
+    "policy_fetch_scope_note": "「重新同步」和「全部同步」完成后也会在后台重新抓取此政策，但在政策抓取限速的冷却时间内或禁用隐私政策抓取时除外。它们不会生成摘要：如需生成摘要或立即抓取，请使用此标签页上的按钮。",
     "policy_change_strip": {
       "since_date": "自 {date} 起",
       "since_fallback": "自上次分析以来",

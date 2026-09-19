@@ -1087,6 +1087,19 @@ try {
     repeat: 11,
   });
 
+  // ══ Appended: a skip is logged as one ════════════════════════════
+  // After every other case, so none of their recordings move. The
+  // kill-switch hands back a stored fetch error with its own `disabled`
+  // line last, and the activity row is told by that line: a skip, not a
+  // fresh "Fetch failed" at error status.
+  await store("the kill-switch over a stored fetch error is a skip", {
+    setup: [
+      app(),
+      analysis({ status: "fetch_error", error: "HTTP 404 Not Found" }),
+      setting("policy_scrape_disabled", "true"),
+    ],
+  });
+
   // ══ JSON.parse ═══════════════════════════════════════════════════
   // The History row parses the latest snapshot with JSON.parse, and a
   // failure lands in the run log in V8's own words (the corrupt-snapshot

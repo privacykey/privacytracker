@@ -46,6 +46,29 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- The Activity log now records a privacy policy that the per-app scrape
+  throttle skipped as "Policy skipped: throttled". It said "Policy source
+  fetched (cached)", or "Policy summary ready" for a fetch and summary,
+  although nothing was fetched or summarised. This covers a single app's
+  policy refresh and every app that a Re-sync, Sync All, import or bulk
+  policy run skipped. The Rust core, not yet active in any build, does the
+  same.
+- Turning on "Disable policy scraping" while a bulk policy run is under
+  way no longer judges the apps left in it by what they stored before. An
+  app whose last fetch had failed was counted as failed and logged as a
+  new "Fetch failed", and an app with a summary was counted as a success,
+  although neither was fetched. Both are now counted as skipped and logged
+  as "Policy skipped: scraping disabled". The Rust core does the same.
+- "Rescrape policy" on an app's AI Policy tab no longer reports a failed
+  fetch as a success. The background-task tray said "✓ Policy re-fetched"
+  whatever happened. It now says "Policy fetch failed" when the policy
+  page could not be fetched, and "Policy text not usable" when it was
+  fetched but was too short or not an HTML or text document.
+- The AI Policy tab no longer says that Re-sync and Sync All leave the
+  privacy policy alone. Both re-fetch it in the background once they
+  finish, except within the policy scrape throttle's cooldown or while
+  policy scraping is disabled. They don't summarise it. The note on the
+  tab now says so.
 - In the desktop app, "Sync now" and "Import Wayback history" on the menu
   bar icon now start a sync and a Wayback import, and the zoom level set
   from the View menu (Zoom In, Zoom Out, Actual Size) is kept when the app

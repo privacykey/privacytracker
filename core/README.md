@@ -3131,6 +3131,15 @@ row as it stands after their own log line, read again if their write is
 refused. Both used to return it as read before that line, with the
 previous run's log, so batch 4a's bulk runner counted an app skipped
 after a fetch as a success; Node and the core were fixed together.
+The activity row tells those two skips apart by the same line, the
+last in the run's own log, before it reads the stored status, which
+describes an earlier run: a throttled skip is "Policy skipped:
+throttled" and the kill-switch over a stored analysis "Policy skipped:
+scraping disabled", both partial like every other skip. A throttled
+skip used to read "Policy source fetched (cached)" (or, for a fetch and
+summary, "Policy summary ready"), and the kill-switch over a stored
+fetch error a fresh "Fetch failed" at error status. Node and the core
+were fixed together.
 Nothing outside the replay calls the store yet. Batch 3 routes
 `POST /api/policy/regenerate`, and batch 4 the bulk runner and the
 triggers.
@@ -3184,7 +3193,7 @@ spelled as JavaScript spells them and integer-like keys first. The
 attribution is in `core/V8-LICENSE`.
 
 **The oracle — `core/scripts/extract-policy-store-cases.mjs`.** Runs the
-REAL fetch phase of `syncPrivacyPolicyAnalysis` over 36 scenarios and
+REAL fetch phase of `syncPrivacyPolicyAnalysis` over 37 scenarios and
 the REAL five route handlers over 35 requests, against a scratch
 database with a frozen clock, counted ids and the raw `fetch` stubbed by
 recorded replies, never the network. Recorded per case: every raw fetch
@@ -3224,6 +3233,18 @@ asked for under another app, and the scrape's first capture, same text,
 changed text, unusable page, fetch failure, refused URL, missing URL,
 unknown app, long id and limit.
 
+When the activity row learned to tell a skip by its log line, six store
+cases moved, only in that row: the kill-switch over a stored summary,
+the three throttle skips and the two refused writes. One store case was
+appended after the routes, so no other recording moved: the kill-switch
+over a stored fetch error. Negative controls, predicted before running:
+the previous `policy_store.rs` and `policy_runner.rs` against the new
+fixtures failed exactly the seven store cases, the four runner cases
+(batch 4a), one AI routes case (batch 3b) and two of the three
+summariser cases appended in batch 3a, not the one that summarises; a
+skip read from a `disabled` line anywhere in the log instead of the last
+failed exactly that one. Source restored byte for byte after each.
+
 **The clock moves with the network.** Each fetch the code awaits
 advances the frozen clock one second, so a timestamp Node takes before a
 fetch and one it takes after differ, and the port has to take each
@@ -3258,8 +3279,7 @@ building the value. It is the row as written, so a log event written
 after it is on the stored row but not in the value: the error branches
 return no History event. The backfill's "Seeded previous policy text"
 note is logged on every changed rescrape, including when the earlier
-text already had its version and the upsert only touched it. A
-throttled skip's activity row says "Policy source fetched (cached)".
+text already had its version and the upsert only touched it.
 
 **Negative controls, predicted before running.** The fetch-error branch
 hydrating a fresh read instead of the row it wrote: exactly the four
@@ -3341,7 +3361,7 @@ before it. Prompt nonces come from `Ids::nonce`, the system's random
 bytes in production and the oracle's counter in the replay.
 
 **The oracle — `core/scripts/extract-policy-summary-cases.mjs`.** Runs
-the REAL summarise and `all` phases over 85 scenarios, the sample
+the REAL summarise and `all` phases over 88 scenarios, the sample
 summary over four and the prompt preview over two, against a scratch
 database with a frozen clock, counted ids and nonces, and every provider
 reply canned: an OpenAI completion, a custom endpoint's event stream in
@@ -3407,7 +3427,16 @@ forced or not, and a later fetch that finds the text unchanged is a
 cache hit that makes the kept summary ready again. The cases: a failed
 forced resummarise, a forced resummarise over an older previous
 summary, the next summary after a failure, forced and unforced, and an
-unchanged fetch after a failure. One earlier case moves, by design: a
+unchanged fetch after a failure.
+
+An `all` run that a gate skipped is logged as the skip (batch 2), not
+as "Policy summary ready" or a fresh fetch failure, as the fixed Node
+logs it. The skip is the run log's last line: the kill-switch over a
+clean capture still hands it to the summary, which logs more, and that
+run is logged as the summary it made. Three cases are appended, so no
+other recording moved: a throttled fetch and summary, the kill-switch
+over a stored fetch error, and the kill-switch before a summary of the
+stored text. One earlier case moves, by design: a
 source waiting for a summary that held both a summary and an older one
 kept the older one as the previous (it was "a stored previous summary
 is kept over the current one"). It now records the summary it
@@ -3546,7 +3575,9 @@ Four cases cover the scrape throttle, on a policy fetched ten minutes
 ago: a `bypassThrottle` that is not the boolean `true` keeps it; the AI
 Policy tab's rescrape passes it, answered whole, and so does its
 rescrape and summary, streamed; and the kill-switch refuses a fetch
-that bypasses it.
+that bypasses it. The first is logged as a skip, "Policy skipped:
+throttled" (batch 2); it was "Policy summary ready", and it is the one
+case here that moved when the store's activity row changed.
 
 One case, appended last, covers the tab's Summarise over a summary while
 the provider's key is blank: the answer carries the summary the run was
@@ -3626,13 +3657,14 @@ lock or a finished queue healed with a notification, or the notification,
 the activity row and the resumed run.
 
 **The oracle — `core/scripts/extract-policy-runner-cases.mjs`.** Runs the
-REAL runner over 33 cases: 18 requests to the route (every refusal, then
+REAL runner over 34 cases: 18 requests to the route (every refusal, then
 buffered and streamed runs across a fleet with a first capture, a fetch
 error and a throttled app, `force`, the `all` phase with a model and
-without one, and a state write refused mid-run); 6 direct runs as the
+without one, and a state write refused mid-run); 7 direct runs as the
 deferred post-update fetch starts them (an automatic fetch, the
 kill-switch skipping what was never stored, no apps, the outer catch, a
-resumed queue naming why it skips, a sync that throws); and 9 runs of the
+resumed queue naming why it skips, a sync that throws, scraping switched
+off mid-run); and 9 runs of the
 resume closure captured from `register()`. Each app goes through the real
 policy pipeline with the network canned and Save Page Now held until the
 run is over. `core/src/server/policy_runner_tests.rs` replays all of them
@@ -3659,6 +3691,19 @@ buffered and streamed fleet runs are re-recorded: charlie Chat's
 `app-done` says `throttled: true`, and the totals, the state blob, the
 activity row and the audit row count one success and one throttled app
 where they counted two successes. The runner itself is unchanged.
+
+An app the kill-switch skipped counts as skipped whatever it stored, as
+the fixed Node counts it: the runner reads a `disabled` last line as it
+reads a `throttled` one. It used to count the stored status, so
+scraping switched off during a run counted a stored fetch error as
+failed and a stored summary as a success, although nothing was fetched.
+Three cases moved: the two fleet runs, in charlie Chat's activity row
+only ("Policy skipped: throttled", batch 2), and the kill-switch run,
+whose stored Bravo Maps now counts as skipped (0 ok, 2 skipped where it
+was 1 ok, 1 skipped). One case is appended: scraping switched off
+mid-run, by a trigger as the first app's new version lands, where
+Bravo Maps' stored fetch error and charlie Chat's summary both count as
+skipped.
 
 **Node's behaviour, kept.** A blob that does not parse is left in place
 when the resume heals a stale lock, since it is not a state.

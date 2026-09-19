@@ -694,9 +694,10 @@ export default function AppDetailView({
       const res = await fetch("/api/scrape", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Label-only sync. Privacy policy fetch + AI summary are scoped to the
-        // "AI Policy" tab so people don't re-summarise (and re-pay for LLM
-        // calls) every time they refresh App Store labels.
+        // Label sync. The AI summary is scoped to the "AI Policy" tab so
+        // people don't re-summarise (and re-pay for LLM calls) every time
+        // they refresh App Store labels. A successful sync still queues the
+        // deferred, fetch-only policy run (schedulePostAppUpdatePolicyFetch).
         body: JSON.stringify({
           urls: [app.url],
           resync: true,
