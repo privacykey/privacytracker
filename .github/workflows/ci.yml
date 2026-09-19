@@ -630,6 +630,18 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-device-routes-cases.mjs
           git diff --exit-code -- core/tests/fixtures/device-routes-cases.json
 
+      - name: Flag migration oracle is current
+        # Runs the real feature-flag migration (lib/migrations/
+        # v1_feature_flags.ts, which instrumentation.ts runs at boot) over a
+        # scratch database: the version gate, each step's legacy state, and
+        # the failures that leave the version unwritten. Records what it
+        # returned or threw, every write and three tables. A diff means the
+        # migration changed and core/src/server/flag_migration.rs has not
+        # been ported to match.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-flag-migration-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/flag-migration-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

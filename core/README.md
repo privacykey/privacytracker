@@ -129,7 +129,8 @@ artifacts.
 - The SQLite schema contract in `lib/db.ts` (CREATE TABLEs, inline ALTER
   migrations, the feature-flag migration, WAL/permissions behaviour) is
   frozen; the Rust layer reproduces it exactly so existing installs
-  upgrade cleanly — and can roll *back* to the Node build during burn-in.
+  upgrade cleanly — and can roll *back* to the Node build, which stays
+  buildable until a Rust release has shipped cleanly.
 - While the port is in flight, `lib/` server logic on `main` is treated
   as feature-frozen wherever practical; anything that must change there
   is mirrored here in the same week, or the parity gate will say so.
@@ -158,11 +159,12 @@ seed). The big CREATE block is lifted verbatim from `db.ts` by
 checked in) so it cannot drift; the orchestration and short ALTER lists are
 hand-ported in `core/src/db.rs` in db.ts's exact order.
 
-**What is deliberately NOT ported yet:** the feature-flag data migration
-(`lib/migrations/v1_feature_flags.ts`). It is instrumentation-driven and
-depends on feature-flag resolver semantics — a later phase. The parity gate
-compares a db.ts-opened database against a pt-core-opened one, neither having
-run the feature-flag migration, so the comparison stays apples-to-apples.
+**What the migrator leaves out:** the feature-flag data migration
+(`lib/migrations/v1_feature_flags.ts`). It is instrumentation-driven, so it
+belongs to the server's boot rather than to opening the database, and
+Phase 6, batch 2b ported it there. The parity gate compares a
+db.ts-opened database against a pt-core-opened one, neither having run
+the feature-flag migration, so the comparison stays apples-to-apples.
 
 **The gate — `scripts/parity/schema-parity.mjs`.** The Phase 1 contract is:
 *for any starting database X, the Rust migrator leaves X in the same schema
@@ -3927,4 +3929,92 @@ exactly the probe's two checks for them, 484 of 486 passing. Source
 restored byte for byte after each, fixed tree green.
 
 Rust suite: 281 lib tests pass (278 + 2 unit tests + the replay), plus
+the embed test.
+
+### Batch 2b — the feature-flag migration (no routes)
+
+`core/src/server/flag_migration.rs` ports `runFeatureFlagMigration` from
+`lib/migrations/v1_feature_flags.ts`. Node's startup hook runs it before
+anything else writes, and `start_background` now runs it in the same
+place, ahead of the boot writes. A failure is logged and the server comes
+up anyway, as Node's does.
+
+**What it does.** Nothing once `feature_flag_migration_version` reads as
+2 or more by `Number.parseInt`, so `"2.5"` and `"\t 2"` count and `"0x2"`
+does not. Otherwise six steps, each between a "started" and a
+"completed" `migration` activity row:
+
+- a check that `feature_flag_overrides` and `annotations` exist;
+- the legacy `user_intent` (`curious`, `cleanup`, `hygiene`, `family`)
+  becomes a focus through `setActiveFocus` and goes; any other intent is
+  dropped with a warning;
+- the legacy `notification_prefs` blob becomes one override per type it
+  names, `on` for `true`, `"on"` or `"true"` and `off` for anything else,
+  and goes; a blob that is not JSON is dropped with a warning;
+- the four retired callout overrides are dropped;
+- overrides whose key the flag registry knows leave quarantine, and the
+  rest enter it, each statement binding all 222 registry keys in
+  `Object.keys(HARD_DEFAULTS)` order;
+- the old goal keys (`understand`, `declutter`) move to `monitor` and
+  `cleanup` unless those are already set.
+
+Then the version marker and a closing row with each step's duration. A
+step that fails writes a "failed" row and ends the run without the
+marker, so the next boot runs it again. There is no transaction around
+the run, so the steps before a failure keep what they wrote. Where Node
+nests one transaction in another (`setActiveFocus` inside step 2), the
+port nests them as better-sqlite3 does, through savepoints.
+
+**The oracle — `core/scripts/extract-flag-migration-cases.mjs`.** Runs
+the REAL migration over 43 cases: the version gate (11 cases), each step
+over the legacy state it migrates, every step at once on a legacy
+install, and the failures (a table missing, and a later step failing
+after an earlier one wrote). A frozen clock makes every duration 0 ms,
+and a case may drop a table inside its savepoint.
+`core/src/server/flag_migration_tests.rs` replays it, comparing what the
+run returned or threw, the write stream and three tables, and CI
+regenerates the fixture ("Flag migration oracle is current"). The replay
+passed on its first run. A unit test boots twice over a database missing
+a table: no marker, and one failed row per boot. The embed test now
+checks that a fresh database gets the marker and the 13 rows at boot.
+
+**The live gate, and both real servers.** The gate's first run on this
+batch failed five flag checks, and the cause was the wiring working: the
+seed's `/api/reset` deletes the marker after Node's boot, Node's running
+process never reads it again, and the core's boot then migrated the copy.
+`read-parity.mjs` now puts the marker back on Node's side before the copy
+(`restoreMigrationMarker`), as it already guards the unknown-device
+backfill, and the gate passes (486 checks). The migration itself was then
+checked on both real servers. A seeded database had legacy state planted
+in every step's path (an intent, a prefs blob, a retired callout, an
+unknown override, a quarantined known one, the old goal keys). It was
+booted once by the Node production server and once by `pt-core`, each
+stopped before its first timer. The two boots wrote the same settings,
+overrides and 13 activity rows; only ids, the boots' own timestamps and
+the durations were normalised.
+
+**Node's behaviour, kept, and one bug filed.** Two stored values fail a
+step on every boot for good, so the marker is never written and the steps
+after the failure never run: a `notification_prefs` of JSON `null`
+(`Object.hasOwn(null, …)` throws), and a `user_intent` naming an inherited
+property such as `toString` or `__proto__` (the lookup finds the
+inherited member, whose audience is `undefined`, and better-sqlite3 binds
+that as NULL into a NOT NULL column). The app never writes either value,
+but a restored or edited database can hold them. The follow-up fixes
+Node and the core together. Also kept: an intent must match exactly
+(`"Curious "` is unknown), and an empty `notification_prefs` is left in
+place rather than deleted.
+
+**Negative controls, predicted before running.** The version gate
+comparing the string to `"2"`: exactly the three cases that skip by
+`parseInt` without being `"2"`. Inherited intent names read as unknown:
+exactly the three cases with one. Prefs of `null` not failing their
+step: exactly the two cases with them. The workflow inferred as if the
+audience were `self`: exactly the two `family` intents. The string
+`"true"` not switching a type on: exactly the case that sends it. An old
+goal key overwriting a new one already set: exactly the kept-key case
+and the legacy install, whose step 2 had already written the cleanup
+goal. Source restored byte for byte after each, fixed tree green.
+
+Rust suite: 283 lib tests pass (281 + the replay + the boot test), plus
 the embed test.
