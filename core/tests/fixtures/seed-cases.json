@@ -36352,6 +36352,642 @@
         "type": "application/json",
         "retryAfter": null
       }
+    },
+    {
+      "name": "live chart link to a tracked app posts the immediate webhook",
+      "route": "/api/dev/seed-sample-data",
+      "method": "POST",
+      "param": null,
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.56.5",
+        "user-agent": "seed-oracle/1.0",
+        "x-auditor-admin-token": "seed-oracle-token"
+      },
+      "body": null,
+      "adminToken": "seed-oracle-token",
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/pt"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "slack"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "7201",
+            "Tracked Elsewhere",
+            "https://apps.apple.com/au/app/fixture/id7201",
+            1789043696789,
+            1789043696789
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"feed\":{\"entry\":[{\"id\":{\"label\":\"https://apps.apple.com/au/app/fixture/id7201?uo=2\",\"attributes\":{\"im:id\":\"7998\"}},\"im:name\":{\"label\":\"Relabelled\"},\"im:artist\":{\"label\":\"Fixture Dev\"}},{\"id\":{\"label\":\"https://apps.apple.com/au/app/fixture/id7202?uo=2\",\"attributes\":{\"im:id\":\"7202\"}},\"im:name\":{\"label\":\"After\"},\"im:artist\":{\"label\":\"Fixture Dev\"}}]}}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<!doctype html><html><head><meta property=\"og:title\" content=\"Relabelled on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Fixture Dev\"}}</script></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Relabelled\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"version\":\"1.0.0\",\"currentVersionReleaseDate\":\"2026-01-02T03:04:05Z\",\"releaseNotes\":\"Fixture release notes\",\"price\":0,\"currency\":\"AUD\",\"formattedPrice\":\"Free\",\"primaryGenreId\":6002,\"primaryGenreName\":\"Utilities\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/plain"
+          },
+          "body": "ok"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<!doctype html><html><head><meta property=\"og:title\" content=\"After on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Fixture Dev\"}}</script></head><body><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"After\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"version\":\"1.0.0\",\"currentVersionReleaseDate\":\"2026-01-02T03:04:05Z\",\"releaseNotes\":\"Fixture release notes\",\"price\":0,\"currency\":\"AUD\",\"formattedPrice\":\"Free\",\"primaryGenreId\":6002,\"primaryGenreName\":\"Utilities\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://itunes.apple.com/au/rss/topfreeapplications/limit=10/json",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://apps.apple.com/au/app/fixture/id7201?uo=2",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=7201&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://hooks.example.com/pt",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"text\":\"📱 Relabelled: New privacy label: \\\"Data Linked to You\\\"\\nNew privacy label: \\\"Data Linked to You\\\"\"}"
+        },
+        {
+          "url": "https://apps.apple.com/au/app/fixture/id7202?uo=2",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=7202&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "7201"
+          ]
+        },
+        {
+          "sql": "\n        UPDATE apps\n           SET name = ?, url = ?, iconUrl = ?, developer = ?, privacyPolicyUrl = ?,\n               lastSynced = ?,\n               currentVersion = COALESCE(?, currentVersion),\n               versionUpdatedAt = COALESCE(?, versionUpdatedAt),\n               whatsNew = COALESCE(?, whatsNew),\n               hasPrivacyDetails = ?,\n               hasAccessibilityLabels = COALESCE(?, hasAccessibilityLabels),\n               priceAmount = COALESCE(?, priceAmount),\n               priceCurrency = COALESCE(?, priceCurrency),\n               priceFormatted = COALESCE(?, priceFormatted),\n               hasIap = COALESCE(?, hasIap),\n               genreId = COALESCE(?, genreId),\n               genreName = COALESCE(?, genreName),\n               ageRating = COALESCE(?, ageRating)\n         WHERE id = ?\n      ",
+          "params": [
+            "Relabelled",
+            "https://apps.apple.com/au/app/fixture/id7201?uo=2",
+            "https://example.com/icon.png",
+            "Fixture Dev",
+            "",
+            1789475696789,
+            "1.0.0",
+            1767323045000,
+            "Fixture release notes",
+            1,
+            null,
+            0,
+            "AUD",
+            "Free",
+            null,
+            6002,
+            "Utilities",
+            "4+",
+            "7201"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "7201_DATA_LINKED_TO_YOU",
+            "7201",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You",
+            "Data Linked to You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "7201_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "7201_DATA_LINKED_TO_YOU",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "7201_DATA_LINKED_TO_YOU_LOCATION",
+            "7201_DATA_LINKED_TO_YOU",
+            "LOCATION",
+            "Location"
+          ]
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed WHERE source_app_id = ?",
+          "params": [
+            "7201"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO privacy_snapshots\n        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n         source, wayback_snapshot_url, triggered_by,\n         app_version, app_version_updated_at)\n      VALUES (?, ?, ?, ?, ?, ?, 'live', NULL, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "7201",
+            1789475696789,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\",\"Location\"]}]",
+            "import",
+            "1.0.0",
+            1767323045000
+          ]
+        },
+        {
+          "sql": "UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?",
+          "params": [
+            "7201"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n        VALUES (?, ?, ?, ?, ?, 0, ?)\n      ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "7201",
+            "Relabelled",
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\",\"Location\"]}]",
+            1789475696789,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO activity_log\n        (id, type, status, app_id, app_name, summary, detail,\n         started_at, ended_at, duration_ms)\n      VALUES (?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "scrape",
+            "7201",
+            "Relabelled",
+            "1 change detected",
+            "{\"changeCount\":1,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      DELETE FROM activity_log\n       WHERE id IN (\n         SELECT id FROM activity_log\n          ORDER BY started_at DESC\n          LIMIT -1 OFFSET 2000\n       )\n    ",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_policy_analyses WHERE app_id = ?",
+          "params": [
+            "7201"
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "7202"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO apps (\n          id, name, url, iconUrl, developer, privacyPolicyUrl, bundleId,\n          firstSeen, lastSynced, changeCount,\n          currentVersion, versionUpdatedAt, whatsNew, hasPrivacyDetails,\n          hasAccessibilityLabels,\n          priceAmount, priceCurrency, priceFormatted, hasIap,\n          genreId, genreName, ageRating\n        )\n        VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "7202",
+            "After",
+            "https://apps.apple.com/au/app/fixture/id7202?uo=2",
+            "https://example.com/icon.png",
+            "Fixture Dev",
+            "",
+            1789475696789,
+            1789475696789,
+            "1.0.0",
+            1767323045000,
+            "Fixture release notes",
+            1,
+            null,
+            0,
+            "AUD",
+            "Free",
+            null,
+            6002,
+            "Utilities",
+            "4+"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "7202_DATA_LINKED_TO_YOU",
+            "7202",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You",
+            "Data Linked to You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "7202_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "7202_DATA_LINKED_TO_YOU",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed WHERE source_app_id = ?",
+          "params": [
+            "7202"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO privacy_snapshots\n        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n         source, wayback_snapshot_url, triggered_by,\n         app_version, app_version_updated_at)\n      VALUES (?, ?, ?, ?, ?, ?, 'live', NULL, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000006",
+            "7202",
+            1789475696789,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            0,
+            "[]",
+            "import",
+            "1.0.0",
+            1767323045000
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO activity_log\n        (id, type, status, app_id, app_name, summary, detail,\n         started_at, ended_at, duration_ms)\n      VALUES (?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000007",
+            "scrape",
+            "7202",
+            "After",
+            "New app added",
+            "{\"changeCount\":0,\"isNew\":true,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      DELETE FROM activity_log\n       WHERE id IN (\n         SELECT id FROM activity_log\n          ORDER BY started_at DESC\n          LIMIT -1 OFFSET 2000\n       )\n    ",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_policy_analyses WHERE app_id = ?",
+          "params": [
+            "7202"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000008",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (live, au/default) — inserted 2, skipped 0",
+            "{\"mode\":\"dev-seed-live\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"7998\",\"name\":\"Relabelled\",\"status\":\"inserted\",\"source\":\"live\",\"snapshotsWritten\":1},{\"id\":\"7202\",\"name\":\"After\",\"status\":\"inserted\",\"source\":\"live\",\"snapshotsWritten\":1}],\"stoppedEarly\":null}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000009",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.56.5",
+            "seed-oracle/1.0",
+            "mode=live country=au inserted=2 skipped=0 errored=0",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "7201",
+            "name": "Relabelled",
+            "url": "https://apps.apple.com/au/app/fixture/id7201?uo=2",
+            "iconUrl": "https://example.com/icon.png",
+            "bundleId": null,
+            "developer": "Fixture Dev",
+            "firstSeen": 1789043696789,
+            "lastSynced": 1789475696789,
+            "changeCount": 1,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "1.0.0",
+            "versionUpdatedAt": 1767323045000,
+            "whatsNew": "Fixture release notes",
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": null,
+            "priceAmount": 0,
+            "priceCurrency": "AUD",
+            "priceFormatted": "Free",
+            "hasIap": null,
+            "genreId": 6002,
+            "genreName": "Utilities",
+            "ageRating": "4+",
+            "privacyPolicyUrl": ""
+          },
+          {
+            "id": "7202",
+            "name": "After",
+            "url": "https://apps.apple.com/au/app/fixture/id7202?uo=2",
+            "iconUrl": "https://example.com/icon.png",
+            "bundleId": null,
+            "developer": "Fixture Dev",
+            "firstSeen": 1789475696789,
+            "lastSynced": 1789475696789,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "1.0.0",
+            "versionUpdatedAt": 1767323045000,
+            "whatsNew": "Fixture release notes",
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": null,
+            "priceAmount": 0,
+            "priceCurrency": "AUD",
+            "priceFormatted": "Free",
+            "hasIap": null,
+            "genreId": 6002,
+            "genreName": "Utilities",
+            "ageRating": "4+",
+            "privacyPolicyUrl": ""
+          }
+        ],
+        "privacy_types": [
+          {
+            "id": "7201_DATA_LINKED_TO_YOU",
+            "app_id": "7201",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Data Linked to You detail"
+          },
+          {
+            "id": "7202_DATA_LINKED_TO_YOU",
+            "app_id": "7202",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Data Linked to You detail"
+          }
+        ],
+        "privacy_categories": [
+          {
+            "id": "7201_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "purpose_id": null,
+            "type_id": "7201_DATA_LINKED_TO_YOU",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          },
+          {
+            "id": "7201_DATA_LINKED_TO_YOU_LOCATION",
+            "purpose_id": null,
+            "type_id": "7201_DATA_LINKED_TO_YOU",
+            "identifier": "LOCATION",
+            "title": "Location"
+          },
+          {
+            "id": "7202_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "purpose_id": null,
+            "type_id": "7202_DATA_LINKED_TO_YOU",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          }
+        ],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "7201",
+            "scraped_at": 1789475696789,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"},{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\",\"Location\"]}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "app_id": "7202",
+            "scraped_at": 1789475696789,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          }
+        ],
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "7201",
+            "app_name": "Relabelled",
+            "change_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\",\"Location\"]}]",
+            "created_at": 1789475696789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "scrape",
+            "status": "ok",
+            "app_id": "7201",
+            "app_name": "Relabelled",
+            "summary": "1 change detected",
+            "detail": "{\"changeCount\":1,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000007",
+            "type": "scrape",
+            "status": "ok",
+            "app_id": "7202",
+            "app_name": "After",
+            "summary": "New app added",
+            "detail": "{\"changeCount\":0,\"isNew\":true,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000008",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (live, au/default) — inserted 2, skipped 0",
+            "detail": "{\"mode\":\"dev-seed-live\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"7998\",\"name\":\"Relabelled\",\"status\":\"inserted\",\"source\":\"live\",\"snapshotsWritten\":1},{\"id\":\"7202\",\"name\":\"After\",\"status\":\"inserted\",\"source\":\"live\",\"snapshotsWritten\":1}],\"stoppedEarly\":null}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000009",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.56.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=live country=au inserted=2 skipped=0 errored=0",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/pt"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "slack"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"ok\":true,\"mode\":\"live\",\"country\":\"au\",\"regionSource\":\"default\",\"inserted\":2,\"skipped\":0,\"errored\":0,\"stoppedEarly\":null,\"results\":[{\"id\":\"7998\",\"name\":\"Relabelled\",\"status\":\"inserted\",\"source\":\"live\",\"snapshotsWritten\":1},{\"id\":\"7202\",\"name\":\"After\",\"status\":\"inserted\",\"source\":\"live\",\"snapshotsWritten\":1}],\"durationMs\":0}",
+        "type": "application/json",
+        "retryAfter": null
+      }
     }
   ]
 }

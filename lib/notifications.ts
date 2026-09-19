@@ -3,6 +3,7 @@ import type { AiTimeoutPhase } from "./ai-config";
 import type { ChangeEntry } from "./changelog";
 import db from "./db";
 import { HARD_DEFAULTS } from "./feature-flag-rules";
+import { postImmediateWebhook } from "./notification-webhooks";
 import type { CategoryMismatch } from "./privacy-profile";
 import { getSetting, setSetting } from "./scheduler";
 
@@ -153,16 +154,26 @@ export function createNotification(
   void fireWebhookIfConfigured(appName, changes);
 }
 
-// Dynamic import so the webhook lib (which pulls `validateExternalUrl`
-// + DB helpers) doesn't get loaded into bundles that just want to
-// write a row. Errors are swallowed — the webhook is not on the
-// critical path for notification persistence.
-async function fireWebhookIfConfigured(
+// The immediate webhook for a row just written. Errors are swallowed —
+// the webhook is not on the critical path for notification persistence.
+//
+// Two callers: `createNotification` above, and the App Store scrape
+// (`commitScrapedAppToDb` in lib/scraper.ts), which writes its own
+// label-change bell row inside its commit and fires this once the
+// commit has landed. Neither waits for quiet hours: those defer the
+// bell row (`not_before`), not the webhook.
+//
+// `postImmediateWebhook` is imported statically. It used to be a
+// dynamic import, which put a dozen microtask ticks between the write
+// and the POST: long enough for a batch of scrapes to request its next
+// app's page first. Every importer of this module is server code (it
+// opens the database), so the dynamic import kept nothing out of a
+// client bundle.
+export async function fireWebhookIfConfigured(
   appName: string,
   changes: ChangeEntry[]
 ): Promise<void> {
   try {
-    const { postImmediateWebhook } = await import("./notification-webhooks");
     // Pick the first change's description as the headline — the in-app
     // bell renders all of them, but a chat post wants a single line.
     // Falls back to a generic phrasing when the description is missing.

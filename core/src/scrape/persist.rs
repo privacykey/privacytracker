@@ -23,6 +23,7 @@ use crate::{
     server::{
         diff::{diff_snapshots, CategorySnapshot, TypeSnapshot},
         grid_meta::{self, Mismatch},
+        webhook_writes::Immediate,
     },
 };
 use rusqlite::{params_from_iter, types::Value as Sql, Connection, OptionalExtension};
@@ -170,6 +171,11 @@ pub struct Outcome {
     pub previous_version: Option<String>,
     pub current_version: Option<String>,
     pub version_updated_at: Option<i64>,
+    /// The immediate webhook the commit owes when it recorded changes:
+    /// `commitScrapedAppToDb`'s `void fireWebhookIfConfigured(name,
+    /// changes)`, fired by the caller once the section that committed has
+    /// closed (`fetch::fire_change_webhook`). Not part of the return value.
+    pub(crate) immediate: Option<Immediate>,
 }
 
 impl Outcome {
@@ -711,6 +717,22 @@ pub(super) fn persist_page(
     w.mark("COMMIT");
     tx.commit().map_err(message)?;
 
+    // ── After the commit: the immediate webhook it owes ──
+    // `void fireWebhookIfConfigured(name, changes)`, handed back for the
+    // caller to fire once its section closes. The headline is
+    // `changes[0]?.description || "<n> change(s)"`.
+    let immediate = has_changes.then(|| Immediate {
+        app_name: page.name.clone(),
+        headline: match changes[0]["description"].as_str() {
+            Some(d) if !d.is_empty() => d.to_string(),
+            _ => format!(
+                "{} change{}",
+                changes.len(),
+                if changes.len() == 1 { "" } else { "s" }
+            ),
+        },
+    });
+
     // ── After the commit: both bells are best effort ──
     if let (true, Some(previous), Some(current)) =
         (version_changed, &previous_version_text, current_version)
@@ -793,6 +815,7 @@ pub(super) fn persist_page(
         } else {
             None
         },
+        immediate,
     })
 }
 

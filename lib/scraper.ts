@@ -24,6 +24,7 @@ import {
   createParserFallthroughNotification,
   createProfileMismatchNotification,
   createVersionUpdateNotification,
+  fireWebhookIfConfigured,
 } from "./notifications";
 import { comparePrivacyTypeDisplayOrder } from "./privacy-meta";
 import { getPolicyAnalysis, syncPrivacyPolicyAnalysis } from "./privacy-policy";
@@ -2534,6 +2535,16 @@ async function commitScrapedAppToDb(
   });
 
   await runBulkWrite(statements, { chunkSize: Math.max(1, statements.length) });
+
+  // The label-change bell row is written above, inside the commit, so it
+  // lands with the snapshot or not at all. Once it has landed, the
+  // immediate webhook goes out as createNotification sends one for a
+  // policy-text change: fire-and-forget, failures swallowed, and not held
+  // for quiet hours, which defer only the bell row. A no-op unless the
+  // webhook frequency is `immediate`.
+  if (hasChanges) {
+    void fireWebhookIfConfigured(input.name, input.changes);
+  }
 }
 
 // ─────────────────────────────────────────────

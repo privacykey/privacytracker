@@ -4,10 +4,12 @@
 //! frequency, and notifications are POSTed there at once or as a daily or
 //! weekly batch. Three call sites, as in Node:
 //!
-//!   * `createNotification` fires `postImmediateWebhook` when a row lands
-//!     and the frequency is `immediate`. Its one caller is `POST
-//!     /api/dev/seed-notification`; a scrape inserts its change
-//!     notification itself and fires nothing, on either backend.
+//!   * `fireWebhookIfConfigured` fires `postImmediateWebhook` when a row
+//!     lands and the frequency is `immediate`: from `createNotification`
+//!     (`POST /api/dev/seed-notification`, a policy-text change in the
+//!     policy store) and from an App Store scrape, which inserts its
+//!     label-change notification inside its own commit and fires once that
+//!     commit has landed (`scrape::fetch::fire_change_webhook`).
 //!   * The 30-minute tick fires `maybePostSummaryWebhook`, which
 //!     self-limits through `notification_webhook_last_sent`.
 //!   * `POST /api/notifications/webhook-test` fires a sample payload at a
@@ -62,10 +64,10 @@ pub(super) struct Notification {
     pub created_at: Value,
 }
 
-/// What the seed route hands the fan-out: `fireWebhookIfConfigured`'s
-/// two arguments, reduced to the headline it makes of them.
-#[derive(Debug, Clone)]
-pub(super) struct Immediate {
+/// What a caller hands the fan-out: `fireWebhookIfConfigured`'s two
+/// arguments, reduced to the headline it makes of them.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Immediate {
     pub app_name: String,
     pub headline: String,
 }
@@ -184,16 +186,10 @@ async fn post_webhook(
     })
 }
 
-/// `postImmediateWebhook`: nothing unless a webhook is configured for
-/// `immediate`; a failure is logged, never raised — the row is already
+/// `postImmediateWebhook`'s POST, once `readWebhookConfig` has said
+/// `immediate`: a failure is logged, never raised — the row is already
 /// written and a broken webhook must not unwrite it.
-async fn post_immediate(db: &mut dyn DbAccess, fetcher: &dyn Fetcher, n: Notification) {
-    let Some(cfg) = db.with(|w| read_config(w.conn)) else {
-        return;
-    };
-    if cfg.frequency != "immediate" {
-        return;
-    }
+async fn post_immediate(fetcher: &dyn Fetcher, cfg: Config, n: Notification) {
     let title = match &n.app_name {
         Some(app) => format!("📱 {app}: {}", n.summary),
         None => format!("📱 {}", n.summary),
@@ -204,27 +200,37 @@ async fn post_immediate(db: &mut dyn DbAccess, fetcher: &dyn Fetcher, n: Notific
     }
 }
 
-/// `fireWebhookIfConfigured`, as `createNotification` calls it: detached
-/// from the response on the server, where a slow webhook must not hold
-/// the request; inline in the replay, whose fetcher cannot be shared.
-pub(super) async fn fire_immediate(
+/// `fireWebhookIfConfigured`. The config is read where the fan-out is
+/// called, as `postImmediateWebhook` reads it before its first await, and
+/// nothing is posted unless it says `immediate`. The POST itself is
+/// detached from the caller on the server, where a slow webhook must not
+/// hold a request or a sync, whatever accessor the caller has; it is made
+/// inline in the replay, whose fetcher cannot be shared and whose canned
+/// hop answers at once.
+pub(crate) async fn fire_immediate(
     db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     now: i64,
     immediate: Immediate,
 ) {
+    let Some(cfg) = db.with(|w| read_config(w.conn)) else {
+        return;
+    };
+    if cfg.frequency != "immediate" {
+        return;
+    }
     let notification = Notification {
         app_name: Some(immediate.app_name),
         summary: immediate.headline,
         created_at: json!(now),
     };
-    match (fetcher.shared(), db.detach()) {
-        (Some(fetcher), Some(mut db)) => {
+    match fetcher.shared() {
+        Some(fetcher) => {
             tokio::spawn(async move {
-                post_immediate(db.as_mut(), fetcher.as_ref(), notification).await;
+                post_immediate(fetcher.as_ref(), cfg, notification).await;
             });
         }
-        _ => post_immediate(db, fetcher, notification).await,
+        None => post_immediate(fetcher, cfg, notification).await,
     }
 }
 
@@ -443,6 +449,79 @@ pub(super) async fn perform(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{outbound::FetchFuture, scrape::persist::Locked};
+    use futures_util::FutureExt;
+    use std::sync::{Arc, Mutex};
+
+    /// A shareable transport, as the server's is, whose every request
+    /// hangs: it records what it was asked to send and never answers.
+    #[derive(Clone, Default)]
+    struct Hanging {
+        seen: Arc<Mutex<Vec<(String, String, Option<String>)>>>,
+    }
+
+    impl Fetcher for Hanging {
+        fn shared(&self) -> Option<Arc<dyn Fetcher>> {
+            Some(Arc::new(self.clone()))
+        }
+        fn fetch(&self, request: Request) -> FetchFuture<'_> {
+            self.seen
+                .lock()
+                .unwrap()
+                .push((request.method, request.url, request.body));
+            Box::pin(std::future::pending())
+        }
+    }
+
+    #[test]
+    fn an_immediate_post_never_holds_the_caller() {
+        // The background ticks (the scheduled sync, its resume, the import
+        // queue) reach a scrape through `Locked`, which cannot be detached.
+        // The POST must leave the caller all the same, with the config read
+        // where the fan-out was called.
+        let conn = crate::db::open_and_migrate(std::path::Path::new(":memory:")).unwrap();
+        for (key, value) in [
+            ("notification_webhook_url", "https://hooks.example.com/pt"),
+            ("notification_webhook_format", "slack"),
+            ("notification_webhook_frequency", "immediate"),
+        ] {
+            conn.execute(
+                "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+                [key, value],
+            )
+            .unwrap();
+        }
+        let conn = std::sync::Mutex::new(conn);
+        let mut db = Locked {
+            conn: &conn,
+            log: None,
+            on_wait: None,
+        };
+        let fetcher = Hanging::default();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let immediate = Immediate {
+                app_name: "App".to_string(),
+                headline: "Added".to_string(),
+            };
+            let fired = fire_immediate(&mut db, &fetcher, 5, immediate).now_or_never();
+            assert!(fired.is_some(), "the caller waited on the webhook");
+            for _ in 0..3 {
+                tokio::task::yield_now().await;
+            }
+        });
+        assert_eq!(
+            *fetcher.seen.lock().unwrap(),
+            vec![(
+                "POST".to_string(),
+                "https://hooks.example.com/pt".to_string(),
+                Some(r#"{"text":"📱 App: Added\nAdded"}"#.to_string()),
+            )]
+        );
+    }
 
     fn n(app: Option<&str>, summary: &str) -> Notification {
         Notification {
