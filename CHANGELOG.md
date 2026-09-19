@@ -56,6 +56,12 @@ Going forward, changes are recorded here as they land.
   summarise" or "Retry analysis"), which is refused while "Disable policy
   scraping" is on. Summarise now summarises the stored text without
   fetching it again, so it also works with scraping disabled.
+- The task tray no longer says "Summary updated" when "Summarise" or
+  "Rescrape + summarise" on an app's AI Policy tab made no summary. It
+  said so for every run that finished, including a failed AI summary, a
+  failed fetch and a run with no AI provider set up. It now says "Summary
+  failed" when the AI summary failed and "Summary not updated" for the
+  rest.
 - Clicking "Summarise" on an app's AI Policy tab after a failed policy
   refresh no longer adds a failure to the Activity log. A failed refresh
   keeps the policy text from the last refresh that worked, and the button

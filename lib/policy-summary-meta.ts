@@ -62,6 +62,38 @@ export function canSummariseStoredPolicy(analysis: {
   );
 }
 
+/**
+ * How the AI Policy tab's task tray reports a finished run, read from the
+ * status of the analysis the run returned (keys under
+ * `app_detail.policy_run`). A run that summarises ('summarise', or 'all'
+ * after its fetch) returns an analysis whether or not it made a summary: a
+ * failed AI call, a missing AI provider, a failed fetch and a declined run
+ * all return one. Only 'ready' means the summary was updated. A fetch-only
+ * run keeps its one message.
+ */
+export function describePolicyRunCompletion(
+  phase: "fetch" | "summarise" | "all",
+  status: string | null | undefined
+): {
+  messageKey:
+    | "completion_fetch"
+    | "completion_summarise"
+    | "completion_summary_failed"
+    | "completion_summary_not_updated";
+  status: "done" | "error";
+} {
+  if (phase === "fetch") {
+    return { status: "done", messageKey: "completion_fetch" };
+  }
+  if (status === "ready") {
+    return { status: "done", messageKey: "completion_summarise" };
+  }
+  if (status === "analysis_error") {
+    return { status: "error", messageKey: "completion_summary_failed" };
+  }
+  return { status: "error", messageKey: "completion_summary_not_updated" };
+}
+
 export const POLICY_SOURCE_ORIGINS = [
   "direct",
   "browser_retry",
