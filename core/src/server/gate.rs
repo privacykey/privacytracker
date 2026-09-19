@@ -28,11 +28,17 @@
 //! EVERY request, so a wrongly-ungated route still answers 200 and the gate
 //! passes. Auth behaviour cannot be verified by the parity gate — it is
 //! covered by unit tests here and by the `--no-token` probe in the runner.
+//!
+//! Phase 6, batch 3a, when the server started serving the pages: the
+//! matcher (`matcher_covers`: static assets skip every step), the page
+//! branch of step 1 (a 307 to `/login` rather than a 401), the CSP on every
+//! response the proxy handles, and Next's own `Cache-Control` winning over
+//! `no-store` where Next sets one after the proxy (`KeepCacheControl`).
 
 use axum::{
     body::Body,
     extract::Request,
-    http::{header, Method, StatusCode},
+    http::{header, HeaderMap, Method, StatusCode},
     middleware::Next,
     response::Response,
 };
@@ -40,12 +46,12 @@ use axum::{
 use super::auth::request_has_valid_admin_token;
 use super::json::json_error;
 use super::trust::{
-    effective_host, is_host_allowed, is_network_exposed, is_same_origin_request, trust_proxy,
+    effective_host, is_host_allowed, is_network_exposed, is_same_origin_request, request_origin,
+    trust_proxy,
 };
 
 /// Exact-match public reads, from `proxy.ts`'s `PUBLIC_READ_PATHS`. GET/HEAD
-/// only, never a prefix match. `/login` and `/brand-icon.png` are listed for
-/// fidelity even though this server does not serve them yet.
+/// only, never a prefix match.
 const PUBLIC_READ_PATHS: &[&str] = &[
     "/login",
     "/api/health",
@@ -64,9 +70,79 @@ fn header_str(req: &Request, name: header::HeaderName) -> Option<&str> {
     req.headers().get(name)?.to_str().ok()
 }
 
+/// `proxy.ts`'s matcher, `/((?!_next/static|_next/image|favicon.ico|fonts/|preview-icon-).*)`:
+/// every path except the static assets, which Next serves without ever
+/// running the proxy (no host check, no auth, no CSP, no `no-store`).
+/// Case-sensitive, and the `.` in `favicon.ico` is the regex's any-char.
+pub(crate) fn matcher_covers(path: &str) -> bool {
+    let rest = path.strip_prefix('/').unwrap_or(path);
+    let favicon = rest.starts_with("favicon") && rest.get(8..11) == Some("ico");
+    !(rest.starts_with("_next/static")
+        || rest.starts_with("_next/image")
+        || favicon
+        || rest.starts_with("fonts/")
+        || rest.starts_with("preview-icon-"))
+}
+
+/// `attachSecurityHeaders`' Content-Security-Policy (the five static
+/// headers are the outer layer's, as next.config's `headers()` sets them on
+/// every response).
+fn with_csp(mut res: Response, pathname: &str) -> Response {
+    if let Some((name, value)) = super::csp_policy::header(pathname) {
+        res.headers_mut().insert(name, value);
+    }
+    res
+}
+
+/// Where a page navigation without the token goes:
+/// `new URL("/login", requestOrigin(request) ?? request.url)`, which Next
+/// writes back as a path when it names the request's own origin.
+fn login_location(headers: &HeaderMap, trust: bool) -> String {
+    match request_origin(headers, trust) {
+        Some(origin) if Some(&origin) != request_origin(headers, false).as_ref() => {
+            format!("{origin}/login")
+        }
+        _ => "/login".into(),
+    }
+}
+
+/// A middleware redirect as Next serialises it: the location, echoed as
+/// the body, and for a 308 a `Refresh` header too.
+fn redirect(status: StatusCode, location: &str) -> Option<Response> {
+    let value = header::HeaderValue::from_str(location).ok()?;
+    let mut builder = Response::builder()
+        .status(status)
+        .header(header::LOCATION, value.clone())
+        .header(header::CACHE_CONTROL, "no-store");
+    if status == StatusCode::PERMANENT_REDIRECT {
+        builder = builder.header("refresh", format!("0;url={location}"));
+    }
+    builder.body(Body::from(location.to_string())).ok()
+}
+
+/// `request.nextUrl.pathname`: a `/_next/data/<build id>/<page>.json` URL
+/// reads as the page it asks for (`getNextPathnameInfo` with `parseData`).
+fn next_url_pathname(path: &str) -> String {
+    if let Some(data) = path
+        .strip_prefix("/_next/data/")
+        .and_then(|rest| rest.strip_suffix(".json"))
+    {
+        let parts: Vec<&str> = data.split('/').collect();
+        return if parts.get(1) == Some(&"index") {
+            "/".into()
+        } else {
+            format!("/{}", parts[1..].join("/"))
+        };
+    }
+    path.to_string()
+}
+
 pub async fn gate(req: Request, next: Next) -> Response {
     let method = req.method().clone();
-    let path = req.uri().path().to_string();
+    if !matcher_covers(req.uri().path()) {
+        return next.run(req).await;
+    }
+    let path = next_url_pathname(req.uri().path());
     // Read once and threaded through: Node calls `trustProxy()` inside each
     // helper, but the env cannot change within a request.
     let trust = trust_proxy();
@@ -74,18 +150,21 @@ pub async fn gate(req: Request, next: Next) -> Response {
     // ── Step 0: host allowlist, for every method including GET. ──────────
     if !is_host_allowed(effective_host(req.headers(), trust).as_deref()) {
         // proxy.ts does NOT set Cache-Control on this branch — see `no_store`.
-        return json_error(StatusCode::BAD_REQUEST, "Host not allowed");
+        return with_csp(
+            json_error(StatusCode::BAD_REQUEST, "Host not allowed"),
+            &path,
+        );
     }
 
     // ── Step 0.5: canonical trailing-slash redirect. AFTER the host check
     // and BEFORE auth, exactly as in proxy.ts: `/api/health/` from a
     // disallowed Host is still a 400, and `/api/date-format/` with no token
-    // is a 308 rather than a 401. ────────────────────────────────────────
-    if let Some(res) = canonical_trailing_slash_target(&path, req.uri().query())
-        .as_deref()
-        .and_then(trailing_slash_redirect)
-    {
-        return res;
+    // is a 308 rather than a 401. The CSP is the canonical page's. ───────
+    if let Some(target) = canonical_trailing_slash_target(&path, req.uri().query()) {
+        if let Some(res) = trailing_slash_redirect(&target) {
+            let canonical = target.split('?').next().unwrap_or("/");
+            return with_csp(res, canonical);
+        }
     }
 
     let is_read = method == Method::GET || method == Method::HEAD;
@@ -105,10 +184,18 @@ pub async fn gate(req: Request, next: Next) -> Response {
             header_str(&req, header::COOKIE),
         );
         if !ok {
-            // Node redirects browser navigations to /login and 401s API calls.
-            // This server only serves /api, so the 401 branch is the whole of it.
+            // Node 401s API calls and sends page navigations to /login.
             // Unlike the 400 and 403 branches, proxy.ts DOES set no-store here.
-            return no_store(json_error(StatusCode::UNAUTHORIZED, "Admin token required"));
+            let res = if path.starts_with("/api/") {
+                no_store(json_error(StatusCode::UNAUTHORIZED, "Admin token required"))
+            } else {
+                let location = login_location(req.headers(), trust);
+                match redirect(StatusCode::TEMPORARY_REDIRECT, &location) {
+                    Some(res) => res,
+                    None => no_store(json_error(StatusCode::UNAUTHORIZED, "Admin token required")),
+                }
+            };
+            return with_csp(res, &path);
         }
     }
 
@@ -128,12 +215,26 @@ pub async fn gate(req: Request, next: Next) -> Response {
         // supplied — legitimate no-Origin mutations are tool-driven.
         if !(has_token_header || is_same_origin_request(req.headers(), trust)) {
             // No Cache-Control here either — see `no_store`.
-            return json_error(StatusCode::FORBIDDEN, "Cross-origin mutation rejected");
+            return with_csp(
+                json_error(StatusCode::FORBIDDEN, "Cross-origin mutation rejected"),
+                &path,
+            );
         }
     }
 
-    // proxy.ts sets no-store unconditionally on the pass-through path.
-    no_store(next.run(req).await)
+    // proxy.ts sets no-store on the pass-through path; Next's own
+    // Cache-Control (a 404's, a failed static send's) replaces it after.
+    let res = next.run(req).await;
+    let res = if res
+        .extensions()
+        .get::<super::site::KeepCacheControl>()
+        .is_some()
+    {
+        res
+    } else {
+        no_store(res)
+    };
+    with_csp(res, &path)
 }
 
 /// `Cache-Control: no-store`.
@@ -185,22 +286,16 @@ fn canonical_trailing_slash_target(path: &str, query: Option<&str>) -> Option<St
 /// `GET /api/health/?x=1` answers `location: /api/health?x=1` on the wire — an
 /// absolute Location here would be a visible difference.
 ///
-/// Two Next artefacts on that response are NOT reproduced: it also emits
-/// `Refresh: 0;url=<loc>` and echoes the location in the body. Both are
-/// Next redirect-serialisation trivia rather than contract, and this server
-/// does not emit Next's security-header block either (not yet ported).
+/// Next serialises it the way it serialises every middleware redirect:
+/// `Refresh: 0;url=<loc>` beside the Location and the location echoed as
+/// the body (see `redirect`). Since Phase 6, batch 3a both are reproduced,
+/// with the security headers and the canonical page's CSP.
 ///
 /// `None` when the target cannot be a header value. Hyper rejects control
 /// bytes in the request target long before this, so it is unreachable in
 /// practice; falling through to the router beats panicking on a request.
 fn trailing_slash_redirect(target: &str) -> Option<Response> {
-    let location = header::HeaderValue::from_str(target).ok()?;
-    Response::builder()
-        .status(StatusCode::PERMANENT_REDIRECT)
-        .header(header::LOCATION, location)
-        .header(header::CACHE_CONTROL, "no-store")
-        .body(Body::empty())
-        .ok()
+    redirect(StatusCode::PERMANENT_REDIRECT, target)
 }
 
 #[cfg(test)]
@@ -351,11 +446,12 @@ mod tests {
         scenario(async {
             assert_eq!(get_("/api/health").await.status(), StatusCode::OK);
             // `/` is below the length guard, so it is never redirected. It falls
-            // through to step 1 and 401s — Node answers a 307 to /login there,
-            // the page branch this API-only server deliberately does not port.
+            // through to step 1, and a page navigation without the token goes
+            // to /login (Phase 6, batch 3a), as in Node.
             let root = get_("/").await;
-            assert_eq!(root.status(), StatusCode::UNAUTHORIZED);
-            assert_eq!(location(&root), None);
+            assert_eq!(root.status(), StatusCode::TEMPORARY_REDIRECT);
+            assert_eq!(location(&root), Some("/login"));
+            assert_eq!(cache_control(&root), Some("no-store"));
         });
     }
 
