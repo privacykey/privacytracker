@@ -197,8 +197,9 @@ function runStep(name: string, fn: () => void): StepResult {
 function stepSchemaCheck(): void {
   // lib/db.ts runs CREATE TABLE IF NOT EXISTS on module load, so by the time
   // this step executes the tables already exist. We just verify they're
-  // present — if either check fails the migration aborts and the user sees
-  // the error UI. No structural changes here; this is a sanity gate.
+  // present — if either check fails the migration aborts before its version
+  // marker, and the next boot tries again. No structural changes here; this
+  // is a sanity gate.
   const flagOverridesExists = db
     .prepare(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'feature_flag_overrides'"
