@@ -604,6 +604,20 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-policy-runner-cases.mjs
           git diff --exit-code -- core/tests/fixtures/policy-runner-cases.json
 
+      - name: Policy triggers oracle is current
+        # Runs the real scrape, import completion, sync trigger and dev seed
+        # routes through the two ways Node starts policy work on its own:
+        # the policy step after a scrape (summarizePolicies) and the
+        # deferred post-update fetch, drained through its own
+        # __drainForTests, with every fetch canned and a frozen clock.
+        # Records each response, every raw fetch, every write, what lands
+        # after the case and nine tables. A diff means one of those paths
+        # changed and core/src/server/policy_triggers.rs or its call sites
+        # have not been ported to match.
+        run: |
+          node --conditions=react-server --import tsx core/scripts/extract-policy-triggers-cases.mjs
+          git diff --exit-code -- core/tests/fixtures/policy-triggers-cases.json
+
       - name: Core crate tests
         run: cargo test --locked --manifest-path core/Cargo.toml
 

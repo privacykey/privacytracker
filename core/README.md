@@ -919,9 +919,9 @@ syscalls, histogram walks and serialisation. Holding it across all of that
 would serialise every other handler behind a 2-second diagnostics poll —
 and inflate the very `lockWait` number the section reports.
 
-Not ported, because they are write routes: the `DELETE` that clears the
-rings and the `POST` that toggles profiling. The clear helpers exist and
-are tested; the routes wait for the writers phase.
+Not ported here, because they are write routes: the `DELETE` that clears
+the rings and the `POST` that toggles profiling. The writers phase ported
+them (Phase 4 batch 5a, the maintenance writes).
 
 ### The trailing-slash redirect (proxy.ts step 0.5)
 
@@ -2014,12 +2014,13 @@ live over `perform`) no longer compiles, because the handler future stops
 being `Send` and axum's `post()` refuses it — the check the allowance had
 suppressed.
 
-**What is not ported.** `summarizePolicies: true` on `/api/scrape` and
-the deferred policy-source fetch a successful import or scrape arms
-(`schedulePostAppUpdatePolicyFetch`) are the Phase 5 policy pipeline;
-the flag is read and ignored, the hook is a no-op. The oracle holds the
-`policy_sync_running` mutex in every case so Node's timer, when it
-fires, finds the runner busy and writes nothing.
+**What this batch left out.** `summarizePolicies: true` on
+`/api/scrape` and the deferred policy-source fetch a successful import
+or scrape arms (`schedulePostAppUpdatePolicyFetch`) are the policy
+pipeline, ported in Phase 5 batch 4b (the policy triggers) with an oracle
+of their own. This oracle still holds the `policy_sync_running` mutex in
+every case, so Node's timer, when it fires, finds the runner busy and
+writes nothing.
 
 **The oracle — `core/scripts/extract-imports-cases.mjs`.** Runs the REAL
 handlers over 167 requests with foreign keys ON, a frozen clock, counted
@@ -2719,17 +2720,16 @@ is. CI regenerates it with the fixture and fails on a diff in either, so
 a demo app added on the Node side cannot leave the core seeding a
 different library. `ring`, already a dependency, supplies both hashes.
 
-**Not here: the policy pipeline.** Node's live walk scrapes with
+**The policy pipeline.** Node's live walk scrapes with
 `summarizePolicies` on, so each new app then has its developer's policy
-page fetched, hashed and summarised. That pipeline is Phase 5. The one
-branch of it that is a plain write is ported — an app with NO policy
-link has its analysis row deleted, Node's first line — and every page
-the oracle serves is such a page. An app that has a link gets nothing
-further from the core, where Node goes on to fetch it; `POST
-/api/scrape` has carried the same gap for `summarizePolicies` since
-batch 3. Until Phase 5 a live seed from the core leaves the AI Policy
-tab empty for those apps. The canned seed is unaffected: its analyses
-are fixture rows, not fetches.
+page fetched, hashed and summarised. This batch ported only the branch
+of it that is a plain write (an app with NO policy link has its analysis
+row deleted, Node's first line), and every page this oracle serves is
+such a page. Phase 5 batch 4b replaced that stand-in with the whole
+policy step, so a live seed from the core now fetches and summarises as
+Node's does; the policy triggers oracle records a live seed whose app
+has a link. The canned seed is unaffected: its analyses are fixture
+rows, not fetches.
 
 **The oracle — `core/scripts/extract-seed-cases.mjs`.** Runs the REAL
 handler, each case in a SAVEPOINT, the network a stub that serves the
@@ -3008,11 +3008,10 @@ start a fetch after a scrape or an import. Four batches:
    `POST /api/policy/regenerate`, `/api/ai/policy-sample`, `/api/ai/test`
    and `/api/ai/models`, with a loopback fake provider for the live gate.
 4. **The bulk runner, its resume and the triggers**, in two parts. **4a,
-   the runner (this batch):** `runBulkPolicySync`, `POST
-   /api/policy/sync-all` and the 12 s startup resume. **4b, the
-   triggers:** the deferred post-update policy fetch after an import or a
-   sync, and `summarizePolicies` on a scrape and the dev seed, which
-   `imports_writes.rs` and `seed_writes.rs` still skip.
+   the runner:** `runBulkPolicySync`, `POST /api/policy/sync-all` and the
+   12 s startup resume. **4b, the triggers (this batch):** the deferred
+   post-update policy fetch after an import or a sync, and
+   `summarizePolicies` on a scrape and the dev seed.
 
 Everything stays inert: no shipping path calls the policy module, and
 `rust-core-inert.test.ts` is unchanged.
@@ -3619,3 +3618,67 @@ reworded failed exactly the probe's check for it. Source restored byte
 for byte after each, fixed tree green.
 
 Rust suite: 268 pass (267 + the replay).
+
+### Batch 4b — the policy triggers
+
+`core/src/server/policy_triggers.rs` ports the two ways Node starts policy
+work on its own, and wires them where Node calls them.
+
+**The policy after a scrape.** `fetchAndParseApp(url, resync, true)` runs
+the app's policy through `syncPrivacyPolicyAnalysis` once the scrape has
+committed: its link and developer as the page gave them, and no link
+clears the analysis. The scrape's `Outcome` now carries both, and
+`scrape_initial_urls` runs the step after each app, before the next URL,
+when `POST /api/scrape` asks with `summarizePolicies: true`. The dev
+seed's live walk always asks; its stand-in, which only cleared the
+analysis of an app with no link, is gone. A failure is logged and never
+fails the scrape.
+
+**The deferred fetch.** `schedulePostAppUpdatePolicyFetch` is called
+where Node calls it: a successful scrape without that flag (`sync` for a
+resync, `import` otherwise), an import completion that brought apps in,
+and a bulk App Store sync that synced any. Requests coalesce behind a
+two-second timer. The drain skips while scraping is off; while another
+policy run holds the lock or a readable blob is left, it waits five
+minutes, at most three times; otherwise it runs batch 4a's runner as
+`automatic`, fetch only. The queue is process state, as Node's module
+state is, and the server installs a factory at startup that hands the
+timer an owned accessor, fetcher, id source and clock. Under `cfg(test)`
+the queue is per thread and no timer is armed: a replay drains the queue
+itself, as Node's oracle calls `__drainForTests`.
+
+**The oracle — `core/scripts/extract-policy-triggers-cases.mjs`.** 19
+cases, each a list of steps through the REAL scrape, import completion,
+sync trigger and seed routes, with drain steps and unrecorded database
+changes between them: the policy after a scrape (a page with a link,
+without one, a policy page that fails, two apps in turn, a scrape that
+fails, the live seed); who asks for the deferred fetch and who does not;
+and what the drain decides (scraping off, a busy run then a run, three
+waits then giving up, a request that arrives during the waits, a leftover
+blob). The clock is frozen, since the scrape paths read the time once per
+request. `core/src/server/policy_triggers_tests.rs` replays them through
+`precheck` and `perform_async` and CI regenerates the fixture ("Policy
+triggers oracle is current"). The replay passed on its first run.
+
+**Checked on the real server.** Neither the replay nor the live gate can
+reach the timer, so it was checked by hand: pt-core on a scratch database,
+an import completed with one app whose policy link is a loopback address,
+and about two seconds later the automatic run had fetched (and been
+refused) and written "Bulk policy scrape: 0 ok, 1 failed". The live gate
+passes unchanged; every path this batch adds fetches Apple or a developer
+site, so it has no probe of its own.
+
+**Node's behaviour, kept.** After three waits the drain gives up and
+drops everything queued, a request that arrived during the waits
+included, so an import finished while a long policy run is going can get
+no policy fetch at all.
+
+**Negative controls, predicted before running.** The import completion
+not asking: exactly the import case. Two waits instead of three: exactly
+the case whose new request lands after the waits (giving up at once ends
+the same). No policy step after a scrape: exactly the six cases whose
+scrape succeeds with the flag on, the no-link delete included. No
+kill-switch in the drain: exactly the case with scraping off. Source
+restored byte for byte after each, fixed tree green.
+
+Rust suite: 269 pass (268 + the replay).

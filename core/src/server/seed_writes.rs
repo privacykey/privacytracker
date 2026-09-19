@@ -17,13 +17,10 @@
 //! before the next. Apple's rate limit stops the walk and keeps what it
 //! has. The connection is taken per section, as in the import pipeline.
 //!
-//! One thing is not here. Node scrapes with `summarizePolicies` on, so
-//! each new app then goes through the policy pipeline — fetch the
-//! developer's page, hash it, summarise it. That pipeline is Phase 5. The
-//! one branch of it that is a plain write is ported: an app with no
-//! policy link has its analysis row deleted, as Node's first line does.
-//! An app WITH a link gets nothing further here, where Node would go on
-//! to fetch it.
+//! Node scrapes with `summarizePolicies` on, so each new app then goes
+//! through the policy pipeline (Phase 5, batch 4b): its developer's page
+//! fetched, stored and, with a provider set, summarised; an app with no
+//! link has its analysis cleared.
 use super::{
     activity_log::record_activity,
     diff::{diff_snapshots, CategorySnapshot, ChangeEntry, TypeSnapshot},
@@ -65,8 +62,6 @@ const INSERT_VERSION: &str = "INSERT INTO privacy_policy_versions (\n         id
 const INSERT_TYPE: &str =
     "INSERT INTO privacy_types (id, app_id, identifier, title)\n           VALUES (?, ?, ?, ?)";
 const INSERT_CATEGORY: &str = "INSERT INTO privacy_categories (id, type_id, identifier, title)\n             VALUES (?, ?, ?, ?)";
-/// The first line of `syncPrivacyPolicyAnalysis`, for an app with no link.
-const CLEAR_ANALYSIS: &str = "DELETE FROM privacy_policy_analyses WHERE app_id = ?";
 
 const DAY_MS: i64 = 24 * 60 * 60 * 1000;
 /// Australia: what the people who run this route see on their own phones.
@@ -656,21 +651,10 @@ fn backfill_fake_history(
     Ok(written)
 }
 
-/// What Node does once `fetchAndParseApp` has committed: the policy step
-/// (see the module note), then the history. A failure in the history is
-/// swallowed — the app is usable with one timeline row.
-fn after_scrape(cx: &mut Cx, scraped_id: &str, chart_id: &str) -> i64 {
-    let policy_url: Option<String> =
-        cx.w.conn
-            .query_row(
-                "SELECT privacyPolicyUrl FROM apps WHERE id = ?",
-                [scraped_id],
-                |r| r.get(0),
-            )
-            .unwrap_or(None);
-    if policy_url.as_deref().unwrap_or("").is_empty() {
-        let _ = cx.w.run(CLEAR_ANALYSIS, vec![json!(scraped_id)]);
-    }
+/// What Node does once `fetchAndParseApp` (policy step included) has
+/// returned: the history. A failure in it is swallowed — the app is usable
+/// with one timeline row.
+fn after_scrape(cx: &mut Cx, chart_id: &str) -> i64 {
     // The snapshot is read back under the CHART's id. When the chart and
     // the product link disagree that is an app nobody scraped, the
     // snapshot is empty, and there is no history — as on Node.
@@ -841,6 +825,7 @@ pub(super) async fn perform(
     // walk with whatever it has.
     let mut results = vec![];
     let mut stopped_early = None;
+    let mut follow_ups = vec![];
     for entry in &apps {
         let now = clock.now();
         let tracked = db.with(|w| app_exists(&section(w, ids, now), &entry.id));
@@ -857,9 +842,12 @@ pub(super) async fn perform(
         }
         match fetch_and_parse_app(db, fetcher, &entry.url, false, None, now, ids).await {
             Ok(outcome) => {
+                follow_ups.push(
+                    super::policy_triggers::summarize_after_scrape(db, ids, fetcher, now, &outcome)
+                        .await,
+                );
                 let now = clock.now();
-                let written =
-                    db.with(|w| after_scrape(&mut section(w, ids, now), &outcome.id, &entry.id));
+                let written = db.with(|w| after_scrape(&mut section(w, ids, now), &entry.id));
                 results.push(result_row(
                     &entry.id,
                     &entry.name,
@@ -887,7 +875,7 @@ pub(super) async fn perform(
         tokio::time::sleep(per_app_delay()).await;
     }
     let now = clock.now();
-    db.with(|w| {
+    let response = db.with(|w| {
         finish(
             &mut section(w, ids, now),
             results,
@@ -897,7 +885,9 @@ pub(super) async fn perform(
             actor,
             started_at,
         )
-    })
+    });
+    super::policy_triggers::finish_later(db, fetcher, now, follow_ups).await;
+    response
 }
 
 /// The audit row every refusal after the guard leaves.
