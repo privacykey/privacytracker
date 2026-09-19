@@ -2670,6 +2670,7 @@
     "schedule_weekly": "每周同步",
     "schedule_default": "定时同步",
     "subtitle_resumed": "重启后已恢复",
+    "subtitle_background": "正在后台运行",
     "msg_cancelled": "已取消",
     "msg_unknown_error": "未知错误"
   },
