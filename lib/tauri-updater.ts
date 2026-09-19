@@ -26,20 +26,37 @@ export function isTauri(): boolean {
 export interface TauriUpdateResult {
   /** True if Tauri reported an update is available. */
   available: boolean;
-  /** Error string if anything threw. UI surfaces verbatim. */
+  /**
+   * Error string if the check, download or install threw. UI surfaces
+   * verbatim. Never set once the update is installed: a relaunch that
+   * fails after that is reported in `relaunchError`.
+   */
   error?: string;
-  /** True if download + install succeeded (relaunch follows). */
+  /** True if download + install succeeded, whether or not the relaunch did. */
   installed: boolean;
   /** Release notes Tauri parsed out of the manifest, if any. */
   notes?: string;
+  /**
+   * Set when the update installed but the automatic relaunch failed. The
+   * new version is already on disk and starts on the next launch, so the
+   * UI asks for a restart instead of reporting a failed install.
+   */
+  relaunchError?: string;
   /** Version string Tauri sees as latest, if any. */
   version?: string;
+}
+
+/** Tauri's invoke() rejects with a plain string; most other failures are Errors. */
+function errorMessage(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
 }
 
 /**
  * Checks for an update via Tauri's updater plugin and (if found) downloads,
  * installs, and relaunches. Outside Tauri, returns `{ available: false,
- * installed: false }` so the UI falls back to manual instructions.
+ * installed: false }` so the UI falls back to manual instructions. A
+ * relaunch failure after a successful install still reports `installed:
+ * true`, with the reason in `relaunchError`.
  */
 export async function checkAndInstall(): Promise<TauriUpdateResult> {
   if (!isTauri()) {
@@ -77,21 +94,29 @@ export async function checkAndInstall(): Promise<TauriUpdateResult> {
     }
 
     await update.downloadAndInstall();
-    // relaunch() drops the current webview — any in-flight state writes
-    // or fetches behind it are lost.
-    await proc.relaunch();
-    return {
+    const installed: TauriUpdateResult = {
       available: true,
       installed: true,
       version: update.version,
       notes: update.body,
     };
+    try {
+      // relaunch() drops the current webview — any in-flight state writes
+      // or fetches behind it are lost. It can resolve just before the
+      // process exits, so the caller may still paint this result briefly.
+      await proc.relaunch();
+    } catch (e) {
+      // The new version is already installed; only the restart failed.
+      // Reporting that as a failed install would send the user off to
+      // download an update they already have.
+      return { ...installed, relaunchError: errorMessage(e) };
+    }
+    return installed;
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
     return {
       available: false,
       installed: false,
-      error: msg,
+      error: errorMessage(e),
     };
   }
 }

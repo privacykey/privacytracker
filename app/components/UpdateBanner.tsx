@@ -61,7 +61,7 @@ export default function UpdateBanner() {
   const [status, setStatus] = useState<UpdateStatusResponse | null>(null);
   const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
   const [installState, setInstallState] = useState<
-    "idle" | "installing" | "done" | "error"
+    "idle" | "installing" | "restarting" | "needs_restart" | "error"
   >("idle");
   const [installError, setInstallError] = useState<string | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
@@ -145,10 +145,11 @@ export default function UpdateBanner() {
     setInstallError(null);
     const result: TauriUpdateResult = await checkAndInstall();
     if (result.installed) {
-      setInstallState("done");
-      // The relaunch() call inside checkAndInstall will wipe this view
-      // before this state ever paints. Setting it anyway for the case
-      // where Tauri reports installed but defers the restart.
+      // A successful relaunch() resolves just before the app exits, so
+      // "restarting" can paint on the way out. A failed one leaves the
+      // update installed but not running: quitting and reopening the app
+      // finishes it, so say that rather than report a failed install.
+      setInstallState(result.relaunchError ? "needs_restart" : "restarting");
     } else if (result.error) {
       setInstallState("error");
       setInstallError(result.error);
@@ -210,18 +211,25 @@ export default function UpdateBanner() {
         </div>
 
         <div className="update-banner__actions">
-          {effectiveRuntime === "tauri" && (
+          {/* Hidden when the update installed but the relaunch failed:
+              pressing it again would only download and install the same
+              update again. */}
+          {effectiveRuntime === "tauri" && installState !== "needs_restart" && (
             <button
               className="update-banner__cta update-banner__cta--primary"
-              disabled={installState === "installing"}
+              disabled={
+                installState === "installing" || installState === "restarting"
+              }
               onClick={handleTauriInstall}
               type="button"
             >
               {installState === "installing"
                 ? tBanner("installing")
-                : installState === "error"
-                  ? tBanner("try_again")
-                  : tBanner("install_restart")}
+                : installState === "restarting"
+                  ? tBanner("restarting")
+                  : installState === "error"
+                    ? tBanner("try_again")
+                    : tBanner("install_restart")}
             </button>
           )}
 
@@ -250,6 +258,12 @@ export default function UpdateBanner() {
             {tBanner("not_now")}
           </button>
         </div>
+
+        {installState === "needs_restart" && (
+          <p className="update-banner__notice">
+            {tBanner("installed_needs_restart")}
+          </p>
+        )}
 
         {installState === "error" && installError && (
           <p className="update-banner__error" role="alert">
