@@ -750,10 +750,10 @@ export default function SettingsView({
 
   /**
    * Auto-save hook for notification preferences. PUTs the full sanitized
-   * prefs map to `/api/notification-prefs` (sparse diffs aren't supported
-   * by the route — server stores the explicit choices wholesale). We
-   * always send what the user sees, so "what's on disk" matches "what's
-   * in the UI".
+   * prefs map to `/api/notification-prefs`, so "what's on disk" matches
+   * "what's in the UI". The route writes only the types whose value this
+   * changes (see its `planOverrideWrites`), so sending every key never
+   * disturbs a flag override set elsewhere.
    *
    * `onSaved` advances the savedNotificationPrefs watermark using the
    * server's resolved response if available, otherwise the payload we
@@ -1792,12 +1792,14 @@ export default function SettingsView({
                 </div>
               )}
 
-              {/* Notifications — choose which types the bell surfaces. Stored as a
-          single JSON blob under `notification_prefs` in app_settings (see
-          lib/notification-prefs.ts). Toggling a type off just hides it in
-          the bell — the underlying notification row is still written to the
-          DB, so turning the toggle back on immediately re-surfaces anything
-          that fired while the type was muted. */}
+              {/* Notifications — choose which types the bell surfaces. Label
+          changes and policy updates are `flag.notifications.types.*` flags,
+          which the server applies too (no policy notification is written
+          while that flag is off). The other five are a JSON blob under
+          `notification_prefs` in app_settings (see app/api/notification-prefs):
+          toggling one of those off just hides it in the bell — the row is
+          still written to the DB, so turning the toggle back on immediately
+          re-surfaces anything that fired while the type was muted. */}
               {settingsNotificationsPrefsOn && (
                 <NotificationPrefsSection
                   autosaveLogToTaskCenter={autosaveLogToTaskCenter}
