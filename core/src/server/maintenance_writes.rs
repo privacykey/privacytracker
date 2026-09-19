@@ -415,7 +415,7 @@ fn login(cx: &mut Cx, body: BodyOutcome, headers: &HeaderMap, actor: &Actor) -> 
     if provided.is_empty() {
         return json_error(StatusCode::BAD_REQUEST, "Token is required");
     }
-    let expected = std::env::var("AUDITOR_ADMIN_TOKEN").unwrap_or_default();
+    let expected = crate::host_env::var("AUDITOR_ADMIN_TOKEN").unwrap_or_default();
     if !constant_time_eq(provided.as_bytes(), expected.as_bytes()) {
         record_login_failure(cx.now);
         record_audit(

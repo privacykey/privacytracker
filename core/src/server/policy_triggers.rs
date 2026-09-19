@@ -155,6 +155,8 @@ pub(crate) struct Handles {
     pub fetcher: Arc<dyn Fetcher>,
     pub ids: Box<dyn Ids>,
     pub clock: Arc<dyn Clock>,
+    /// The server's stop: a timer still waiting when it fires ends there.
+    pub stop: tokio_util::sync::CancellationToken,
 }
 
 type Factory = Box<dyn Fn() -> Handles + Send + Sync>;
@@ -193,7 +195,9 @@ fn arm_timer(delay: Duration) -> bool {
     tokio::spawn(async move {
         let mut delay = delay;
         loop {
-            tokio::time::sleep(delay).await;
+            if super::lifecycle::sleep_or_stop(&handles.stop, delay).await {
+                return;
+            }
             // `timer = null`: a request from here on arms a timer of its own.
             with_queue(|q| q.armed = false);
             let drained = drain(

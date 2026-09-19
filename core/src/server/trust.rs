@@ -12,8 +12,6 @@
 //! authentication on the most common configuration — and the parity harness
 //! could never catch it, because the harness authenticates every request.
 
-use std::env;
-
 use axum::http::{header, HeaderMap};
 
 /// Port of `normalizeHost`. Lowercases, strips a port, unwraps bracketed
@@ -82,7 +80,7 @@ pub enum BindClassification {
 }
 
 fn bind_host_raw() -> Option<String> {
-    env::var("PRIVACYTRACKER_BIND_HOST").ok()
+    crate::host_env::var("PRIVACYTRACKER_BIND_HOST").ok()
 }
 
 fn is_ip_literal(h: &str) -> bool {
@@ -120,7 +118,7 @@ pub fn bind_is_ambiguous() -> bool {
 /// The first cut special-cased `TRUE` and missed `Yes`, `ON` and friends.
 fn env_flag(name: &str) -> bool {
     matches!(
-        env::var(name)
+        crate::host_env::var(name)
             .ok()
             .map(|v| v.trim().to_lowercase())
             .as_deref(),
@@ -141,7 +139,7 @@ pub fn is_network_exposed() -> bool {
 
 /// The configured extra-host allowlist, as normalised patterns.
 pub fn allowed_host_patterns() -> Vec<String> {
-    env::var("PRIVACYTRACKER_ALLOWED_HOSTS")
+    crate::host_env::var("PRIVACYTRACKER_ALLOWED_HOSTS")
         .unwrap_or_default()
         .split(',')
         .filter_map(|p| normalize_host(Some(p)))
@@ -372,6 +370,7 @@ pub(crate) fn env_lock() -> std::sync::MutexGuard<'static, ()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     #[test]
     fn normalises_hosts_like_the_node_helper() {

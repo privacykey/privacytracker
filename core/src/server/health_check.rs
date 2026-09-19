@@ -650,7 +650,7 @@ pub(crate) fn tick_health_check(db: &mut dyn DbAccess, ids: &mut dyn Ids, now: i
         }
         let result = run_health_check(&mut cx, "scheduled");
         if result["healthy"] != json!(true) {
-            println!(
+            log::info!(
                 "[HealthCheck] {} — {} heal(s), {} warning(s)",
                 result["status"].as_str().unwrap_or(""),
                 result["heals"].as_array().map_or(0, Vec::len),

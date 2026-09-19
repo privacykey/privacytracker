@@ -240,7 +240,8 @@ pub async fn desktop_settings(State(state): State<AppState>, headers: HeaderMap)
         .get("x-privacytracker-runtime")
         .and_then(|v| v.to_str().ok())
         == Some("desktop");
-    let env_says_desktop = std::env::var("PRIVACYTRACKER_RUNTIME").as_deref() == Ok("desktop");
+    let env_says_desktop =
+        crate::host_env::var("PRIVACYTRACKER_RUNTIME").as_deref() == Ok("desktop");
     if (header_says_desktop || env_says_desktop)
         && set_setting_with(&conn, "runtime_environment", "desktop").is_err()
     {

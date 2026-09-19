@@ -315,7 +315,7 @@ pub(crate) struct Locked<'a> {
 impl DbAccess for Locked<'_> {
     fn with_writer(&mut self, f: &mut dyn FnMut(&mut Writer<'_>)) {
         let started = Instant::now();
-        let conn = self.conn.lock().expect("db mutex poisoned");
+        let conn = crate::server::lifecycle::lock_db(self.conn);
         if let Some(on_wait) = self.on_wait {
             on_wait(started.elapsed());
         }
@@ -343,7 +343,7 @@ impl DbAccess for Shared {
     }
     fn with_writer(&mut self, f: &mut dyn FnMut(&mut Writer<'_>)) {
         let started = Instant::now();
-        let conn = self.conn.lock().expect("db mutex poisoned");
+        let conn = crate::server::lifecycle::lock_db(&self.conn);
         if let Some(on_wait) = self.on_wait {
             on_wait(started.elapsed());
         }
