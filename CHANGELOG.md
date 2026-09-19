@@ -57,6 +57,17 @@ Going forward, changes are recorded here as they land.
   Inspector was open, for the same reason. "Sync now" on the menu bar icon
   also asked for a server route that does not exist. It now starts the
   same sync as "Sync now" in Settings.
+- An App Store sync, Wayback import or privacy-policy sync that the app
+  finishes after a restart is now shown as resumed. The run picked up
+  where it had stopped, but it went on looking like the run that was
+  interrupted: Background tasks never listed it as "Resumed after
+  restart", the Wayback import settings never showed their "Resumed after
+  restart." note, and its Activity log entry never ended with "(resumed
+  after restart)" (for the Wayback import, never began "Wayback import
+  (resumed)"). All of these now appear. A resumed App Store sync is logged
+  as a scheduled sync even when the run it finishes was started by hand,
+  as the upgrade guide describes, and the apps it syncs after the restart
+  show "Scheduled sync" in their history.
 - A notification webhook set to "Each change" now posts App Store changes.
   When a sync found an app's privacy labels, accessibility labels or age
   rating changed, it wrote the bell notification but posted nothing: only

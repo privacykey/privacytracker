@@ -425,6 +425,10 @@ pub(crate) async fn run_bulk_wayback_import(
     let now = clock.now();
     let mut state: Value = match options.resume_state.clone() {
         Some(mut state) => {
+            // The blob still names whoever started the run; record who runs
+            // it now ("resume" from the boot check, "manual" from Resume
+            // queue), before the first write, so a resume reads as one.
+            set(&mut state, "initiator", json!(options.initiator));
             if let Some(queue) = state["queue"].as_array_mut() {
                 for entry in queue {
                     if str_of(entry, "status") == "in_progress" {

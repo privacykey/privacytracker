@@ -2194,7 +2194,7 @@ closure. Cooperative control mid-run is exercised through the network
 stub: a case's `hooks` name a fetch at which the stub first calls the
 PATCH route — a cancel then aborts that request, reported the way `fetch`
 reports an aborted one — or, with `afterMs`, a moment after the reply is
-served, during the backoff sleep. 45 cases: the POST busy on the mutex
+served, during the backoff sleep. 46 cases: the POST busy on the mutex
 and on a leftover blob, over no apps, over two apps, throttled once
 (backoff, retry) and twice (paused), with one app failing, forced over a
 paused queue, a stale lock and a running one, cancelled mid-run, the
@@ -2202,7 +2202,10 @@ overwritten pause and the backoff-window pause, and the burst; the same
 run streamed, streamed and cancelled, streamed and throttled; every PATCH
 branch; the DELETE; and the resume over nothing, a paused queue, a
 pending pause, a cancelled queue, a stale lock, a finished queue, a
-crashed run (the in-flight app redone) and a queue naming a deleted app.
+crashed run (the in-flight app redone) and a queue naming a deleted app;
+and, appended with the fix that records a resumed run's initiator, the
+PATCH resume of a queue a restart had resumed, which is the user's run
+again (`manual`, not `resume`).
 `core/src/server/wayback_runner_tests.rs` replays each through a shared
 id counter and a hooked fetcher that issues the same PATCH at the same
 fetch (stalling a cancelled request as an aborted one never returns) and
@@ -3584,18 +3587,13 @@ refused with a `Retry-After` on both. A run itself would fetch every
 tracked app's developer site, which a parity run must not depend on, so
 it stays with the oracle.
 
-**Node's behaviour, kept, and two bugs filed.** Each bug has its own
+**Node's behaviour, kept, and a bug filed.** The bug has its own
 follow-up to fix Node and the core together. A throttled app is never
 counted as throttled: the analysis the store returns carries the log from
 before its own `throttled` line, so the runner's check of the last entry
 fails and the app counts as succeeded, and every summary says 0
-throttled. And a resumed run keeps the blob's original initiator, so
-`state.initiator === "resume"` is never true for a real resume, in this
-runner or the other two: TaskCenter's "Resumed after restart" card and
-the Wayback section's pill never appear, and "(resumed after restart)"
-never reaches the activity log. Also kept: a blob that does not parse is
-left in place when the resume heals a stale lock, since it is not a
-state.
+throttled. Also kept: a blob that does not parse is left in place when
+the resume heals a stale lock, since it is not a state.
 
 **Negative controls, predicted before running.** The two skip reasons
 swapped: exactly the resumed-queue case. No `attempted` count: exactly
