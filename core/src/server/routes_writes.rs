@@ -189,6 +189,11 @@ wrapper_with_id!(manual_delete, "/api/manual-apps/[id]", DELETE);
 wrapper!(manual_bulk_post, "/api/manual-apps/bulk", POST);
 wrapper_with_id!(manual_restore_post, "/api/manual-apps/[id]/restore", POST);
 wrapper_with_id!(manual_scrape_post, "/api/manual-apps/[id]/scrape", POST);
+// Phase 5, batch 3b: the AI routes.
+wrapper!(policy_regenerate_post, "/api/policy/regenerate", POST);
+wrapper!(ai_policy_sample_post, "/api/ai/policy-sample", POST);
+wrapper!(ai_test_post, "/api/ai/test", POST);
+wrapper!(ai_models_post, "/api/ai/models", POST);
 
 // ── Phase 4, batch 3 ─────────────────────────────────────────────────
 
