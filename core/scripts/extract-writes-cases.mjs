@@ -1376,7 +1376,7 @@ for (const [route, field] of [
       },
     },
   });
-  await run("notification-prefs non-boolean camelCase clears the flag", {
+  await run("notification-prefs non-boolean camelCase leaves the flag alone", {
     route,
     method,
     setup: [
@@ -1384,6 +1384,91 @@ for (const [route, field] of [
       override("flag.notifications.types.label_changes", "off"),
     ],
     json: { prefs: { policyUpdates: "true", labelChanges: null } },
+  });
+}
+
+// ── /api/notification-prefs: a save writes only what it changes ──────
+// Appended last for the same reason as the block above. A flag the body
+// leaves out, or sends at the value it has, is not written; a change onto
+// the flag's focus default clears its override; the stored blob is merged.
+{
+  const route = "/api/notification-prefs";
+  const method = "PUT";
+  const defaults = {
+    labelChanges: true,
+    profileMismatch: true,
+    policyUpdates: false,
+    versionUpdates: true,
+    importCompleted: true,
+    manualAppsPrompt: true,
+    aiTimeout: true,
+  };
+  await run(
+    "notification-prefs Settings save keeps overrides it did not change",
+    {
+      route,
+      method,
+      setup: [
+        override("flag.notifications.types.accessibility_changes", "on"),
+        override("flag.notifications.types.new_privacy_types", "off"),
+        override("flag.notifications.types.label_changes", "on"),
+        setting("notification_prefs", '{"versionUpdates":true}'),
+      ],
+      json: { prefs: { ...defaults, versionUpdates: false } },
+    }
+  );
+  await run(
+    "notification-prefs Reset defaults clears the overrides it changes",
+    {
+      route,
+      method,
+      setup: [
+        override("flag.notifications.types.label_changes", "off"),
+        override("flag.notifications.types.policy_updates", "on"),
+      ],
+      json: { prefs: defaults },
+    }
+  );
+  await run("notification-prefs a change onto the focus default clears", {
+    route,
+    method,
+    setup: [
+      setting("flag.focus.goal.accessibility", "true"),
+      override("flag.notifications.types.accessibility_changes", "off"),
+    ],
+    json: { prefs: { accessibility_changes: true } },
+  });
+  await run("notification-prefs a change off the focus default sets", {
+    route,
+    method,
+    setup: [setting("flag.focus.goal.accessibility", "true")],
+    json: { prefs: { accessibility_changes: false } },
+  });
+  await run("notification-prefs kill switch compares with hard defaults", {
+    route,
+    method,
+    setup: [
+      override("flag.devopts.feature_flag_system.enabled", "off"),
+      override("flag.notifications.types.policy_updates", "on"),
+    ],
+    json: { prefs: { policyUpdates: false, labelChanges: false } },
+  });
+  await run("notification-prefs sparse body merges into the stored blob", {
+    route,
+    method,
+    setup: [
+      setting(
+        "notification_prefs",
+        '{"versionUpdates":false,"aiTimeout":false,"nope":true}'
+      ),
+    ],
+    json: { prefs: { aiTimeout: true, policyUpdates: true } },
+  });
+  await run("notification-prefs unparseable stored blob is replaced", {
+    route,
+    method,
+    setup: [setting("notification_prefs", "{nope")],
+    json: { prefs: { versionUpdates: false } },
   });
 }
 

@@ -2,9 +2,13 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { requestBodyErrorResponse } from "@/lib/request-body";
-import type { FlagKey } from "../../../lib/feature-flag-rules";
+import type { FlagKey, FlagValue } from "../../../lib/feature-flag-rules";
 import { clearOverride, setOverride } from "../../../lib/feature-flag-storage";
-import { resolveFlagFromDb } from "../../../lib/feature-flags-server";
+import { resolveFlag, resolveFocusBaseline } from "../../../lib/feature-flags";
+import {
+  getResolverContextFromDb,
+  resolveFlagFromDb,
+} from "../../../lib/feature-flags-server";
 import {
   DEFAULT_NOTIFICATION_PREFS,
   type NotificationPrefs,
@@ -74,11 +78,13 @@ const TYPE_TO_FLAG: Record<FlagNotificationTypeKey, FlagKey> = {
  *
  * PUT  → body `{ prefs: object | null }`
  *   Pass `null` to clear all four flag overrides and the legacy blob.
- *   Otherwise each flag is set from its snake_case key when that is a
- *   boolean, else from its camelCase alias (`labelChanges`,
- *   `policyUpdates`) when that is, else its override is cleared so the
- *   focus default wins again. The camelCase keys are also stored in the
- *   legacy blob after `sanitizePrefs` drops unknown keys and non-booleans.
+ *   Otherwise the body changes only the types it carries. A flag reads
+ *   its snake_case key when that is a boolean, else its camelCase alias
+ *   (`labelChanges`, `policyUpdates`) when that is; a flag with neither
+ *   keeps its override. `planOverrideWrites` decides whether a value sets
+ *   the override or clears it. The camelCase keys with boolean values are
+ *   merged into the legacy blob, so the types a body leaves out keep what
+ *   was stored.
  */
 
 const PREFS_KEY = "notification_prefs";
@@ -86,6 +92,36 @@ const PREFS_KEY = "notification_prefs";
 function readStored(): NotificationPrefs {
   const raw = getSetting(PREFS_KEY, "");
   return parseStoredPrefs(raw);
+}
+
+/**
+ * The override writes for the flag values a PUT carries, `null` meaning
+ * clear. Settings sends every checkbox on each save, so a value the flag
+ * already has writes nothing: a save changes only the flags whose value
+ * it changes, and an override set elsewhere (Developer Options, the v1
+ * migration) on any other flag stays. A changed value that matches the
+ * flag's focus default (what it resolves to without its own override)
+ * clears the override, so a later change of focus or default can move
+ * the flag again, as in FeatureToggleRow; any other changed value sets
+ * one.
+ *
+ * If the resolver throws, neither the flag's value nor its focus default
+ * is known, so every value the body carries is set as an override.
+ */
+function planOverrideWrites(
+  requested: [FlagKey, FlagValue][]
+): [FlagKey, FlagValue | null][] {
+  try {
+    const ctx = getResolverContextFromDb();
+    return requested
+      .filter(([flag, value]) => resolveFlag(flag, ctx) !== value)
+      .map(([flag, value]): [FlagKey, FlagValue | null] => [
+        flag,
+        resolveFocusBaseline(flag, ctx) === value ? null : value,
+      ]);
+  } catch {
+    return requested;
+  }
 }
 
 /**
@@ -179,13 +215,11 @@ export async function PUT(request: Request) {
   }
 
   const clean = sanitizePrefs(raw);
-  // The new flag-based scheme exposes its four type keys (label_changes,
-  // policy_updates, accessibility_changes, new_privacy_types) alongside
-  // the legacy camelCase keys preserved by `sanitizePrefs`. We project
-  // both shapes into the flag override layer: a `true` value for the
-  // flag's key, or failing that its camelCase alias (the shape Settings
-  // sends), flips the flag override to `on`, `false` to `off`, and a
-  // missing key clears the override so the focus default wins again.
+  // Each flag reads its own snake_case key, or failing that its camelCase
+  // alias (the shape Settings sends). Anything but a boolean counts as
+  // absent, and an absent flag is left alone rather than cleared: Settings
+  // has no checkbox for `accessibility_changes` or `new_privacy_types`, so
+  // clearing the flags a body leaves out reset those two on every save.
   const cleanRaw =
     raw && typeof raw === "object" && !Array.isArray(raw)
       ? (raw as Record<string, unknown>)
@@ -198,22 +232,26 @@ export async function PUT(request: Request) {
       }
     }
   }
+  const requested: [FlagKey, FlagValue][] = [];
   for (const [type, flag] of Object.entries(TYPE_TO_FLAG) as [
     FlagNotificationTypeKey,
     FlagKey,
   ][]) {
     const value = readBool(type);
-    if (value === true) {
-      setOverride(flag, "on");
-    } else if (value === false) {
-      setOverride(flag, "off");
-    } else {
-      clearOverride(flag);
+    if (value !== undefined) {
+      requested.push([flag, value ? "on" : "off"]);
     }
   }
-  // Keep the legacy blob in sync as a back-compat read path; nothing in
-  // the new flow reads it but pre-migration code paths might.
-  setSetting(PREFS_KEY, JSON.stringify(clean));
+  for (const [flag, value] of planOverrideWrites(requested)) {
+    if (value === null) {
+      clearOverride(flag);
+    } else {
+      setOverride(flag, value);
+    }
+  }
+  // GET reads the five types that have no flag from this blob. Merge
+  // rather than replace, so a body that leaves a type out keeps it.
+  setSetting(PREFS_KEY, JSON.stringify({ ...readStored(), ...clean }));
   const prefs = readResolvedPrefs();
   return NextResponse.json({
     prefs,

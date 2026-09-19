@@ -5436,30 +5436,6 @@
    "setup": [],
    "stream": [
     {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.label_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.policy_updates"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.accessibility_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.new_privacy_types"
-     ]
-    },
-    {
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "notification_prefs",
@@ -5534,18 +5510,6 @@
      ]
     },
     {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.accessibility_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.new_privacy_types"
-     ]
-    },
-    {
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "notification_prefs",
@@ -5561,6 +5525,14 @@
      }
     ],
     "feature_flag_overrides": [
+     {
+      "flag_key": "flag.notifications.types.new_privacy_types",
+      "override_value": "on",
+      "set_at": 1700000000000,
+      "set_by": "user",
+      "previous_focus": null,
+      "quarantined": 0
+     },
      {
       "flag_key": "flag.notifications.types.label_changes",
       "override_value": "off",
@@ -5725,30 +5697,6 @@
    "setup": [],
    "stream": [
     {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.label_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.policy_updates"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.accessibility_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.new_privacy_types"
-     ]
-    },
-    {
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "notification_prefs",
@@ -5826,22 +5774,10 @@
      ]
     },
     {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.accessibility_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.new_privacy_types"
-     ]
-    },
-    {
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "notification_prefs",
-      "{\"policyUpdates\":false}"
+      "{\"labelChanges\":false,\"policyUpdates\":false}"
      ]
     }
    ],
@@ -5853,7 +5789,7 @@
      },
      {
       "key": "notification_prefs",
-      "value": "{\"policyUpdates\":false}"
+      "value": "{\"labelChanges\":false,\"policyUpdates\":false}"
      }
     ],
     "feature_flag_overrides": [
@@ -5879,7 +5815,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"policyUpdates\":false},\"stored\":{\"policyUpdates\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"labelChanges\":false,\"policyUpdates\":false},\"stored\":{\"labelChanges\":false,\"policyUpdates\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -15386,30 +15322,12 @@
    "setup": [],
    "stream": [
     {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.label_changes"
-     ]
-    },
-    {
      "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined)\n     VALUES (?, ?, ?, 'user', ?, 0)\n     ON CONFLICT(flag_key) DO UPDATE SET\n       override_value = excluded.override_value,\n       set_at = excluded.set_at,\n       set_by = excluded.set_by,\n       previous_focus = excluded.previous_focus,\n       quarantined = 0",
      "params": [
       "flag.notifications.types.policy_updates",
       "on",
       1789473600000,
       "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.accessibility_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.new_privacy_types"
      ]
     },
     {
@@ -15503,22 +15421,10 @@
      ]
     },
     {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.accessibility_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.new_privacy_types"
-     ]
-    },
-    {
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "notification_prefs",
-      "{\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":false}"
+      "{\"versionUpdates\":false,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":false}"
      ]
     }
    ],
@@ -15526,10 +15432,18 @@
     "app_settings": [
      {
       "key": "notification_prefs",
-      "value": "{\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":false}"
+      "value": "{\"versionUpdates\":false,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":false}"
      }
     ],
     "feature_flag_overrides": [
+     {
+      "flag_key": "flag.notifications.types.accessibility_changes",
+      "override_value": "off",
+      "set_at": 1700000000000,
+      "set_by": "user",
+      "previous_focus": null,
+      "quarantined": 0
+     },
      {
       "flag_key": "flag.notifications.types.label_changes",
       "override_value": "off",
@@ -15576,39 +15490,6 @@
    "setup": [],
    "stream": [
     {
-     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined)\n     VALUES (?, ?, ?, 'user', ?, 0)\n     ON CONFLICT(flag_key) DO UPDATE SET\n       override_value = excluded.override_value,\n       set_at = excluded.set_at,\n       set_by = excluded.set_by,\n       previous_focus = excluded.previous_focus,\n       quarantined = 0",
-     "params": [
-      "flag.notifications.types.label_changes",
-      "on",
-      1789473600000,
-      "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}"
-     ]
-    },
-    {
-     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined)\n     VALUES (?, ?, ?, 'user', ?, 0)\n     ON CONFLICT(flag_key) DO UPDATE SET\n       override_value = excluded.override_value,\n       set_at = excluded.set_at,\n       set_by = excluded.set_by,\n       previous_focus = excluded.previous_focus,\n       quarantined = 0",
-     "params": [
-      "flag.notifications.types.policy_updates",
-      "off",
-      1789473600000,
-      "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.accessibility_changes"
-     ]
-    },
-    {
-     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined)\n     VALUES (?, ?, ?, 'user', ?, 0)\n     ON CONFLICT(flag_key) DO UPDATE SET\n       override_value = excluded.override_value,\n       set_at = excluded.set_at,\n       set_by = excluded.set_by,\n       previous_focus = excluded.previous_focus,\n       quarantined = 0",
-     "params": [
-      "flag.notifications.types.new_privacy_types",
-      "on",
-      1789473600000,
-      "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}"
-     ]
-    },
-    {
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "notification_prefs",
@@ -15623,32 +15504,7 @@
       "value": "{\"policyUpdates\":true,\"labelChanges\":false}"
      }
     ],
-    "feature_flag_overrides": [
-     {
-      "flag_key": "flag.notifications.types.label_changes",
-      "override_value": "on",
-      "set_at": 1789473600000,
-      "set_by": "user",
-      "previous_focus": "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}",
-      "quarantined": 0
-     },
-     {
-      "flag_key": "flag.notifications.types.policy_updates",
-      "override_value": "off",
-      "set_at": 1789473600000,
-      "set_by": "user",
-      "previous_focus": "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}",
-      "quarantined": 0
-     },
-     {
-      "flag_key": "flag.notifications.types.new_privacy_types",
-      "override_value": "on",
-      "set_at": 1789473600000,
-      "set_by": "user",
-      "previous_focus": "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}",
-      "quarantined": 0
-     }
-    ],
+    "feature_flag_overrides": [],
     "activity_log": [],
     "audit_log": []
    },
@@ -15661,7 +15517,7 @@
    }
   },
   {
-   "name": "notification-prefs non-boolean camelCase clears the flag",
+   "name": "notification-prefs non-boolean camelCase leaves the flag alone",
    "route": "/api/notification-prefs",
    "method": "PUT",
    "param": null,
@@ -15701,30 +15557,6 @@
    ],
    "stream": [
     {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.label_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.policy_updates"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.accessibility_changes"
-     ]
-    },
-    {
-     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
-     "params": [
-      "flag.notifications.types.new_privacy_types"
-     ]
-    },
-    {
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "notification_prefs",
@@ -15739,6 +15571,212 @@
       "value": "{}"
      }
     ],
+    "feature_flag_overrides": [
+     {
+      "flag_key": "flag.notifications.types.policy_updates",
+      "override_value": "on",
+      "set_at": 1700000000000,
+      "set_by": "user",
+      "previous_focus": null,
+      "quarantined": 0
+     },
+     {
+      "flag_key": "flag.notifications.types.label_changes",
+      "override_value": "off",
+      "set_at": 1700000000000,
+      "set_by": "user",
+      "previous_focus": null,
+      "quarantined": 0
+     }
+    ],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "notification-prefs Settings save keeps overrides it did not change",
+   "route": "/api/notification-prefs",
+   "method": "PUT",
+   "param": null,
+   "pathname": "/api/notification-prefs",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.4.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"prefs\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, ?, ?, ?)",
+     "params": [
+      "flag.notifications.types.accessibility_changes",
+      "on",
+      1700000000000,
+      "user",
+      null,
+      0
+     ]
+    },
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, ?, ?, ?)",
+     "params": [
+      "flag.notifications.types.new_privacy_types",
+      "off",
+      1700000000000,
+      "user",
+      null,
+      0
+     ]
+    },
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, ?, ?, ?)",
+     "params": [
+      "flag.notifications.types.label_changes",
+      "on",
+      1700000000000,
+      "user",
+      null,
+      0
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{\"versionUpdates\":true}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{\"versionUpdates\":false,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "notification_prefs",
+      "value": "{\"versionUpdates\":false,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}"
+     }
+    ],
+    "feature_flag_overrides": [
+     {
+      "flag_key": "flag.notifications.types.accessibility_changes",
+      "override_value": "on",
+      "set_at": 1700000000000,
+      "set_by": "user",
+      "previous_focus": null,
+      "quarantined": 0
+     },
+     {
+      "flag_key": "flag.notifications.types.new_privacy_types",
+      "override_value": "off",
+      "set_at": 1700000000000,
+      "set_by": "user",
+      "previous_focus": null,
+      "quarantined": 0
+     },
+     {
+      "flag_key": "flag.notifications.types.label_changes",
+      "override_value": "on",
+      "set_at": 1700000000000,
+      "set_by": "user",
+      "previous_focus": null,
+      "quarantined": 0
+     }
+    ],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":false,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":false,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "notification-prefs Reset defaults clears the overrides it changes",
+   "route": "/api/notification-prefs",
+   "method": "PUT",
+   "param": null,
+   "pathname": "/api/notification-prefs",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.5.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"prefs\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, ?, ?, ?)",
+     "params": [
+      "flag.notifications.types.label_changes",
+      "off",
+      1700000000000,
+      "user",
+      null,
+      0
+     ]
+    },
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, ?, ?, ?)",
+     "params": [
+      "flag.notifications.types.policy_updates",
+      "on",
+      1700000000000,
+      "user",
+      null,
+      0
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
+     "params": [
+      "flag.notifications.types.label_changes"
+     ]
+    },
+    {
+     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
+     "params": [
+      "flag.notifications.types.policy_updates"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "notification_prefs",
+      "value": "{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}"
+     }
+    ],
     "feature_flag_overrides": [],
     "activity_log": [],
     "audit_log": []
@@ -15746,6 +15784,376 @@
    "expected": {
     "status": 200,
     "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "notification-prefs a change onto the focus default clears",
+   "route": "/api/notification-prefs",
+   "method": "PUT",
+   "param": null,
+   "pathname": "/api/notification-prefs",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.6.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"prefs\":{\"accessibility_changes\":true}}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.accessibility",
+      "true"
+     ]
+    },
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, ?, ?, ?)",
+     "params": [
+      "flag.notifications.types.accessibility_changes",
+      "off",
+      1700000000000,
+      "user",
+      null,
+      0
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "DELETE FROM feature_flag_overrides WHERE flag_key = ?",
+     "params": [
+      "flag.notifications.types.accessibility_changes"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{}"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "flag.focus.goal.accessibility",
+      "value": "true"
+     },
+     {
+      "key": "notification_prefs",
+      "value": "{}"
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "notification-prefs a change off the focus default sets",
+   "route": "/api/notification-prefs",
+   "method": "PUT",
+   "param": null,
+   "pathname": "/api/notification-prefs",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.7.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"prefs\":{\"accessibility_changes\":false}}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.accessibility",
+      "true"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined)\n     VALUES (?, ?, ?, 'user', ?, 0)\n     ON CONFLICT(flag_key) DO UPDATE SET\n       override_value = excluded.override_value,\n       set_at = excluded.set_at,\n       set_by = excluded.set_by,\n       previous_focus = excluded.previous_focus,\n       quarantined = 0",
+     "params": [
+      "flag.notifications.types.accessibility_changes",
+      "off",
+      1789473600000,
+      "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{}"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "flag.focus.goal.accessibility",
+      "value": "true"
+     },
+     {
+      "key": "notification_prefs",
+      "value": "{}"
+     }
+    ],
+    "feature_flag_overrides": [
+     {
+      "flag_key": "flag.notifications.types.accessibility_changes",
+      "override_value": "off",
+      "set_at": 1789473600000,
+      "set_by": "user",
+      "previous_focus": "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}",
+      "quarantined": 0
+     }
+    ],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "notification-prefs kill switch compares with hard defaults",
+   "route": "/api/notification-prefs",
+   "method": "PUT",
+   "param": null,
+   "pathname": "/api/notification-prefs",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.8.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"prefs\":{\"policyUpdates\":false,\"labelChanges\":false}}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, ?, ?, ?)",
+     "params": [
+      "flag.devopts.feature_flag_system.enabled",
+      "off",
+      1700000000000,
+      "user",
+      null,
+      0
+     ]
+    },
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, ?, ?, ?)",
+     "params": [
+      "flag.notifications.types.policy_updates",
+      "on",
+      1700000000000,
+      "user",
+      null,
+      0
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined)\n     VALUES (?, ?, ?, 'user', ?, 0)\n     ON CONFLICT(flag_key) DO UPDATE SET\n       override_value = excluded.override_value,\n       set_at = excluded.set_at,\n       set_by = excluded.set_by,\n       previous_focus = excluded.previous_focus,\n       quarantined = 0",
+     "params": [
+      "flag.notifications.types.label_changes",
+      "off",
+      1789473600000,
+      "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{\"policyUpdates\":false,\"labelChanges\":false}"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "notification_prefs",
+      "value": "{\"policyUpdates\":false,\"labelChanges\":false}"
+     }
+    ],
+    "feature_flag_overrides": [
+     {
+      "flag_key": "flag.devopts.feature_flag_system.enabled",
+      "override_value": "off",
+      "set_at": 1700000000000,
+      "set_by": "user",
+      "previous_focus": null,
+      "quarantined": 0
+     },
+     {
+      "flag_key": "flag.notifications.types.policy_updates",
+      "override_value": "on",
+      "set_at": 1700000000000,
+      "set_by": "user",
+      "previous_focus": null,
+      "quarantined": 0
+     },
+     {
+      "flag_key": "flag.notifications.types.label_changes",
+      "override_value": "off",
+      "set_at": 1789473600000,
+      "set_by": "user",
+      "previous_focus": "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}",
+      "quarantined": 0
+     }
+    ],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "notification-prefs sparse body merges into the stored blob",
+   "route": "/api/notification-prefs",
+   "method": "PUT",
+   "param": null,
+   "pathname": "/api/notification-prefs",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.9.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"prefs\":{\"aiTimeout\":true,\"policyUpdates\":true}}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{\"versionUpdates\":false,\"aiTimeout\":false,\"nope\":true}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined)\n     VALUES (?, ?, ?, 'user', ?, 0)\n     ON CONFLICT(flag_key) DO UPDATE SET\n       override_value = excluded.override_value,\n       set_at = excluded.set_at,\n       set_by = excluded.set_by,\n       previous_focus = excluded.previous_focus,\n       quarantined = 0",
+     "params": [
+      "flag.notifications.types.policy_updates",
+      "on",
+      1789473600000,
+      "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{\"versionUpdates\":false,\"aiTimeout\":true,\"policyUpdates\":true}"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "notification_prefs",
+      "value": "{\"versionUpdates\":false,\"aiTimeout\":true,\"policyUpdates\":true}"
+     }
+    ],
+    "feature_flag_overrides": [
+     {
+      "flag_key": "flag.notifications.types.policy_updates",
+      "override_value": "on",
+      "set_at": 1789473600000,
+      "set_by": "user",
+      "previous_focus": "{\"audience\":\"self\",\"goals\":{},\"aiConfigured\":false}",
+      "quarantined": 0
+     }
+    ],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "notification-prefs unparseable stored blob is replaced",
+   "route": "/api/notification-prefs",
+   "method": "PUT",
+   "param": null,
+   "pathname": "/api/notification-prefs",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.10.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"prefs\":{\"versionUpdates\":false}}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{nope"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "notification_prefs",
+      "{\"versionUpdates\":false}"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "notification_prefs",
+      "value": "{\"versionUpdates\":false}"
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null

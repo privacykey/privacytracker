@@ -1937,20 +1937,56 @@ fn sanitize_prefs(input: &Value) -> Map<String, Value> {
     out
 }
 
+/// The legacy `notification_prefs` blob as parsed JSON, or null when it is
+/// unset or does not parse. `sanitize_prefs` over it is `readStored()`.
+fn stored_prefs_blob(cx: &Cx) -> Value {
+    let raw = cx.get("notification_prefs", "");
+    if raw.is_empty() {
+        Value::Null
+    } else {
+        serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null)
+    }
+}
+
 /// `readResolvedPrefs`: the four flags through the resolver followed by
 /// the seven camelCase keys, or the legacy blob alone when the resolver
 /// throws.
 fn resolved_prefs(cx: &Cx) -> Value {
-    let raw = cx.get("notification_prefs", "");
-    let parsed = if raw.is_empty() {
-        Value::Null
-    } else {
-        serde_json::from_str::<Value>(&raw).unwrap_or(Value::Null)
-    };
+    let parsed = stored_prefs_blob(cx);
     match enabled_types(cx.w.conn) {
         Ok(enabled) => resolved_notification_prefs(enabled, &parsed),
         Err(_) => Value::Object(sanitize_prefs(&parsed)),
     }
+}
+
+/// `planOverrideWrites`: the override writes for the flag values a PUT
+/// carries, `None` meaning clear. A value the flag already resolves to
+/// writes nothing; a change onto the flag's focus default (its resolution
+/// without its own override) clears the override; any other change sets
+/// one. Both resolutions read the state from before the first write. When
+/// the resolver fails, every carried value is set.
+fn plan_override_writes(
+    cx: &Cx,
+    requested: &[(&'static str, &'static str)],
+) -> Vec<(&'static str, Option<&'static str>)> {
+    let plan = || -> Result<Vec<(&'static str, Option<&'static str>)>, ()> {
+        let ctx = super::flags::context_from_db(cx.w.conn).map_err(drop)?;
+        let mut writes = vec![];
+        for &(flag, value) in requested {
+            if super::flags::resolve_flag(flag, &ctx).map_err(drop)? == value {
+                continue;
+            }
+            let baseline = super::flags::resolve_focus_baseline(flag, &ctx).map_err(drop)?;
+            writes.push((flag, (baseline != value).then_some(value)));
+        }
+        Ok(writes)
+    };
+    plan().unwrap_or_else(|()| {
+        requested
+            .iter()
+            .map(|&(flag, value)| (flag, Some(value)))
+            .collect()
+    })
 }
 
 fn prefs_response(cx: &Cx) -> Response {
@@ -1986,20 +2022,34 @@ fn notification_prefs(cx: &mut Cx, body: BodyOutcome) -> Response {
         }
         let clean = sanitize_prefs(raw);
         // The flag's own key wins; the camelCase alias Settings sends is
-        // read only when that key is not a boolean.
+        // read only when that key is not a boolean. A flag with neither is
+        // left alone.
         let boolean = |key: &str| {
             raw.as_object()
                 .and_then(|o| o.get(key))
                 .filter(|v| v.is_boolean())
         };
-        for (kind, flag) in NOTIFICATION_FLAGS {
-            match boolean(kind).or_else(|| notification_alias(kind).and_then(boolean)) {
-                Some(Value::Bool(true)) => set_override(cx, flag, "on")?,
-                Some(Value::Bool(false)) => set_override(cx, flag, "off")?,
-                _ => clear_override(cx, flag)?,
+        let requested: Vec<(&'static str, &'static str)> = NOTIFICATION_FLAGS
+            .iter()
+            .filter_map(|&(kind, flag)| {
+                match boolean(kind).or_else(|| notification_alias(kind).and_then(boolean)) {
+                    Some(Value::Bool(true)) => Some((flag, "on")),
+                    Some(Value::Bool(false)) => Some((flag, "off")),
+                    _ => None,
+                }
+            })
+            .collect();
+        for (flag, value) in plan_override_writes(cx, &requested) {
+            match value {
+                Some(value) => set_override(cx, flag, value)?,
+                None => clear_override(cx, flag)?,
             }
         }
-        cx.set("notification_prefs", &Value::Object(clean).to_string())
+        // `{ ...readStored(), ...clean }`: a stored key keeps its place and
+        // takes the body's value, and a new key goes last.
+        let mut merged = sanitize_prefs(&stored_prefs_blob(cx));
+        merged.extend(clean);
+        cx.set("notification_prefs", &Value::Object(merged).to_string())
     })();
     match outcome {
         Ok(()) => prefs_response(cx),
