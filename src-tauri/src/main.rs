@@ -95,6 +95,10 @@ fn main() {
         .on_menu_event(app_menu::handle_event)
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        // relaunch() after an update installs (lib/tauri-updater.ts). The
+        // restart goes through RunEvent::ExitRequested below, so the
+        // sidecar is shut down before the new version starts.
+        .plugin(tauri_plugin_process::init())
         // Passing Some(vec!["--hidden"]) means the LaunchAgent plist we
         // generate when autostart is enabled will spawn us with that flag —
         // letting the boot path below skip window.show().
