@@ -3814,6 +3814,8 @@
       "subtitle_with_phase": "{name} · {phase}",
       "completion_fetch": "政策已重新抓取",
       "completion_summarise": "摘要已更新",
+      "completion_summary_failed": "摘要生成失败",
+      "completion_summary_not_updated": "摘要未更新",
       "regen_failed_status": "重新生成失败（HTTP {status}）",
       "regen_failed": "重新生成失败",
       "regen_no_analysis": "重新生成已完成，但未返回任何分析。"

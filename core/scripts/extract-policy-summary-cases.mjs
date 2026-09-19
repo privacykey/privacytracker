@@ -1480,6 +1480,60 @@ try {
     options: { forceResummarise: true },
   });
 
+  // ── Summarised again after a failed AI run or no provider ──
+  // Appended after every other case, so none of their recordings move. Only
+  // the summarise phase writes 'analysis_error' and 'needs_ai_config', over
+  // a clean capture it accepted, and any later fetch replaces them, so the
+  // text stored with them is still the latest clean capture. It is
+  // summarised again, forced or not, and scraping being disabled does not
+  // stop it.
+  const failedSummary = () =>
+    analysis({
+      status: "analysis_error",
+      error: "OpenAI request timed out after 90 seconds.",
+      model: "gpt-4.1-mini",
+      previous_summary_json: PREVIOUS,
+      previous_summary_at: BASE_NOW - 9 * DAY,
+    });
+  const noProviderSummary = () =>
+    analysis({
+      status: "needs_ai_config",
+      error:
+        "Configure an AI provider in Settings to enable privacy-policy summaries.",
+    });
+  await sync("a failed AI summary is summarised again", {
+    setup: [app(), failedSummary(), ...aiSettings()],
+    options: { forceResummarise: true },
+    replies: [openaiJson(MODEL_SUMMARY)],
+  });
+  await sync("an unforced summarise retries a failed AI summary", {
+    setup: [app(), failedSummary(), ...aiSettings()],
+    replies: [openaiJson(MODEL_SUMMARY)],
+  });
+  await sync("a failed AI summary that fails again stores the new error", {
+    setup: [app(), failedSummary(), ...aiSettings()],
+    options: { forceResummarise: true },
+    replies: [status(500, { "content-type": "text/plain" }, "overloaded")],
+  });
+  await sync("a summary that met no AI provider is made once one is set up", {
+    setup: [app(), noProviderSummary(), ...aiSettings()],
+    options: { forceResummarise: true },
+    replies: [openaiJson(MODEL_SUMMARY)],
+  });
+  await sync("an unforced summarise that still finds no AI provider", {
+    setup: [app(), noProviderSummary()],
+  });
+  await sync("scraping disabled does not stop a summary of the stored text", {
+    setup: [
+      app(),
+      failedSummary(),
+      ...aiSettings(),
+      setting("policy_scrape_disabled", "true"),
+    ],
+    options: { forceResummarise: true },
+    replies: [openaiJson(MODEL_SUMMARY)],
+  });
+
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;
   const stray = text
     .match(

@@ -274,9 +274,15 @@ test("the AI Policy tab offers Summarise exactly where the server summarises", a
       offeredRows.push(label);
     }
   }
-  // Only a clean capture is summarised: not the text kept after a failed
+  // Only a clean capture is summarised, including one whose last summary
+  // run failed or found no AI provider: not the text kept after a failed
   // or unusable fetch, and not an imported excerpt.
-  assert.deepEqual(offeredRows, ["ready", "source_ready"]);
+  assert.deepEqual(offeredRows, [
+    "ready",
+    "source_ready",
+    "needs_ai_config",
+    "analysis_error",
+  ]);
 });
 
 test("the regenerate route answers a Summarise after a failed fetch with the stored analysis", async () => {

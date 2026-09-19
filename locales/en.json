@@ -3814,6 +3814,8 @@
       "subtitle_with_phase": "{name} · {phase}",
       "completion_fetch": "Policy re-fetched",
       "completion_summarise": "Summary updated",
+      "completion_summary_failed": "Summary failed",
+      "completion_summary_not_updated": "Summary not updated",
       "regen_failed_status": "Regeneration failed (HTTP {status})",
       "regen_failed": "Regeneration failed",
       "regen_no_analysis": "Regeneration finished without returning an analysis."
