@@ -17,6 +17,19 @@ const e2eServerHost = e2eServerURL.hostname || "127.0.0.1";
 const e2eServerPort =
   (process.env.PLAYWRIGHT_PORT ?? e2eServerURL.port) || "3000";
 const e2eReadyURL = new URL("/api/ready", e2eBaseURL).toString();
+// PLAYWRIGHT_CORE_BIN runs the suite against the Rust core instead of
+// `next start`. The core serves the same `next build` output (`--site .`)
+// and always binds 127.0.0.1. CI's e2e-rust job sets it to
+// core/target/debug/pt-core.
+const e2eCoreBinary = process.env.PLAYWRIGHT_CORE_BIN;
+if (e2eCoreBinary && e2eServerHost !== "127.0.0.1") {
+  throw new Error(
+    `PLAYWRIGHT_CORE_BIN needs a 127.0.0.1 base URL (the core binds loopback only), not ${e2eServerHost}`
+  );
+}
+const e2eServe = e2eCoreBinary
+  ? `${e2eCoreBinary} serve --port ${e2eServerPort} --site .`
+  : `pnpm start -H ${e2eServerHost} -p ${e2eServerPort}`;
 process.env.PRIVACYTRACKER_DATA_DIR = e2eDataDir;
 process.env.NEXT_TELEMETRY_DISABLED = "1";
 process.env.AUDITOR_ADMIN_TOKEN = e2eAdminToken;
@@ -50,7 +63,7 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: `rm -rf .playwright-data && mkdir -p .playwright-data && pnpm build && pnpm start -H ${e2eServerHost} -p ${e2eServerPort}`,
+    command: `rm -rf .playwright-data && mkdir -p .playwright-data && pnpm build && ${e2eServe}`,
     url: e2eReadyURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
@@ -59,6 +72,8 @@ export default defineConfig({
       NEXT_TELEMETRY_DISABLED: "1",
       AUDITOR_ADMIN_TOKEN: e2eAdminToken,
       PRIVACYTRACKER_NETWORK_EXPOSED: "1",
+      // `pnpm start` sets this from its -H flag; the core is told directly.
+      ...(e2eCoreBinary ? { PRIVACYTRACKER_BIND_HOST: "127.0.0.1" } : {}),
     },
   },
   projects: [

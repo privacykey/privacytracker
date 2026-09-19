@@ -383,6 +383,18 @@ export async function probeStatsReads(nodeBase, rustBase, token) {
     )
   );
   check(
+    "the grouped app view keeps the device's apps and drops categories left empty",
+    await compare(
+      `/api/apps?view=grouped&devices=${STATS_DEVICE}`,
+      (j) =>
+        j.length === 2 &&
+        !j.some((g) => g.identifier === "DATA_NOT_LINKED_TO_YOU") &&
+        j.every((g) =>
+          g.categories.every((c) => c.apps.every((a) => a.id === STATS_IDS[0]))
+        )
+    )
+  );
+  check(
     "age summary has a saved band and at least one above-band app",
     await compare(
       "/api/age-rating/summary",
