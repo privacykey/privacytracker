@@ -254,10 +254,18 @@ export default function PolicySummaryPanel({
     });
 
     try {
+      // A click here asks for this app now, so it is not held back by the
+      // per-app scrape throttle meant for automatic and bulk runs. The route
+      // still refuses a fetch while policy scraping is disabled.
       const res = await fetch("/api/policy/regenerate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appId: app.id, phase, stream: true }),
+        body: JSON.stringify({
+          appId: app.id,
+          phase,
+          stream: true,
+          bypassThrottle: true,
+        }),
         signal: controller.signal,
       });
 

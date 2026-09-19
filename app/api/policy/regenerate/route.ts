@@ -45,6 +45,7 @@ export async function POST(request: Request) {
   try {
     const body = await readBoundedJson<{
       appId?: unknown;
+      bypassThrottle?: unknown;
       phase?: unknown;
       stream?: unknown;
     }>(request, 8 * 1024);
@@ -62,13 +63,21 @@ export async function POST(request: Request) {
       VALID_PHASES.includes(rawPhase as PolicyPhase) ? rawPhase : "all"
     ) as PolicyPhase;
     const wantStream = body?.stream === true;
+    // The per-app scrape throttle holds back repeat fetches from automatic,
+    // bulk and import runs, onboarding's policy step among them. A click on
+    // an app's AI Policy tab asks for that one app now, so the tab opts out
+    // of it; a caller that does not ask keeps it. The kill-switch below
+    // refuses a fetch either way.
+    const bypassThrottle = body?.bypassThrottle === true;
 
     // Global kill-switch — refuse any phase that includes a fetch. The deep
     // gate in `fetchAndStorePolicySource` would also short-circuit, but
     // returning 409 here lets the AI Policy tab surface the reason inline
-    // instead of polling for a delayed "disabled" log entry. `summarise`
-    // (cache-only) is allowed through so users can still refresh the AI
-    // summary on their existing cached policy text.
+    // instead of polling for a delayed "disabled" log entry. That gate lets
+    // `bypassThrottle` through, so for a request that bypasses the throttle
+    // this check is the only one. `summarise` (cache-only) is allowed
+    // through so users can still refresh the AI summary on their existing
+    // cached policy text.
     if (phase !== "summarise") {
       const scrapeDisabled =
         getSetting("policy_scrape_disabled", "false") === "true";
@@ -149,7 +158,7 @@ export async function POST(request: Request) {
                 developer: app.developer ?? undefined,
                 policyUrl: app.privacyPolicyUrl!,
               },
-              { phase, phaseStream, forceResummarise }
+              { phase, phaseStream, forceResummarise, bypassThrottle }
             );
 
             write({ type: "done", analysis });
@@ -198,7 +207,7 @@ export async function POST(request: Request) {
         developer: app.developer ?? undefined,
         policyUrl: app.privacyPolicyUrl,
       },
-      { phase, forceResummarise }
+      { phase, forceResummarise, bypassThrottle }
     );
 
     recordAudit({
