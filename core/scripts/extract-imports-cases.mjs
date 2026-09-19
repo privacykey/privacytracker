@@ -373,6 +373,7 @@ async function run(name, spec) {
     adminToken = null,
     repeat = 1,
     contentLength,
+    settle = false,
   } = spec;
   const setup = [POLICY_LOCK, ...extraSetup];
   ipCounter += 1;
@@ -399,10 +400,17 @@ async function run(name, spec) {
   const calls = [];
   let cursor = 0;
   globalThis.fetch = async (target, init) => {
-    calls.push({
+    const call = {
       url: String(target),
       headers: [...new Headers(init?.headers)],
-    });
+    };
+    // A POST (the immediate webhook) is recorded with its method and body;
+    // a GET carries neither key.
+    if (init?.method && init.method !== "GET") {
+      call.method = init.method;
+      call.body = init.body == null ? null : String(init.body);
+    }
+    calls.push(call);
     const r = replies[cursor++];
     if (!r) {
       throw new Error(`Missing fixture reply for ${String(target)}`);
@@ -462,6 +470,10 @@ async function run(name, spec) {
           console[k] = fn;
         }
       }
+    }
+    if (settle) {
+      // The immediate webhook is `void`ed: let the detached POST land.
+      await new Promise((resolve) => setTimeout(resolve, 60));
     }
     recording = null;
     if (cursor !== replies.length) {
@@ -1677,6 +1689,99 @@ try {
       route,
       method: "DELETE",
       param: "999",
+    });
+  }
+
+  // ── The immediate webhook on every path that scrapes ─────────────
+  // A scrape that records label changes posts the immediate webhook once
+  // its commit has landed. Kept last: each case's forwarded address comes
+  // from a counter, so cases added earlier would move every later case's.
+  {
+    const HOOK = "https://hooks.example.com/pt";
+    const HOOK_OK = {
+      status: 200,
+      headers: { "content-type": "text/plain" },
+      body: "ok",
+    };
+    const webhook = [
+      setting("notification_webhook_url", HOOK),
+      setting("notification_webhook_format", "slack"),
+      setting("notification_webhook_frequency", "immediate"),
+    ];
+    const changed = (name) => scrapeOf(name, [LINKED, TRACKING]);
+    await run("scrape resync with label changes posts the immediate webhook", {
+      route: "/api/scrape",
+      method: "POST",
+      setup: [...webhook, app(F1, "Fixture One")],
+      json: { urls: [url(F1)], resync: true },
+      replies: [...changed("Fixture One"), HOOK_OK],
+      settle: true,
+    });
+    await run("queue run posts a webhook per tracked app with changes", {
+      route: "/api/imports/queue",
+      method: "POST",
+      setup: [
+        ...webhook,
+        app(A1, "Tracked One"),
+        app(A2, "Tracked Two"),
+        importRow(I1, { total: 2, matched: 2 }),
+        item("iti_fixture_1", I1, "Tracked One", "queued", {
+          url: url(A1),
+          appId: A1,
+        }),
+        item("iti_fixture_2", I1, "Tracked Two", "queued", {
+          url: url(A2),
+          appId: A2,
+        }),
+      ],
+      replies: [
+        ...changed("Tracked One"),
+        HOOK_OK,
+        ...changed("Tracked Two"),
+        HOOK_OK,
+      ],
+      settle: true,
+    });
+    await run("retry onto a tracked app posts the immediate webhook", {
+      route: "/api/imports/items/retry",
+      method: "POST",
+      setup: [
+        ...webhook,
+        app(F1, "Fixture One"),
+        importRow(I1, { total: 1, matched: 1 }),
+        item("iti_fixture_1", I1, "Fixture One", "queued", { url: url(F1) }),
+      ],
+      json: { itemId: "iti_fixture_1" },
+      replies: [...changed("Fixture One"), HOOK_OK],
+      settle: true,
+    });
+    await run("change-match onto a tracked app posts the immediate webhook", {
+      route: "/api/imports/items/change-match",
+      method: "POST",
+      setup: [
+        ...webhook,
+        app(F1, "Fixture One"),
+        importRow(I1, { total: 1, imported: 1 }),
+        item("iti_fixture_1", I1, "Fixture One", "imported", { appId: F1 }),
+      ],
+      json: { itemId: "iti_fixture_1", url: url(F1) },
+      replies: [...changed("Fixture One"), HOOK_OK],
+      settle: true,
+    });
+    // The Wayback importer writes changed snapshots but raises no bell, so
+    // it posts nothing either.
+    await run("history import with label changes posts no webhook", {
+      route: "/api/apps/[id]/import-history",
+      method: "POST",
+      param: F1,
+      setup: [
+        ...webhook,
+        app(F1, "Fixture One"),
+        snapshot("s-live", F1, Date.UTC(2026, 0, 10), "live", "import"),
+      ],
+      json: {},
+      replies: ARCHIVE_RUN,
+      settle: true,
     });
   }
 } finally {

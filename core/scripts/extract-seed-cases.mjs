@@ -319,6 +319,7 @@ async function run(name, spec = {}) {
     adminToken = TOKEN,
     presented = TOKEN,
     repeat = 1,
+    settle = false,
   } = spec;
   const setup = [POLICY_LOCK, ...extraSetup];
   ipCounter += 1;
@@ -337,10 +338,17 @@ async function run(name, spec = {}) {
   const calls = [];
   let cursor = 0;
   globalThis.fetch = async (target, init) => {
-    calls.push({
+    const call = {
       url: String(target),
       headers: [...new Headers(init?.headers)],
-    });
+    };
+    // A POST (the immediate webhook) is recorded with its method and body;
+    // a GET carries neither key.
+    if (init?.method && init.method !== "GET") {
+      call.method = init.method;
+      call.body = init.body == null ? null : String(init.body);
+    }
+    calls.push(call);
     const r = replies[cursor++];
     if (!r) {
       throw new Error(`Missing fixture reply for ${String(target)}`);
@@ -393,6 +401,10 @@ async function run(name, spec = {}) {
           console[k] = fn;
         }
       }
+    }
+    if (settle) {
+      // The immediate webhook is `void`ed: let the detached POST land.
+      await new Promise((resolve) => setTimeout(resolve, 60));
     }
     recording = null;
     if (cursor !== replies.length) {
@@ -748,6 +760,31 @@ try {
   });
   await run("live chart entry that is null is no entries", {
     replies: [json({ feed: { entry: null } })],
+  });
+
+  // ── the live walk: the immediate webhook ─────────────────────────
+  // The walk skips apps already tracked by the chart's `im:id`, so a
+  // label change needs an entry whose link names a tracked app under
+  // another id. That scrape posts the immediate webhook once its commit
+  // lands, before the walk moves on. Kept last: each case's forwarded
+  // address comes from a counter.
+  await run("live chart link to a tracked app posts the immediate webhook", {
+    setup: [
+      setting("notification_webhook_url", "https://hooks.example.com/pt"),
+      setting("notification_webhook_format", "slack"),
+      setting("notification_webhook_frequency", "immediate"),
+      app("7201", "Tracked Elsewhere"),
+    ],
+    replies: [
+      rss([
+        entry("7201", "Relabelled", { imId: "7998" }),
+        entry("7202", "After"),
+      ]),
+      ...scrapeOf("Relabelled", [linked(CONTACT, LOCATION)]),
+      { status: 200, headers: { "content-type": "text/plain" }, body: "ok" },
+      ...scrapeOf("After", [linked(CONTACT)]),
+    ],
+    settle: true,
   });
 } finally {
   db.close();

@@ -189,10 +189,18 @@ const quiet = ["error", "warn", "info", "log"];
 function stubFetch(replies, calls) {
   let cursor = 0;
   globalThis.fetch = async (input, init) => {
-    calls.push({
+    const call = {
       url: String(input),
       headers: [...new Headers(init?.headers)],
-    });
+    };
+    // A POST (the immediate webhook) is recorded with its method and body,
+    // as the leftovers and policy-store stubs record one; a GET carries
+    // neither key.
+    if (init?.method && init.method !== "GET") {
+      call.method = init.method;
+      call.body = init.body == null ? null : String(init.body);
+    }
+    calls.push(call);
     const r = replies[cursor++];
     if (!r) {
       throw new Error(`Missing fixture reply for ${String(input)}`);
@@ -204,11 +212,28 @@ function stubFetch(replies, calls) {
   };
   return () => {
     if (cursor !== replies.length) {
-      throw new Error(`Unused replies: ${cursor}/${replies.length}`);
+      throw new Error(
+        `Unused replies: ${cursor}/${replies.length} ${JSON.stringify(calls.map((c) => c.url))}`
+      );
     }
   };
 }
-async function drive({ batch, url: target, resync = false, trigger, replies }) {
+// The immediate webhook a label change fires is `void`ed: nothing awaits
+// it, so a case that expects one waits for the detached POST to land
+// before its replies are counted.
+const settle = async () => {
+  for (let i = 0; i < 4; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 15));
+  }
+};
+async function drive({
+  batch,
+  url: target,
+  resync = false,
+  trigger,
+  replies,
+  settle: wait = false,
+}) {
   const calls = [];
   const check = stubFetch(replies, calls);
   const saved = quiet.map((k) => [k, console[k]]);
@@ -236,6 +261,9 @@ async function drive({ batch, url: target, resync = false, trigger, replies }) {
   } catch (error) {
     expected = { ok: false, error: error.message };
   } finally {
+    if (wait) {
+      await settle();
+    }
     for (const [k, fn] of saved) {
       console[k] = fn;
     }
@@ -534,6 +562,128 @@ try {
       LOOKUP,
       status(429),
     ],
+  });
+
+  // 33–42. The immediate webhook a label change posts once the commit has
+  //        landed. Kept last: each case's clock follows from the cases
+  //        before it, so cases added earlier in the file would move every
+  //        later case's timestamps.
+  const HOOK = "https://hooks.example.com/pt";
+  const HOOK_OK = {
+    status: 200,
+    headers: { "content-type": "text/plain" },
+    body: "ok",
+  };
+  const webhook = (
+    format = "slack",
+    frequency = "immediate",
+    target = HOOK
+  ) => [
+    setting("notification_webhook_url", target),
+    setting("notification_webhook_format", format),
+    setting("notification_webhook_frequency", frequency),
+  ];
+  const flagOn = (key) =>
+    sql(
+      "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, 'user', NULL, 0)",
+      key,
+      "on",
+      1_700_000_000_000
+    );
+  const tracked = (id, name) => ({
+    scrape: { url: url(id), replies: [html(page({ name })), LOOKUP] },
+  });
+  const changed = (name) => html(page({ name, types: [LINKED, TRACKING] }));
+
+  await run("label change posts the immediate webhook", {
+    setup: [...webhook(), tracked(4001, "Hooked")],
+    url: url(4001),
+    resync: true,
+    replies: [changed("Hooked"), LOOKUP, HOOK_OK],
+    settle: true,
+  });
+  await run("label change posts a generic webhook with the row", {
+    setup: [...webhook("generic"), tracked(4002, "Generic")],
+    url: url(4002),
+    resync: true,
+    replies: [changed("Generic"), LOOKUP, HOOK_OK],
+    settle: true,
+  });
+  // Quiet hours defer the bell row (`not_before`), never the webhook.
+  await run("label change in quiet hours posts at once and defers the bell", {
+    setup: [
+      flagOn("flag.notifications.quiet_hours"),
+      setting("notification_quiet_hours_start", "00:00"),
+      setting("notification_quiet_hours_end", "23:59"),
+      ...webhook(),
+      tracked(4003, "Quiet"),
+    ],
+    url: url(4003),
+    resync: true,
+    replies: [changed("Quiet"), LOOKUP, HOOK_OK],
+    settle: true,
+  });
+  await run("label change with a daily summary webhook posts nothing", {
+    setup: [...webhook("slack", "daily_summary"), tracked(4004, "Daily")],
+    url: url(4004),
+    resync: true,
+    replies: [changed("Daily"), LOOKUP],
+    settle: true,
+  });
+  await run("resync with no label change posts nothing", {
+    setup: [...webhook(), tracked(4005, "Same")],
+    url: url(4005),
+    resync: true,
+    replies: [html(page({ name: "Same" })), LOOKUP],
+    settle: true,
+  });
+  await run("age rating change alone posts the webhook", {
+    setup: [...webhook(), tracked(4006, "Rated")],
+    url: url(4006),
+    resync: true,
+    replies: [
+      html(page({ name: "Rated" })),
+      json(lookupBody({ contentAdvisoryRating: "12+" })),
+      HOOK_OK,
+    ],
+    settle: true,
+  });
+  await run("webhook network failure does not fail the scrape", {
+    setup: [...webhook(), tracked(4007, "Unreachable")],
+    url: url(4007),
+    resync: true,
+    replies: [changed("Unreachable"), LOOKUP, { error: "fetch failed" }],
+    settle: true,
+  });
+  await run("webhook answering 500 does not fail the scrape", {
+    setup: [...webhook(), tracked(4008, "Broken Hook")],
+    url: url(4008),
+    resync: true,
+    replies: [changed("Broken Hook"), LOOKUP, status(500)],
+    settle: true,
+  });
+  await run("webhook at a loopback url is refused before any request", {
+    setup: [
+      ...webhook("slack", "immediate", "http://127.0.0.1:9/hook"),
+      tracked(4009, "Loopback"),
+    ],
+    url: url(4009),
+    resync: true,
+    replies: [changed("Loopback"), LOOKUP],
+    settle: true,
+  });
+  await run("initial urls post a webhook per changed app", {
+    setup: [...webhook(), tracked(4010, "First"), tracked(4011, "Second")],
+    batch: { urls: [url(4010), url(4011)], resync: true },
+    replies: [
+      changed("First"),
+      LOOKUP,
+      HOOK_OK,
+      changed("Second"),
+      LOOKUP,
+      HOOK_OK,
+    ],
+    settle: true,
   });
 
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;

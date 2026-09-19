@@ -429,6 +429,7 @@ async function run(name, spec) {
     adminToken = null,
     repeat = 1,
     contentLength,
+    settle = false,
   } = spec;
   const setup = [...BASE, ...extraSetup];
   ipCounter += 1;
@@ -451,10 +452,17 @@ async function run(name, spec) {
   const calls = [];
   let cursor = 0;
   globalThis.fetch = async (target, init) => {
-    calls.push({
+    const call = {
       url: String(target),
       headers: [...new Headers(init?.headers)],
-    });
+    };
+    // A POST (the immediate webhook) is recorded with its method and body;
+    // a GET carries neither key.
+    if (init?.method && init.method !== "GET") {
+      call.method = init.method;
+      call.body = init.body == null ? null : String(init.body);
+    }
+    calls.push(call);
     const r = replies[cursor++];
     if (!r) {
       throw new Error(`Missing fixture reply for ${String(target)}`);
@@ -520,6 +528,10 @@ async function run(name, spec) {
     } finally {
       capturing = false;
       restore();
+    }
+    if (settle) {
+      // The immediate webhook is `void`ed: let the detached POST land.
+      await new Promise((resolve) => realSetTimeout(resolve, 60));
     }
     recording = null;
     if (cursor !== replies.length) {
@@ -935,6 +947,95 @@ try {
         ]),
       ],
       replies: scrapeOf("Fixture One"),
+    });
+  }
+
+  // ── The immediate webhook on every runner that scrapes ───────────
+  // An app whose scrape records label changes posts the immediate webhook
+  // once its commit has landed, before the run moves to the next app.
+  // Kept last: each case's forwarded address comes from a counter, so
+  // cases added earlier would move every later case's.
+  {
+    const HOOK = "https://hooks.example.com/pt";
+    const HOOK_OK = {
+      status: 200,
+      headers: { "content-type": "text/plain" },
+      body: "ok",
+    };
+    const webhook = [
+      setting("notification_webhook_url", HOOK),
+      setting("notification_webhook_format", "slack"),
+      setting("notification_webhook_frequency", "immediate"),
+    ];
+    const TRACKING = type("DATA_USED_TO_TRACK_YOU", "Data Used to Track You", [
+      cat("LOCATION", "Location"),
+    ]);
+    // F1 has no snapshot, so any scrape of it records changes; F2's
+    // snapshot matches `page(name)`, so it changes only when given more.
+    const fleet = [
+      ...webhook,
+      app(F1, "Fixture One"),
+      app(F2, "Fixture Two"),
+      liveSnapshot("snap-two", F2, now - 2 * DAY),
+    ];
+    await run("sync trigger posts a webhook after each changed app", {
+      route: "/api/sync/trigger",
+      method: "POST",
+      setup: fleet,
+      replies: [
+        ...scrapeOf("Fixture One"),
+        HOOK_OK,
+        ...scrapeOf("Fixture Two", [LINKED, TRACKING]),
+        HOOK_OK,
+      ],
+      settle: true,
+    });
+    await run("scheduled check posts the webhook for the changed app", {
+      kind: "callback",
+      delay: 15_000,
+      setup: [
+        ...fleet,
+        setting("sync_schedule", "daily"),
+        setting("last_auto_sync", String(now - 2 * DAY)),
+      ],
+      replies: [
+        ...scrapeOf("Fixture One"),
+        HOOK_OK,
+        ...scrapeOf("Fixture Two"),
+      ],
+      settle: true,
+    });
+    await run("sync resume posts the webhook for the changed app", {
+      kind: "callback",
+      delay: 10_000,
+      setup: [
+        ...fleet,
+        syncState([
+          entry(F1, "Fixture One", "pending"),
+          entry(F2, "Fixture Two", "pending"),
+        ]),
+      ],
+      replies: [
+        ...scrapeOf("Fixture One"),
+        HOOK_OK,
+        ...scrapeOf("Fixture Two"),
+      ],
+      settle: true,
+    });
+    await run("import queue drain tick posts the webhook for a tracked app", {
+      kind: "callback",
+      delay: 20_000,
+      setup: [
+        ...webhook,
+        app(F1, "Fixture One"),
+        importRow("imp_fixture_a", { total: 1, matched: 1 }),
+        item("iti_fixture_1", "imp_fixture_a", "Fixture One", "queued", {
+          url: url(F1),
+          appId: F1,
+        }),
+      ],
+      replies: [...scrapeOf("Fixture One"), HOOK_OK],
+      settle: true,
     });
   }
 } finally {

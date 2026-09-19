@@ -119,9 +119,6 @@ db.transaction = (fn) => {
 const { syncPrivacyPolicyAnalysis } = await import(
   "../../lib/privacy-policy.ts"
 );
-// createNotification's webhook fan-out imports this lazily; warm it so the
-// import resolves in the same few ticks in every case.
-await import("../../lib/notification-webhooks.ts");
 const ROUTES = {
   "/api/policy/status/[appId]": (
     await import("../../app/api/policy/status/[appId]/route.ts")
