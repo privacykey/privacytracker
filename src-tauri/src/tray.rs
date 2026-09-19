@@ -8,13 +8,15 @@
 //
 // Menu items:
 //   - Show / Hide privacytracker  (toggles the main window's visibility)
-//   - Sync now                    (POST /api/sync)
-//   - Import Wayback history      (POST /api/wayback/import-all)
+//   - Sync now                    (POST /api/sync/trigger)
+//   - Import Wayback history      (POST /api/wayback/import-all?stream=1)
 //   - ─────────
 //   - Quit privacytracker         (clean app.exit(0))
 //
 // "Sync now" and "Wayback import" fire POSTs against the sidecar so the
-// tray does the same thing the dashboard buttons do.
+// tray does the same thing the Settings buttons do. Both go through
+// sidecar::post, which adds the Origin header the server's CSRF gate
+// requires. Without it every tray POST was refused with a 403.
 
 use std::time::Duration;
 
@@ -50,9 +52,6 @@ pub fn install(app: &AppHandle, base_url: String, initial_visible: bool) -> taur
     // because TrayIcon doesn't expose a `.menu()` getter (only
     // `set_menu`); cloning the item upfront is the canonical pattern.
     let show_hide_for_handler = show_hide.clone();
-
-    let base_for_sync = base_url.clone();
-    let base_for_wb = base_url;
 
     // Pull the app's default icon out of the bundle (set by Tauri's
     // build pipeline from src-tauri/icons/). On macOS the tray
@@ -98,20 +97,46 @@ pub fn install(app: &AppHandle, base_url: String, initial_visible: bool) -> taur
                 }
             }
             "sync_now" => {
-                let url = format!("{base_for_sync}/api/sync");
+                let base_url = base_url.clone();
                 std::thread::spawn(move || {
-                    match ureq::post(&url).timeout(Duration::from_secs(5)).call() {
-                        Ok(_) => log::info!("Tray: triggered /api/sync"),
-                        Err(e) => log::warn!("Tray /api/sync failed: {e}"),
+                    // No timeout. The route answers only once the whole
+                    // sync has finished, which takes minutes on a large
+                    // library, and the Settings button waits for it the
+                    // same way. Hanging up early would log a failure for a
+                    // sync that is still running. On the Rust core it
+                    // would also stop the sync: hyper drops a handler
+                    // whose client has gone.
+                    match crate::sidecar::post(&base_url, "/api/sync/trigger").call() {
+                        Ok(resp) => log::info!(
+                            "Tray: sync finished: {}",
+                            resp.into_string().unwrap_or_default(),
+                        ),
+                        Err(e) => log::warn!("Tray: sync failed: {e}"),
                     }
                 });
             }
             "wayback" => {
-                let url = format!("{base_for_wb}/api/wayback/import-all");
+                let base_url = base_url.clone();
                 std::thread::spawn(move || {
-                    match ureq::post(&url).timeout(Duration::from_secs(5)).call() {
-                        Ok(_) => log::info!("Tray: triggered /api/wayback/import-all"),
-                        Err(e) => log::warn!("Tray /api/wayback/import-all failed: {e}"),
+                    // A run can take hours, so ask for the NDJSON stream:
+                    // its headers arrive as soon as the run has started,
+                    // and dropping the response then leaves the run going.
+                    // Both backends treat that like the Settings page
+                    // being closed mid-import. A refusal (409 already
+                    // running, 429 throttled) comes back as an error, and
+                    // "no apps to import" as a plain JSON 200.
+                    match crate::sidecar::post(&base_url, "/api/wayback/import-all?stream=1")
+                        .timeout(Duration::from_secs(10))
+                        .call()
+                    {
+                        Ok(resp) if resp.content_type() == "application/x-ndjson" => {
+                            log::info!("Tray: Wayback import started");
+                        }
+                        Ok(resp) => log::info!(
+                            "Tray: Wayback import did not start: {}",
+                            resp.into_string().unwrap_or_default(),
+                        ),
+                        Err(e) => log::warn!("Tray: Wayback import failed: {e}"),
                     }
                 });
             }

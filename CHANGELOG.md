@@ -46,6 +46,17 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- In the desktop app, "Sync now" and "Import Wayback history" on the menu
+  bar icon now start a sync and a Wayback import, and the zoom level set
+  from the View menu (Zoom In, Zoom Out, Actual Size) is kept when the app
+  is quit and reopened. Until now the two menu items did nothing and the
+  zoom went back to 100% at every launch, with nothing on screen to say
+  why: the app's own requests to its built-in server carried no `Origin`
+  header, so the server refused them as cross-origin, the check that stops
+  a website from driving it. Developer builds also forgot whether the Web
+  Inspector was open, for the same reason. "Sync now" on the menu bar icon
+  also asked for a server route that does not exist. It now starts the
+  same sync as "Sync now" in Settings.
 - A notification webhook set to "Each change" now posts App Store changes.
   When a sync found an app's privacy labels, accessibility labels or age
   rating changed, it wrote the bell notification but posted nothing: only

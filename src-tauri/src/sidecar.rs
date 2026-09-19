@@ -1,4 +1,5 @@
-// Sidecar process management: spawn Node, wait for readiness, resolve URLs.
+// Sidecar process management: spawn Node, wait for readiness, resolve URLs,
+// and `post`, the one way the shell sends the sidecar a mutating request.
 //
 // In a shipped build, the "standalone" Next.js output lives at
 // <resources>/standalone/ and the bundled Node binary at
@@ -676,9 +677,117 @@ pub fn wait_until_ready(base_url: &str) -> Result<(), Box<dyn std::error::Error>
     ).into())
 }
 
+/// Start a POST to the sidecar at `base_url` + `path`. Every mutating
+/// request the shell sends goes through here (a test below fails on a
+/// bare ureq mutation anywhere else in the shell), because proxy.ts's
+/// CSRF gate answers a mutating /api request with 403 "Cross-origin
+/// mutation rejected" unless its `Origin` matches the Host it was sent
+/// to or it carries the admin token. The webview's own fetches get an
+/// Origin from the browser. ureq sends none, and the desktop has no
+/// admin token: `boot` clears the environment and never sets
+/// AUDITOR_ADMIN_TOKEN.
+///
+/// The Origin is serialised from the same parsed URL that ureq writes
+/// `Host` from, so the two agree whatever the base URL looks like: a
+/// trailing slash, `localhost` from PRIVACYTRACKER_DEV_URL, or a default
+/// port that ureq leaves off Host.
+pub fn post(base_url: &str, path: &str) -> ureq::Request {
+    let url = format!("{}{path}", base_url.trim_end_matches('/'));
+    let request = ureq::post(&url);
+    match origin_of(&url) {
+        Some(origin) => request.set("Origin", &origin),
+        // Not an http(s) URL. ureq refuses it when the request is sent.
+        None => request,
+    }
+}
+
+/// `scheme://host[:port]` of `url`: what a page served from that origin
+/// sends as `Origin`.
+fn origin_of(url: &str) -> Option<String> {
+    let origin = tauri::Url::parse(url).ok()?.origin();
+    origin.is_tuple().then(|| origin.ascii_serialization())
+}
+
 // Note: an earlier `read_desktop_hide_dock` helper used to live here, hitting
 // /api/settings/desktop just to extract the single `desktop_hide_dock` field.
 // It was superseded by `settings::fetch()` (returns the full
 // `DesktopSettings` bundle including `hide_dock`), which is what main.rs
 // actually calls on boot. Kept this comment as a breadcrumb so anyone hunting
 // for the helper finds the new entry point.
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn origin_is_what_ureq_sends_as_host() {
+        assert_eq!(
+            origin_of("http://127.0.0.1:49152/api/settings/desktop").as_deref(),
+            Some("http://127.0.0.1:49152"),
+        );
+        // A PRIVACYTRACKER_DEV_URL (debug builds only) can name localhost.
+        assert_eq!(
+            origin_of("http://localhost:3000/api/sync/trigger").as_deref(),
+            Some("http://localhost:3000"),
+        );
+        // ureq leaves a scheme's default port off Host; so does the origin.
+        assert_eq!(
+            origin_of("http://127.0.0.1:80/api/sync/trigger").as_deref(),
+            Some("http://127.0.0.1"),
+        );
+        assert_eq!(origin_of("127.0.0.1:3000/api/sync/trigger"), None);
+    }
+
+    #[test]
+    fn post_joins_the_path_and_sets_origin() {
+        let request = post("http://127.0.0.1:49152/", "/api/wayback/import-all?stream=1");
+        assert_eq!(request.method(), "POST");
+        assert_eq!(
+            request.url(),
+            "http://127.0.0.1:49152/api/wayback/import-all?stream=1",
+        );
+        assert_eq!(request.header("Origin"), Some("http://127.0.0.1:49152"));
+    }
+
+    /// A ureq mutation that bypasses `post` goes out with no Origin and
+    /// is refused with a 403, so the helper's own call must be the only
+    /// one in the shell.
+    #[test]
+    fn every_shell_mutation_goes_through_post() {
+        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut helper_calls = 0;
+        let mut offenders = Vec::new();
+        for (path, text) in rust_sources(&src) {
+            for method in ["post", "put", "patch", "delete", "request"] {
+                // Assembled at runtime so this test doesn't match itself.
+                let needle = format!("ureq::{method}(");
+                let count = text.matches(needle.as_str()).count();
+                if method == "post" && path.ends_with("sidecar.rs") {
+                    helper_calls = count;
+                } else if count > 0 {
+                    offenders.push(format!("{} calls {needle}", path.display()));
+                }
+            }
+        }
+        // Proves the scan read the shell's sources rather than nothing.
+        assert_eq!(helper_calls, 1, "expected sidecar::post's own call in sidecar.rs");
+        assert!(
+            offenders.is_empty(),
+            "send shell mutations through sidecar::post so they carry an Origin: {offenders:?}",
+        );
+    }
+
+    fn rust_sources(dir: &Path) -> Vec<(PathBuf, String)> {
+        let mut sources = Vec::new();
+        for entry in fs::read_dir(dir).expect("read source dir") {
+            let path = entry.expect("source dir entry").path();
+            if path.is_dir() {
+                sources.extend(rust_sources(&path));
+            } else if path.extension().is_some_and(|ext| ext == "rs") {
+                let text = fs::read_to_string(&path).expect("read source file");
+                sources.push((path, text));
+            }
+        }
+        sources
+    }
+}
