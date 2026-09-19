@@ -129,18 +129,56 @@ pub(super) fn enabled_types(conn: &Connection) -> Result<[bool; 4]> {
     }
     Ok(enabled)
 }
+/// The camelCase `NotificationTypeKey` of each flag type that has one.
+/// Settings and the bell speak these, so the route reads them back from
+/// the flag and accepts them when setting it.
+pub(super) const NOTIFICATION_ALIASES: [(&str, &str); 2] = [
+    ("label_changes", "labelChanges"),
+    ("policy_updates", "policyUpdates"),
+];
+pub(super) fn notification_alias(kind: &str) -> Option<&'static str> {
+    NOTIFICATION_ALIASES
+        .iter()
+        .find(|(k, _)| *k == kind)
+        .map(|(_, alias)| *alias)
+}
+/// `readResolvedPrefs` once the resolver answered: the four flag keys, then
+/// `resolvePrefs` over the legacy blob (every key of
+/// `DEFAULT_NOTIFICATION_PREFS`, in its order) with each alias taken from
+/// its flag instead of the blob.
+pub(super) fn resolved_notification_prefs(enabled: [bool; 4], stored: &Value) -> Value {
+    let mut out: serde_json::Map<String, Value> = NOTIFICATION_TYPES
+        .iter()
+        .zip(enabled)
+        .map(|(k, v)| (k.to_string(), json!(v)))
+        .collect();
+    let defaults = metadata()["notificationDefaults"]
+        .as_object()
+        .expect("generated notification defaults");
+    for (key, default) in defaults {
+        let flag = NOTIFICATION_ALIASES
+            .iter()
+            .find(|(_, alias)| alias == key)
+            .and_then(|(kind, _)| NOTIFICATION_TYPES.iter().position(|k| k == kind));
+        let value = match flag {
+            Some(i) => json!(enabled[i]),
+            None => stored
+                .get(key)
+                .filter(|v| v.is_boolean())
+                .unwrap_or(default)
+                .clone(),
+        };
+        out.insert(key.clone(), value);
+    }
+    Value::Object(out)
+}
 pub(super) fn notification_prefs(conn: &Connection) -> Result<Value> {
-    let prefs = match enabled_types(conn) {
-        Ok(enabled) => Value::Object(
-            NOTIFICATION_TYPES
-                .iter()
-                .zip(enabled)
-                .map(|(k, v)| (k.to_string(), json!(v)))
-                .collect(),
-        ),
+    // Resolver first, then the blob, as Node reads them.
+    let enabled = enabled_types(conn);
+    let parsed = parse(&get_setting_with(conn, "notification_prefs", "")?).unwrap_or(Value::Null);
+    let prefs = match enabled {
+        Ok(enabled) => resolved_notification_prefs(enabled, &parsed),
         Err(_) => {
-            let parsed =
-                parse(&get_setting_with(conn, "notification_prefs", "")?).unwrap_or(Value::Null);
             let mut out = serde_json::Map::new();
             if let Value::Object(m) = parsed {
                 for (k, v) in m {

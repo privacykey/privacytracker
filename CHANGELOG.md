@@ -46,6 +46,19 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- The "Privacy policy updates" checkbox in Settings → Notifications now
+  turns policy notifications on, and stays ticked. Before, it always showed
+  unticked, ticking it did not turn them on, and the box unticked itself
+  once the change was saved. The other checkboxes in that section also
+  went back to their defaults after a save or a reload, and now keep what
+  you chose. Saving the section no longer resets label change
+  notifications that were turned on or off elsewhere in the app.
+  Accessibility change and new data type notifications have no checkbox
+  there, so saving it still resets them to their defaults. The bell now
+  shows policy notifications, and counts them as unread, when they are on,
+  and hides the types you turn off: before, it went by the defaults
+  whatever was set. The Rust core, not yet active in any build, reads and
+  saves these settings the same way.
 - A notification webhook set to "Each change" now posts App Store changes.
   When a sync found an app's privacy labels, accessibility labels or age
   rating changed, it wrote the bell notification but posted nothing: only

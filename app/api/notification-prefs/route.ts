@@ -8,7 +8,9 @@ import { resolveFlagFromDb } from "../../../lib/feature-flags-server";
 import {
   DEFAULT_NOTIFICATION_PREFS,
   type NotificationPrefs,
+  type NotificationTypeKey,
   parseStoredPrefs,
+  resolvePrefs,
   sanitizePrefs,
 } from "../../../lib/notification-prefs";
 import { getSetting, setSetting } from "../../../lib/scheduler";
@@ -17,16 +19,29 @@ import { readBoundedJson } from "../../../lib/security";
 /**
  * The flag system tracks four notification types — see the
  * `flag.notifications.types.*` keys in feature-flag-rules.ts. These are the
- * keys the resolver writes/reads, distinct from the legacy
- * `NotificationTypeKey` union in lib/notification-prefs.ts (which still
- * exists for the back-compat blob). We treat both sets as opaque strings
- * here and only the four below project through to flag overrides.
+ * keys the resolver writes/reads, distinct from the seven camelCase
+ * `NotificationTypeKey`s in lib/notification-prefs.ts, which are what the
+ * Settings section and the bell speak. Two types exist in both sets; see
+ * `FLAG_ALIASES`.
  */
 type FlagNotificationTypeKey =
   | "label_changes"
   | "policy_updates"
   | "accessibility_changes"
   | "new_privacy_types";
+
+/**
+ * The camelCase spelling of each flag type that has one. Settings and the
+ * bell read and write these, so a response must carry them resolved from
+ * the flag and a request may use them to set the flag. The other two flag
+ * types have no camelCase key.
+ */
+const FLAG_ALIASES: Partial<
+  Record<FlagNotificationTypeKey, NotificationTypeKey>
+> = {
+  label_changes: "labelChanges",
+  policy_updates: "policyUpdates",
+};
 
 /**
  * Round 3 wave I: per-type notification preferences are now backed by the
@@ -45,20 +60,25 @@ const TYPE_TO_FLAG: Record<FlagNotificationTypeKey, FlagKey> = {
 };
 
 /**
- * GET  → { prefs: Record<NotificationTypeKey, boolean>, stored: NotificationPrefs }
- *   `prefs`  — fully-resolved booleans for every known type (what the UI
- *              should render). Missing keys fall back to defaults, so new
- *              types added in code start enabled for existing users.
- *   `stored` — the raw, possibly-sparse object actually persisted to the DB
- *              (handy for the settings view to distinguish explicit toggles
- *              from defaults). This is always a plain `{}` if nothing's been
- *              saved yet.
+ * GET  → { prefs, stored, defaults }
+ *   `prefs`:   fully-resolved booleans, in a fixed order: the four flag
+ *              keys (`label_changes` … `new_privacy_types`) through the
+ *              resolver, then every `NotificationTypeKey` in
+ *              NOTIFICATION_TYPE_KEYS order. The camelCase half is
+ *              `resolvePrefs` over the legacy blob, with `labelChanges` and
+ *              `policyUpdates` taken from their flags, so what Settings and
+ *              the bell show is what the notification pipeline does.
+ *   `stored`: mirrors `prefs`.
+ *   If the resolver throws, `prefs` and `stored` are the legacy blob
+ *   alone, camelCase keys only.
  *
- * PUT  → body `{ prefs: NotificationPrefs | null }`
- *   Pass `null` to clear all overrides (reverts everything to defaults).
- *   Pass a sparse object to override only specific keys — anything the user
- *   hasn't explicitly set stays at the default. Unknown keys / non-boolean
- *   values are dropped by `sanitizePrefs` before the DB write.
+ * PUT  → body `{ prefs: object | null }`
+ *   Pass `null` to clear all four flag overrides and the legacy blob.
+ *   Otherwise each flag is set from its snake_case key when that is a
+ *   boolean, else from its camelCase alias (`labelChanges`,
+ *   `policyUpdates`) when that is, else its override is cleared so the
+ *   focus default wins again. The camelCase keys are also stored in the
+ *   legacy blob after `sanitizePrefs` drops unknown keys and non-booleans.
  */
 
 const PREFS_KEY = "notification_prefs";
@@ -72,28 +92,37 @@ function readStored(): NotificationPrefs {
  * Read the resolved prefs by asking the resolver about each flag. The
  * resolver returns the user's override if set, otherwise the focus-driven
  * default, otherwise the hard default — exactly the layered cascade the
- * UI wants. Falls back to the legacy stored blob if the resolver fails.
+ * UI wants. The camelCase keys follow (see the GET comment above). Falls
+ * back to the legacy stored blob if the resolver fails.
  */
 function readResolvedPrefs():
-  | Record<FlagNotificationTypeKey, boolean>
+  | (Record<FlagNotificationTypeKey, boolean> &
+      Record<NotificationTypeKey, boolean>)
   | NotificationPrefs {
+  const flags: Record<FlagNotificationTypeKey, boolean> = {
+    label_changes: false,
+    policy_updates: false,
+    accessibility_changes: false,
+    new_privacy_types: false,
+  };
   try {
-    const out: Record<FlagNotificationTypeKey, boolean> = {
-      label_changes: false,
-      policy_updates: false,
-      accessibility_changes: false,
-      new_privacy_types: false,
-    };
     for (const [type, flag] of Object.entries(TYPE_TO_FLAG) as [
       FlagNotificationTypeKey,
       FlagKey,
     ][]) {
-      out[type] = resolveFlagFromDb(flag) === "on";
+      flags[type] = resolveFlagFromDb(flag) === "on";
     }
-    return out;
   } catch {
     return readStored();
   }
+  const legacy = resolvePrefs(readStored());
+  for (const [type, alias] of Object.entries(FLAG_ALIASES) as [
+    FlagNotificationTypeKey,
+    NotificationTypeKey,
+  ][]) {
+    legacy[alias] = flags[type];
+  }
+  return { ...flags, ...legacy };
 }
 
 export async function GET() {
@@ -154,16 +183,19 @@ export async function PUT(request: Request) {
   // policy_updates, accessibility_changes, new_privacy_types) alongside
   // the legacy camelCase keys preserved by `sanitizePrefs`. We project
   // both shapes into the flag override layer: a `true` value for the
-  // matching key flips the flag override to `on`, `false` to `off`, and
-  // a missing key clears the override so the focus default wins again.
+  // flag's key, or failing that its camelCase alias (the shape Settings
+  // sends), flips the flag override to `on`, `false` to `off`, and a
+  // missing key clears the override so the focus default wins again.
   const cleanRaw =
     raw && typeof raw === "object" && !Array.isArray(raw)
       ? (raw as Record<string, unknown>)
       : {};
   function readBool(key: FlagNotificationTypeKey): boolean | undefined {
-    const v = cleanRaw[key];
-    if (typeof v === "boolean") {
-      return v;
+    for (const name of [key, FLAG_ALIASES[key]]) {
+      const v = name === undefined ? undefined : cleanRaw[name];
+      if (typeof v === "boolean") {
+        return v;
+      }
     }
   }
   for (const [type, flag] of Object.entries(TYPE_TO_FLAG) as [
