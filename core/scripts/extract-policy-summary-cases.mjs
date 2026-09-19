@@ -1439,6 +1439,47 @@ try {
     audience: "guardian",
   });
 
+  // ── Declined after a failed or unusable fetch ──
+  // Appended after every other case, so none of their recordings move. A
+  // failed or unusable rescrape keeps the last good text on the row. The
+  // summarise phase declines that earlier capture and logs a skip, not the
+  // stored failure. The forced options are the ones the route sends.
+  await sync("a fetch error with its message cannot be summarised", {
+    setup: [
+      app(),
+      analysis({
+        status: "fetch_error",
+        error: "HTTP 503",
+        summary_json: PREVIOUS,
+      }),
+      ...aiSettings(),
+    ],
+    options: { forceResummarise: true },
+  });
+  await sync("a too-short fetch cannot be summarised", {
+    setup: [
+      app(),
+      analysis({
+        status: "too_short",
+        error:
+          "The fetched privacy-policy text was too short to summarize reliably.",
+      }),
+      ...aiSettings(),
+    ],
+    options: { forceResummarise: true },
+  });
+  await sync("an unsupported fetch cannot be summarised", {
+    setup: [
+      app(),
+      analysis({
+        status: "unsupported_content_type",
+        error: "Unsupported privacy-policy content type: application/pdf",
+      }),
+      ...aiSettings(),
+    ],
+    options: { forceResummarise: true },
+  });
+
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;
   const stray = text
     .match(

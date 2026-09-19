@@ -3298,7 +3298,7 @@ before it. Prompt nonces come from `Ids::nonce`, the system's random
 bytes in production and the oracle's counter in the replay.
 
 **The oracle — `core/scripts/extract-policy-summary-cases.mjs`.** Runs
-the REAL summarise and `all` phases over 66 scenarios, the sample
+the REAL summarise and `all` phases over 69 scenarios, the sample
 summary over four and the prompt preview over two, against a scratch
 database with a frozen clock, counted ids and nonces, and every provider
 reply canned: an OpenAI completion, a custom endpoint's event stream in
@@ -3306,12 +3306,13 @@ the recorded chunks, an Anthropic message. The shapes are the providers'
 documented formats; there is no key to capture live ones with. Recorded
 per case: every raw fetch with its headers and body, every write in
 order, seven tables, and the result or the thrown message.
-`core/src/server/policy_summary_tests.rs` replays all 72, each body
+`core/src/server/policy_summary_tests.rs` replays all 75, each body
 reaching the reader in the recorded chunks. CI regenerates the fixture
 and fails on drift ("Policy summariser oracle is current").
 
 The cases cover the gates (no provider, no key, a blank model, a current
-summary, an imported excerpt, a failed fetch, an app with nothing
+summary, an imported excerpt, a failed fetch with and without its
+message, a too-short and an unsupported fetch, an app with nothing
 stored, no policy URL); OpenAI's summary, a forced resummarise with the
 summary it replaces, a refusal, an error status, a reply that is not
 JSON, content parts, empty content, content that is not JSON, a fence,
@@ -3331,6 +3332,11 @@ notes, a chunk that fails, notes the model left empty, a paragraph
 longer than a chunk, a guardian's merge, OpenAI and Anthropic models
 that need chunks); and the `all` phase (fetch then summarise, a cache
 hit, a failed fetch, the kill-switch).
+
+A summarise that meets a failed fetch declines the text the fetch kept,
+an earlier capture, and logs a skip ("Policy skipped: latest fetch
+failed") rather than a new fetch failure, as the fixed Node does. A
+too-short or unsupported fetch was already logged as a skip.
 
 **Node's behaviour, kept.** A refusal is caught by the `try` it is
 thrown in, so it is logged twice and its debug row is inserted twice,
