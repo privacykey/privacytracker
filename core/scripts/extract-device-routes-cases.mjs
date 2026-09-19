@@ -1049,8 +1049,15 @@ async function bodyCases(route, limit, extra = {}) {
   });
   await run("commit: a merge moves the user's data", {
     route,
+    // As the preview proposes it: Signal (1002) is not on this device
+    // and its old twin (1005, same bundle) is. Both are on the iPad, so
+    // copying the old links collides there.
     setup: [
-      ...fleet,
+      ...fleet.filter(
+        (s) =>
+          !(s.sql.startsWith("INSERT INTO app_devices") && s.params[0] === A2)
+      ),
+      link(A2, D2),
       link(A5, D2),
       annotation("n1", A5),
       verdict("v1", A5, "uninstall"),
@@ -1091,12 +1098,86 @@ async function bodyCases(route, limit, extra = {}) {
     setup: fleet,
     json: { ...empty, bundleIdMerges: { previousAppId: A5 } },
   });
-  await run("commit: any two apps can be merged", {
+  await run("commit: an app with no bundle id is not merged", {
     route,
     setup: fleet,
     json: {
       ...empty,
       bundleIdMerges: [{ previousAppId: A3, incomingAppId: A1 }],
+    },
+  });
+  // The pairs are the client's, so the commit keeps only those the diff
+  // would propose for this device, all judged before the first merge
+  // runs. Last in the file so no earlier case's forwarded address moves.
+  await run("commit: a merge across two bundle ids is skipped", {
+    route,
+    setup: [...fleet, verdict("v1", A1, "safe")],
+    json: {
+      deviceId: D1,
+      addAppIds: [A4],
+      removeAppIds: [A3],
+      bundleIdMerges: [{ previousAppId: A1, incomingAppId: A6 }],
+    },
+  });
+  await run("commit: a merge whose old app is not on this device is skipped", {
+    route,
+    setup: fleet,
+    json: {
+      ...empty,
+      deviceId: D2,
+      bundleIdMerges: [{ previousAppId: A5, incomingAppId: A2 }],
+    },
+  });
+  await run("commit: a merge into an app already on the device is skipped", {
+    route,
+    setup: [...fleet, verdict("v1", A5, "uninstall")],
+    json: {
+      ...empty,
+      bundleIdMerges: [{ previousAppId: A5, incomingAppId: A2 }],
+    },
+  });
+  await run("commit: empty bundle ids never match", {
+    route,
+    setup: [
+      ...fleet,
+      app("1007", "Blank", ""),
+      app("1008", "Blank twin", ""),
+      link("1007", D1),
+    ],
+    json: {
+      ...empty,
+      bundleIdMerges: [{ previousAppId: "1007", incomingAppId: "1008" }],
+    },
+  });
+  await run("commit: merges are judged before the first one runs", {
+    route,
+    setup: [
+      ...fleet,
+      app("2002", "Signal", "org.whispersystems.signal"),
+      app("2003", "Signal (new)", "org.whispersystems.signal"),
+    ],
+    json: {
+      ...empty,
+      bundleIdMerges: [
+        { previousAppId: A5, incomingAppId: "2002" },
+        { previousAppId: "2002", incomingAppId: "2003" },
+      ],
+    },
+  });
+  await run("commit: two same-bundle rows on the device merge into one", {
+    route,
+    setup: [
+      ...fleet,
+      app("2002", "Signal", "org.whispersystems.signal"),
+      verdict("v1", A2, "safe"),
+      verdict("v2", A5, "uninstall"),
+    ],
+    json: {
+      ...empty,
+      bundleIdMerges: [
+        { previousAppId: A2, incomingAppId: "2002" },
+        { previousAppId: A5, incomingAppId: "2002" },
+      ],
     },
   });
 }

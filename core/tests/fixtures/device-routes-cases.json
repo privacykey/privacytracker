@@ -12300,15 +12300,6 @@
         {
           "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
           "params": [
-            "1002",
-            "d-one",
-            1700000000000,
-            1700000000000
-          ]
-        },
-        {
-          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
-          "params": [
             "1003",
             "d-one",
             1700000000000,
@@ -12328,6 +12319,15 @@
           "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
           "params": [
             "1003",
+            "d-two",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1002",
             "d-two",
             1700000000000,
             1700000000000
@@ -12732,12 +12732,6 @@
             "last_seen_at": 1700000000000
           },
           {
-            "app_id": "1002",
-            "device_id": "d-one",
-            "first_seen_at": 1700000000000,
-            "last_seen_at": 1700000000000
-          },
-          {
             "app_id": "1003",
             "device_id": "d-one",
             "first_seen_at": 1700000000000,
@@ -12752,6 +12746,12 @@
           {
             "app_id": "1002",
             "device_id": "d-two",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1002",
+            "device_id": "d-one",
             "first_seen_at": 1700000000000,
             "last_seen_at": 1700000000000
           }
@@ -13764,7 +13764,7 @@
       }
     },
     {
-      "name": "commit: any two apps can be merged",
+      "name": "commit: an app with no bundle id is not merged",
       "route": "/api/device-sync/commit",
       "method": "POST",
       "search": "",
@@ -13933,68 +13933,6 @@
           "params": []
         },
         {
-          "sql": "UPDATE annotations SET app_id = ? WHERE app_id = ?",
-          "params": [
-            "1001",
-            "1003"
-          ]
-        },
-        {
-          "sql": "\n        DELETE FROM app_verdicts\n        WHERE app_id = ?\n          AND (app_id, source, COALESCE(source_name, ''))\n            IN (\n              SELECT ?, source, COALESCE(source_name, '')\n              FROM app_verdicts WHERE app_id = ?\n            )\n      ",
-          "params": [
-            "1001",
-            "1001",
-            "1003"
-          ]
-        },
-        {
-          "sql": "UPDATE app_verdicts SET app_id = ? WHERE app_id = ?",
-          "params": [
-            "1001",
-            "1003"
-          ]
-        },
-        {
-          "sql": "\n        DELETE FROM shortlist_entries\n        WHERE source_app_id = ?\n          AND candidate_name IN (\n            SELECT candidate_name FROM shortlist_entries WHERE source_app_id = ?\n          )\n      ",
-          "params": [
-            "1001",
-            "1003"
-          ]
-        },
-        {
-          "sql": "UPDATE shortlist_entries SET source_app_id = ? WHERE source_app_id = ?",
-          "params": [
-            "1001",
-            "1003"
-          ]
-        },
-        {
-          "sql": "UPDATE privacy_snapshots SET app_id = ? WHERE app_id = ?",
-          "params": [
-            "1001",
-            "1003"
-          ]
-        },
-        {
-          "sql": "\n        INSERT OR IGNORE INTO app_devices (app_id, device_id, first_seen_at, last_seen_at)\n        SELECT ?, device_id, first_seen_at, last_seen_at\n        FROM app_devices WHERE app_id = ?\n      ",
-          "params": [
-            "1001",
-            "1003"
-          ]
-        },
-        {
-          "sql": "DELETE FROM app_devices WHERE app_id = ?",
-          "params": [
-            "1003"
-          ]
-        },
-        {
-          "sql": "DELETE FROM apps WHERE id = ?",
-          "params": [
-            "1003"
-          ]
-        },
-        {
           "sql": "UPDATE devices SET last_synced_at = ? WHERE id = ?",
           "params": [
             1789473600000,
@@ -14020,7 +13958,7 @@
             "device_sync.commit",
             "10.0.140.2",
             "device-oracle/1.0",
-            "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":1}",
+            "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
             1
           ]
         }
@@ -14059,6 +13997,512 @@
             "url": "https://apps.apple.com/us/app/x/id1002",
             "iconUrl": null,
             "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1003",
+            "name": "Maps",
+            "url": "https://apps.apple.com/us/app/x/id1003",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1004",
+            "name": "Notes",
+            "url": "https://apps.apple.com/us/app/x/id1004",
+            "iconUrl": null,
+            "bundleId": "com.apple.notes",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1005",
+            "name": "Signal (old)",
+            "url": "https://apps.apple.com/us/app/x/id1005",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1006",
+            "name": "Threads",
+            "url": "https://apps.apple.com/us/app/x/id1006",
+            "iconUrl": null,
+            "bundleId": "com.burbn.barcelona",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "devices": [
+          {
+            "id": "d-one",
+            "name": "My iPhone",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1789473600000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          },
+          {
+            "id": "d-two",
+            "name": "My iPad",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [
+          {
+            "app_id": "1001",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1002",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1005",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-two",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          }
+        ],
+        "annotations": [],
+        "app_verdicts": [],
+        "shortlist_entries": [],
+        "privacy_snapshots": [],
+        "activity_log": [],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "device_sync.commit",
+            "actor_ip": "10.0.140.2",
+            "user_agent": "device-oracle/1.0",
+            "detail": "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "device_resync.last_committed_at",
+            "value": "1789473600000"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "commit: a merge across two bundle ids is skipped",
+      "route": "/api/device-sync/commit",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.141.2",
+        "user-agent": "device-oracle/1.0"
+      },
+      "body": "{\"deviceId\":\"d-one\",\"addAppIds\":[\"1004\"],\"removeAppIds\":[\"1003\"],\"bundleIdMerges\":[{\"previousAppId\":\"1001\",\"incomingAppId\":\"1006\"}]}",
+      "repeat": 1,
+      "mobileSyncRoot": null,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "Instagram",
+            "https://apps.apple.com/us/app/x/id1001",
+            "com.burbn.instagram",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "Signal",
+            "https://apps.apple.com/us/app/x/id1002",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "Maps",
+            "https://apps.apple.com/us/app/x/id1003",
+            null,
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1004",
+            "Notes",
+            "https://apps.apple.com/us/app/x/id1004",
+            "com.apple.notes",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "Signal (old)",
+            "https://apps.apple.com/us/app/x/id1005",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1006",
+            "Threads",
+            "https://apps.apple.com/us/app/x/id1006",
+            "com.burbn.barcelona",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-one",
+            "My iPhone",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-two",
+            "My iPad",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-two",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_verdicts (id, app_id, verdict, rationale, source, source_name, set_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "v1",
+            "1001",
+            "safe",
+            null,
+            "user",
+            null,
+            1700000000000,
+            1700000000000
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at)\n    VALUES (?, ?, ?, ?)\n    ON CONFLICT(app_id, device_id) DO UPDATE SET last_seen_at = excluded.last_seen_at\n  ",
+          "params": [
+            "1004",
+            "d-one",
+            1789473600000,
+            1789473600000
+          ]
+        },
+        {
+          "sql": "DELETE FROM app_devices WHERE app_id = ? AND device_id = ?",
+          "params": [
+            "1003",
+            "d-one"
+          ]
+        },
+        {
+          "sql": "UPDATE devices SET last_synced_at = ? WHERE id = ?",
+          "params": [
+            1789473600000,
+            "d-one"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "device_resync.last_committed_at",
+            "1789473600000"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "device_sync.commit",
+            "10.0.141.2",
+            "device-oracle/1.0",
+            "{\"deviceId\":\"d-one\",\"added\":1,\"removed\":1,\"orphanedAndDeleted\":0,\"merged\":0}",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "1001",
+            "name": "Instagram",
+            "url": "https://apps.apple.com/us/app/x/id1001",
+            "iconUrl": null,
+            "bundleId": "com.burbn.instagram",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1002",
+            "name": "Signal",
+            "url": "https://apps.apple.com/us/app/x/id1002",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1003",
+            "name": "Maps",
+            "url": "https://apps.apple.com/us/app/x/id1003",
+            "iconUrl": null,
+            "bundleId": null,
             "developer": null,
             "firstSeen": 1600000000000,
             "lastSynced": 1600000000000,
@@ -14208,7 +14652,475 @@
             "last_seen_at": 1700000000000
           },
           {
+            "app_id": "1003",
+            "device_id": "d-two",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1004",
+            "device_id": "d-one",
+            "first_seen_at": 1789473600000,
+            "last_seen_at": 1789473600000
+          }
+        ],
+        "annotations": [],
+        "app_verdicts": [
+          {
+            "id": "v1",
             "app_id": "1001",
+            "verdict": "safe",
+            "rationale": null,
+            "source": "user",
+            "source_name": null,
+            "set_at": 1700000000000,
+            "updated_at": 1700000000000
+          }
+        ],
+        "shortlist_entries": [],
+        "privacy_snapshots": [],
+        "activity_log": [],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "device_sync.commit",
+            "actor_ip": "10.0.141.2",
+            "user_agent": "device-oracle/1.0",
+            "detail": "{\"deviceId\":\"d-one\",\"added\":1,\"removed\":1,\"orphanedAndDeleted\":0,\"merged\":0}",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "device_resync.last_committed_at",
+            "value": "1789473600000"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"added\":1,\"removed\":1,\"orphanedAndDeleted\":0,\"merged\":0}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "commit: a merge whose old app is not on this device is skipped",
+      "route": "/api/device-sync/commit",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.142.2",
+        "user-agent": "device-oracle/1.0"
+      },
+      "body": "{\"deviceId\":\"d-two\",\"addAppIds\":[],\"removeAppIds\":[],\"bundleIdMerges\":[{\"previousAppId\":\"1005\",\"incomingAppId\":\"1002\"}]}",
+      "repeat": 1,
+      "mobileSyncRoot": null,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "Instagram",
+            "https://apps.apple.com/us/app/x/id1001",
+            "com.burbn.instagram",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "Signal",
+            "https://apps.apple.com/us/app/x/id1002",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "Maps",
+            "https://apps.apple.com/us/app/x/id1003",
+            null,
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1004",
+            "Notes",
+            "https://apps.apple.com/us/app/x/id1004",
+            "com.apple.notes",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "Signal (old)",
+            "https://apps.apple.com/us/app/x/id1005",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1006",
+            "Threads",
+            "https://apps.apple.com/us/app/x/id1006",
+            "com.burbn.barcelona",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-one",
+            "My iPhone",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-two",
+            "My iPad",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-two",
+            1700000000000,
+            1700000000000
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE devices SET last_synced_at = ? WHERE id = ?",
+          "params": [
+            1789473600000,
+            "d-two"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "device_resync.last_committed_at",
+            "1789473600000"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "device_sync.commit",
+            "10.0.142.2",
+            "device-oracle/1.0",
+            "{\"deviceId\":\"d-two\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "1001",
+            "name": "Instagram",
+            "url": "https://apps.apple.com/us/app/x/id1001",
+            "iconUrl": null,
+            "bundleId": "com.burbn.instagram",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1002",
+            "name": "Signal",
+            "url": "https://apps.apple.com/us/app/x/id1002",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1003",
+            "name": "Maps",
+            "url": "https://apps.apple.com/us/app/x/id1003",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1004",
+            "name": "Notes",
+            "url": "https://apps.apple.com/us/app/x/id1004",
+            "iconUrl": null,
+            "bundleId": "com.apple.notes",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1005",
+            "name": "Signal (old)",
+            "url": "https://apps.apple.com/us/app/x/id1005",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1006",
+            "name": "Threads",
+            "url": "https://apps.apple.com/us/app/x/id1006",
+            "iconUrl": null,
+            "bundleId": "com.burbn.barcelona",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "devices": [
+          {
+            "id": "d-one",
+            "name": "My iPhone",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          },
+          {
+            "id": "d-two",
+            "name": "My iPad",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1789473600000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [
+          {
+            "app_id": "1001",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1002",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1005",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
             "device_id": "d-two",
             "first_seen_at": 1700000000000,
             "last_seen_at": 1700000000000
@@ -14224,7 +15136,1587 @@
             "id": "00000000-0000-4000-8000-000000000001",
             "created_at": 1789473600000,
             "action": "device_sync.commit",
-            "actor_ip": "10.0.140.2",
+            "actor_ip": "10.0.142.2",
+            "user_agent": "device-oracle/1.0",
+            "detail": "{\"deviceId\":\"d-two\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "device_resync.last_committed_at",
+            "value": "1789473600000"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "commit: a merge into an app already on the device is skipped",
+      "route": "/api/device-sync/commit",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.143.2",
+        "user-agent": "device-oracle/1.0"
+      },
+      "body": "{\"deviceId\":\"d-one\",\"addAppIds\":[],\"removeAppIds\":[],\"bundleIdMerges\":[{\"previousAppId\":\"1005\",\"incomingAppId\":\"1002\"}]}",
+      "repeat": 1,
+      "mobileSyncRoot": null,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "Instagram",
+            "https://apps.apple.com/us/app/x/id1001",
+            "com.burbn.instagram",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "Signal",
+            "https://apps.apple.com/us/app/x/id1002",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "Maps",
+            "https://apps.apple.com/us/app/x/id1003",
+            null,
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1004",
+            "Notes",
+            "https://apps.apple.com/us/app/x/id1004",
+            "com.apple.notes",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "Signal (old)",
+            "https://apps.apple.com/us/app/x/id1005",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1006",
+            "Threads",
+            "https://apps.apple.com/us/app/x/id1006",
+            "com.burbn.barcelona",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-one",
+            "My iPhone",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-two",
+            "My iPad",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-two",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_verdicts (id, app_id, verdict, rationale, source, source_name, set_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "v1",
+            "1005",
+            "uninstall",
+            null,
+            "user",
+            null,
+            1700000000000,
+            1700000000000
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE devices SET last_synced_at = ? WHERE id = ?",
+          "params": [
+            1789473600000,
+            "d-one"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "device_resync.last_committed_at",
+            "1789473600000"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "device_sync.commit",
+            "10.0.143.2",
+            "device-oracle/1.0",
+            "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "1001",
+            "name": "Instagram",
+            "url": "https://apps.apple.com/us/app/x/id1001",
+            "iconUrl": null,
+            "bundleId": "com.burbn.instagram",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1002",
+            "name": "Signal",
+            "url": "https://apps.apple.com/us/app/x/id1002",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1003",
+            "name": "Maps",
+            "url": "https://apps.apple.com/us/app/x/id1003",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1004",
+            "name": "Notes",
+            "url": "https://apps.apple.com/us/app/x/id1004",
+            "iconUrl": null,
+            "bundleId": "com.apple.notes",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1005",
+            "name": "Signal (old)",
+            "url": "https://apps.apple.com/us/app/x/id1005",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1006",
+            "name": "Threads",
+            "url": "https://apps.apple.com/us/app/x/id1006",
+            "iconUrl": null,
+            "bundleId": "com.burbn.barcelona",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "devices": [
+          {
+            "id": "d-one",
+            "name": "My iPhone",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1789473600000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          },
+          {
+            "id": "d-two",
+            "name": "My iPad",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [
+          {
+            "app_id": "1001",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1002",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1005",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-two",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          }
+        ],
+        "annotations": [],
+        "app_verdicts": [
+          {
+            "id": "v1",
+            "app_id": "1005",
+            "verdict": "uninstall",
+            "rationale": null,
+            "source": "user",
+            "source_name": null,
+            "set_at": 1700000000000,
+            "updated_at": 1700000000000
+          }
+        ],
+        "shortlist_entries": [],
+        "privacy_snapshots": [],
+        "activity_log": [],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "device_sync.commit",
+            "actor_ip": "10.0.143.2",
+            "user_agent": "device-oracle/1.0",
+            "detail": "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "device_resync.last_committed_at",
+            "value": "1789473600000"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "commit: empty bundle ids never match",
+      "route": "/api/device-sync/commit",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.144.2",
+        "user-agent": "device-oracle/1.0"
+      },
+      "body": "{\"deviceId\":\"d-one\",\"addAppIds\":[],\"removeAppIds\":[],\"bundleIdMerges\":[{\"previousAppId\":\"1007\",\"incomingAppId\":\"1008\"}]}",
+      "repeat": 1,
+      "mobileSyncRoot": null,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "Instagram",
+            "https://apps.apple.com/us/app/x/id1001",
+            "com.burbn.instagram",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "Signal",
+            "https://apps.apple.com/us/app/x/id1002",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "Maps",
+            "https://apps.apple.com/us/app/x/id1003",
+            null,
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1004",
+            "Notes",
+            "https://apps.apple.com/us/app/x/id1004",
+            "com.apple.notes",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "Signal (old)",
+            "https://apps.apple.com/us/app/x/id1005",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1006",
+            "Threads",
+            "https://apps.apple.com/us/app/x/id1006",
+            "com.burbn.barcelona",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-one",
+            "My iPhone",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-two",
+            "My iPad",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-two",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1007",
+            "Blank",
+            "https://apps.apple.com/us/app/x/id1007",
+            "",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1008",
+            "Blank twin",
+            "https://apps.apple.com/us/app/x/id1008",
+            "",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1007",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE devices SET last_synced_at = ? WHERE id = ?",
+          "params": [
+            1789473600000,
+            "d-one"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "device_resync.last_committed_at",
+            "1789473600000"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "device_sync.commit",
+            "10.0.144.2",
+            "device-oracle/1.0",
+            "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "1001",
+            "name": "Instagram",
+            "url": "https://apps.apple.com/us/app/x/id1001",
+            "iconUrl": null,
+            "bundleId": "com.burbn.instagram",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1002",
+            "name": "Signal",
+            "url": "https://apps.apple.com/us/app/x/id1002",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1003",
+            "name": "Maps",
+            "url": "https://apps.apple.com/us/app/x/id1003",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1004",
+            "name": "Notes",
+            "url": "https://apps.apple.com/us/app/x/id1004",
+            "iconUrl": null,
+            "bundleId": "com.apple.notes",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1005",
+            "name": "Signal (old)",
+            "url": "https://apps.apple.com/us/app/x/id1005",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1006",
+            "name": "Threads",
+            "url": "https://apps.apple.com/us/app/x/id1006",
+            "iconUrl": null,
+            "bundleId": "com.burbn.barcelona",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1007",
+            "name": "Blank",
+            "url": "https://apps.apple.com/us/app/x/id1007",
+            "iconUrl": null,
+            "bundleId": "",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1008",
+            "name": "Blank twin",
+            "url": "https://apps.apple.com/us/app/x/id1008",
+            "iconUrl": null,
+            "bundleId": "",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "devices": [
+          {
+            "id": "d-one",
+            "name": "My iPhone",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1789473600000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          },
+          {
+            "id": "d-two",
+            "name": "My iPad",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [
+          {
+            "app_id": "1001",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1002",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1005",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-two",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1007",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          }
+        ],
+        "annotations": [],
+        "app_verdicts": [],
+        "shortlist_entries": [],
+        "privacy_snapshots": [],
+        "activity_log": [],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "device_sync.commit",
+            "actor_ip": "10.0.144.2",
+            "user_agent": "device-oracle/1.0",
+            "detail": "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "device_resync.last_committed_at",
+            "value": "1789473600000"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":0}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "commit: merges are judged before the first one runs",
+      "route": "/api/device-sync/commit",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.145.2",
+        "user-agent": "device-oracle/1.0"
+      },
+      "body": "{\"deviceId\":\"d-one\",\"addAppIds\":[],\"removeAppIds\":[],\"bundleIdMerges\":[{\"previousAppId\":\"1005\",\"incomingAppId\":\"2002\"},{\"previousAppId\":\"2002\",\"incomingAppId\":\"2003\"}]}",
+      "repeat": 1,
+      "mobileSyncRoot": null,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "Instagram",
+            "https://apps.apple.com/us/app/x/id1001",
+            "com.burbn.instagram",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "Signal",
+            "https://apps.apple.com/us/app/x/id1002",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "Maps",
+            "https://apps.apple.com/us/app/x/id1003",
+            null,
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1004",
+            "Notes",
+            "https://apps.apple.com/us/app/x/id1004",
+            "com.apple.notes",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "Signal (old)",
+            "https://apps.apple.com/us/app/x/id1005",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1006",
+            "Threads",
+            "https://apps.apple.com/us/app/x/id1006",
+            "com.burbn.barcelona",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-one",
+            "My iPhone",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-two",
+            "My iPad",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-two",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "2002",
+            "Signal",
+            "https://apps.apple.com/us/app/x/id2002",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "2003",
+            "Signal (new)",
+            "https://apps.apple.com/us/app/x/id2003",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE annotations SET app_id = ? WHERE app_id = ?",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "\n        DELETE FROM app_verdicts\n        WHERE app_id = ?\n          AND (app_id, source, COALESCE(source_name, ''))\n            IN (\n              SELECT ?, source, COALESCE(source_name, '')\n              FROM app_verdicts WHERE app_id = ?\n            )\n      ",
+          "params": [
+            "2002",
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "UPDATE app_verdicts SET app_id = ? WHERE app_id = ?",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "\n        DELETE FROM shortlist_entries\n        WHERE source_app_id = ?\n          AND candidate_name IN (\n            SELECT candidate_name FROM shortlist_entries WHERE source_app_id = ?\n          )\n      ",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "UPDATE shortlist_entries SET source_app_id = ? WHERE source_app_id = ?",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_snapshots SET app_id = ? WHERE app_id = ?",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "\n        INSERT OR IGNORE INTO app_devices (app_id, device_id, first_seen_at, last_seen_at)\n        SELECT ?, device_id, first_seen_at, last_seen_at\n        FROM app_devices WHERE app_id = ?\n      ",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "DELETE FROM app_devices WHERE app_id = ?",
+          "params": [
+            "1005"
+          ]
+        },
+        {
+          "sql": "DELETE FROM apps WHERE id = ?",
+          "params": [
+            "1005"
+          ]
+        },
+        {
+          "sql": "UPDATE devices SET last_synced_at = ? WHERE id = ?",
+          "params": [
+            1789473600000,
+            "d-one"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "device_resync.last_committed_at",
+            "1789473600000"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "device_sync.commit",
+            "10.0.145.2",
+            "device-oracle/1.0",
+            "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":1}",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "1001",
+            "name": "Instagram",
+            "url": "https://apps.apple.com/us/app/x/id1001",
+            "iconUrl": null,
+            "bundleId": "com.burbn.instagram",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1002",
+            "name": "Signal",
+            "url": "https://apps.apple.com/us/app/x/id1002",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1003",
+            "name": "Maps",
+            "url": "https://apps.apple.com/us/app/x/id1003",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1004",
+            "name": "Notes",
+            "url": "https://apps.apple.com/us/app/x/id1004",
+            "iconUrl": null,
+            "bundleId": "com.apple.notes",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1006",
+            "name": "Threads",
+            "url": "https://apps.apple.com/us/app/x/id1006",
+            "iconUrl": null,
+            "bundleId": "com.burbn.barcelona",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "2002",
+            "name": "Signal",
+            "url": "https://apps.apple.com/us/app/x/id2002",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "2003",
+            "name": "Signal (new)",
+            "url": "https://apps.apple.com/us/app/x/id2003",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "devices": [
+          {
+            "id": "d-one",
+            "name": "My iPhone",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1789473600000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          },
+          {
+            "id": "d-two",
+            "name": "My iPad",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [
+          {
+            "app_id": "1001",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1002",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-two",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "2002",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          }
+        ],
+        "annotations": [],
+        "app_verdicts": [],
+        "shortlist_entries": [],
+        "privacy_snapshots": [],
+        "activity_log": [],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "device_sync.commit",
+            "actor_ip": "10.0.145.2",
             "user_agent": "device-oracle/1.0",
             "detail": "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":1}",
             "success": 1
@@ -14240,6 +16732,598 @@
       "expected": {
         "status": 200,
         "body": "{\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":1}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "commit: two same-bundle rows on the device merge into one",
+      "route": "/api/device-sync/commit",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.146.2",
+        "user-agent": "device-oracle/1.0"
+      },
+      "body": "{\"deviceId\":\"d-one\",\"addAppIds\":[],\"removeAppIds\":[],\"bundleIdMerges\":[{\"previousAppId\":\"1002\",\"incomingAppId\":\"2002\"},{\"previousAppId\":\"1005\",\"incomingAppId\":\"2002\"}]}",
+      "repeat": 1,
+      "mobileSyncRoot": null,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "Instagram",
+            "https://apps.apple.com/us/app/x/id1001",
+            "com.burbn.instagram",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "Signal",
+            "https://apps.apple.com/us/app/x/id1002",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "Maps",
+            "https://apps.apple.com/us/app/x/id1003",
+            null,
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1004",
+            "Notes",
+            "https://apps.apple.com/us/app/x/id1004",
+            "com.apple.notes",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "Signal (old)",
+            "https://apps.apple.com/us/app/x/id1005",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1006",
+            "Threads",
+            "https://apps.apple.com/us/app/x/id1006",
+            "com.burbn.barcelona",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-one",
+            "My iPhone",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "d-two",
+            "My iPad",
+            null,
+            null,
+            null,
+            null,
+            1700000000000,
+            1700000000000,
+            null,
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1005",
+            "d-one",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1003",
+            "d-two",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, bundleId, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "2002",
+            "Signal",
+            "https://apps.apple.com/us/app/x/id2002",
+            "org.whispersystems.signal",
+            1600000000000,
+            1600000000000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_verdicts (id, app_id, verdict, rationale, source, source_name, set_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "v1",
+            "1002",
+            "safe",
+            null,
+            "user",
+            null,
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_verdicts (id, app_id, verdict, rationale, source, source_name, set_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "v2",
+            "1005",
+            "uninstall",
+            null,
+            "user",
+            null,
+            1700000000000,
+            1700000000000
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "UPDATE annotations SET app_id = ? WHERE app_id = ?",
+          "params": [
+            "2002",
+            "1002"
+          ]
+        },
+        {
+          "sql": "\n        DELETE FROM app_verdicts\n        WHERE app_id = ?\n          AND (app_id, source, COALESCE(source_name, ''))\n            IN (\n              SELECT ?, source, COALESCE(source_name, '')\n              FROM app_verdicts WHERE app_id = ?\n            )\n      ",
+          "params": [
+            "2002",
+            "2002",
+            "1002"
+          ]
+        },
+        {
+          "sql": "UPDATE app_verdicts SET app_id = ? WHERE app_id = ?",
+          "params": [
+            "2002",
+            "1002"
+          ]
+        },
+        {
+          "sql": "\n        DELETE FROM shortlist_entries\n        WHERE source_app_id = ?\n          AND candidate_name IN (\n            SELECT candidate_name FROM shortlist_entries WHERE source_app_id = ?\n          )\n      ",
+          "params": [
+            "2002",
+            "1002"
+          ]
+        },
+        {
+          "sql": "UPDATE shortlist_entries SET source_app_id = ? WHERE source_app_id = ?",
+          "params": [
+            "2002",
+            "1002"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_snapshots SET app_id = ? WHERE app_id = ?",
+          "params": [
+            "2002",
+            "1002"
+          ]
+        },
+        {
+          "sql": "\n        INSERT OR IGNORE INTO app_devices (app_id, device_id, first_seen_at, last_seen_at)\n        SELECT ?, device_id, first_seen_at, last_seen_at\n        FROM app_devices WHERE app_id = ?\n      ",
+          "params": [
+            "2002",
+            "1002"
+          ]
+        },
+        {
+          "sql": "DELETE FROM app_devices WHERE app_id = ?",
+          "params": [
+            "1002"
+          ]
+        },
+        {
+          "sql": "DELETE FROM apps WHERE id = ?",
+          "params": [
+            "1002"
+          ]
+        },
+        {
+          "sql": "UPDATE annotations SET app_id = ? WHERE app_id = ?",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "\n        DELETE FROM app_verdicts\n        WHERE app_id = ?\n          AND (app_id, source, COALESCE(source_name, ''))\n            IN (\n              SELECT ?, source, COALESCE(source_name, '')\n              FROM app_verdicts WHERE app_id = ?\n            )\n      ",
+          "params": [
+            "2002",
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "UPDATE app_verdicts SET app_id = ? WHERE app_id = ?",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "\n        DELETE FROM shortlist_entries\n        WHERE source_app_id = ?\n          AND candidate_name IN (\n            SELECT candidate_name FROM shortlist_entries WHERE source_app_id = ?\n          )\n      ",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "UPDATE shortlist_entries SET source_app_id = ? WHERE source_app_id = ?",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_snapshots SET app_id = ? WHERE app_id = ?",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "\n        INSERT OR IGNORE INTO app_devices (app_id, device_id, first_seen_at, last_seen_at)\n        SELECT ?, device_id, first_seen_at, last_seen_at\n        FROM app_devices WHERE app_id = ?\n      ",
+          "params": [
+            "2002",
+            "1005"
+          ]
+        },
+        {
+          "sql": "DELETE FROM app_devices WHERE app_id = ?",
+          "params": [
+            "1005"
+          ]
+        },
+        {
+          "sql": "DELETE FROM apps WHERE id = ?",
+          "params": [
+            "1005"
+          ]
+        },
+        {
+          "sql": "UPDATE devices SET last_synced_at = ? WHERE id = ?",
+          "params": [
+            1789473600000,
+            "d-one"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "device_resync.last_committed_at",
+            "1789473600000"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "device_sync.commit",
+            "10.0.146.2",
+            "device-oracle/1.0",
+            "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":2}",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "1001",
+            "name": "Instagram",
+            "url": "https://apps.apple.com/us/app/x/id1001",
+            "iconUrl": null,
+            "bundleId": "com.burbn.instagram",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1003",
+            "name": "Maps",
+            "url": "https://apps.apple.com/us/app/x/id1003",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1004",
+            "name": "Notes",
+            "url": "https://apps.apple.com/us/app/x/id1004",
+            "iconUrl": null,
+            "bundleId": "com.apple.notes",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1006",
+            "name": "Threads",
+            "url": "https://apps.apple.com/us/app/x/id1006",
+            "iconUrl": null,
+            "bundleId": "com.burbn.barcelona",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "2002",
+            "name": "Signal",
+            "url": "https://apps.apple.com/us/app/x/id2002",
+            "iconUrl": null,
+            "bundleId": "org.whispersystems.signal",
+            "developer": null,
+            "firstSeen": 1600000000000,
+            "lastSynced": 1600000000000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "devices": [
+          {
+            "id": "d-one",
+            "name": "My iPhone",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1789473600000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          },
+          {
+            "id": "d-two",
+            "name": "My iPad",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [
+          {
+            "app_id": "1001",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "1003",
+            "device_id": "d-two",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          },
+          {
+            "app_id": "2002",
+            "device_id": "d-one",
+            "first_seen_at": 1700000000000,
+            "last_seen_at": 1700000000000
+          }
+        ],
+        "annotations": [],
+        "app_verdicts": [
+          {
+            "id": "v2",
+            "app_id": "2002",
+            "verdict": "uninstall",
+            "rationale": null,
+            "source": "user",
+            "source_name": null,
+            "set_at": 1700000000000,
+            "updated_at": 1700000000000
+          }
+        ],
+        "shortlist_entries": [],
+        "privacy_snapshots": [],
+        "activity_log": [],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "device_sync.commit",
+            "actor_ip": "10.0.146.2",
+            "user_agent": "device-oracle/1.0",
+            "detail": "{\"deviceId\":\"d-one\",\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":2}",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "device_resync.last_committed_at",
+            "value": "1789473600000"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":2}",
         "type": "application/json",
         "retryAfter": null
       }

@@ -1,8 +1,9 @@
 /**
  * /api/device-sync/commit — apply the user's diff selection.
  *
- *   POST { deviceId, addAppIds: string[], removeAppIds: string[] }
- *     → { added, removed, orphanedAndDeleted }
+ *   POST { deviceId, addAppIds: string[], removeAppIds: string[],
+ *          bundleIdMerges?: { previousAppId, incomingAppId }[] }
+ *     → { added, removed, orphanedAndDeleted, merged }
  *
  * Writes inside a single transaction (see `applyDeviceSyncDiff`). Records
  * the outcome in the audit log so the activity feed can render a
@@ -70,9 +71,11 @@ export async function POST(req: NextRequest) {
   const cleanRemoves = (removeAppIds as unknown[]).filter(
     (x): x is string => typeof x === "string" && x.length > 0
   );
-  // Bundle-ID merges: only pass through pairs the diff detected and
-  // the client is forwarding back. Validated to a tight shape so a
-  // crafted client can't ask us to merge arbitrary app rows.
+  // Bundle-ID merges: the pairs the preview proposed, forwarded back by
+  // the client. Only their shape is checked here. applyDeviceSyncDiff
+  // checks each pair again against the library and skips any the diff
+  // would not propose for this device, so a crafted or stale pair can't
+  // merge an unrelated app into another and delete it.
   const cleanMerges = Array.isArray(bundleIdMerges)
     ? (bundleIdMerges as unknown[])
         .filter((m): m is { previousAppId: string; incomingAppId: string } => {
