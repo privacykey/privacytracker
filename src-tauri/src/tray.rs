@@ -103,9 +103,8 @@ pub fn install(app: &AppHandle, base_url: String, initial_visible: bool) -> taur
                     // sync has finished, which takes minutes on a large
                     // library, and the Settings button waits for it the
                     // same way. Hanging up early would log a failure for a
-                    // sync that is still running. On the Rust core it
-                    // would also stop the sync: hyper drops a handler
-                    // whose client has gone.
+                    // sync that is still running: both backends finish a
+                    // sync whose client has gone.
                     match crate::sidecar::post(&base_url, "/api/sync/trigger").call() {
                         Ok(resp) => log::info!(
                             "Tray: sync finished: {}",
