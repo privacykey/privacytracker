@@ -3298,7 +3298,7 @@ before it. Prompt nonces come from `Ids::nonce`, the system's random
 bytes in production and the oracle's counter in the replay.
 
 **The oracle — `core/scripts/extract-policy-summary-cases.mjs`.** Runs
-the REAL summarise and `all` phases over 69 scenarios, the sample
+the REAL summarise and `all` phases over 75 scenarios, the sample
 summary over four and the prompt preview over two, against a scratch
 database with a frozen clock, counted ids and nonces, and every provider
 reply canned: an OpenAI completion, a custom endpoint's event stream in
@@ -3306,7 +3306,7 @@ the recorded chunks, an Anthropic message. The shapes are the providers'
 documented formats; there is no key to capture live ones with. Recorded
 per case: every raw fetch with its headers and body, every write in
 order, seven tables, and the result or the thrown message.
-`core/src/server/policy_summary_tests.rs` replays all 75, each body
+`core/src/server/policy_summary_tests.rs` replays all 81, each body
 reaching the reader in the recorded chunks. CI regenerates the fixture
 and fails on drift ("Policy summariser oracle is current").
 
@@ -3337,6 +3337,18 @@ A summarise that meets a failed fetch declines the text the fetch kept,
 an earlier capture, and logs a skip ("Policy skipped: latest fetch
 failed") rather than a new fetch failure, as the fixed Node does. A
 too-short or unsupported fetch was already logged as a skip.
+
+A clean source is also one whose last summary run failed
+(`analysis_error`) or found no provider (`needs_ai_config`): only the
+summarise phase writes those two, over a capture it accepted, and any
+later fetch replaces them, so their text is still the latest clean
+capture. A summarise summarises it, forced or not, as the fixed Node
+does; Node used to decline it and log the earlier failure again
+("Summary failed: ...", or "AI not configured" with a provider set up).
+The cases: a failed AI summary summarised again, forced and unforced,
+and failing again with its own error; one that met no provider,
+summarised once one is set up, and an unforced run that still finds
+none; and a summary with scraping disabled, which does not stop it.
 
 **Node's behaviour, kept.** A refusal is caught by the `try` it is
 thrown in, so it is logged twice and its debug row is inserted twice,
