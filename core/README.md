@@ -919,9 +919,9 @@ syscalls, histogram walks and serialisation. Holding it across all of that
 would serialise every other handler behind a 2-second diagnostics poll —
 and inflate the very `lockWait` number the section reports.
 
-Not ported, because they are write routes: the `DELETE` that clears the
-rings and the `POST` that toggles profiling. The clear helpers exist and
-are tested; the routes wait for the writers phase.
+Not ported here, because they are write routes: the `DELETE` that clears
+the rings and the `POST` that toggles profiling. The writers phase ported
+them (Phase 4 batch 5a, the maintenance writes).
 
 ### The trailing-slash redirect (proxy.ts step 0.5)
 
@@ -2014,12 +2014,13 @@ live over `perform`) no longer compiles, because the handler future stops
 being `Send` and axum's `post()` refuses it — the check the allowance had
 suppressed.
 
-**What is not ported.** `summarizePolicies: true` on `/api/scrape` and
-the deferred policy-source fetch a successful import or scrape arms
-(`schedulePostAppUpdatePolicyFetch`) are the Phase 5 policy pipeline;
-the flag is read and ignored, the hook is a no-op. The oracle holds the
-`policy_sync_running` mutex in every case so Node's timer, when it
-fires, finds the runner busy and writes nothing.
+**What this batch left out.** `summarizePolicies: true` on
+`/api/scrape` and the deferred policy-source fetch a successful import
+or scrape arms (`schedulePostAppUpdatePolicyFetch`) are the policy
+pipeline, ported in Phase 5 batch 4b (the policy triggers) with an oracle
+of their own. This oracle still holds the `policy_sync_running` mutex in
+every case, so Node's timer, when it fires, finds the runner busy and
+writes nothing.
 
 **The oracle — `core/scripts/extract-imports-cases.mjs`.** Runs the REAL
 handlers over 167 requests with foreign keys ON, a frozen clock, counted
@@ -2719,17 +2720,16 @@ is. CI regenerates it with the fixture and fails on a diff in either, so
 a demo app added on the Node side cannot leave the core seeding a
 different library. `ring`, already a dependency, supplies both hashes.
 
-**Not here: the policy pipeline.** Node's live walk scrapes with
+**The policy pipeline.** Node's live walk scrapes with
 `summarizePolicies` on, so each new app then has its developer's policy
-page fetched, hashed and summarised. That pipeline is Phase 5. The one
-branch of it that is a plain write is ported — an app with NO policy
-link has its analysis row deleted, Node's first line — and every page
-the oracle serves is such a page. An app that has a link gets nothing
-further from the core, where Node goes on to fetch it; `POST
-/api/scrape` has carried the same gap for `summarizePolicies` since
-batch 3. Until Phase 5 a live seed from the core leaves the AI Policy
-tab empty for those apps. The canned seed is unaffected: its analyses
-are fixture rows, not fetches.
+page fetched, hashed and summarised. This batch ported only the branch
+of it that is a plain write (an app with NO policy link has its analysis
+row deleted, Node's first line), and every page this oracle serves is
+such a page. Phase 5 batch 4b replaced that stand-in with the whole
+policy step, so a live seed from the core now fetches and summarises as
+Node's does; the policy triggers oracle records a live seed whose app
+has a link. The canned seed is unaffected: its analyses are fixture
+rows, not fetches.
 
 **The oracle — `core/scripts/extract-seed-cases.mjs`.** Runs the REAL
 handler, each case in a SAVEPOINT, the network a stub that serves the
