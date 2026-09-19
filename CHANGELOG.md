@@ -56,6 +56,22 @@ Going forward, changes are recorded here as they land.
   changes, quiet hours hold back the bell notification but not the post,
   and a slow or failing webhook never delays or fails the sync. The Rust
   core, not yet active in any build, posts them the same way.
+- "Summarise" on an app's AI Policy tab now makes a summary after an AI
+  summary failed, and after the policy was fetched before an AI provider
+  was set up. In both cases the stored policy text is from the latest
+  fetch that worked, but Summarise did not summarise it: no summary was
+  made, and the Activity log recorded the earlier failure again ("Summary
+  failed: ...") or "AI not configured", even with a provider set up. The
+  only way to a summary was to fetch the policy again ("Rescrape +
+  summarise" or "Retry analysis"), which is refused while "Disable policy
+  scraping" is on. Summarise now summarises the stored text without
+  fetching it again, so it also works with scraping disabled.
+- The task tray no longer says "Summary updated" when "Summarise" or
+  "Rescrape + summarise" on an app's AI Policy tab made no summary. It
+  said so for every run that finished, including a failed AI summary, a
+  failed fetch and a run with no AI provider set up. It now says "Summary
+  failed" when the AI summary failed and "Summary not updated" for the
+  rest.
 - Clicking "Summarise" on an app's AI Policy tab after a failed policy
   refresh no longer adds a failure to the Activity log. A failed refresh
   keeps the policy text from the last refresh that worked, and the button
@@ -64,10 +80,9 @@ Going forward, changes are recorded here as they land.
   although nothing had been fetched. The button is now disabled, and asks
   for a rescrape first, whenever the stored text will not be summarised:
   after a failed refresh or one that came back too short or in a format
-  that cannot be read, for an imported policy, and after an AI summary
-  that failed or had no AI provider set up. "Rescrape + summarise" does
-  both in one pass. A Summarise request that still arrives after a failed
-  refresh is logged as "Policy skipped: latest fetch failed".
+  that cannot be read, and for an imported policy. "Rescrape + summarise"
+  does both in one pass. A Summarise request that still arrives after a
+  failed refresh is logged as "Policy skipped: latest fetch failed".
 - Asking for an AI summary of an app whose privacy policy has never been
   fetched no longer shows up as a failure. With no policy text to work
   from, the summarise-only request (`POST /api/policy/regenerate` with
@@ -238,6 +253,8 @@ Going forward, changes are recorded here as they land.
   1 device and 22 links on a 22-app copy. Developer-facing only.
 
 ### Added
+
+- Rust core Phase 5, batch 4a: the bulk policy runner and its resume. `core/src/server/policy_runner.rs` ports `runBulkPolicySync` with its state blob and lock, persisted before and after each app: every app with a policy link goes through `syncPrivacyPolicyAnalysis` in the run's phase, apps that lost their link or were removed since the queue was built are skipped with the reason, and the run streams its frames, each app's phase records included. `POST /api/policy/sync-all` keeps the route's limit, refusals and start audit, answered buffered or as an NDJSON stream (spawned off the request on the server), and the server now runs the 12 s startup resume beside the Wayback and sync ones. Gated by a new Node-derived oracle: 33 cases through the real route, the runner as the post-update fetch starts it, and the resume closure captured from `instrumentation.ts`, with the network canned and replayed comparing the response or the result, the frames, every raw fetch, every write, what lands after the run and nine tables; regenerated in CI. Live, a new probe holds the route's refusals and its limit on both servers. Rust remains inactive in Node, Tauri and Docker builds. Developer-facing only.
 
 - Rust core Phase 5, batch 3b: the AI routes. `core/src/server/routes_ai.rs` ports `POST /api/policy/regenerate`, answered whole or, with `stream: true`, as an NDJSON stream of the run's phase records ending in the analysis (on the server the streamed run is spawned off the request and its lines go out as they come), `POST /api/ai/policy-sample`, and the two routes that reach a provider's model list, `POST /api/ai/test` and `POST /api/ai/models` (OpenAI's chat-model filter, Anthropic's paging, and Ollama's own tag list as a local endpoint's fallback). Each keeps its route's limit and refusals in its own words and order, the admin token on the two that fetch a caller-supplied URL, loopback base URLs allowed and metadata addresses never, and its audit and activity rows. The run logger gains the phase stream the regenerate route writes out. A body read that times out now reports the timeout rather than `terminated`, as the streamed read already did. Gated by a new Node-derived oracle: 123 requests to the four real route handlers with every provider reply canned, replayed comparing the response on the wire, every raw fetch, every write, what lands after the response and nine tables; regenerated in CI. Live, a new probe points both servers at a loopback fake provider and compares the connection test, the model lists, the sample summary and regenerate's summary, whole and streamed, along with what each server sent the provider. Rust remains inactive in Node, Tauri and Docker builds. Developer-facing only.
 

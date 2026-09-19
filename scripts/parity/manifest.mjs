@@ -1806,7 +1806,7 @@ export const QUARANTINE = [
   {
     route: "/api/policy/sync-all",
     method: "POST",
-    why: "bulk policy fetch across every app; long-running",
+    why: "bulk policy fetch across every app; long-running. probePolicySyncRoute holds its refusals and its limit on both, the policy-runner oracle the runs",
   },
 
   // -- outbound to an arbitrary user-supplied endpoint

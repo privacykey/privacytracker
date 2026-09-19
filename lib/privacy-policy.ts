@@ -1497,9 +1497,13 @@ async function fetchAndStorePolicySource(
 }
 
 /**
- * Phase 2: run the AI summary against whatever source text is already stored
- * on the row. Returns the row unchanged if the source is not ready, or if the
- * summary is already current (status === 'ready').
+ * Phase 2: run the AI summary against the source text already stored on the
+ * row. Returns the row unchanged if the summary is already current (an
+ * unforced run over 'ready'), or if the stored text is not one it
+ * summarises (`canSummariseStoredPolicy`): the earlier capture a failed or
+ * unusable fetch keeps, or an imported excerpt. A clean capture whose last
+ * summary run failed or found no AI provider is summarised again. Returns
+ * null when no policy was ever fetched.
  */
 async function summariseStoredPolicy(
   request: PolicyAnalysisRequest,

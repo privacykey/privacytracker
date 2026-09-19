@@ -825,7 +825,8 @@ pub(crate) async fn resume_app_store_sync(
 }
 
 /// The boot writes now, then the tickers `register()` arms: the Wayback
-/// resume once at 8 s, the sync resume once at 10 s, the scheduler check
+/// resume once at 8 s, the sync resume once at 10 s, the policy-sync
+/// resume once at 12 s, the scheduler check
 /// at 15 s and every 30 minutes, the import-queue drain at 20 s and every
 /// minute, the health check at 60 s and daily.
 pub(crate) fn start_background(state: AppState) {
@@ -852,6 +853,18 @@ pub(crate) fn start_background(state: AppState) {
         let mut db = resume_state.db_access();
         if let Err(e) = resume_app_store_sync(&mut db, &PublicHttp, &mut ids, &Live).await {
             super::diag::log_error(format!("[SyncResume] Startup check failed: {e}"));
+        }
+    });
+
+    let policy_state = state.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(12)).await;
+        let mut ids = RandomIds;
+        let mut db = policy_state.db_access();
+        let follow_ups =
+            super::policy_runner::resume_policy_sync(&mut db, &PublicHttp, &mut ids, &Live).await;
+        for follow_up in follow_ups {
+            super::policy_store::run_follow_ups(&mut db, &PublicHttp, &Live, follow_up).await;
         }
     });
 

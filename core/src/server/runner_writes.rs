@@ -12,7 +12,9 @@ use super::{
     imports_writes::{recompute_counters, transaction},
     json::{json_error, json_ok, json_response},
     operations::cooldowns,
-    sync_runner::{clock_for, run_scheduled_sync},
+    policy_runner,
+    policy_store::FollowUps,
+    sync_runner::{clock_for, run_scheduled_sync, Clock},
     wayback_runner::{
         self, build_initial_queue, clear_bulk_state, get, has_pending_work, mutex_held,
         read_bulk_state, release_mutex, request_active_cancel, run_bulk_wayback_import, set,
@@ -21,6 +23,7 @@ use super::{
     writes::{internal_error, prop, Cx, RouteSpec, WriteRequest},
 };
 use crate::{
+    jsstr::js_trim,
     outbound::Fetcher,
     scrape::persist::{DbAccess, Ids},
 };
@@ -32,7 +35,7 @@ use axum::{
 use regex::Regex;
 use rusqlite::types::Value as Sql;
 use serde_json::{json, Value};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 const DELETE_APP: &str = "DELETE FROM apps WHERE id = ?";
 const TOMBSTONE_ITEMS: &str = "UPDATE import_items\n       SET status = 'removed',\n           removed_app_id = COALESCE(removed_app_id, app_id)\n     WHERE app_id = ? AND status != 'removed'";
@@ -47,6 +50,7 @@ pub(super) fn handles(spec: &RouteSpec) -> bool {
             | "/api/rate-limit/status"
             | "/api/apps"
             | "/api/wayback/import-all"
+            | "/api/policy/sync-all"
     )
 }
 
@@ -78,6 +82,15 @@ pub(super) async fn perform(
         }
         ("/api/wayback/import-all", &Method::DELETE) => {
             db.with(|w| wayback_remove_all(&mut Cx { w, ids, now }, actor))
+        }
+        ("/api/policy/sync-all", &Method::POST) => {
+            let clock: Arc<dyn Clock> = clock_for(now);
+            let (response, follow_ups) =
+                policy_sync_all(db, ids, fetcher, clock.clone(), req.body, actor).await;
+            for follow_up in follow_ups {
+                super::policy_store::run_follow_ups(db, fetcher, &*clock, follow_up).await;
+            }
+            response
         }
         _ => json_error(StatusCode::NOT_FOUND, "Not Found"),
     }
@@ -286,6 +299,184 @@ fn mark_import_items_removed_for_app(cx: &mut Cx, app_id: &str) -> Result<Vec<St
         recompute_counters(cx, import_id)?;
     }
     Ok(import_ids)
+}
+
+// ── POST /api/policy/sync-all ────────────────────────────────────────
+
+/// `readBoundedJson`'s failures, which this route answers with a 400
+/// carrying the message, the reader's own 413 and 408 included.
+fn policy_body(outcome: BodyOutcome) -> Result<Value, String> {
+    match outcome {
+        BodyOutcome::Json(v) => Ok(v),
+        BodyOutcome::Empty => Err("Request body is empty".into()),
+        BodyOutcome::TooLarge(max) => Err(format!("Request body too large (limit {max} bytes)")),
+        BodyOutcome::Timeout => Err("Request body timed out".into()),
+        BodyOutcome::Invalid | BodyOutcome::Whitespace | BodyOutcome::Raw(_) => {
+            Err("Invalid JSON body".into())
+        }
+    }
+}
+
+fn ndjson(body: Body) -> Response {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "application/x-ndjson; charset=utf-8")
+        .header("cache-control", "no-store, no-transform")
+        .body(body)
+        .unwrap_or_else(|_| internal_error())
+}
+
+/// `JSON.stringify(frame) + "\n"`.
+fn ndjson_line(frame: &Value) -> Vec<u8> {
+    let mut line = super::json::js_json_vec(frame).unwrap_or_default();
+    line.push(b'\n');
+    line
+}
+
+/// `POST /api/policy/sync-all`, after its limit: the body, the phase, the
+/// kill-switch, a run already under way, no apps to sync, the start audit,
+/// then the run, streamed or buffered. What the run left to finish comes
+/// back with the response; on the server it is nothing.
+pub(super) async fn policy_sync_all(
+    db: &mut dyn DbAccess,
+    ids: &mut dyn Ids,
+    fetcher: &dyn Fetcher,
+    clock: Arc<dyn Clock>,
+    body: BodyOutcome,
+    actor: &Actor,
+) -> (Response, Vec<FollowUps>) {
+    let body = match policy_body(body) {
+        Ok(v) => v,
+        Err(message) => {
+            return (
+                json_response(StatusCode::BAD_REQUEST, &json!({ "error": message })),
+                vec![],
+            )
+        }
+    };
+    // `body?.phase`: a null body is no object, not a throw.
+    let phase = match prop(&body, "phase").and_then(Value::as_str).map(js_trim) {
+        Some("all") => "all",
+        _ => "fetch",
+    };
+    let force = prop(&body, "force") == Some(&Value::Bool(true));
+    let want_stream = prop(&body, "stream") == Some(&Value::Bool(true));
+    let now = clock.now();
+    let opened = db.with(|w| -> Result<Result<(), Response>, String> {
+        let cx = &mut Cx { w, ids, now };
+        if cx.get("policy_scrape_disabled", "false") == "true" {
+            return Ok(Err(json_response(
+                StatusCode::CONFLICT,
+                &json!({
+                    "error": "Policy scraping is disabled in Settings. Re-enable to run a bulk sync.",
+                    "code": "policy_scrape_disabled",
+                }),
+            )));
+        }
+        if !policy_runner::can_start_manual_run(cx) {
+            return Ok(Err(json_error(
+                StatusCode::CONFLICT,
+                "A bulk policy sync is already running. Wait for it to finish before starting another.",
+            )));
+        }
+        let app_count = policy_runner::build_initial_queue(cx)?.len();
+        if app_count == 0 {
+            return Ok(Err(json_ok(&json!({
+                "error": "No apps have a developer privacy-policy link to sync.",
+                "totals": policy_runner::zero_totals(),
+                "phase": phase,
+                "force": force,
+            }))));
+        }
+        record_audit(
+            cx.w,
+            cx.ids,
+            cx.now,
+            "policy.sync-all.start",
+            actor,
+            Some(&format!(
+                "phase={phase} force={} apps={app_count} stream={}",
+                u8::from(force),
+                u8::from(want_stream)
+            )),
+            true,
+        );
+        Ok(Ok(()))
+    });
+    match opened {
+        // A read or write the route does outside any `try`: Next's 500.
+        Err(_) => return (internal_error(), vec![]),
+        Ok(Err(response)) => return (response, vec![]),
+        Ok(Ok(())) => {}
+    }
+    let options = |writer| policy_runner::RunOptions {
+        initiator: "manual",
+        phase,
+        force,
+        resume_state: None,
+        stream_requested: want_stream,
+        writer,
+        actor_ip: Some(actor.ip.clone()),
+        user_agent: actor.user_agent.clone(),
+    };
+    if want_stream {
+        // On the server the run is spawned and its frames stream as they
+        // come; a replay's accessor cannot be detached, so its run goes in
+        // place and the frames are the body.
+        if let Some(Detached {
+            mut db,
+            fetcher,
+            mut ids,
+            clock,
+        }) = detach(db, fetcher, ids, now)
+        {
+            let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Value>();
+            let options = options(Some(tx));
+            tokio::spawn(async move {
+                let ran = policy_runner::run_bulk_policy_sync(
+                    &mut *db, &*fetcher, &mut *ids, &*clock, options,
+                )
+                .await;
+                for follow_up in ran.follow_ups {
+                    super::policy_store::run_follow_ups(&mut *db, &*fetcher, &*clock, follow_up)
+                        .await;
+                }
+            });
+            let stream = futures_util::stream::unfold(rx, |mut rx| async move {
+                rx.recv()
+                    .await
+                    .map(|frame| (Ok::<_, std::convert::Infallible>(ndjson_line(&frame)), rx))
+            });
+            return (ndjson(Body::from_stream(stream)), vec![]);
+        }
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Value>();
+        let ran =
+            policy_runner::run_bulk_policy_sync(db, fetcher, ids, &*clock, options(Some(tx))).await;
+        let mut lines = Vec::new();
+        while let Ok(frame) = rx.try_recv() {
+            lines.extend(ndjson_line(&frame));
+        }
+        return (ndjson(Body::from(lines)), ran.follow_ups);
+    }
+    let ran = policy_runner::run_bulk_policy_sync(db, fetcher, ids, &*clock, options(None)).await;
+    let response = match ran.outcome {
+        Ok(result) => json_ok(&json!({
+            "totals": result.totals,
+            "phase": phase,
+            "force": force,
+            "durationMs": result.duration_ms,
+        })),
+        Err(message) => json_response(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            &json!({
+                "error": message,
+                "totals": policy_runner::zero_totals(),
+                "phase": phase,
+                "force": force,
+            }),
+        ),
+    };
+    (response, ran.follow_ups)
 }
 
 // ── POST /api/wayback/import-all ─────────────────────────────────────

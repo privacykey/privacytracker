@@ -66,6 +66,9 @@ mod operations_tests;
 mod osinfo;
 mod policy;
 mod policy_ai;
+mod policy_runner;
+#[cfg(test)]
+mod policy_runner_tests;
 mod policy_store;
 #[cfg(test)]
 mod policy_store_tests;
@@ -286,7 +289,10 @@ pub fn app(state: AppState) -> Router {
                 .patch(routes_writes::wayback_import_all_patch)
                 .delete(routes_writes::wayback_import_all_delete),
         )
-        .route("/api/policy/sync-all", get(routes_operations::policy))
+        .route(
+            "/api/policy/sync-all",
+            get(routes_operations::policy).post(routes_writes::policy_sync_all_post),
+        )
         // Phase 4, batch 5b: the backup routes. The export is a GET that
         // guards itself and writes an audit row, so it runs through the
         // write framework; the download reads one file and nothing else.
