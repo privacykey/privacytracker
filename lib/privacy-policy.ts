@@ -856,6 +856,12 @@ export async function syncPrivacyPolicyAnalysis(
     // the caller explicitly asked for phase='fetch', which is still a success
     // for that narrower intent. Anything else is an error for the user.
     const resultStatus = result?.status ?? null;
+    // The throttle and the kill-switch hand back the stored analysis with
+    // their own line last in this run's log. Its status describes an
+    // earlier run, so a skip is told by that line, as the bulk runner
+    // tells it. A run that went on to summarise the stored text logged
+    // more after it and is judged by its result.
+    const lastLogged = logger.phases.at(-1)?.phase;
     let activityStatus: ActivityStatus = "ok";
     let summaryLine = "Policy summary complete";
     if (!result && logger.phases.some((entry) => entry.phase === "disabled")) {
@@ -871,6 +877,12 @@ export async function syncPrivacyPolicyAnalysis(
     } else if (!result) {
       activityStatus = "ok";
       summaryLine = "Policy URL cleared";
+    } else if (lastLogged === "throttled") {
+      activityStatus = "partial";
+      summaryLine = "Policy skipped: throttled";
+    } else if (lastLogged === "disabled") {
+      activityStatus = "partial";
+      summaryLine = "Policy skipped: scraping disabled";
     } else if (resultStatus === "ready") {
       activityStatus = "ok";
       summaryLine =
