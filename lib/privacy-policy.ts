@@ -1017,10 +1017,12 @@ async function fetchAndStorePolicySource(
     // Persist the log entry so the AI Policy tab can surface "disabled" the
     // same way it surfaces throttle messages, but leave every other field
     // on the row untouched — `source_fetched_at`, the hash, the existing
-    // summary all stay as they were. Mirrors the throttle path below.
+    // summary all stay as they were. Mirrors the throttle path below,
+    // including the row it returns.
     if (existing) {
+      let row: PolicyAnalysisRow | null = null;
       try {
-        persistPolicyAnalysis({
+        row = persistPolicyAnalysis({
           appId,
           policyUrl,
           status: existing.status as PolicyAnalysisStatus,
@@ -1044,7 +1046,9 @@ async function fetchAndStorePolicySource(
       } catch {
         // Non-fatal — log persistence is a nice-to-have.
       }
-      return hydratePolicyAnalysis(existing);
+      return hydratePolicyAnalysis(
+        row ?? getPolicyAnalysisRow(appId) ?? existing
+      );
     }
     return null;
   }
@@ -1090,8 +1094,9 @@ async function fetchAndStorePolicySource(
       // Persist the log entry so the UI can surface the throttle message
       // on the AI Policy tab, but do NOT touch `source_fetched_at`, the
       // hash, or the changelog. Throttle hits are invisible to History.
+      let row: PolicyAnalysisRow | null = null;
       try {
-        persistPolicyAnalysis({
+        row = persistPolicyAnalysis({
           appId,
           policyUrl,
           status: existing.status,
@@ -1115,7 +1120,14 @@ async function fetchAndStorePolicySource(
       } catch {
         // Non-fatal — log persistence is a nice-to-have; throttle still fires.
       }
-      return hydratePolicyAnalysis(existing);
+      // Return the row as it now stands, this run's `throttled` line last:
+      // the bulk runner counts an app as throttled by that line, and
+      // `existing` was read before it, carrying the previous run's log. A
+      // refused write is read again, since the run log is written on its
+      // own and may still have landed.
+      return hydratePolicyAnalysis(
+        row ?? getPolicyAnalysisRow(appId) ?? existing
+      );
     }
   }
 

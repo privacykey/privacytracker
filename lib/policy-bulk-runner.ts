@@ -99,7 +99,9 @@ function classifyOutcome(
 /**
  * Detect "throttle hit, returned prior state" by looking at the last
  * entry in the analysis's run log. Copied from the original route so
- * resumed and streamed runs classify the same way.
+ * resumed and streamed runs classify the same way. The store returns a
+ * throttled analysis as the row stands after the skip, so the last entry
+ * is the skip's own `throttled` line.
  */
 function wasThrottled(lastRunLog: unknown): boolean {
   if (!Array.isArray(lastRunLog) || lastRunLog.length === 0) {

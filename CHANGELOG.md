@@ -46,6 +46,19 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- "Re-scrape all policies" and "Summarise all policies" in Settings now
+  count the apps the policy scrape throttle skipped. The throttle skips a
+  privacy policy fetched within its cooldown (60 minutes by default), but
+  a bulk run judged each app by the log of its previous policy run
+  instead of this one. An app skipped after a fetch was counted as a
+  success: the run's summary, its toast and the Activity log said "Bulk
+  policy scrape: 2 ok, 1 failed" when one of the two had not been
+  fetched, and only a second skip in a row came out as throttled. Skipped
+  apps are now always counted as throttled ("1 ok, 1 failed, 1
+  throttled") and marked ⏸ in the background-task tray. A single app's
+  policy refresh that the throttle skips (`POST /api/policy/regenerate`)
+  now answers with that run's own log and update time, as the app's
+  policy status already reported.
 - A notification webhook set to "Each change" now posts App Store changes.
   When a sync found an app's privacy labels, accessibility labels or age
   rating changed, it wrote the bell notification but posted nothing: only
