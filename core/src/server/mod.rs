@@ -28,6 +28,7 @@ mod bundles_tests;
 mod changelog;
 #[cfg(test)]
 mod content_tests;
+mod csp_policy;
 mod csp_reports;
 mod deployment;
 mod device_writes;
@@ -47,6 +48,7 @@ mod flag_migration;
 mod flag_migration_tests;
 pub mod flags;
 mod forwarded;
+mod frontdoor;
 mod gate;
 pub(crate) mod grid_meta;
 mod guard;
@@ -67,6 +69,7 @@ pub(crate) mod lifecycle;
 mod maintenance_tests;
 mod maintenance_writes;
 mod multipart;
+mod nexthttp;
 mod operations;
 #[cfg(test)]
 mod operations_tests;
@@ -120,6 +123,9 @@ mod seed_tests;
 mod seed_writes;
 pub(crate) mod settings;
 mod shortlist;
+pub mod site;
+#[cfg(test)]
+mod site_tests;
 mod stats;
 #[cfg(test)]
 mod stats_tests;
@@ -273,7 +279,7 @@ pub fn data_layout() -> &'static DataLayout {
 /// directory instead. `serve_with` is the one constructor of `AppState` and
 /// keeps the two aligned.
 pub fn app(state: AppState) -> Router {
-    layered(routes(), state)
+    front_door(layered(routes(), state))
 }
 
 /// Every route, before the layers.
@@ -739,6 +745,12 @@ fn routes() -> Router<AppState> {
             "/api/diagnostics/errors",
             get(routes_runtime::errors).delete(routes_writes::diagnostics_errors_delete),
         )
+        // Phase 6, batch 3a: every route above is a route handler in Node,
+        // which the compression middleware never sees (see frontdoor.rs).
+        .route_layer(axum::middleware::from_fn(frontdoor::app_route))
+        // Everything else is the frontend's: the build's pages and files
+        // when a site is installed, the empty 404 when not (site.rs).
+        .fallback(site::fallback)
 }
 
 /// The layers every route runs under, innermost first. Split from the route
@@ -765,6 +777,21 @@ fn layered(routes: Router<AppState>, state: AppState) -> Router {
         .with_state(state)
 }
 
+/// Phase 6, batch 3a: what `next start` does before and around its router
+/// (frontdoor.rs), outermost last: the compression middleware, next.config's
+/// security headers, and the repeated-slash redirect and dot-segment
+/// resolution. `Router::layer` wraps each route on its own, after routing,
+/// so these wrap the whole router instead, as the fallback of an outer one:
+/// a dot-segment path is resolved before it is routed, and axum's own
+/// answers (the `Allow` on a 405) pass through them.
+fn front_door(inner: Router) -> Router {
+    Router::new()
+        .fallback_service(inner)
+        .layer(axum::middleware::from_fn(frontdoor::compress))
+        .layer(axum::middleware::from_fn(frontdoor::security_headers))
+        .layer(axum::middleware::from_fn(frontdoor::normalize))
+}
+
 /// How long requests in flight get once the server is told to stop: the
 /// three seconds the Tauri shell gave the Node sidecar between SIGTERM and
 /// SIGKILL.
@@ -783,10 +810,20 @@ pub const SHUTDOWN_GRACE: Duration = Duration::from_secs(3);
 /// The listener is bound BEFORE the state is built because the bound port
 /// is part of the state (`x-forwarded-port`), and the service is built with
 /// connect info so the peer address can stand in for `socket.remoteAddress`.
-pub async fn serve(addr: SocketAddr) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn serve(
+    addr: SocketAddr,
+    site: Option<PathBuf>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let bound = listener.local_addr()?;
-    let server = serve_with(listener, ServeConfig::default()).await?;
+    let server = serve_with(
+        listener,
+        ServeConfig {
+            site,
+            ..ServeConfig::default()
+        },
+    )
+    .await?;
     // Printed so a supervising script can wait for readiness on stdout
     // rather than polling a port it only assumes is right. The boot writes
     // have landed by now.

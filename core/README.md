@@ -960,16 +960,15 @@ the source:
 
   The 401 was the one divergence: this server sent it without the header.
 
-- **Repeated slashes are the one deliberate difference.** Next normalises
-  `/api/health//` in its router before middleware, so Node answers a
-  header-less 308 to `/api/health/` and needs a second hop; the Rust gate
-  strips the whole run at once. Both land on the same canonical path — only
-  the hop count differs, and the header-less hop is the quirk
-  `skipTrailingSlashRedirect` exists to avoid, not a contract to copy.
+- **Repeated slashes.** Next normalises `/api/health//` in its router before
+  middleware, so Node answers a header-less 308 to `/api/health/` and needs
+  a second hop. The Rust gate used to strip the whole run at once; since
+  Phase 6, batch 3a the router's repeated-slash 308 comes first here too
+  (`frontdoor.rs`), so both take the same two hops.
 
-Not reproduced, deliberately: Next also emits `Refresh: 0;url=<loc>` and
-echoes the location in the redirect body. Both are Next redirect-serialisation
-trivia, and this server does not emit Next's security-header block either.
+Since batch 3a, too, the redirect carries what Next's does: `Refresh:
+0;url=<loc>`, the location echoed as the body, the security headers and the
+canonical page's CSP.
 
 **The gate — `probeTrailingSlash` in `scripts/parity/read-parity.mjs`.** The
 differ cannot see any of this: `parity-diff.mjs` only ever requests the
@@ -4082,3 +4081,118 @@ goal. Source restored byte for byte after each, fixed tree green.
 
 Rust suite: 283 lib tests pass (281 + the replay + the boot test), plus
 the embed test.
+
+### Batch 3a — the frontend, from the normal build (no API routes)
+
+`pt-core serve --site <dir>`, or `ServeConfig { site }` for a host,
+serves the frontend too: the normal `next build` output under `<dir>`,
+the directory `next start` runs in. The build stays exactly the one
+Node serves, which is what the rollback window needs; a static export
+can replace it once the Node server code is deleted.
+
+**What is served (`core/src/server/site.rs`).** Every page is
+prerendered, so the server answers from the build's files as `next
+start` does:
+
+- the 38 documents, each with its `.meta` status and headers, Next's
+  `Vary`, `x-nextjs-*` headers and ETag (`fnv1a52` over the UTF-16
+  string), and a 304 for a matching `If-None-Match`;
+- the RSC payload a client navigation fetches and the segment files a
+  prefetch asks for, behind Next's `_rsc` cache-busting check (a hash of
+  the four router headers; a mismatch is a 307 to the right one);
+- `/_next/static` and `public/` through a port of the `send` Next
+  bundles: validators, conditional requests, byte ranges, its MIME
+  table, and its Cache-Control (immutable for static, `max-age=0` for
+  public);
+- the three metadata icons, the two rewrites to the view shells, the
+  not-found page for every other path (an unknown `/api` path included),
+  and a 405 for a page asked to do anything but GET or HEAD.
+
+The build is indexed once, at startup, as Next indexes its folders. A
+request only looks a file up by name in that index, so a path a client
+sends never reaches the filesystem.
+
+**What is around it.** `frontdoor.rs` does what `next start` does
+around its router, wrapped around the whole router rather than each
+route (axum's `Router::layer` runs after routing):
+
+- the repeated-slash 308 and the WHATWG resolution of dot segments,
+  before routing, so `/api/x/../health` reaches the health route;
+- next.config's five security headers on every response;
+- the `compression` middleware (gzip or deflate, never brotli, from
+  1 KiB, `Vary: Accept-Encoding`), which Next's route handlers bypass,
+  and so do this server's API routes and icons.
+
+`gate.rs` gains the rest of `proxy.ts`:
+
+- its matcher (static assets skip every step);
+- the page branch of the auth step (a 307 to `/login`, not a 401);
+- its CSP on every response it handles (`csp_policy.rs`, from
+  `csp-hashes.json` and `cspRouteKey`);
+- Next's own Cache-Control, which replaces the proxy's `no-store` where
+  Next sets one after it.
+
+The API changed in three visible ways, each towards Node: every response
+carries the security headers, the CSP and the router `Vary`; an unknown
+path gets the not-found page; and a 405 names no `Allow`.
+
+**How it was mapped.** Before the port was written, `next start` was
+asked 200 requests across every response class, with and without
+the token, and each answer recorded; the rules are in the code's
+comments. The ETag, `fresh`, `range-parser`, `negotiator`, the `_rsc`
+hash and `normalizeRepeatedSlashes` are ported from Next's own source
+(`nexthttp.rs`), each pinned by a unit test against values Node
+produced.
+
+**Node's behaviour, kept.**
+
+- A byte range that cannot be satisfied, a failed precondition, or a
+  POST to a static file answers 500, not 416, 412 or 405.
+- A page answers 304 to `If-None-Match` even with `Cache-Control:
+  no-cache`, while a static file does not.
+- A page name spelled with escapes (`/%64ashboard`) is the not-found
+  page, keeping the proxy's `no-store`.
+- `/_global-error` asked for by name answers 500, while its segments
+  answer 200.
+
+**The gate.**
+
+- Unit tests: the helpers in `nexthttp.rs`, the CSP route keys, and
+  the `Vary` merge. `site_tests.rs` runs the handler over a small
+  synthetic build, so CI covers it without a build of its own.
+- The page-parity probe (`scripts/parity/page-probes.mjs`), run by
+  `read-parity.mjs`, which now starts the core with `--site` on its own
+  working directory. On both servers and the same build it compares 404
+  requests on the status, the body (decompressed when compressed) and
+  every header by name:
+  - every page as a document, a HEAD, an RSC request, a prefetch and
+    each of its segments;
+  - the rewrites and the not-found page;
+  - a sample of `/_next/static`, every public file and the icons;
+  - 67 edges: conditionals, ranges, encodings, methods, redirects,
+    encoded and dot-segment paths, and no token.
+
+  All 404 are identical. The whole live gate passes with it (487
+  checks).
+
+**Negative controls, predicted before running.** In the unit tests:
+
+- Pages honouring a request's `no-cache`: exactly the document test.
+- Two byte ranges answered with the first: exactly the file test.
+- The not-found page without its own Cache-Control: exactly the
+  not-found test.
+- The ETag counting UTF-8 bytes: predicted the document test, which
+  stayed green. It compared against `generate_etag` itself, so it could
+  never disagree with a broken port. It and the helper test now pin
+  Node's literal ETag, and the control then failed exactly those two.
+
+Live:
+
+- Segment status always the page's: exactly the 7 segment checks of
+  the two error pages.
+- The CSP route key without the rewrites: exactly the 9 checks on the
+  rewritten paths.
+
+Source restored byte for byte after each, fixed tree green.
+
+Rust suite: 296 lib tests pass (283 + 13), plus the embed test.
