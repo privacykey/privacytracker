@@ -11873,6 +11873,276 @@
         "cacheControl": null,
         "body": "{\"error\":\"Policy scraping is disabled in Settings. Re-enable to fetch, or use the Summarise-only action.\",\"code\":\"policy_scrape_disabled\"}"
       }
+    },
+    {
+      "name": "regenerate: summarise with a blank key keeps the summary",
+      "route": "/api/policy/regenerate",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, developer, privacyPolicyUrl, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "Policy Fixture",
+            "https://apps.apple.com/us/app/fixture/id1000000001",
+            "",
+            "Fixture Developer",
+            "https://example.com/privacy",
+            1786881600000,
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_title, source_content_type, source_text, source_word_count, source_origin, source_final_url, content_hash, analysis_mode, summary_json, previous_summary_json, previous_summary_at, model, error, updated_at, last_run_log, source_fetched_at, run_status, run_started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "https://example.com/privacy",
+            "ready",
+            "example.com",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.\n\nWe retain your information for as long as necessary to provide the service. Section 6.\n\nOur service is not directed to children under 13. Section 7.\n\nWe do not use your information for interest-based advertising or marketing. Section 8.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10.\n\nWe share information with service providers and partners who process it on our behalf. Section 11.\n\nWe use cookies and analytics tools to understand how the app is used. Section 12.\n\nYou may request access to or deletion of your personal information at any time. Section 13.\n\nWe retain your information for as long as necessary to provide the service. Section 14.\n\nOur service is not directed to children under 13. Section 15.\n\nWe do not use your information for interest-based advertising or marketing. Section 16.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18.\n\nWe share information with service providers and partners who process it on our behalf. Section 19.\n\nWe use cookies and analytics tools to understand how the app is used. Section 20.\n\nYou may request access to or deletion of your personal information at any time. Section 21.\n\nWe retain your information for as long as necessary to provide the service. Section 22.\n\nOur service is not directed to children under 13. Section 23.\n\nWe do not use your information for interest-based advertising or marketing. Section 24.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26.\n\nWe share information with service providers and partners who process it on our behalf. Section 27.\n\nWe use cookies and analytics tools to understand how the app is used. Section 28.\n\nYou may request access to or deletion of your personal information at any time. Section 29.\n\nWe retain your information for as long as necessary to provide the service. Section 30.",
+            472,
+            "direct",
+            "https://example.com/privacy",
+            "3608e0f3c1bb142d4e0eac597a1d803cc6ec9d63529589747c08214e47f6dd8a",
+            null,
+            "{\"overview\":\"An older summary.\"}",
+            null,
+            null,
+            "gpt-4.1-mini",
+            null,
+            1789473000000,
+            null,
+            1789473000000,
+            "idle",
+            null
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_model",
+            "gpt-4.1"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "  "
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_debug_logging",
+            "false"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.128.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"appId\":\"1000000001\",\"phase\":\"summarise\"}",
+      "repeat": 1,
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?",
+          "params": [
+            1789473600000,
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"needs-config\",\"at\":1789473600000,\"note\":\"No AI provider configured in Settings.\"}]",
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_policy_analyses (\n      app_id,\n      policy_url,\n      status,\n      source_title,\n      source_content_type,\n      source_text,\n      source_word_count,\n      source_origin,\n      source_final_url,\n      content_hash,\n      analysis_mode,\n      summary_json,\n      previous_summary_json,\n      previous_summary_at,\n      model,\n      error,\n      updated_at,\n      last_run_log,\n      source_fetched_at\n    )\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      policy_url = excluded.policy_url,\n      status = excluded.status,\n      source_title = excluded.source_title,\n      source_content_type = excluded.source_content_type,\n      source_text = excluded.source_text,\n      source_word_count = excluded.source_word_count,\n      source_origin = excluded.source_origin,\n      source_final_url = excluded.source_final_url,\n      content_hash = excluded.content_hash,\n      analysis_mode = excluded.analysis_mode,\n      summary_json = excluded.summary_json,\n      previous_summary_json = excluded.previous_summary_json,\n      previous_summary_at = excluded.previous_summary_at,\n      model = excluded.model,\n      error = excluded.error,\n      updated_at = excluded.updated_at,\n      last_run_log = excluded.last_run_log,\n      source_fetched_at = excluded.source_fetched_at\n  ",
+          "params": [
+            "1000000001",
+            "https://example.com/privacy",
+            "needs_ai_config",
+            "example.com",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.\n\nWe retain your information for as long as necessary to provide the service. Section 6.\n\nOur service is not directed to children under 13. Section 7.\n\nWe do not use your information for interest-based advertising or marketing. Section 8.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10.\n\nWe share information with service providers and partners who process it on our behalf. Section 11.\n\nWe use cookies and analytics tools to understand how the app is used. Section 12.\n\nYou may request access to or deletion of your personal information at any time. Section 13.\n\nWe retain your information for as long as necessary to provide the service. Section 14.\n\nOur service is not directed to children under 13. Section 15.\n\nWe do not use your information for interest-based advertising or marketing. Section 16.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18.\n\nWe share information with service providers and partners who process it on our behalf. Section 19.\n\nWe use cookies and analytics tools to understand how the app is used. Section 20.\n\nYou may request access to or deletion of your personal information at any time. Section 21.\n\nWe retain your information for as long as necessary to provide the service. Section 22.\n\nOur service is not directed to children under 13. Section 23.\n\nWe do not use your information for interest-based advertising or marketing. Section 24.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26.\n\nWe share information with service providers and partners who process it on our behalf. Section 27.\n\nWe use cookies and analytics tools to understand how the app is used. Section 28.\n\nYou may request access to or deletion of your personal information at any time. Section 29.\n\nWe retain your information for as long as necessary to provide the service. Section 30.",
+            472,
+            "direct",
+            "https://example.com/privacy",
+            "3608e0f3c1bb142d4e0eac597a1d803cc6ec9d63529589747c08214e47f6dd8a",
+            null,
+            "{\"overview\":\"An older summary.\"}",
+            null,
+            null,
+            "gpt-4.1-mini",
+            "Configure an AI provider in Settings to enable privacy-policy summaries.",
+            1789473600000,
+            "[{\"phase\":\"needs-config\",\"at\":1789473600000,\"note\":\"No AI provider configured in Settings.\"}]",
+            1789473000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "policy_summary",
+            "partial",
+            "1000000001",
+            "Policy Fixture",
+            "Policy source ready — AI not configured",
+            "{\"phase\":\"summarise\",\"forceResummarise\":true,\"resultStatus\":\"needs_ai_config\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"gpt-4.1-mini\",\"errorMessage\":\"Configure an AI provider in Settings to enable privacy-policy summaries.\"}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET run_status = 'idle'\n      WHERE app_id = ?",
+          "params": [
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            1789473600000,
+            "policy.regenerate.success",
+            "10.9.128.7",
+            "ai-routes-oracle/1.0",
+            "appId=1000000001 phase=summarise",
+            1
+          ]
+        }
+      ],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [
+          {
+            "app_id": "1000000001",
+            "policy_url": "https://example.com/privacy",
+            "status": "needs_ai_config",
+            "source_title": "example.com",
+            "source_content_type": "text/plain; charset=utf-8",
+            "source_text": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.\n\nWe retain your information for as long as necessary to provide the service. Section 6.\n\nOur service is not directed to children under 13. Section 7.\n\nWe do not use your information for interest-based advertising or marketing. Section 8.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10.\n\nWe share information with service providers and partners who process it on our behalf. Section 11.\n\nWe use cookies and analytics tools to understand how the app is used. Section 12.\n\nYou may request access to or deletion of your personal information at any time. Section 13.\n\nWe retain your information for as long as necessary to provide the service. Section 14.\n\nOur service is not directed to children under 13. Section 15.\n\nWe do not use your information for interest-based advertising or marketing. Section 16.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18.\n\nWe share information with service providers and partners who process it on our behalf. Section 19.\n\nWe use cookies and analytics tools to understand how the app is used. Section 20.\n\nYou may request access to or deletion of your personal information at any time. Section 21.\n\nWe retain your information for as long as necessary to provide the service. Section 22.\n\nOur service is not directed to children under 13. Section 23.\n\nWe do not use your information for interest-based advertising or marketing. Section 24.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26.\n\nWe share information with service providers and partners who process it on our behalf. Section 27.\n\nWe use cookies and analytics tools to understand how the app is used. Section 28.\n\nYou may request access to or deletion of your personal information at any time. Section 29.\n\nWe retain your information for as long as necessary to provide the service. Section 30.",
+            "source_word_count": 472,
+            "source_origin": "direct",
+            "source_final_url": "https://example.com/privacy",
+            "content_hash": "3608e0f3c1bb142d4e0eac597a1d803cc6ec9d63529589747c08214e47f6dd8a",
+            "analysis_mode": null,
+            "summary_json": "{\"overview\":\"An older summary.\"}",
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": "gpt-4.1-mini",
+            "error": "Configure an AI provider in Settings to enable privacy-policy summaries.",
+            "updated_at": 1789473600000,
+            "last_run_log": "[{\"phase\":\"needs-config\",\"at\":1789473600000,\"note\":\"No AI provider configured in Settings.\"}]",
+            "source_fetched_at": 1789473000000,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": "idle",
+            "run_started_at": 1789473600000
+          }
+        ],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "type": "policy_summary",
+            "status": "partial",
+            "app_id": "1000000001",
+            "app_name": "Policy Fixture",
+            "summary": "Policy source ready — AI not configured",
+            "detail": "{\"phase\":\"summarise\",\"forceResummarise\":true,\"resultStatus\":\"needs_ai_config\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"gpt-4.1-mini\",\"errorMessage\":\"Configure an AI provider in Settings to enable privacy-policy summaries.\"}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
+          {
+            "key": "ai_model",
+            "value": "gpt-4.1"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "  "
+          },
+          {
+            "key": "ai_debug_logging",
+            "value": "false"
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "created_at": 1789473600000,
+            "action": "policy.regenerate.success",
+            "actor_ip": "10.9.128.7",
+            "user_agent": "ai-routes-oracle/1.0",
+            "detail": "appId=1000000001 phase=summarise",
+            "success": 1
+          }
+        ],
+        "apps": [
+          {
+            "id": "1000000001",
+            "name": "Policy Fixture",
+            "url": "https://apps.apple.com/us/app/fixture/id1000000001",
+            "iconUrl": "",
+            "bundleId": null,
+            "developer": "Fixture Developer",
+            "firstSeen": 1786881600000,
+            "lastSynced": 1789387200000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": "https://example.com/privacy"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"analysis\":{\"status\":\"needs_ai_config\",\"sourceTitle\":\"example.com\",\"sourceWordCount\":472,\"sourceOrigin\":\"direct\",\"sourceFinalUrl\":\"https://example.com/privacy\",\"updatedAt\":1789473600000,\"sourceFetchedAt\":1789473000000,\"model\":\"gpt-4.1-mini\",\"summary\":{\"overview\":\"An older summary.\",\"highlights\":[\"The policy does not address this clearly.\",\"The policy does not address this clearly.\",\"The policy does not address this clearly.\"],\"lenses\":[{\"key\":\"collection_scope\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"product_use\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"ads_marketing\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"third_party_sharing\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"tracking_analytics\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"user_controls\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"data_retention\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"children_minors\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"}]},\"previousSummary\":null,\"error\":\"Configure an AI provider in Settings to enable privacy-policy summaries.\",\"sourcePreview\":\"We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\\n\\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\\n\\nWe share information with service providers and partners who process it on our behalf. Section 3.\\n\\nWe use cookies and analytics tools to understand how the app is used. Section 4.\\n\\nYou may request access to or deletion of your personal information at any time. Section 5.\\n\\nWe retain your information for as long as necessary to provide the service. Section 6.\\n\\nOur service is not directed to children under 13. Section 7.\\n\\nWe do not use your information for interest-based advertising or marketing. Section 8.\\n\\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9.\\n\\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10.\\n\\nWe share information with service providers and partners who process it on our behalf. Section 11.\\n\\nWe use cookies and analytics tools to understand how the app is used. Section 12.\\n\\nYou may request access to or deletion of your personal information at any time. Section 13.\\n\\nWe retain your information for as long as necessary to provide the service. Section 14.\\n\\nOur service is not directed to children under 13. Section 15.\\n\\nWe do not use your information for interest-based advertising or marketing. Section 16.\\n\\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17.\\n\\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18.\\n\\nWe share information with service providers and partners who process it on our behalf. Section 19.\\n\\nWe use cookies and analytics tools to understand how the app is used. Section 20.\\n\\nYou may request access to or deletion of your personal information at any time. Section 21.\\n\\nWe retain your information for as long as necessary to provide the service. Section 22.\\n\\nOur service is not directed to children under 13. Section 23.\\n\\nWe do not use your information for interest-based advertising or marketing. Section 24.\\n\\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25.\\n\\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26.\\n\\nWe share information with service providers and partners who process it on our behalf. Section 27.\\n\\nWe use cookies and analytics tools to understand how the app is used. Section 28.\\n\\nYou may request access to or deletion of your personal information at any time. Section 29.\\n\\nWe retain your information for as long as necessary to provide the service. Section 30.\",\"sourceLength\":2889,\"lastRunLog\":[{\"phase\":\"needs-config\",\"at\":1789473600000,\"note\":\"No AI provider configured in Settings.\"}],\"runStatus\":\"running\",\"runStartedAt\":1789473600000}}"
+      }
     }
   ]
 }

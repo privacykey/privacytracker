@@ -1410,6 +1410,20 @@ try {
     }
   );
 
+  // ── Summarise with no usable AI provider keeps the summary ──
+  // Appended last, for the same reason. The tab's Summarise over a summary
+  // while the provider's key is blank: the answer carries the summary the
+  // run was replacing, with its model, under the needs-config status.
+  await route("regenerate: summarise with a blank key keeps the summary", {
+    route: REGEN,
+    setup: [
+      app(),
+      recentReady(),
+      ...aiSettings({ model: "gpt-4.1", apiKey: "  " }),
+    ],
+    json: { appId: APP, phase: "summarise" },
+  });
+
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;
   const stray = text
     .match(
