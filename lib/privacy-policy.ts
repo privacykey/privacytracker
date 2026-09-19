@@ -1516,7 +1516,8 @@ async function fetchAndStorePolicySource(
  * unusable fetch keeps, or an imported excerpt. A clean capture whose last
  * summary run failed or found no AI provider is summarised again. Returns
  * null when no policy was ever fetched. A new summary moves the one it
- * replaces into previous_*; a failed run keeps it as the summary.
+ * replaces into previous_*; a run that finds no AI provider, or fails,
+ * keeps it as the summary.
  */
 async function summariseStoredPolicy(
   request: PolicyAnalysisRequest,
@@ -1603,6 +1604,12 @@ async function summariseStoredPolicy(
 
   const aiConfig = getAiRuntimeConfig();
   const now = Date.now();
+  // A run that makes no summary replaces nothing, whether it found no AI
+  // provider or its AI call failed. The summary the row had stays, with
+  // the mode and model that made it, as a failed fetch keeps its summary:
+  // the status and the error record the run, and the AI Policy tab shows
+  // the summary under a note that it may be out of date.
+  const hasSummary = Boolean(existing.summary_json);
 
   if (!aiConfig) {
     logger.event("needs-config", {
@@ -1619,11 +1626,13 @@ async function summariseStoredPolicy(
       sourceOrigin: normalizeSourceOrigin(existing.source_origin),
       sourceFinalUrl: existing.source_final_url ?? null,
       contentHash: existing.content_hash,
-      analysisMode: null,
-      summaryJson: null,
+      analysisMode: hasSummary
+        ? normalizeAnalysisMode(existing.analysis_mode)
+        : null,
+      summaryJson: existing.summary_json ?? null,
       previousSummaryJson: existing.previous_summary_json ?? null,
       previousSummaryAt: existing.previous_summary_at ?? null,
-      model: null,
+      model: hasSummary ? (existing.model ?? null) : null,
       error:
         "Configure an AI provider in Settings to enable privacy-policy summaries.",
       updatedAt: now,
@@ -1710,12 +1719,8 @@ async function summariseStoredPolicy(
   } catch (error) {
     const message = getErrorMessage(error);
     logger.endPhase({ error: message });
-    // A failed run replaces nothing. The summary the row had stays, with
-    // the mode and model that made it, as a failed fetch keeps its summary:
-    // the status and the error record the failure, and the AI Policy tab
-    // shows the summary under "The latest AI refresh failed". With no
+    // A failed run replaces nothing either (see `hasSummary`). With no
     // summary to keep, the row names the model that failed.
-    const hasSummary = Boolean(existing.summary_json);
     const row = persistPolicyAnalysis({
       appId,
       policyUrl,

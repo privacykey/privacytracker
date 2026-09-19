@@ -3853,6 +3853,7 @@
       "fallback_summary_privacyspy": "针对{subject}的独立、按评分准则给出的隐私政策评分。",
       "analysis_unavailable": "暂时无法获取隐私政策分析。",
       "status_needs_ai_config": "已抓取政策文本，但需要在「设置」中配置 AI 服务方后才能生成摘要。",
+      "status_needs_ai_config_with_summary": "由于「设置」中没有配置完整的 AI 服务方，最近一次 AI 刷新未能运行，下面的摘要可能已经过时。",
       "status_source_ready": "政策文本已抓取，可以生成摘要。打开「设置」或重新进入引导流程的 AI 步骤即可生成。",
       "status_fetch_error_with_summary": "最近一次政策刷新失败，下面的摘要可能已经过时。",
       "status_fetch_error": "此应用提供了隐私政策链接，但最近一次抓取失败。",

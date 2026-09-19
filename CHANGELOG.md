@@ -110,6 +110,16 @@ Going forward, changes are recorded here as they land.
   before, "What changed" compared the new summary with an older one, not
   with the one it replaced. The Rust core, not yet active in any build,
   does the same.
+- "Summarise" on an app's AI Policy tab no longer deletes the summary it
+  was refreshing when the AI provider in Settings is missing its API key
+  or model. The tab dropped the summary it was showing and said AI
+  summaries were disabled, and the next summary that worked compared
+  itself under "What changed" with an older one. The summary now stays on
+  the tab, still credited to the AI model that made it, under "The latest
+  AI refresh could not run because no AI provider is fully set up in
+  Settings, so this summary may be out of date.", and the next summary
+  that works is compared with it. The Rust core, not yet active in any
+  build, does the same.
 - The "Privacy policy updates" checkbox in Settings → Notifications now
   turns policy notifications on, and stays ticked. Before, it always showed
   unticked, ticking it did not turn them on, and the box unticked itself

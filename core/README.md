@@ -3341,7 +3341,7 @@ before it. Prompt nonces come from `Ids::nonce`, the system's random
 bytes in production and the oracle's counter in the replay.
 
 **The oracle — `core/scripts/extract-policy-summary-cases.mjs`.** Runs
-the REAL summarise and `all` phases over 80 scenarios, the sample
+the REAL summarise and `all` phases over 85 scenarios, the sample
 summary over four and the prompt preview over two, against a scratch
 database with a frozen clock, counted ids and nonces, and every provider
 reply canned: an OpenAI completion, a custom endpoint's event stream in
@@ -3349,7 +3349,7 @@ the recorded chunks, an Anthropic message. The shapes are the providers'
 documented formats; there is no key to capture live ones with. Recorded
 per case: every raw fetch with its headers and body, every write in
 order, seven tables, and the result or the thrown message.
-`core/src/server/policy_summary_tests.rs` replays all 86, each body
+`core/src/server/policy_summary_tests.rs` replays all 91, each body
 reaching the reader in the recorded chunks. CI regenerates the fixture
 and fails on drift ("Policy summariser oracle is current").
 
@@ -3414,6 +3414,21 @@ is kept over the current one"). It now records the summary it
 replaces, and is renamed for it. The control on the previous summary's
 time below now fails five cases, not one: every run that replaces a
 summary of its own.
+
+A summary run that finds no usable AI provider (none chosen, or a blank
+key or model) replaces nothing either: the needs-config row keeps the
+summary the run was replacing, with its mode and model, as the fixed
+Node does. Node used to store no summary there, so a Summarise with an
+incomplete provider lost the summary on the tab, and the next summary
+that worked compared itself with the older one. With no summary to
+keep, the row stores none and no model, as before. The cases, appended
+after every other: a forced resummarise with a blank key and with a
+blank model, a kept summary kept again while there is still no
+provider, the kept summary becoming the previous one once a provider is
+set up, and an unchanged fetch that is a cache hit on the kept summary
+with the key still blank. All 86 earlier cases are byte-identical in
+place. The old needs-config write fails exactly three: the three that
+write it over a summary.
 
 **Node's behaviour, kept.** A refusal is caught by the `try` it is
 thrown in, so it is logged twice and its debug row is inserted twice,
@@ -3494,8 +3509,8 @@ message rather than `terminated`, as the streamed read already did; the
 recording caught it.
 
 **The oracle — `core/scripts/extract-ai-routes-cases.mjs`.** Runs the
-four REAL route handlers over 127 requests built as the browser sends
-them (31 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
+four REAL route handlers over 128 requests built as the browser sends
+them (32 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
 provider replies canned in the documented formats, a frozen clock that
 each awaited fetch moves on, counted ids and nonces, and Save Page Now
 held until the response is complete. Recorded per case: the response
@@ -3532,6 +3547,10 @@ ago: a `bypassThrottle` that is not the boolean `true` keeps it; the AI
 Policy tab's rescrape passes it, answered whole, and so does its
 rescrape and summary, streamed; and the kill-switch refuses a fetch
 that bypasses it.
+
+One case, appended last, covers the tab's Summarise over a summary while
+the provider's key is blank: the answer carries the summary the run was
+replacing, credited to the model that made it, under `needs_ai_config`.
 
 **The live gate.** `scripts/parity/ai-probes.mjs`, under `--mutate`,
 starts a fake provider on loopback that answers the OpenAI-compatible

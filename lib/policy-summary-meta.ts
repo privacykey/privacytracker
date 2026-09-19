@@ -37,10 +37,10 @@ export type PolicyAnalysisStatus = (typeof POLICY_ANALYSIS_STATUSES)[number];
  * run (every run the AI Policy tab starts is one), a capture already
  * summarised. A summary is owed, forced or not, to a capture waiting for
  * one ('source_ready') and to one whose last summary run found no AI
- * provider ('needs_ai_config') or failed ('analysis_error'). A failed run
- * keeps the summary it was replacing, so an 'analysis_error' capture may
- * carry one, but its status still records a run that made no summary, and
- * declining it would log that failure again for a run that made no call.
+ * provider ('needs_ai_config') or failed ('analysis_error'). Either run
+ * keeps the summary it was replacing, so such a capture may carry one, but
+ * its status still records a run that made no summary, and declining it
+ * would log that outcome again for a run that did nothing.
  * Only the summarise phase writes those two, over a capture this rule
  * accepted, and any later fetch replaces them, so their text is still the
  * latest clean capture. `summariseStoredPolicy` declines everything else
@@ -96,6 +96,53 @@ export function describePolicyRunCompletion(
     return { status: "error", messageKey: "completion_summary_failed" };
   }
   return { status: "error", messageKey: "completion_summary_not_updated" };
+}
+
+/**
+ * What the AI Policy tab says about an analysis's status (keys under
+ * `app_detail.policy_meta`). A run that made no summary may keep the one
+ * it was replacing: a failed fetch, a failed AI call and a run that found
+ * no usable AI provider all do. The tab then shows that summary with this
+ * message under it, so those three statuses say the summary may be out of
+ * date instead of saying there is none. Null for 'ready' and for a status
+ * the tab does not know: it shows the stored error instead.
+ */
+export function describePolicyStatus(
+  status: string | null | undefined,
+  hasSummary: boolean
+):
+  | "status_source_ready"
+  | "status_needs_ai_config"
+  | "status_needs_ai_config_with_summary"
+  | "status_fetch_error"
+  | "status_fetch_error_with_summary"
+  | "status_unsupported_content_type"
+  | "status_too_short"
+  | "status_analysis_error"
+  | "status_analysis_error_with_summary"
+  | null {
+  switch (status) {
+    case "source_ready":
+      return "status_source_ready";
+    case "needs_ai_config":
+      return hasSummary
+        ? "status_needs_ai_config_with_summary"
+        : "status_needs_ai_config";
+    case "fetch_error":
+      return hasSummary
+        ? "status_fetch_error_with_summary"
+        : "status_fetch_error";
+    case "unsupported_content_type":
+      return "status_unsupported_content_type";
+    case "too_short":
+      return "status_too_short";
+    case "analysis_error":
+      return hasSummary
+        ? "status_analysis_error_with_summary"
+        : "status_analysis_error";
+    default:
+      return null;
+  }
 }
 
 export const POLICY_SOURCE_ORIGINS = [
