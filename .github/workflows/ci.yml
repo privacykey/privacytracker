@@ -651,6 +651,82 @@ jobs:
         # legacy and current+state fixtures. Fails on any schema divergence.
         run: pnpm parity:schema
 
+  e2e-rust:
+    # Rust-core Phase 6: the whole Playwright suite, run against the Rust
+    # core instead of `next start`. The core serves the same `next build`
+    # output (`pt-core serve --site .`), so this is the quality job's
+    # Browser E2E step with only the server swapped. Not a required check
+    # yet: it becomes one after a week green.
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install stable Rust toolchain
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable as of 2026-05
+
+      - name: Cache cargo registry + target
+        # Its own key: this job builds the dev binary where core-parity
+        # builds the test profile, so sharing one entry would evict the
+        # other job's artifacts. Falls back to core-parity's for the deps.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            core/target
+          key: ${{ runner.os }}-cargo-core-e2e-${{ hashFiles('core/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-core-e2e-
+            ${{ runner.os }}-cargo-core-
+
+      - name: Build the core
+        run: cargo build --locked --manifest-path core/Cargo.toml --bin pt-core
+
+      - name: Build
+        run: pnpm build
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Browser E2E against the core
+        # playwright.config.ts starts `pt-core serve --site .` in place of
+        # `pnpm start` when this is set.
+        env:
+          PLAYWRIGHT_CORE_BIN: core/target/debug/pt-core
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        if: always()
+        with:
+          name: playwright-report-rust
+          path: playwright-report
+          if-no-files-found: ignore
+
+      - name: Upload Playwright test results
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
+        if: always()
+        with:
+          name: playwright-test-results-rust
+          path: test-results
+          if-no-files-found: ignore
+
   container-smoke:
     # Compose also interpolates required variables during cleanup.
     env:
