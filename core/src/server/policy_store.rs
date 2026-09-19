@@ -315,6 +315,15 @@ impl<'a> RunLogger<'a> {
             .iter()
             .any(|record| record.get("phase").and_then(Value::as_str) == Some(phase))
     }
+    /// `phases.at(-1)?.phase`: the run's last line, as the activity row
+    /// tells a skip by it.
+    fn last_logged(&self) -> Option<String> {
+        self.phases
+            .last()
+            .and_then(|record| record.get("phase"))
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    }
     /// `persistPolicyRunLog`, swallowed and logged as Node's `flush` does.
     fn flush(&mut self) {
         if !self.persist {
@@ -1169,7 +1178,16 @@ async fn fetch_and_store(
 /// The activity row's status and summary for a result. `scrape_disabled`
 /// is whether the run log shows the kill-switch stopped the fetch; a null
 /// summarise result means there was no policy text to summarise.
-fn activity_summary(result: &Value, scrape_disabled: bool, phase: Phase) -> (&'static str, String) {
+/// `last_logged` is the run log's last line: the throttle and the
+/// kill-switch hand back the stored analysis with their own line last,
+/// and its status describes an earlier run, so a skip is told by that
+/// line. A run that summarised the stored text afterwards logged more.
+fn activity_summary(
+    result: &Value,
+    scrape_disabled: bool,
+    last_logged: Option<&str>,
+    phase: Phase,
+) -> (&'static str, String) {
     if result.is_null() {
         if scrape_disabled {
             return ("partial", "Policy skipped: scraping disabled".to_string());
@@ -1178,6 +1196,11 @@ fn activity_summary(result: &Value, scrape_disabled: bool, phase: Phase) -> (&'s
             return ("partial", "Policy skipped: nothing fetched yet".to_string());
         }
         return ("ok", "Policy URL cleared".to_string());
+    }
+    match last_logged {
+        Some("throttled") => return ("partial", "Policy skipped: throttled".to_string()),
+        Some("disabled") => return ("partial", "Policy skipped: scraping disabled".to_string()),
+        _ => {}
     }
     let error = result["error"].as_str().filter(|e| !e.is_empty());
     match result["status"].as_str().unwrap_or("") {
@@ -1294,7 +1317,7 @@ pub(crate) async fn sync_policy_analysis_streamed(
     let activity_start = clock.now();
 
     let mut stash: Option<Value> = None;
-    let (outcome, scrape_disabled) = {
+    let (outcome, scrape_disabled, last_logged) = {
         // A reborrow for as long as the logger lives: the sink outlives it.
         let sink = sink.map(|s| &mut *s as &mut (dyn FnMut(&Map<String, Value>) + Send));
         let mut log = RunLogger::new(&mut *db, clock, app_id).streaming(sink);
@@ -1302,14 +1325,19 @@ pub(crate) async fn sync_policy_analysis_streamed(
             &mut log, ids, fetcher, clock, request, policy_url, options, &mut stash,
         )
         .await;
-        (outcome, log.logged("disabled"))
+        (outcome, log.logged("disabled"), log.last_logged())
     };
 
     let result = db.with(|w| {
         let ended = clock.now();
         match outcome {
             Ok((analysis, follow_ups)) => {
-                let (status, summary) = activity_summary(&analysis, scrape_disabled, options.phase);
+                let (status, summary) = activity_summary(
+                    &analysis,
+                    scrape_disabled,
+                    last_logged.as_deref(),
+                    options.phase,
+                );
                 let mut detail = Map::new();
                 detail.insert("phase".into(), json!(options.phase.as_str()));
                 detail.insert("forceResummarise".into(), json!(options.force_resummarise));

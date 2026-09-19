@@ -1595,6 +1595,55 @@ try {
     }
   );
 
+  // ── A skipped fetch is logged as a skip ──
+  // Appended after every other case, so none of their recordings move. The
+  // throttle and the kill-switch hand back the stored analysis with their
+  // own line last, and the activity row is told by that line, not by the
+  // stored status. A fetch and summary that meets the kill-switch over a
+  // clean capture still summarises it, and is logged as that summary.
+  await sync("a throttled fetch and summary is logged as a skip", {
+    setup: [
+      app(),
+      analysis({
+        status: "ready",
+        analysis_mode: "direct",
+        summary_json: JSON.stringify(MODEL_SUMMARY),
+        model: "gpt-4.1-mini",
+        source_fetched_at: BASE_NOW - 10 * MIN,
+      }),
+      ...aiSettings(),
+    ],
+    phase: "all",
+  });
+  await sync("the kill-switch over a stored fetch error is logged as a skip", {
+    setup: [
+      app(),
+      analysis({
+        status: "fetch_error",
+        error: "HTTP 404 Not Found",
+        analysis_mode: "direct",
+        summary_json: PREVIOUS,
+        model: "gpt-4.1-mini",
+      }),
+      ...aiSettings(),
+      setting("policy_scrape_disabled", "true"),
+    ],
+    phase: "all",
+  });
+  await sync(
+    "the kill-switch before a summary of the stored text is logged as the summary",
+    {
+      setup: [
+        app(),
+        analysis(),
+        ...aiSettings(),
+        setting("policy_scrape_disabled", "true"),
+      ],
+      phase: "all",
+      replies: [openaiJson(MODEL_SUMMARY)],
+    }
+  );
+
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;
   const stray = text
     .match(

@@ -9174,10 +9174,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000001",
             "policy_summary",
-            "ok",
+            "partial",
             "1000000001",
             "Policy Fixture",
-            "Policy source fetched (cached)",
+            "Policy skipped: scraping disabled",
             "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             1789473600000,
             1789473600000,
@@ -9227,10 +9227,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000001",
             "type": "policy_summary",
-            "status": "ok",
+            "status": "partial",
             "app_id": "1000000001",
             "app_name": "Policy Fixture",
-            "summary": "Policy source fetched (cached)",
+            "summary": "Policy skipped: scraping disabled",
             "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
@@ -9807,10 +9807,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000001",
             "policy_summary",
-            "ok",
+            "partial",
             "1000000001",
             "Policy Fixture",
-            "Policy source fetched (cached)",
+            "Policy skipped: throttled",
             "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             1789473600000,
             1789473600000,
@@ -9860,10 +9860,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000001",
             "type": "policy_summary",
-            "status": "ok",
+            "status": "partial",
             "app_id": "1000000001",
             "app_name": "Policy Fixture",
-            "summary": "Policy source fetched (cached)",
+            "summary": "Policy skipped: throttled",
             "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
@@ -10050,10 +10050,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000001",
             "policy_summary",
-            "ok",
+            "partial",
             "1000000001",
             "Policy Fixture",
-            "Policy source fetched (cached)",
+            "Policy skipped: throttled",
             "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             1789473600000,
             1789473600000,
@@ -10103,10 +10103,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000001",
             "type": "policy_summary",
-            "status": "ok",
+            "status": "partial",
             "app_id": "1000000001",
             "app_name": "Policy Fixture",
-            "summary": "Policy source fetched (cached)",
+            "summary": "Policy skipped: throttled",
             "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
@@ -10300,10 +10300,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000001",
             "policy_summary",
-            "ok",
+            "partial",
             "1000000001",
             "Policy Fixture",
-            "Policy source fetched (cached)",
+            "Policy skipped: throttled",
             "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             1789473600000,
             1789473600000,
@@ -10353,10 +10353,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000001",
             "type": "policy_summary",
-            "status": "ok",
+            "status": "partial",
             "app_id": "1000000001",
             "app_name": "Policy Fixture",
-            "summary": "Policy source fetched (cached)",
+            "summary": "Policy skipped: throttled",
             "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
@@ -12830,10 +12830,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000001",
             "policy_summary",
-            "ok",
+            "partial",
             "1000000001",
             "Policy Fixture",
-            "Policy source fetched (cached)",
+            "Policy skipped: scraping disabled",
             "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             1789473600000,
             1789473600000,
@@ -12883,10 +12883,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000001",
             "type": "policy_summary",
-            "status": "ok",
+            "status": "partial",
             "app_id": "1000000001",
             "app_name": "Policy Fixture",
-            "summary": "Policy source fetched (cached)",
+            "summary": "Policy skipped: scraping disabled",
             "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
@@ -13077,10 +13077,10 @@
           "params": [
             "00000000-0000-4000-8000-000000000001",
             "policy_summary",
-            "ok",
+            "partial",
             "1000000001",
             "Policy Fixture",
-            "Policy source fetched (cached)",
+            "Policy skipped: throttled",
             "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             1789473600000,
             1789473600000,
@@ -13130,10 +13130,10 @@
           {
             "id": "00000000-0000-4000-8000-000000000001",
             "type": "policy_summary",
-            "status": "ok",
+            "status": "partial",
             "app_id": "1000000001",
             "app_name": "Policy Fixture",
-            "summary": "Policy source fetched (cached)",
+            "summary": "Policy skipped: throttled",
             "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"ready\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\"}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
@@ -15945,6 +15945,257 @@
         "type": "application/json",
         "retryAfter": null,
         "body": "{\"error\":\"Rate limit exceeded\"}"
+      }
+    },
+    {
+      "name": "the kill-switch over a stored fetch error is a skip",
+      "kind": "store",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, developer, privacyPolicyUrl, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "Policy Fixture",
+            "https://apps.apple.com/us/app/fixture/id1000000001",
+            "",
+            "Fixture Developer",
+            "https://example.com/privacy",
+            1786881600000,
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_title, source_content_type, source_text, source_word_count, source_origin, source_final_url, content_hash, analysis_mode, summary_json, previous_summary_json, previous_summary_at, model, error, updated_at, last_run_log, source_fetched_at, run_status, run_started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1000000001",
+            "https://example.com/privacy",
+            "fetch_error",
+            "example.com",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.\n\nWe retain your information for as long as necessary to provide the service. Section 6.\n\nOur service is not directed to children under 13. Section 7.\n\nWe do not use your information for interest-based advertising or marketing. Section 8.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10.\n\nWe share information with service providers and partners who process it on our behalf. Section 11.\n\nWe use cookies and analytics tools to understand how the app is used. Section 12.\n\nYou may request access to or deletion of your personal information at any time. Section 13.\n\nWe retain your information for as long as necessary to provide the service. Section 14.\n\nOur service is not directed to children under 13. Section 15.\n\nWe do not use your information for interest-based advertising or marketing. Section 16.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18.\n\nWe share information with service providers and partners who process it on our behalf. Section 19.\n\nWe use cookies and analytics tools to understand how the app is used. Section 20.\n\nYou may request access to or deletion of your personal information at any time. Section 21.\n\nWe retain your information for as long as necessary to provide the service. Section 22.\n\nOur service is not directed to children under 13. Section 23.\n\nWe do not use your information for interest-based advertising or marketing. Section 24.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26.\n\nWe share information with service providers and partners who process it on our behalf. Section 27.\n\nWe use cookies and analytics tools to understand how the app is used. Section 28.\n\nYou may request access to or deletion of your personal information at any time. Section 29.\n\nWe retain your information for as long as necessary to provide the service. Section 30.",
+            472,
+            "direct",
+            "https://example.com/privacy",
+            "3608e0f3c1bb142d4e0eac597a1d803cc6ec9d63529589747c08214e47f6dd8a",
+            "direct",
+            "{\"overview\":\"Fixture summary.\"}",
+            null,
+            null,
+            "fixture-model",
+            "HTTP 404 Not Found",
+            1789300800000,
+            null,
+            1789300800000,
+            "idle",
+            null
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_scrape_disabled",
+            "true"
+          ]
+        }
+      ],
+      "request": {
+        "appId": "1000000001",
+        "appName": "Policy Fixture",
+        "developer": "Fixture Developer",
+        "policyUrl": "https://example.com/privacy"
+      },
+      "options": {},
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?",
+          "params": [
+            1789473600000,
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?",
+          "params": [
+            "[{\"phase\":\"disabled\",\"at\":1789473600000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
+            "1000000001"
+          ]
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_policy_analyses (\n      app_id,\n      policy_url,\n      status,\n      source_title,\n      source_content_type,\n      source_text,\n      source_word_count,\n      source_origin,\n      source_final_url,\n      content_hash,\n      analysis_mode,\n      summary_json,\n      previous_summary_json,\n      previous_summary_at,\n      model,\n      error,\n      updated_at,\n      last_run_log,\n      source_fetched_at\n    )\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      policy_url = excluded.policy_url,\n      status = excluded.status,\n      source_title = excluded.source_title,\n      source_content_type = excluded.source_content_type,\n      source_text = excluded.source_text,\n      source_word_count = excluded.source_word_count,\n      source_origin = excluded.source_origin,\n      source_final_url = excluded.source_final_url,\n      content_hash = excluded.content_hash,\n      analysis_mode = excluded.analysis_mode,\n      summary_json = excluded.summary_json,\n      previous_summary_json = excluded.previous_summary_json,\n      previous_summary_at = excluded.previous_summary_at,\n      model = excluded.model,\n      error = excluded.error,\n      updated_at = excluded.updated_at,\n      last_run_log = excluded.last_run_log,\n      source_fetched_at = excluded.source_fetched_at\n  ",
+          "params": [
+            "1000000001",
+            "https://example.com/privacy",
+            "fetch_error",
+            "example.com",
+            "text/plain; charset=utf-8",
+            "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.\n\nWe retain your information for as long as necessary to provide the service. Section 6.\n\nOur service is not directed to children under 13. Section 7.\n\nWe do not use your information for interest-based advertising or marketing. Section 8.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10.\n\nWe share information with service providers and partners who process it on our behalf. Section 11.\n\nWe use cookies and analytics tools to understand how the app is used. Section 12.\n\nYou may request access to or deletion of your personal information at any time. Section 13.\n\nWe retain your information for as long as necessary to provide the service. Section 14.\n\nOur service is not directed to children under 13. Section 15.\n\nWe do not use your information for interest-based advertising or marketing. Section 16.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18.\n\nWe share information with service providers and partners who process it on our behalf. Section 19.\n\nWe use cookies and analytics tools to understand how the app is used. Section 20.\n\nYou may request access to or deletion of your personal information at any time. Section 21.\n\nWe retain your information for as long as necessary to provide the service. Section 22.\n\nOur service is not directed to children under 13. Section 23.\n\nWe do not use your information for interest-based advertising or marketing. Section 24.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26.\n\nWe share information with service providers and partners who process it on our behalf. Section 27.\n\nWe use cookies and analytics tools to understand how the app is used. Section 28.\n\nYou may request access to or deletion of your personal information at any time. Section 29.\n\nWe retain your information for as long as necessary to provide the service. Section 30.",
+            472,
+            "direct",
+            "https://example.com/privacy",
+            "3608e0f3c1bb142d4e0eac597a1d803cc6ec9d63529589747c08214e47f6dd8a",
+            "direct",
+            "{\"overview\":\"Fixture summary.\"}",
+            null,
+            null,
+            "fixture-model",
+            "HTTP 404 Not Found",
+            1789473600000,
+            "[{\"phase\":\"disabled\",\"at\":1789473600000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
+            1789300800000
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "policy_summary",
+            "partial",
+            "1000000001",
+            "Policy Fixture",
+            "Policy skipped: scraping disabled",
+            "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"fetch_error\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\",\"errorMessage\":\"HTTP 404 Not Found\"}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "UPDATE privacy_policy_analyses\n        SET run_status = 'idle'\n      WHERE app_id = ?",
+          "params": [
+            "1000000001"
+          ]
+        }
+      ],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [
+          {
+            "app_id": "1000000001",
+            "policy_url": "https://example.com/privacy",
+            "status": "fetch_error",
+            "source_title": "example.com",
+            "source_content_type": "text/plain; charset=utf-8",
+            "source_text": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.\n\nWe retain your information for as long as necessary to provide the service. Section 6.\n\nOur service is not directed to children under 13. Section 7.\n\nWe do not use your information for interest-based advertising or marketing. Section 8.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10.\n\nWe share information with service providers and partners who process it on our behalf. Section 11.\n\nWe use cookies and analytics tools to understand how the app is used. Section 12.\n\nYou may request access to or deletion of your personal information at any time. Section 13.\n\nWe retain your information for as long as necessary to provide the service. Section 14.\n\nOur service is not directed to children under 13. Section 15.\n\nWe do not use your information for interest-based advertising or marketing. Section 16.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18.\n\nWe share information with service providers and partners who process it on our behalf. Section 19.\n\nWe use cookies and analytics tools to understand how the app is used. Section 20.\n\nYou may request access to or deletion of your personal information at any time. Section 21.\n\nWe retain your information for as long as necessary to provide the service. Section 22.\n\nOur service is not directed to children under 13. Section 23.\n\nWe do not use your information for interest-based advertising or marketing. Section 24.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26.\n\nWe share information with service providers and partners who process it on our behalf. Section 27.\n\nWe use cookies and analytics tools to understand how the app is used. Section 28.\n\nYou may request access to or deletion of your personal information at any time. Section 29.\n\nWe retain your information for as long as necessary to provide the service. Section 30.",
+            "source_word_count": 472,
+            "source_origin": "direct",
+            "source_final_url": "https://example.com/privacy",
+            "content_hash": "3608e0f3c1bb142d4e0eac597a1d803cc6ec9d63529589747c08214e47f6dd8a",
+            "analysis_mode": "direct",
+            "summary_json": "{\"overview\":\"Fixture summary.\"}",
+            "previous_summary_json": null,
+            "previous_summary_at": null,
+            "model": "fixture-model",
+            "error": "HTTP 404 Not Found",
+            "updated_at": 1789473600000,
+            "last_run_log": "[{\"phase\":\"disabled\",\"at\":1789473600000,\"note\":\"Policy scraping is disabled in Settings. Re-enable to fetch.\"}]",
+            "source_fetched_at": 1789300800000,
+            "chunk_notes_json": null,
+            "chunk_notes_hash": null,
+            "run_status": "idle",
+            "run_started_at": 1789473600000
+          }
+        ],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "type": "policy_summary",
+            "status": "partial",
+            "app_id": "1000000001",
+            "app_name": "Policy Fixture",
+            "summary": "Policy skipped: scraping disabled",
+            "detail": "{\"phase\":\"fetch\",\"forceResummarise\":false,\"resultStatus\":\"fetch_error\",\"policyUrl\":\"https://example.com/privacy\",\"model\":\"fixture-model\",\"errorMessage\":\"HTTP 404 Not Found\"}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "manual_app_events": [],
+        "manual_app_policy_versions": [],
+        "audit_log": []
+      },
+      "expected": {
+        "ok": true,
+        "result": {
+          "status": "fetch_error",
+          "sourceTitle": "example.com",
+          "sourceWordCount": 472,
+          "sourceOrigin": "direct",
+          "sourceFinalUrl": "https://example.com/privacy",
+          "updatedAt": 1789473600000,
+          "sourceFetchedAt": 1789300800000,
+          "analysisMode": "direct",
+          "model": "fixture-model",
+          "summary": {
+            "overview": "Fixture summary.",
+            "highlights": [
+              "The policy does not address this clearly.",
+              "The policy does not address this clearly.",
+              "The policy does not address this clearly."
+            ],
+            "lenses": [
+              {
+                "key": "collection_scope",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "product_use",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "ads_marketing",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "third_party_sharing",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "tracking_analytics",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "user_controls",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "data_retention",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              },
+              {
+                "key": "children_minors",
+                "rating": "unclear",
+                "summary": "The policy does not address this clearly."
+              }
+            ]
+          },
+          "previousSummary": null,
+          "error": "HTTP 404 Not Found",
+          "sourcePreview": "We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\n\nWe share information with service providers and partners who process it on our behalf. Section 3.\n\nWe use cookies and analytics tools to understand how the app is used. Section 4.\n\nYou may request access to or deletion of your personal information at any time. Section 5.\n\nWe retain your information for as long as necessary to provide the service. Section 6.\n\nOur service is not directed to children under 13. Section 7.\n\nWe do not use your information for interest-based advertising or marketing. Section 8.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10.\n\nWe share information with service providers and partners who process it on our behalf. Section 11.\n\nWe use cookies and analytics tools to understand how the app is used. Section 12.\n\nYou may request access to or deletion of your personal information at any time. Section 13.\n\nWe retain your information for as long as necessary to provide the service. Section 14.\n\nOur service is not directed to children under 13. Section 15.\n\nWe do not use your information for interest-based advertising or marketing. Section 16.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18.\n\nWe share information with service providers and partners who process it on our behalf. Section 19.\n\nWe use cookies and analytics tools to understand how the app is used. Section 20.\n\nYou may request access to or deletion of your personal information at any time. Section 21.\n\nWe retain your information for as long as necessary to provide the service. Section 22.\n\nOur service is not directed to children under 13. Section 23.\n\nWe do not use your information for interest-based advertising or marketing. Section 24.\n\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25.\n\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26.\n\nWe share information with service providers and partners who process it on our behalf. Section 27.\n\nWe use cookies and analytics tools to understand how the app is used. Section 28.\n\nYou may request access to or deletion of your personal information at any time. Section 29.\n\nWe retain your information for as long as necessary to provide the service. Section 30.",
+          "sourceLength": 2889,
+          "lastRunLog": [
+            {
+              "phase": "disabled",
+              "at": 1789473600000,
+              "note": "Policy scraping is disabled in Settings. Re-enable to fetch."
+            }
+          ],
+          "runStatus": "running",
+          "runStartedAt": 1789473600000
+        }
       }
     }
   ],
