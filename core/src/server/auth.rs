@@ -12,20 +12,18 @@
 //!      malformed escape. A strict cookie parser accepts or rejects a
 //!      different set of malformed inputs than this does.
 
-use std::env;
-
 pub const ADMIN_TOKEN_COOKIE: &str = "pt_admin_token";
 
 /// `adminTokenConfigured()` — truthiness of the env var, so an empty string
 /// counts as unconfigured exactly as `!!process.env.X` does.
 pub fn admin_token_configured() -> bool {
-    matches!(env::var("AUDITOR_ADMIN_TOKEN"), Ok(v) if !v.is_empty())
+    matches!(crate::host_env::var("AUDITOR_ADMIN_TOKEN"), Ok(v) if !v.is_empty())
 }
 
 /// Constant-time comparison, guarded by a length pre-check.
 fn matches_token(value: Option<&str>) -> bool {
     let Some(value) = value else { return false };
-    let Ok(expected) = env::var("AUDITOR_ADMIN_TOKEN") else {
+    let Ok(expected) = crate::host_env::var("AUDITOR_ADMIN_TOKEN") else {
         return false;
     };
     if value.is_empty() || expected.is_empty() {
@@ -131,6 +129,7 @@ pub fn reset_login_failures() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     // These mutate process env, so they run as one test to avoid races
     // between parallel test threads.

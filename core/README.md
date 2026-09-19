@@ -59,11 +59,11 @@ referencing the core. It runs in `pnpm test`, inside the required
 `quality` job. `scripts/parity/**` is exempt — those harnesses exist to
 drive the core.
 
-**Phase 6 is the one PR allowed to break that guard**, because wiring
-axum into the desktop or Docker path is exactly what stops being inert.
-That PR belongs on this branch, with burn-in, and should delete the guard
-in the same commit that does the wiring so the removal is visible in
-review.
+**Phase 6 is where that guard changes**, because wiring axum into the
+desktop or Docker path is exactly what stops being inert. Its first
+batches touch only `core/` and keep the guard as it is; the batch that
+wires the server into the Tauri shell narrows the guard in the same
+commit, so the change is visible in review.
 
 This also *improves* the eventual A/B test rather than compromising it.
 The comparison wants `main`-built Node app vs `rust-core`-built Rust app
@@ -86,13 +86,12 @@ harnesses) landed on `main` for the same reason and remains there.
 4. *(on main, inert)* Writers, schedulers, the crash-safe runners, health
    check.
 5. *(on main, inert)* The AI policy pipeline.
-6. **(this branch)** Desktop cutover (embed axum, drop the Node sidecar),
-   then Docker after burn-in. The first phase that is NOT inert, and the
-   one PR allowed to delete
-   `tests/app/rust-core-inert.test.ts`. Its binaries must ship the
-   third-party notice in `core/V8-LICENSE` (the `Date.parse` port in
-   `jsdate` and the `JSON.parse` error port in `jsjson`) alongside
-   `NOTICE`.
+6. **(in progress)** Desktop cutover (embed axum, drop the Node
+   sidecar), then Docker straight after, before the next release. The
+   first phase that is NOT inert; see "Status — Phase 6" below. Its
+   binaries must ship the third-party notice in `core/V8-LICENSE` (the
+   `Date.parse` port in `jsdate` and the `JSON.parse` error port in
+   `jsjson`) alongside `NOTICE`.
 
 ## The gates (how the two implementations are compared)
 
@@ -3673,3 +3672,103 @@ kill-switch in the drain: exactly the case with scraping off. Source
 restored byte for byte after each, fixed tree green.
 
 Rust suite: 269 pass (268 + the replay).
+
+## Status — Phase 6 (the cutover)
+
+The desktop app moves first: the Tauri shell will run this server inside
+its own process instead of spawning Node, and Docker follows straight
+after, before the next release. The batches that touch only `core/` come
+first, so every build that ships stays on Node until the shell is wired.
+
+### Batch 1 — an embeddable server (no routes)
+
+`core/src/server/lifecycle.rs` and `core/src/host_env.rs` make the server
+something a host can run inside its own process and stop again.
+
+**The entry point.** `server::serve_with(listener, ServeConfig)` serves on
+a listener the host bound. It opens and migrates the database, runs the
+boot writes and starts the timers, then serves on the runtime it was
+called from and hands back a `ServerHandle`. Binding is the host's job so
+it can pick the address: the shell will bind loopback, on its last port
+when that is free, so the page's origin (and with it local storage)
+survives a relaunch. `pt-core serve` is now a thin caller: it binds, calls
+`serve_with`, prints the same readiness line, and stops on SIGINT or
+SIGTERM.
+
+**The environment.** Every setting the server reads (the data directory,
+the bind host, the allowed hosts, the admin token, the runtime,
+`NODE_ENV`, `DEPLOYMENT`, the Homebrew variables, `HOME`) goes through
+`host_env::var`. `pt-core` still reads the process environment. A host
+that passes `ServeConfig { env: Some(map) }` makes that map the server's
+whole environment for the rest of the process, which is what the shell's
+`env_clear()` did for the Node sidecar: a stray `AUDITOR_ADMIN_TOKEN` or
+`PRIVACYTRACKER_NETWORK_EXPOSED` in the desktop app's own environment
+cannot change who may call the API. One server per process: a second,
+different environment is refused, and so is a data directory resolved
+before the environment was fixed.
+
+**Shutdown.** `ServerHandle::shutdown(grace)` stops accepting, wakes every
+timer so its loop ends (the deferred policy fetch's included), gives
+requests in flight up to `grace`, then drops their connections and
+returns once the listener is closed. `server::SHUTDOWN_GRACE` is three
+seconds, the gap the shell left between SIGTERM and SIGKILL. What it does
+not stop is work already started off a request, a spawned bulk run or a
+Save Page Now post: that ends with the runtime, which the host drops as it
+exits. A bulk run cut off that way resumes on the next start, as after a
+crash, and a write is committed or rolled back, never torn.
+
+**Panics.** In a sidecar a panic killed one child process; in process the
+same bug would leave the app open with a backend that fails every
+request. Now:
+
+- a handler that panics answers Next's bare 500, and the error ring
+  records it (`catch_panic`, the innermost layer, so timing and the gate
+  see an ordinary response);
+- a panic while a section holds the database connection no longer poisons
+  it for good (`lock_db`): the `Transaction` guard has already rolled
+  back, the poison is cleared, and a transaction left open outside a guard
+  is rolled back too;
+- the shared rings, caches and registries take the same tolerant lock
+  (`lock_state`);
+- a timer tick that panics is logged and its loop carries on (`isolate`),
+  as a thrown error in a `setInterval` callback ends that call and not the
+  interval.
+
+**Logging.** The library logs through the `log` facade instead of
+printing. `diag::log_warn` and `log_error` still feed the error ring, then
+go to `log::warn!` and `log::error!`, and the four informational lines are
+`log::info!`. `pt-core` installs a small logger that prints this crate's
+lines, warnings and errors to stderr and the rest to stdout, as before.
+The shell's log plugin will write them to the desktop log file, which the
+sidecar's output never reached.
+
+**The gate.** Unit tests for each piece: the poisoned connection
+recovered with its transaction rolled back; a transaction left open
+rolled back on recovery; a poisoned state lock still usable; a panicking
+tick that leaves its loop running; a stop that wakes a sleeping timer;
+and a panicking route under exactly the layers `app` applies (`layered`)
+answering a bodiless 500 while the next request succeeds.
+`core/tests/embed.rs` is a test binary of its own, because the environment
+is fixed once per process. It runs `serve_with` end to end on a host
+environment while the PROCESS environment asks for a token, marks the
+deployment network-exposed and points the data directory at a decoy:
+
+- a same-origin POST succeeds with no token;
+- the database lands in the host's directory with 0700/0600 permissions,
+  and nothing lands in the decoy;
+- the boot writes record the desktop runtime;
+- a second, different environment is refused;
+- a shutdown with a request stuck reading its body waits out the grace
+  (0.6 s) and no longer, after which nothing accepts on the port.
+
+Every replay passes unchanged, and the live gate (`read-parity.mjs
+--mutate`, 476 checks) passes through the new `pt-core serve`.
+
+**Negative controls, predicted before running.** The database lock back
+to `expect`: exactly the two recovery tests. No `catch_panic` layer:
+exactly the route test. `host_env::var` ignoring the host environment:
+exactly the embed test (its POST answered 401). `isolate` awaiting the
+tick without catching: exactly the tick test. Source restored byte for
+byte after each, fixed tree green.
+
+Rust suite: 278 lib tests pass (270 + 8), plus the embed test.

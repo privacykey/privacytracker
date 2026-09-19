@@ -89,7 +89,7 @@ impl RateLimiter {
     /// extend its own cooldown indefinitely.
     pub fn check(&self, key: &str, limit: i64, window_ms: i64, now: i64) -> Verdict {
         let cutoff = now - window_ms;
-        let mut buckets = self.buckets.lock().expect("rate-limit mutex poisoned");
+        let mut buckets = super::lifecycle::lock_state(&self.buckets);
         let bucket = buckets.entry(key.to_string()).or_default();
 
         // Prune the oldest entries that have fallen out of the window.

@@ -11,9 +11,14 @@
 //! Phase 2 adds the read-only HTTP API in `server`, gated by the dual-live
 //! parity harness (`scripts/parity/read-parity.mjs`), which byte-compares
 //! this server's responses against the running Node server's.
+//!
+//! Phase 6 makes the server embeddable: `server::serve_with` runs it on a
+//! listener the host bound, with the environment the host passes
+//! (`host_env`), and hands back a handle that shuts it down within a bound.
 
 pub mod alloc;
 pub mod db;
+pub mod host_env;
 pub mod jsdate;
 pub mod jsjson;
 pub mod jsnum;

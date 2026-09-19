@@ -398,7 +398,7 @@ pub struct DeploymentDiagnostics {
 /// `process.env.NODE_ENV ?? "development"`, with the build profile standing
 /// in for what `next start` / `next dev` would have set.
 fn node_env() -> String {
-    match std::env::var("NODE_ENV") {
+    match crate::host_env::var("NODE_ENV") {
         Ok(v) if !v.is_empty() => v,
         _ if cfg!(debug_assertions) => "development".to_string(),
         _ => "production".to_string(),

@@ -69,6 +69,11 @@ regex = "1"
 # fixed by lib/backup.ts, not chosen. Already in the lockfile — it is the
 # crypto provider under reqwest's rustls — so this adds no new crate.
 ring = "0.17"
+# The logging facade, so a host decides where the server's console lines
+# go: the Tauri shell's log plugin writes them to the desktop log file,
+# `pt-core` prints them. Already in the lockfile under reqwest and tracing,
+# so this adds no new crate to the build.
+log = "0.4"
 
 [dev-dependencies]
 # Router-level gate tests drive the axum `Router` as a plain tower service

@@ -446,13 +446,13 @@ fn push_entry(level: &'static str, raw: &str) {
 
 /// `console.warn` with the ring in front of it.
 pub fn log_warn(message: impl AsRef<str>) {
-    eprintln!("{}", message.as_ref());
+    log::warn!("{}", message.as_ref());
     push_entry("warn", message.as_ref());
 }
 
 /// `console.error` with the ring in front of it.
 pub fn log_error(message: impl AsRef<str>) {
-    eprintln!("{}", message.as_ref());
+    log::error!("{}", message.as_ref());
     push_entry("error", message.as_ref());
 }
 

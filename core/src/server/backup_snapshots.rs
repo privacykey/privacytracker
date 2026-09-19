@@ -296,7 +296,7 @@ pub(crate) fn tick_backup_snapshots(db: &mut dyn DbAccess, ids: &mut dyn Ids, no
             Err(e) => Err(e.to_string()),
         };
         match outcome {
-            Ok((snapshot, pruned)) => println!(
+            Ok((snapshot, pruned)) => log::info!(
                 "[BackupSnapshots] Created {}; pruned {}",
                 snapshot["filename"].as_str().unwrap_or(""),
                 pruned.len()

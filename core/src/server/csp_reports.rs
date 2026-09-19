@@ -10,12 +10,12 @@ fn ring() -> &'static Mutex<Vec<Value>> {
 const RING_MAX: usize = 50;
 
 pub(super) fn read() -> Value {
-    json!({"reports":*ring().lock().expect("CSP ring mutex")})
+    json!({"reports":*super::lifecycle::lock_state(ring())})
 }
 
 /// `ring.unshift(report)` then the cap.
 pub(super) fn push(report: Value) {
-    let mut ring = ring().lock().expect("CSP ring mutex");
+    let mut ring = super::lifecycle::lock_state(ring());
     ring.insert(0, report);
     ring.truncate(RING_MAX);
 }
