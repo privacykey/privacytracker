@@ -3252,13 +3252,15 @@ landed a clean new source. The summarise phase is
 summary that is current, an audit-bundle excerpt or anything but a clean
 source, writes the needs-config row when no provider is set, and
 otherwise stores the summary with the one it replaces, or the error it
-failed with. `buildPolicySummary` sends a policy that fits the model's
-direct limit in one call (40,000 characters, or 8,000 for a model that
-needs chunks) and otherwise cuts it into chunks, stores each chunk's
-notes the moment they arrive, reuses them when a retried run finds them
-matching the text and the chunk count, and merges them. The sample
-summary and the prompt preview, which batch 3b's routes serve, are here
-too.
+failed with. For a policy that was never fetched it drops the run
+marker's placeholder, returns no analysis and logs a skip rather than a
+failure, as the fixed Node does. `buildPolicySummary` sends a policy
+that fits the model's direct limit in one call (40,000 characters, or
+8,000 for a model that needs chunks) and otherwise cuts it into chunks,
+stores each chunk's notes the moment they arrive, reuses them when a
+retried run finds them matching the text and the chunk count, and
+merges them. The sample summary and the prompt preview, which batch
+3b's routes serve, are here too.
 
 `core/src/policy/ai.rs` is `lib/ai-config.ts`: the providers, their
 defaults, which models need chunks, the per-phase timeouts with their
@@ -3343,10 +3345,6 @@ its "Summary ready" note lands on no phase. The stored `updated_at` is
 the time before the first AI call. The chunk slicer, a backtracking
 `[\s\S]{1,n}(?:\s|$)` scan, never matches the head of an unbroken run
 longer than a slice, so those characters are summarised by no chunk.
-And the summarise phase on an app with nothing stored meets the run
-marker's `pending` placeholder, which reads as `analysis_error` and
-logs "Policy summary failed": the same Node quirk #275 fixed for the
-kill-switch, reached by another path.
 
 **Negative controls, predicted before running.** The stream decoder
 flushing a trailing partial character: exactly the stream that ends

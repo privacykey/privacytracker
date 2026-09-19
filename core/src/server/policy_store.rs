@@ -63,7 +63,7 @@ use rusqlite::{Connection, OptionalExtension};
 use serde_json::{json, Map, Value};
 
 const DELETE_ANALYSIS: &str = "DELETE FROM privacy_policy_analyses WHERE app_id = ?";
-const DELETE_PLACEHOLDER: &str =
+pub(super) const DELETE_PLACEHOLDER: &str =
     "DELETE FROM privacy_policy_analyses WHERE app_id = ? AND status = 'pending'";
 const MARK_RUNNING: &str = "UPDATE privacy_policy_analyses\n          SET run_status = 'running', run_started_at = ?\n        WHERE app_id = ?";
 const INSERT_PLACEHOLDER: &str = "\n    INSERT INTO privacy_policy_analyses (\n      app_id, policy_url, status, source_word_count, updated_at,\n      run_status, run_started_at\n    )\n    VALUES (?, '', 'pending', 0, ?, 'running', ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      run_status = 'running',\n      run_started_at = excluded.run_started_at\n  ";
@@ -192,8 +192,9 @@ fn fire_webhook(
 }
 
 pub(crate) struct Synced {
-    /// The hydrated analysis, or null when the policy URL was cleared or
-    /// the kill-switch stopped a first fetch.
+    /// The hydrated analysis, or null when the policy URL was cleared, the
+    /// kill-switch stopped a first fetch, or a summarise found nothing
+    /// fetched.
     pub analysis: Value,
     pub follow_ups: FollowUps,
 }
@@ -1122,11 +1123,15 @@ async fn fetch_and_store(
 }
 
 /// The activity row's status and summary for a result. `scrape_disabled`
-/// is whether the run log shows the kill-switch stopped the fetch.
+/// is whether the run log shows the kill-switch stopped the fetch; a null
+/// summarise result means there was no policy text to summarise.
 fn activity_summary(result: &Value, scrape_disabled: bool, phase: Phase) -> (&'static str, String) {
     if result.is_null() {
         if scrape_disabled {
             return ("partial", "Policy skipped: scraping disabled".to_string());
+        }
+        if phase == Phase::Summarise {
+            return ("partial", "Policy skipped: nothing fetched yet".to_string());
         }
         return ("ok", "Policy URL cleared".to_string());
     }
