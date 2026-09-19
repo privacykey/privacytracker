@@ -325,8 +325,8 @@ pub(crate) async fn fetch_and_parse_app(
     let trigger = trigger.unwrap_or(if resync { "manual" } else { "import" });
     let prepared = db.with(|w| prepare(w.conn, url, now))?;
     let fetched = perform(fetcher, &prepared, now).await;
-    let outcome = db.with(|w| complete(w, url, resync, trigger, now, fetched, ids))?;
-    fire_change_webhook(db, fetcher, now, outcome.immediate.clone()).await;
+    let mut outcome = db.with(|w| complete(w, url, resync, trigger, now, fetched, ids))?;
+    fire_change_webhook(db, fetcher, now, outcome.immediate.take()).await;
     Ok(outcome)
 }
 
