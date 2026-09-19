@@ -3119,7 +3119,12 @@ policy-updates toggle on, flags its History row for review and raises a
 bell notification: #271's rules, recorded from the fixed Node. With
 policy scraping switched off, a first run drops the placeholder, returns
 no analysis and logs a skip rather than a failure, as the fixed Node
-does. Nothing outside the replay calls the store yet. Batch 3 routes
+does. The kill-switch over a stored analysis and the throttle return the
+row as it stands after their own log line, read again if their write is
+refused. Both used to return it as read before that line, with the
+previous run's log, so batch 4a's bulk runner counted an app skipped
+after a fetch as a success; Node and the core were fixed together.
+Nothing outside the replay calls the store yet. Batch 3 routes
 `POST /api/policy/regenerate`, and batch 4 the bulk runner and the
 triggers.
 
@@ -3172,7 +3177,7 @@ spelled as JavaScript spells them and integer-like keys first. The
 attribution is in `core/V8-LICENSE`.
 
 **The oracle — `core/scripts/extract-policy-store-cases.mjs`.** Runs the
-REAL fetch phase of `syncPrivacyPolicyAnalysis` over 34 scenarios and
+REAL fetch phase of `syncPrivacyPolicyAnalysis` over 36 scenarios and
 the REAL five route handlers over 35 requests, against a scratch
 database with a frozen clock, counted ids and the raw `fetch` stubbed by
 recorded replies, never the network. Recorded per case: every raw fetch
@@ -3200,15 +3205,17 @@ throws on the foreign key before any write; a corrupt latest snapshot
 a reset connection with its hint and an out-of-range entity; an
 unusable body and an unsupported content type; the kill-switch on a
 first fetch, over a stored summary, and overridden by `bypassThrottle`;
-and the throttle skipping, rounding its minutes, honouring its setting,
-off for minutes that are not positive and when disabled, holding only a
-ready analysis, elapsed, and facing a fetch time in the future. The
-route cases cover each read found, missing and refused, each rate
-limit, the diff of a one-word edit, an appended line, a changed last
-line, a long policy truncated and a first version with nothing before
-it, a manual version asked for under another app, and the scrape's
-first capture, same text, changed text, unusable page, fetch failure,
-refused URL, missing URL, unknown app, long id and limit.
+the throttle skipping, rounding its minutes, honouring its setting, off
+for minutes that are not positive and when disabled, holding only a
+ready analysis, elapsed, and facing a fetch time in the future; and the
+kill-switch and the throttle with their write refused, which a trigger
+does while the run log's own update lands. The route cases cover each
+read found, missing and refused, each rate limit, the diff of a
+one-word edit, an appended line, a changed last line, a long policy
+truncated and a first version with nothing before it, a manual version
+asked for under another app, and the scrape's first capture, same text,
+changed text, unusable page, fetch failure, refused URL, missing URL,
+unknown app, long id and limit.
 
 **The clock moves with the network.** Each fetch the code awaits
 advances the frozen clock one second, so a timestamp Node takes before a
@@ -3242,12 +3249,10 @@ on; the oracle holds that path.
 is still `running`, because Node clears the marker in a `finally` after
 building the value. It is the row as written, so a log event written
 after it is on the stored row but not in the value: the error branches
-return no History event, and the kill-switch and the throttle return
-the log from before their own line. The backfill's "Seeded previous
-policy text" note is logged on every changed rescrape, including when
-the earlier text already had its version and the upsert only touched
-it. A throttled skip's activity row says "Policy source fetched
-(cached)".
+return no History event. The backfill's "Seeded previous policy text"
+note is logged on every changed rescrape, including when the earlier
+text already had its version and the upsert only touched it. A
+throttled skip's activity row says "Policy source fetched (cached)".
 
 **Negative controls, predicted before running.** The fetch-error branch
 hydrating a fresh read instead of the row it wrote: exactly the four
@@ -3596,13 +3601,18 @@ refused with a `Retry-After` on both. A run itself would fetch every
 tracked app's developer site, which a parity run must not depend on, so
 it stays with the oracle.
 
-**Node's behaviour, kept, and a bug filed.** The bug has its own
-follow-up to fix Node and the core together. A throttled app is never
-counted as throttled: the analysis the store returns carries the log from
-before its own `throttled` line, so the runner's check of the last entry
-fails and the app counts as succeeded, and every summary says 0
-throttled. Also kept: a blob that does not parse is left in place when
-the resume heals a stale lock, since it is not a state.
+A throttled app counts as throttled, as the fixed Node does. The runner
+tells one by the last line of the returned run log, and the store used
+to return the row as read before its own `throttled` line (batch 2),
+with the previous run's log: an app skipped after a fetch counted as
+succeeded, and only a second skip in a row counted as throttled. The
+buffered and streamed fleet runs are re-recorded: charlie Chat's
+`app-done` says `throttled: true`, and the totals, the state blob, the
+activity row and the audit row count one success and one throttled app
+where they counted two successes. The runner itself is unchanged.
+
+**Node's behaviour, kept.** A blob that does not parse is left in place
+when the resume heals a stale lock, since it is not a state.
 
 **Negative controls, predicted before running.** The two skip reasons
 swapped: exactly the resumed-queue case. No `attempted` count: exactly
