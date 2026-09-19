@@ -75,6 +75,9 @@ mod policy_store_tests;
 mod policy_summary;
 #[cfg(test)]
 mod policy_summary_tests;
+pub(crate) mod policy_triggers;
+#[cfg(test)]
+mod policy_triggers_tests;
 mod preview;
 mod ratelimit;
 mod review;

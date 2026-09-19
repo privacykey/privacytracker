@@ -171,6 +171,10 @@ pub struct Outcome {
     pub previous_version: Option<String>,
     pub current_version: Option<String>,
     pub version_updated_at: Option<i64>,
+    /// The developer and the scrubbed policy link as the page gave them,
+    /// for the policy step a scrape may run next. Not in the result.
+    pub developer: String,
+    pub policy_url: String,
     /// The immediate webhook the commit owes when it recorded changes:
     /// `commitScrapedAppToDb`'s `void fireWebhookIfConfigured(name,
     /// changes)`, fired by the caller once the section that committed has
@@ -815,6 +819,8 @@ pub(super) fn persist_page(
         } else {
             None
         },
+        developer: page.developer,
+        policy_url: page.privacy_policy_url,
         immediate,
     })
 }
