@@ -77,6 +77,15 @@ Going forward, changes are recorded here as they land.
   app and nothing else. If a restart ever fails after an update installs,
   the banner now says the update is installed and asks you to quit and
   reopen privacytracker to finish.
+- "Rescrape policy" and "Rescrape + summarise" on an app's AI Policy tab
+  now fetch the policy even when it was fetched less than an hour ago.
+  The per-app scrape throttle in Settings, meant for the background, bulk
+  and import runs, held back these buttons too: within its cooldown (60
+  minutes by default) a click fetched and summarised nothing, yet the task
+  tray said "Policy re-fetched" or "Summary updated" and the Activity log
+  recorded a fetch or a new summary. The buttons now pass the throttle.
+  Onboarding's policy step and background runs still respect it, and
+  "Disable policy scraping" still stops the buttons.
 - A notification webhook set to "Each change" now posts App Store changes.
   When a sync found an app's privacy labels, accessibility labels or age
   rating changed, it wrote the bell notification but posted nothing: only
