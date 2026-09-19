@@ -8,13 +8,15 @@
 //! (`appendPolicyChangeEntry`) and the notification, the cache hit and the
 //! source-ready write — then the activity row.
 //!
-//! **What Node leaves running is handed back.** Save Page Now and the
-//! immediate webhook are `void`ed in Node: they finish after the sync has
-//! returned. Here the store returns them as [`FollowUps`] for the caller to
-//! run — detached on the server, inline in the replay, where the oracle
-//! holds Save Page Now's reply until the sync has returned so what it
-//! writes lands after the sync's own writes, as production's 10 to 30
-//! second archive always does.
+//! **What Node fires and forgets starts where Node starts it.** Save Page
+//! Now and the immediate webhook are `void`ed in Node: the request goes out
+//! at once, and what it writes lands after the sync has returned. On the
+//! server each is a task of its own, spawned at that point. In the replay,
+//! whose canned hop answers at once, the request is made there too — so a
+//! summary's AI call that follows it (batch 3a's `all` phase) comes after
+//! it, as in Node — and only the capture's link is handed back as
+//! [`FollowUps`], written after the sync, where the oracle's held reply
+//! writes it, as production's 10 to 30 second archive always does.
 //!
 //! **Hydration reads the row it was handed.** Node returns
 //! `hydratePolicyAnalysis(row)` with the row read when it was written, so
@@ -56,6 +58,7 @@ use crate::{
         wayback::{self, SaveResult},
     },
 };
+use futures_util::FutureExt;
 use rusqlite::{Connection, OptionalExtension};
 use serde_json::{json, Map, Value};
 
@@ -81,22 +84,111 @@ const SOURCE_ORIGINS: [&str; 3] = ["direct", "browser_retry", "wayback"];
 pub(crate) struct PolicyRequest {
     pub app_id: String,
     pub app_name: String,
+    /// Named in the prompts; "Unknown developer" when absent or empty.
+    pub developer: Option<String>,
     pub policy_url: Option<String>,
 }
 
-/// `PolicySyncOptions` for the fetch phase.
+/// `PolicyPhase`: fetch the source, summarise the stored one, or both.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) enum Phase {
+    Fetch,
+    Summarise,
+    /// `options.phase ?? "all"`.
+    #[default]
+    All,
+}
+
+impl Phase {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Fetch => "fetch",
+            Self::Summarise => "summarise",
+            Self::All => "all",
+        }
+    }
+}
+
+/// `PolicySyncOptions`.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct SyncOptions {
+    pub phase: Phase,
     pub force_resummarise: bool,
     pub bypass_throttle: bool,
 }
 
-/// What the sync left running: Save Page Now for the version it stored,
-/// and the immediate webhook for the notification it raised.
+/// Save Page Now for the version the sync stored.
+pub(crate) enum SaveNow {
+    /// Answered where Node fired it (the replay's canned hop answers at
+    /// once); only the link is left, written after the sync, where Node's
+    /// held reply writes it.
+    Landed(SaveResult),
+    /// Not started: it could be neither spawned nor answered at once.
+    Later(String),
+}
+
+/// What the sync fired and forgot and has yet to finish: Save Page Now for
+/// the version it stored, and the immediate webhook for the notification
+/// it raised, when that could not be posted when fired. On the server both
+/// start as tasks of their own where Node starts them, and nothing is left.
 #[derive(Default)]
 pub(crate) struct FollowUps {
-    pub save_now: Option<(String, String)>,
-    pub immediate: Option<Immediate>,
+    pub save_now: Option<(String, SaveNow)>,
+    pub immediate: Option<(i64, Immediate)>,
+}
+
+/// `void submitToWaybackSaveNow(...)`: started where Node starts it, the
+/// capture linked to the version when it lands.
+fn fire_save_now(
+    db: &mut dyn DbAccess,
+    fetcher: &dyn Fetcher,
+    follow_ups: &mut FollowUps,
+    version_id: String,
+    target: String,
+) {
+    if let (Some(fetcher), Some(mut db)) = (fetcher.shared(), db.detach()) {
+        tokio::spawn(async move {
+            let result = wayback::save_now(fetcher.as_ref(), &target).await;
+            link_capture(db.as_mut(), &super::sync_runner::Live, &version_id, result);
+        });
+        return;
+    }
+    let state = match wayback::save_now(fetcher, &target).now_or_never() {
+        Some(result) => SaveNow::Landed(result),
+        None => SaveNow::Later(target),
+    };
+    follow_ups.save_now = Some((version_id, state));
+}
+
+/// The capture Save Page Now reported, stamped on its version.
+fn link_capture(db: &mut dyn DbAccess, clock: &dyn Clock, version_id: &str, result: SaveResult) {
+    if let SaveResult::Saved(snapshot) = result {
+        if !snapshot.url.is_empty() {
+            let now = clock.now();
+            let _ = db.with(|w| {
+                w.run(
+                    SET_ARCHIVE_URL,
+                    vec![json!(snapshot.url), json!(now), json!(version_id)],
+                )
+            });
+        }
+    }
+}
+
+/// `fireWebhookIfConfigured`, as `createNotification` starts it: posted
+/// where Node posts it — detached on the server, at once in the replay —
+/// or after the sync when it can be neither.
+fn fire_webhook(
+    db: &mut dyn DbAccess,
+    fetcher: &dyn Fetcher,
+    now: i64,
+    immediate: Immediate,
+    follow_ups: &mut FollowUps,
+) {
+    let posted = webhook_writes::fire_immediate(db, fetcher, now, immediate.clone()).now_or_never();
+    if posted.is_none() {
+        follow_ups.immediate = Some((now, immediate));
+    }
 }
 
 pub(crate) struct Synced {
@@ -116,28 +208,45 @@ pub(crate) struct RunLogger<'a> {
     db: &'a mut dyn DbAccess,
     clock: &'a dyn Clock,
     app_id: String,
+    /// Whether each change is written to the row; `new PolicyRunLogger()`
+    /// with no callback, as the sample summary makes one, writes nothing.
+    persist: bool,
     phases: Vec<Map<String, Value>>,
     current: Option<usize>,
 }
 
 impl<'a> RunLogger<'a> {
-    fn new(db: &'a mut dyn DbAccess, clock: &'a dyn Clock, app_id: &str) -> Self {
+    pub(super) fn new(db: &'a mut dyn DbAccess, clock: &'a dyn Clock, app_id: &str) -> Self {
         Self {
             db,
             clock,
             app_id: app_id.to_string(),
+            persist: true,
             phases: Vec::new(),
             current: None,
         }
     }
-    fn db(&mut self) -> &mut dyn DbAccess {
+    /// A logger that keeps its phases in memory only. The calls it logs
+    /// still reach the database for their settings, debug rows and
+    /// notifications.
+    pub(super) fn detached(db: &'a mut dyn DbAccess, clock: &'a dyn Clock) -> Self {
+        Self {
+            persist: false,
+            ..Self::new(db, clock, "")
+        }
+    }
+    pub(super) fn db(&mut self) -> &mut dyn DbAccess {
         &mut *self.db
     }
-    fn now(&self) -> i64 {
+    pub(super) fn now(&self) -> i64 {
         self.clock.now()
     }
+    /// `logger.phases`, as the sample summary returns them.
+    pub(super) fn phases(&self) -> Vec<Value> {
+        self.phases.iter().cloned().map(Value::Object).collect()
+    }
     /// `startPhase`: a phase left open is closed as `incomplete` first.
-    fn start_phase(&mut self, phase: &str, note: Option<String>) {
+    pub(super) fn start_phase(&mut self, phase: &str, note: Option<String>) {
         if let Some(i) = self.current.take() {
             let now = self.now();
             let stale = &mut self.phases[i];
@@ -159,7 +268,7 @@ impl<'a> RunLogger<'a> {
     }
     /// `endPhase`: the open phase gains its duration, and a note or an
     /// error; nothing when no phase is open.
-    fn end_phase(&mut self, note: Option<String>, error: Option<String>) {
+    pub(super) fn end_phase(&mut self, note: Option<String>, error: Option<String>) {
         let Some(i) = self.current.take() else {
             return;
         };
@@ -176,7 +285,7 @@ impl<'a> RunLogger<'a> {
         self.flush();
     }
     /// `toJson`.
-    fn to_json(&self) -> String {
+    pub(super) fn to_json(&self) -> String {
         Value::Array(self.phases.iter().cloned().map(Value::Object).collect()).to_string()
     }
     /// `phases.some((entry) => entry.phase === phase)`.
@@ -187,6 +296,9 @@ impl<'a> RunLogger<'a> {
     }
     /// `persistPolicyRunLog`, swallowed and logged as Node's `flush` does.
     fn flush(&mut self) {
+        if !self.persist {
+            return;
+        }
         let log = self.to_json();
         let app_id = self.app_id.clone();
         if let Err(e) = self
@@ -215,10 +327,10 @@ impl PolicyLog for RunLogger<'_> {
 }
 
 impl RunLogger<'_> {
-    fn note(&mut self, phase: &str, note: impl Into<String>) {
+    pub(super) fn note(&mut self, phase: &str, note: impl Into<String>) {
         self.event(phase, Some(note.into()), None);
     }
-    fn fail(&mut self, phase: &str, error: impl Into<String>) {
+    pub(super) fn fail(&mut self, phase: &str, error: impl Into<String>) {
         self.event(phase, None, Some(error.into()));
     }
 }
@@ -226,7 +338,7 @@ impl RunLogger<'_> {
 // ── Rows ─────────────────────────────────────────────────────────────
 
 /// `getPolicyAnalysisRow`.
-fn read_row(conn: &Connection, app_id: &str) -> Result<Option<Value>, String> {
+pub(super) fn read_row(conn: &Connection, app_id: &str) -> Result<Option<Value>, String> {
     conn.query_row(
         "SELECT * FROM privacy_policy_analyses WHERE app_id = ?",
         [app_id],
@@ -237,7 +349,7 @@ fn read_row(conn: &Connection, app_id: &str) -> Result<Option<Value>, String> {
 }
 
 /// `existing?.col ?? null`.
-fn col(existing: Option<&Value>, name: &str) -> Value {
+pub(super) fn col(existing: Option<&Value>, name: &str) -> Value {
     existing
         .and_then(|row| row.get(name))
         .cloned()
@@ -245,7 +357,7 @@ fn col(existing: Option<&Value>, name: &str) -> Value {
 }
 
 /// `normalizeSourceOrigin`.
-fn source_origin(value: &Value) -> Value {
+pub(super) fn source_origin(value: &Value) -> Value {
     value
         .as_str()
         .filter(|s| SOURCE_ORIGINS.contains(s))
@@ -261,22 +373,22 @@ fn analysis_mode(value: &Value) -> Value {
 }
 
 /// `persistPolicyAnalysis`'s input, each column already the value bound.
-struct Persist {
-    status: Value,
-    source_title: Value,
-    source_content_type: Value,
-    source_text: Value,
-    source_word_count: Value,
-    source_origin: Value,
-    source_final_url: Value,
-    content_hash: Value,
-    analysis_mode: Value,
-    summary_json: Value,
-    previous_summary_json: Value,
-    previous_summary_at: Value,
-    model: Value,
-    error: Value,
-    source_fetched_at: Value,
+pub(super) struct Persist {
+    pub(super) status: Value,
+    pub(super) source_title: Value,
+    pub(super) source_content_type: Value,
+    pub(super) source_text: Value,
+    pub(super) source_word_count: Value,
+    pub(super) source_origin: Value,
+    pub(super) source_final_url: Value,
+    pub(super) content_hash: Value,
+    pub(super) analysis_mode: Value,
+    pub(super) summary_json: Value,
+    pub(super) previous_summary_json: Value,
+    pub(super) previous_summary_at: Value,
+    pub(super) model: Value,
+    pub(super) error: Value,
+    pub(super) source_fetched_at: Value,
 }
 
 impl Persist {
@@ -309,7 +421,7 @@ impl Persist {
 }
 
 /// `persistPolicyAnalysis`: the upsert, then the row as it now reads.
-fn persist(
+pub(super) fn persist(
     w: &mut Writer,
     app_id: &str,
     policy_url: &str,
@@ -344,7 +456,7 @@ fn persist(
     read_row(w.conn, app_id)?.ok_or_else(|| "Failed to persist privacy policy analysis".to_string())
 }
 
-fn hydrate(conn: &Connection, app_id: &str, row: &Value) -> Result<Value, String> {
+pub(super) fn hydrate(conn: &Connection, app_id: &str, row: &Value) -> Result<Value, String> {
     hydrate_policy_analysis(conn, app_id, row).map_err(|e| e.to_string())
 }
 
@@ -562,13 +674,13 @@ fn diagnostics_for(err: &SourceError, policy_url: &str) -> Value {
     Value::Object(d)
 }
 
-fn setting(log: &mut RunLogger<'_>, key: &str, default: &str) -> String {
+pub(super) fn setting(log: &mut RunLogger<'_>, key: &str, default: &str) -> String {
     log.db()
         .with(|w| get_setting_with(w.conn, key, default))
         .unwrap_or_else(|_| default.to_string())
 }
 
-fn sha256_hex(text: &str) -> String {
+pub(super) fn sha256_hex(text: &str) -> String {
     ring::digest::digest(&ring::digest::SHA256, text.as_bytes())
         .as_ref()
         .iter()
@@ -876,7 +988,13 @@ async fn fetch_and_store(
             }
             None => log.note("archive-existing", "No existing Wayback snapshot found."),
         }
-        follow_ups.save_now = Some((version_id.clone(), target));
+        fire_save_now(
+            log.db(),
+            fetcher,
+            &mut follow_ups,
+            version_id.clone(),
+            target,
+        );
     }
 
     let label = safe_url_label(policy_url);
@@ -927,7 +1045,9 @@ async fn fetch_and_store(
         });
     match recorded {
         Ok((flagged, immediate)) => {
-            follow_ups.immediate = immediate;
+            if let Some(immediate) = immediate {
+                fire_webhook(log.db(), fetcher, now_entry, immediate, &mut follow_ups);
+            }
             log.note(
                 "changelog",
                 if flagged {
@@ -1003,7 +1123,7 @@ async fn fetch_and_store(
 
 /// The activity row's status and summary for a result. `scrape_disabled`
 /// is whether the run log shows the kill-switch stopped the fetch.
-fn activity_summary(result: &Value, scrape_disabled: bool) -> (&'static str, String) {
+fn activity_summary(result: &Value, scrape_disabled: bool, phase: Phase) -> (&'static str, String) {
     if result.is_null() {
         if scrape_disabled {
             return ("partial", "Policy skipped: scraping disabled".to_string());
@@ -1012,7 +1132,8 @@ fn activity_summary(result: &Value, scrape_disabled: bool) -> (&'static str, Str
     }
     let error = result["error"].as_str().filter(|e| !e.is_empty());
     match result["status"].as_str().unwrap_or("") {
-        "ready" => ("ok", "Policy source fetched (cached)".to_string()),
+        "ready" if phase == Phase::Fetch => ("ok", "Policy source fetched (cached)".to_string()),
+        "ready" => ("ok", "Policy summary ready".to_string()),
         "source_ready" => ("ok", "Policy source fetched".to_string()),
         "fetch_error" => (
             "error",
@@ -1041,9 +1162,50 @@ fn activity_summary(result: &Value, scrape_disabled: bool) -> (&'static str, Str
     }
 }
 
-/// `syncPrivacyPolicyAnalysis(request, { phase: "fetch", ... })`. `Err` is
-/// what Node throws: the run marker refused, or a write outside a `try`.
-pub(crate) async fn sync_policy_fetch(
+/// The phase the options name: the fetch, the summary of what is stored,
+/// or the fetch and then — only when it landed a clean new source — the
+/// summary. A cache hit is already `ready` and is not summarised again.
+#[allow(clippy::too_many_arguments)]
+async fn run_phase(
+    log: &mut RunLogger<'_>,
+    ids: &mut dyn Ids,
+    fetcher: &dyn Fetcher,
+    clock: &dyn Clock,
+    request: &PolicyRequest,
+    policy_url: &str,
+    options: SyncOptions,
+    stash: &mut Option<Value>,
+) -> Result<(Value, FollowUps), String> {
+    use super::policy_summary::summarise_stored_policy;
+    let force = options.force_resummarise;
+    match options.phase {
+        Phase::Fetch => {
+            fetch_and_store(log, ids, fetcher, request, policy_url, options, stash).await
+        }
+        Phase::Summarise => summarise_stored_policy(log, ids, fetcher, clock, request, force).await,
+        Phase::All => {
+            let (after_fetch, follow_ups) =
+                fetch_and_store(log, ids, fetcher, request, policy_url, options, stash).await?;
+            if after_fetch.get("status").and_then(Value::as_str) == Some("source_ready") {
+                let (analysis, nested) =
+                    summarise_stored_policy(log, ids, fetcher, clock, request, force).await?;
+                Ok((
+                    analysis,
+                    FollowUps {
+                        save_now: follow_ups.save_now.or(nested.save_now),
+                        immediate: follow_ups.immediate.or(nested.immediate),
+                    },
+                ))
+            } else {
+                Ok((after_fetch, follow_ups))
+            }
+        }
+    }
+}
+
+/// `syncPrivacyPolicyAnalysis`. `Err` is what Node throws: the run marker
+/// refused, or a write outside a `try`.
+pub(crate) async fn sync_policy_analysis(
     db: &mut dyn DbAccess,
     ids: &mut dyn Ids,
     fetcher: &dyn Fetcher,
@@ -1066,8 +1228,8 @@ pub(crate) async fn sync_policy_fetch(
     let mut stash: Option<Value> = None;
     let (outcome, scrape_disabled) = {
         let mut log = RunLogger::new(&mut *db, clock, app_id);
-        let outcome = fetch_and_store(
-            &mut log, ids, fetcher, request, policy_url, options, &mut stash,
+        let outcome = run_phase(
+            &mut log, ids, fetcher, clock, request, policy_url, options, &mut stash,
         )
         .await;
         (outcome, log.logged("disabled"))
@@ -1077,9 +1239,9 @@ pub(crate) async fn sync_policy_fetch(
         let ended = clock.now();
         match outcome {
             Ok((analysis, follow_ups)) => {
-                let (status, summary) = activity_summary(&analysis, scrape_disabled);
+                let (status, summary) = activity_summary(&analysis, scrape_disabled, options.phase);
                 let mut detail = Map::new();
-                detail.insert("phase".into(), json!("fetch"));
+                detail.insert("phase".into(), json!(options.phase.as_str()));
                 detail.insert("forceResummarise".into(), json!(options.force_resummarise));
                 detail.insert(
                     "resultStatus".into(),
@@ -1117,7 +1279,7 @@ pub(crate) async fn sync_policy_fetch(
             }
             Err(message) => {
                 let mut detail = Map::new();
-                detail.insert("phase".into(), json!("fetch"));
+                detail.insert("phase".into(), json!(options.phase.as_str()));
                 detail.insert("forceResummarise".into(), json!(options.force_resummarise));
                 detail.insert("policyUrl".into(), json!(policy_url));
                 detail.insert("errorMessage".into(), json!(message));
@@ -1149,28 +1311,23 @@ pub(crate) async fn sync_policy_fetch(
     result
 }
 
-/// Run what the sync handed back: Save Page Now first, whose capture is
-/// stamped on the version, then the immediate webhook.
+/// Finish what the sync handed back: the capture Save Page Now reported
+/// (or the request itself, when it could not be made when fired) stamped
+/// on the version first, then any immediate webhook not yet posted.
 pub(crate) async fn run_follow_ups(
     db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     clock: &dyn Clock,
     follow_ups: FollowUps,
 ) {
-    if let Some((version_id, target)) = follow_ups.save_now {
-        if let SaveResult::Saved(snapshot) = wayback::save_now(fetcher, &target).await {
-            if !snapshot.url.is_empty() {
-                let now = clock.now();
-                let _ = db.with(|w| {
-                    w.run(
-                        SET_ARCHIVE_URL,
-                        vec![json!(snapshot.url), json!(now), json!(version_id)],
-                    )
-                });
-            }
-        }
+    if let Some((version_id, save_now)) = follow_ups.save_now {
+        let result = match save_now {
+            SaveNow::Landed(result) => result,
+            SaveNow::Later(target) => wayback::save_now(fetcher, &target).await,
+        };
+        link_capture(db, clock, &version_id, result);
     }
-    if let Some(immediate) = follow_ups.immediate {
-        webhook_writes::fire_immediate(db, fetcher, clock.now(), immediate).await;
+    if let Some((now, immediate)) = follow_ups.immediate {
+        webhook_writes::fire_immediate(db, fetcher, now, immediate).await;
     }
 }

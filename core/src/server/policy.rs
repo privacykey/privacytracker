@@ -270,7 +270,7 @@ fn unique_strings(values: impl IntoIterator<Item = String>) -> Vec<String> {
     out
 }
 
-fn normalize_policy_summary(input: &Value) -> Value {
+pub(super) fn normalize_policy_summary(input: &Value) -> Value {
     // `input?.lenses` — `?.` on a non-object yields undefined, not a throw.
     let lens_entries: Vec<Value> = match input.get("lenses") {
         Some(Value::Array(a)) => a.clone(),
@@ -492,7 +492,7 @@ fn parse_run_log(col: &Value) -> Option<Vec<Value>> {
 /// `parseStoredChunkNotes`: null on a falsy column, parse error, non-array
 /// or NO usable entries. Non-object entries are skipped; a non-string
 /// summary becomes `""` rather than skipping the note.
-fn parse_stored_chunk_notes(col: &Value) -> Option<Vec<Value>> {
+pub(super) fn parse_stored_chunk_notes(col: &Value) -> Option<Vec<Value>> {
     let raw = as_str(col).filter(|s| !s.is_empty())?;
     let Ok(Value::Array(items)) = serde_json::from_str::<Value>(raw) else {
         return None;

@@ -74,6 +74,16 @@ pub trait Ids: Send {
     /// lib/audit-bundle-import.ts's ids: the prefix, then `bytes` random
     /// bytes in lowercase hex (`pt-` + 8 bytes, `imp-` + 12, …).
     fn hex_id(&mut self, conn: &Connection, prefix: &str, bytes: usize) -> Result<String, String>;
+    /// `crypto.randomBytes(15).toString("base64url")`: the nonce the policy
+    /// summariser marks each untrusted prompt block with, twenty characters
+    /// from the system's generator. It takes no connection: the prompts are
+    /// built between database sections.
+    fn nonce(&mut self) -> String {
+        let mut bytes = [0u8; 15];
+        ring::rand::SecureRandom::fill(&ring::rand::SystemRandom::new(), &mut bytes)
+            .expect("the system random generator");
+        base64url(&bytes)
+    }
     /// An owned source for a run spawned off the request, when this one
     /// can hand one out (the random source always can; a replay counter
     /// only if it is shared).

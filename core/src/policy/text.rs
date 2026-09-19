@@ -44,62 +44,88 @@ macro_rules! re {
     }};
 }
 
-/// `POLICY_TOPIC_GUIDES[].keywords`, one list per lens, in Node's order.
-const TOPIC_KEYWORDS: [&[&str]; 8] = [
-    &[
-        "collect",
-        "information we collect",
-        "personal information",
-        "device information",
-        "usage information",
-        "automatically collect",
-    ],
-    &[
-        "use your information",
-        "provide",
-        "operate",
-        "improve",
-        "personalize",
-        "security",
-        "support",
-    ],
-    &[
-        "advertising",
-        "marketing",
-        "promotional",
-        "remarketing",
-        "newsletter",
-        "interest-based",
-    ],
-    &[
-        "share",
-        "disclose",
-        "service providers",
-        "vendors",
-        "partners",
-        "affiliates",
-        "law enforcement",
-    ],
-    &[
-        "analytics",
-        "cookies",
-        "sdk",
-        "tracking",
-        "identifier",
-        "advertising id",
-        "pixel",
-    ],
-    &[
-        "access", "delete", "deletion", "opt out", "opt-out", "choices", "rights", "request",
-    ],
-    &[
-        "retain",
-        "retention",
-        "store your information",
-        "keep your information",
-        "as long as necessary",
-    ],
-    &["children", "child", "under 13", "under 16", "minor", "age"],
+/// `POLICY_TOPIC_GUIDES`: each lens's label and keywords, in Node's order.
+/// The validator counts the lenses with a hit; the summariser's digest
+/// quotes the text around them.
+pub(crate) const TOPIC_GUIDES: [(&str, &[&str]); 8] = [
+    (
+        "Collection Scope",
+        &[
+            "collect",
+            "information we collect",
+            "personal information",
+            "device information",
+            "usage information",
+            "automatically collect",
+        ],
+    ),
+    (
+        "Product Use",
+        &[
+            "use your information",
+            "provide",
+            "operate",
+            "improve",
+            "personalize",
+            "security",
+            "support",
+        ],
+    ),
+    (
+        "Ads & Marketing",
+        &[
+            "advertising",
+            "marketing",
+            "promotional",
+            "remarketing",
+            "newsletter",
+            "interest-based",
+        ],
+    ),
+    (
+        "Third-Party Sharing",
+        &[
+            "share",
+            "disclose",
+            "service providers",
+            "vendors",
+            "partners",
+            "affiliates",
+            "law enforcement",
+        ],
+    ),
+    (
+        "Tracking & Analytics",
+        &[
+            "analytics",
+            "cookies",
+            "sdk",
+            "tracking",
+            "identifier",
+            "advertising id",
+            "pixel",
+        ],
+    ),
+    (
+        "User Controls",
+        &[
+            "access", "delete", "deletion", "opt out", "opt-out", "choices", "rights", "request",
+        ],
+    ),
+    (
+        "Data Retention",
+        &[
+            "retain",
+            "retention",
+            "store your information",
+            "keep your information",
+            "as long as necessary",
+        ],
+    ),
+    (
+        "Children & Minors",
+        &["children", "child", "under 13", "under 16", "minor", "age"],
+    ),
 ];
 
 /// `countWords`: `text.split(/\s+/).filter(Boolean).length`.
@@ -116,9 +142,9 @@ pub fn count_policy_topic_hits(text: &str) -> usize {
         return 0;
     }
     let lower = text.to_lowercase();
-    TOPIC_KEYWORDS
+    TOPIC_GUIDES
         .iter()
-        .filter(|keywords| keywords.iter().any(|k| lower.contains(&k.to_lowercase())))
+        .filter(|(_, keywords)| keywords.iter().any(|k| lower.contains(&k.to_lowercase())))
         .count()
 }
 
