@@ -291,9 +291,10 @@ export function TaskCenterProvider({
   }, [refreshScheduler]);
 
   // Surface server-driven bulk runs (wayback / sync / policy) the user's
-  // session didn't kick off. Filters to `initiator === 'resume'` so manual
-  // runs don't get a duplicate card (the calling UI already owns those via
-  // startTask). The actual poll callback is declared after startTask below.
+  // session didn't kick off: runs resumed after a restart, and manual policy
+  // batches no local task owns. Other manual runs don't get a duplicate card
+  // (the calling UI already owns those via startTask). The actual poll
+  // callback is declared after startTask below.
   const serverTasksRef = useRef<
     Map<ServerJobKey, { handle: TaskHandle; runId: string }>
   >(new Map());
@@ -497,9 +498,9 @@ export function TaskCenterProvider({
   );
 
   // Poll /api/tasks/active and surface any resumed bulk run as a TaskCenter
-  // row. Only creates a card for `initiator === 'resume'` — manual runs are
-  // owned by the calling UI (SettingsView) via its own startTask() handle,
-  // so filtering prevents duplicate cards.
+  // row, plus a manual policy batch no local task owns (see below). Other
+  // manual runs are owned by the calling UI (SettingsView) via its own
+  // startTask() handle, so filtering prevents duplicate cards.
   const pollActiveTasks = useCallback(async () => {
     try {
       const res = await fetch("/api/tasks/active", { cache: "no-store" });
@@ -534,12 +535,18 @@ export function TaskCenterProvider({
         // batches when there is no local SettingsView-owned task (e.g. the
         // user refreshed or opened a second tab mid-run). This keeps bulk
         // re-summarise visible without duplicating the task that launched it.
-        const shouldSurface =
-          (job.initiator === "resume" && resumeCardsEnabled) ||
-          (jobKey === "policy" && job.initiator === "manual" && !hasLocalTask);
-        if (!shouldSurface) {
+        const resumed = job.initiator === "resume" && resumeCardsEnabled;
+        const detachedPolicyBatch =
+          jobKey === "policy" && job.initiator === "manual" && !hasLocalTask;
+        if (!(resumed || detachedPolicyBatch)) {
           continue;
         }
+        // The subtitle says why the card is shown. Only a run the server
+        // picked up again after a restart was resumed; a manual batch shown
+        // for want of a local task was never interrupted.
+        const subtitle = resumed
+          ? t("subtitle_resumed")
+          : t("subtitle_background");
 
         // Run boundary — a different runId means the previous one ended
         // and a new one started between polls. Close the old card first.
@@ -554,11 +561,17 @@ export function TaskCenterProvider({
 
         if (serverTasksRef.current.has(jobKey)) {
           const current = serverTasksRef.current.get(jobKey)!;
-          current.handle.setProgress(done, total, label);
+          // Refresh the subtitle with the progress: a manual batch the
+          // server resumes after a restart keeps its runId, so the same
+          // card goes on to show a resumed run.
+          current.handle.update({
+            subtitle,
+            progress: { current: done, total, label },
+          });
         } else {
           const handle = startTask({
             title: t(`kind_${jobKey}`),
-            subtitle: t("subtitle_resumed"),
+            subtitle,
             kind: SERVER_JOB_KIND[jobKey],
             href: SERVER_JOB_HREF[jobKey],
             progress: { current: done, total, label },

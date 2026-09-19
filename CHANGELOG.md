@@ -91,6 +91,13 @@ Going forward, changes are recorded here as they land.
   as a scheduled sync even when the run it finishes was started by hand,
   as the upgrade guide describes, and the apps it syncs after the restart
   show "Scheduled sync" in their history.
+- Background tasks no longer says "Resumed after restart" about a
+  privacy-policy batch that was never interrupted. A "Re-scrape all
+  policies" or "Summarise all policies" run still going when the page is
+  reloaded, or when the app is open in a second tab, is listed there as a
+  "Privacy-policy sync", and that card said it had been resumed after a
+  restart although nothing had restarted. It now says "Running in the
+  background". A run the app resumed after a restart still says so.
 - "Install & restart" in the desktop app's update banner now restarts into
   the new version. The update installed, but the restart after it was
   refused ("process.restart not allowed. Plugin not found") because the
