@@ -207,6 +207,11 @@ export async function runBulkWaybackImport(
   let state: WaybackBulkState;
   if (options.resumeState) {
     state = options.resumeState;
+    // The blob still names whoever started the run. Record who runs it
+    // now, before the first write: 'resume' from the boot-time check,
+    // 'manual' from the Resume queue button. The Settings pill, the
+    // resume summary and audit action, and TaskCenter's card all read it.
+    state.initiator = options.initiator;
     // Mark every `in_progress` back to `pending` — those are apps that
     // were mid-flight when the process died. We'll redo them from scratch.
     for (const entry of state.queue) {

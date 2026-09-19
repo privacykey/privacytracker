@@ -365,7 +365,7 @@ Contract pinned by `tests/app/apps-pagination.test.ts`.
 
 ### Crash-safe resume (all three jobs)
 
-Three bulk runners now share the same crash-safe pattern: wayback (`lib/wayback-bulk-runner.ts`), App Store sync (`lib/sync-bulk-runner.ts`), and privacy-policy sync (`lib/policy-bulk-runner.ts`). Each one pairs a state module (`*-bulk-state.ts`) with a runner, persists the queue + totals after every app boundary, and honours `initiator: 'manual' | 'scheduled' | 'resume'` so resumed runs can be identified in UI + activity logs. Keys in `app_settings`:
+Three bulk runners now share the same crash-safe pattern: wayback (`lib/wayback-bulk-runner.ts`), App Store sync (`lib/sync-bulk-runner.ts`), and privacy-policy sync (`lib/policy-bulk-runner.ts`). Each one pairs a state module (`*-bulk-state.ts`) with a runner, persists the queue + totals after every app boundary, and honours `initiator: 'manual' | 'scheduled' | 'resume'` so resumed runs can be identified in UI + activity logs. A resumed blob still names whoever started the run, so each runner's resume branch overwrites `initiator` with its caller's (`resume` from the boot check, `manual` from Wayback's Resume queue) before the first write; without that, nothing that labels a restart resume ever fires (pinned by `tests/app/bulk-resume.test.ts`). A resumed App Store sync therefore records as `scheduled_sync`, as the Upgrading docs describe. Keys in `app_settings`:
 
 - wayback: `wayback_import_running` (mutex), `wayback_bulk_state` (blob)
 - sync: `sync_running` (mutex, reused from the old scheduler), `sync_bulk_state` (blob)
