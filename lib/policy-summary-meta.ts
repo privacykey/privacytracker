@@ -73,7 +73,10 @@ export function canSummariseStoredPolicy(analysis: {
  * after its fetch) returns an analysis whether or not it made a summary: a
  * failed AI call, a missing AI provider, a failed fetch and a declined run
  * all return one. Only 'ready' means the summary was updated. A fetch-only
- * run keeps its one message.
+ * run returns one too: 'ready' (the text is unchanged) or 'source_ready'
+ * (new text) when the page landed, 'fetch_error' when it did not, and
+ * 'too_short' or 'unsupported_content_type' when it landed but its text
+ * cannot be used.
  */
 export function describePolicyRunCompletion(
   phase: "fetch" | "summarise" | "all",
@@ -81,13 +84,21 @@ export function describePolicyRunCompletion(
 ): {
   messageKey:
     | "completion_fetch"
+    | "completion_fetch_failed"
+    | "completion_fetch_unusable"
     | "completion_summarise"
     | "completion_summary_failed"
     | "completion_summary_not_updated";
   status: "done" | "error";
 } {
   if (phase === "fetch") {
-    return { status: "done", messageKey: "completion_fetch" };
+    if (status === "ready" || status === "source_ready") {
+      return { status: "done", messageKey: "completion_fetch" };
+    }
+    if (status === "too_short" || status === "unsupported_content_type") {
+      return { status: "error", messageKey: "completion_fetch_unusable" };
+    }
+    return { status: "error", messageKey: "completion_fetch_failed" };
   }
   if (status === "ready") {
     return { status: "done", messageKey: "completion_summarise" };

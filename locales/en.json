@@ -3815,6 +3815,8 @@
       "title_regenerate": "Regenerating privacy policy",
       "subtitle_with_phase": "{name} · {phase}",
       "completion_fetch": "Policy re-fetched",
+      "completion_fetch_failed": "Policy fetch failed",
+      "completion_fetch_unusable": "Policy text not usable",
       "completion_summarise": "Summary updated",
       "completion_summary_failed": "Summary failed",
       "completion_summary_not_updated": "Summary not updated",
@@ -4052,7 +4054,7 @@
     "privacy_policy_link": "Privacy Policy ↗",
     "label_definitions_link": "Label definitions",
     "apple_app_hint": "This is an Apple app. For Apple’s own privacy labels — including Messages, Maps, Safari, Mail, Health, and more — see <apple>apple.com/au/privacy/labels ↗</apple>. For definitions of the terms on this page, see the <defs>in-app definitions reference</defs>.",
-    "policy_fetch_scope_note": "The policy text is fetched on demand from this tab only — it is not re-scraped by the per-app Re-sync button or the Settings “Sync All” job.",
+    "policy_fetch_scope_note": "Re-sync and Sync All also re-fetch this policy in the background when they finish, except within the policy scrape throttle’s cooldown or while policy scraping is disabled. They don’t summarise it: use the buttons on this tab for that, or to fetch it now.",
     "policy_change_strip": {
       "since_date": "since {date}",
       "since_fallback": "since the last analysis",

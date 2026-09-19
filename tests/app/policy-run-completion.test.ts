@@ -4,8 +4,10 @@
  * A run that summarises returns an analysis whether or not it made a
  * summary, and the tray said "Summary updated" for all of them: after a
  * failed AI call, with no AI provider, after a failed fetch and after a
- * declined run. It now reads the returned status. These tests pin the
- * message for every status, and that each message the tray can show
+ * declined run. It now reads the returned status. A fetch-only run
+ * ("Rescrape policy") said "Policy re-fetched" whatever it returned,
+ * including a fetch that failed; it reads the status too. These tests pin
+ * the message for every status, and that each message the tray can show
  * exists in every locale.
  */
 
@@ -20,13 +22,23 @@ import {
 const PHASES = ["fetch", "summarise", "all"] as const;
 const STATUSES = [...POLICY_ANALYSIS_STATUSES, null];
 
-test("a fetch-only run keeps its one message", () => {
-  for (const status of STATUSES) {
-    assert.deepEqual(describePolicyRunCompletion("fetch", status), {
-      status: "done",
-      messageKey: "completion_fetch",
-    });
-  }
+test("a fetch-only run says the policy was re-fetched only when it was", () => {
+  const byStatus = Object.fromEntries(
+    STATUSES.map((status) => {
+      const completion = describePolicyRunCompletion("fetch", status);
+      return [String(status), `${completion.status}: ${completion.messageKey}`];
+    })
+  );
+  assert.deepEqual(byStatus, {
+    ready: "done: completion_fetch",
+    source_ready: "done: completion_fetch",
+    needs_ai_config: "error: completion_fetch_failed",
+    fetch_error: "error: completion_fetch_failed",
+    unsupported_content_type: "error: completion_fetch_unusable",
+    too_short: "error: completion_fetch_unusable",
+    analysis_error: "error: completion_fetch_failed",
+    null: "error: completion_fetch_failed",
+  });
 });
 
 for (const phase of ["summarise", "all"] as const) {
