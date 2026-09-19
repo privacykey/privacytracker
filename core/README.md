@@ -3428,7 +3428,10 @@ model-list routes that sit beside it:
   with the message, each with its audit row. On the server the streamed
   run is spawned off the request with an owned accessor, id source,
   fetcher and clock, and its lines go out as they come. A client that
-  goes away does not stop the run, as in Node.
+  goes away does not stop the run, as in Node. The run passes the scrape
+  throttle only when the body's `bypassThrottle` is the boolean `true`,
+  which the AI Policy tab sends and onboarding's policy step does not;
+  the kill-switch refuses a fetch either way.
 - `POST /api/ai/policy-sample`: six a minute; the provider; the model
   (trimmed, at most 200 UTF-16 units); the key, where Settings' mask
   `__SET__` stands for the stored one; the base URL normalised and
@@ -3454,8 +3457,8 @@ message rather than `terminated`, as the streamed read already did; the
 recording caught it.
 
 **The oracle — `core/scripts/extract-ai-routes-cases.mjs`.** Runs the
-four REAL route handlers over 123 requests built as the browser sends
-them (27 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
+four REAL route handlers over 127 requests built as the browser sends
+them (31 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
 provider replies canned in the documented formats, a frozen clock that
 each awaited fetch moves on, counted ids and nonces, and Save Page Now
 held until the response is complete. Recorded per case: the response
@@ -3486,6 +3489,12 @@ redirect; and regenerate refused, summarised, fetched, both, streamed (a
 summary, a failed fetch, a capture and its summary, a chunked summary,
 two timeouts) and failing where the run marker is refused, whole and
 streamed.
+
+Four cases cover the scrape throttle, on a policy fetched ten minutes
+ago: a `bypassThrottle` that is not the boolean `true` keeps it; the AI
+Policy tab's rescrape passes it, answered whole, and so does its
+rescrape and summary, streamed; and the kill-switch refuses a fetch
+that bypasses it.
 
 **The live gate.** `scripts/parity/ai-probes.mjs`, under `--mutate`,
 starts a fake provider on loopback that answers the OpenAI-compatible
