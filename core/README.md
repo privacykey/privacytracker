@@ -1220,7 +1220,10 @@ arbitrary JSON details (including JavaScript number precision and key order).
 Notifications limit to 30 rows before applying the four resolved type flags,
 include synthetic rows, respect quiet-hours deferral, and count all eligible
 unread rows. Their malformed-JSON error path matches Next's empty HTTP 500.
-Preferences use the same resolver and legacy stored-boolean fallback.
+Preferences answer the four resolved flags, then the seven camelCase types
+Settings and the bell read: the legacy blob over the defaults, with label
+changes and policy updates taken from their flags. They fall back to the
+legacy stored booleans alone when the resolver throws.
 
 User tasks derive completion from existing profile, verdict, visit, history,
 sync-schedule and device-resync facts. Focus/workflow inclusion, opt-in
@@ -1820,8 +1823,10 @@ API key; a masked webhook value round-trips untouched, and `configured`
 with nothing stored is an invalid URL. The desktop route applies both
 the short and the legacy key when a body carries both, and skips a value
 it will not store rather than refusing. `/api/notification-prefs`
-projects four booleans onto flag overrides and, when the resolver throws
-on a garbage audience, answers from the legacy blob instead. The focus
+projects four booleans onto flag overrides, reading `labelChanges` and
+`policyUpdates` (what Settings sends) when the snake_case key is not a
+boolean, and, when the resolver throws on a garbage audience, answers
+from the legacy blob instead. The focus
 write is one transaction of seven rows; the profile and layout writes
 record an activity row only across a preset boundary, with the previous
 state read before the write. The override clear with `?surface=` (empty)

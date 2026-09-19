@@ -1332,6 +1332,61 @@ for (const [route, field] of [
   await run("migration-flow rate limited", { route, method, repeat: 61 });
 }
 
+// ── /api/notification-prefs: the camelCase keys Settings sends ───────
+// Appended last: each case's forwarded address comes from a global
+// counter, so a case added up in the route's own block would shift every
+// later case.
+{
+  const route = "/api/notification-prefs";
+  const method = "PUT";
+  await run("notification-prefs camelCase turns policy updates on", {
+    route,
+    method,
+    json: { prefs: { policyUpdates: true } },
+  });
+  await run("notification-prefs Settings full map", {
+    route,
+    method,
+    setup: [
+      override("flag.notifications.types.accessibility_changes", "off"),
+      setting("notification_prefs", '{"versionUpdates":true}'),
+    ],
+    json: {
+      prefs: {
+        labelChanges: false,
+        profileMismatch: true,
+        policyUpdates: true,
+        versionUpdates: false,
+        importCompleted: true,
+        manualAppsPrompt: true,
+        aiTimeout: false,
+      },
+    },
+  });
+  await run("notification-prefs snake_case wins over camelCase", {
+    route,
+    method,
+    json: {
+      prefs: {
+        policyUpdates: true,
+        policy_updates: false,
+        labelChanges: false,
+        label_changes: true,
+        new_privacy_types: true,
+      },
+    },
+  });
+  await run("notification-prefs non-boolean camelCase clears the flag", {
+    route,
+    method,
+    setup: [
+      override("flag.notifications.types.policy_updates", "on"),
+      override("flag.notifications.types.label_changes", "off"),
+    ],
+    json: { prefs: { policyUpdates: "true", labelChanges: null } },
+  });
+}
+
 writeFileSync(
   path.join(
     path.dirname(new URL(import.meta.url).pathname),
