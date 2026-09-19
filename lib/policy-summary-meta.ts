@@ -33,18 +33,22 @@ export type PolicyAnalysisStatus = (typeof POLICY_ANALYSIS_STATUSES)[number];
 
 /**
  * Whether the summarise phase will summarise an analysis from the text
- * stored on it: a clean capture with no summary of its own, or, on a
- * forced run (every run the AI Policy tab starts is one), a capture
- * already summarised. A clean capture without a summary is one waiting for
- * it ('source_ready'), or one whose summary run found no AI provider
- * ('needs_ai_config') or failed ('analysis_error'). Only the summarise
- * phase writes those two, over a capture this rule accepted, and any later
- * fetch replaces them, so their text is still the latest clean capture.
- * `summariseStoredPolicy` declines everything else and returns the
- * analysis unchanged, and the tab's Summarise button reads this too, so it
- * is never offered for a run the server will decline. After a failed or
- * unusable fetch the stored text is an earlier capture, not the current
- * policy, and an audit-bundle import holds only an excerpt of it.
+ * stored on it: a clean capture whose summary is owed, or, on a forced
+ * run (every run the AI Policy tab starts is one), a capture already
+ * summarised. A summary is owed, forced or not, to a capture waiting for
+ * one ('source_ready') and to one whose last summary run found no AI
+ * provider ('needs_ai_config') or failed ('analysis_error'). A failed run
+ * keeps the summary it was replacing, so an 'analysis_error' capture may
+ * carry one, but its status still records a run that made no summary, and
+ * declining it would log that failure again for a run that made no call.
+ * Only the summarise phase writes those two, over a capture this rule
+ * accepted, and any later fetch replaces them, so their text is still the
+ * latest clean capture. `summariseStoredPolicy` declines everything else
+ * and returns the analysis unchanged, and the tab's Summarise button reads
+ * this too, so it is never offered for a run the server will decline.
+ * After a failed or unusable fetch the stored text is an earlier capture,
+ * not the current policy, and an audit-bundle import holds only an excerpt
+ * of it.
  */
 export function canSummariseStoredPolicy(analysis: {
   force: boolean;
