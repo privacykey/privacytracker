@@ -2975,10 +2975,10 @@ start a fetch after a scrape or an import. Four batches:
    notification; `GET /api/policy/status/[appId]`, `/version/[id]`,
    `/version/[id]/diff`, the manual-app policy version, and
    `POST /api/manual-apps/[id]/scrape`.
-3. **The summariser**, in two parts. **3a, the engine (this batch):** the
-   prompts, chunking, the OpenAI, Anthropic and custom providers, the
-   timeouts and their notification, the AI debug log, the sample summary
-   and the prompt preview, with no routes. **3b, the routes:**
+3. **The summariser**, in two parts. **3a, the engine:** the prompts,
+   chunking, the OpenAI, Anthropic and custom providers, the timeouts and
+   their notification, the AI debug log, the sample summary and the
+   prompt preview, with no routes. **3b, the routes (this batch):**
    `POST /api/policy/regenerate`, `/api/ai/policy-sample`, `/api/ai/test`
    and `/api/ai/models`, with a loopback fake provider for the live gate.
 4. **The bulk runner, its resume and the triggers.** `runBulkPolicySync`,
@@ -3257,8 +3257,8 @@ direct limit in one call (40,000 characters, or 8,000 for a model that
 needs chunks) and otherwise cuts it into chunks, stores each chunk's
 notes the moment they arrive, reuses them when a retried run finds them
 matching the text and the chunk count, and merges them. The sample
-summary and the prompt preview, which batch 3b's routes serve, are here
-too.
+summary, which batch 3b's sample route serves, is here too, and so is
+the prompt preview, which Node exports but no route calls.
 
 `core/src/policy/ai.rs` is `lib/ai-config.ts`: the providers, their
 defaults, which models need chunks, the per-phase timeouts with their
@@ -3367,3 +3367,128 @@ provider reply of the documented shapes.
 
 Rust suite: 266 pass (259 + 7 new: the replay, and unit tests of the
 configuration, the prompts, the stream decoder and the frame reader).
+
+### Batch 3b — the AI routes (+4 handlers)
+
+`core/src/server/routes_ai.rs` routes what 3a built, with the two
+model-list routes that sit beside it:
+
+- `POST /api/policy/regenerate`: the ten-a-minute limit with its
+  `Retry-After`; the body read inside the route's `try`, so an empty,
+  unparseable or oversized body is a 500 carrying the reader's message,
+  with a failure audit row; the app id (one to twenty digits once
+  trimmed); the phase (`fetch`, `summarise`, and anything else as
+  `all`); the scraping kill-switch refusing any phase that fetches; the
+  app and its policy link; then `syncPrivacyPolicyAnalysis` with
+  `forceResummarise`. Answered whole with the analysis, or, when `stream`
+  is the boolean `true`, as NDJSON: a line for each phase record the run
+  logger opens, closes or logs, then `done` with the analysis or `error`
+  with the message, each with its audit row. On the server the streamed
+  run is spawned off the request with an owned accessor, id source,
+  fetcher and clock, and its lines go out as they come. A client that
+  goes away does not stop the run, as in Node.
+- `POST /api/ai/policy-sample`: six a minute; the provider; the model
+  (trimmed, at most 200 UTF-16 units); the key, where Settings' mask
+  `__SET__` stands for the stored one; the base URL normalised and
+  checked with loopback allowed and a metadata address never; then 3a's
+  sample summary, an activity row either way, and a 502 carrying a
+  failure in friendlier words.
+- `POST /api/ai/test` and `POST /api/ai/models`: ten a minute, then the
+  admin token wherever one is needed, since both fetch a URL the caller
+  supplies, each refusal leaving an audit row. The test fetches the
+  provider's model list (Anthropic's `/v1/models?limit=1`) and reports
+  reachability, the meaning of the status and how many models are
+  listed, never the endpoint's body. The model list keeps OpenAI's chat
+  models, pages through Anthropic's list (five pages at most, while the
+  cursor moves, the query rewritten as `URLSearchParams` rewrites it),
+  and for a custom endpoint falls back to Ollama's own tag list when the
+  OpenAI-compatible one fails or is empty. Neither follows a redirect.
+
+The run logger gained its phase stream: `PolicyPhaseStream.emit` is a
+sink told of each record as it stands when it is opened, closed or
+logged, and `sync_policy_analysis_streamed` threads it through the run.
+The transport now reports a body read that times out with the timeout's
+message rather than `terminated`, as the streamed read already did; the
+recording caught it.
+
+**The oracle — `core/scripts/extract-ai-routes-cases.mjs`.** Runs the
+four REAL route handlers over 123 requests built as the browser sends
+them (27 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
+provider replies canned in the documented formats, a frozen clock that
+each awaited fetch moves on, counted ids and nonces, and Save Page Now
+held until the response is complete. Recorded per case: the response
+as it went over the wire (status, Content-Type, Retry-After,
+Cache-Control and the body text, or the throw Next answers with a bare
+500), every raw fetch, every write, the writes that land after the
+response, and nine tables. `core/src/server/routes_ai_tests.rs` replays
+all of them through `precheck` and `respond` as the axum wrapper calls
+them. A streamed regenerate runs in place there, since a replay's
+accessor cannot be detached, and its lines are the body. CI regenerates
+the fixture and fails on drift ("AI routes oracle is current").
+
+The cases cover every refusal in each route's own words and order (body
+errors, a null body, the limits, the admin token and its order against
+the limit, providers, keys and the mask, a model's length in UTF-16
+units, base URLs blocked, unparseable, too long or carrying
+credentials); the connection test's answers (each status, a redirect
+reported rather than followed, the singular, a reply that is not JSON or
+holds no list, a timeout, a network failure, a body cut off or stalled,
+a declared and a real reply over the cap, base URLs with and without a
+scheme, a `/v1`, an upper-case `/V1` or a path); the model lists
+(OpenAI's filter over twenty ids, an error status, a page that is not
+JSON, Anthropic's paging and its three stops, a query-string base URL
+and an odd cursor encoded as `URLSearchParams` encodes it, the custom
+fallbacks); the sample summary on each provider with its activity rows,
+failures, two timeouts with their notification, a network failure and a
+redirect; and regenerate refused, summarised, fetched, both, streamed (a
+summary, a failed fetch, a capture and its summary, a chunked summary,
+two timeouts) and failing where the run marker is refused, whole and
+streamed.
+
+**The live gate.** `scripts/parity/ai-probes.mjs`, under `--mutate`,
+starts a fake provider on loopback that answers the OpenAI-compatible
+model list, Ollama's tag list and a streamed chat completion, points
+both servers at it, and sends each request to Node and then to the
+core, so its log says which server asked for what. It compares, byte for
+byte with only clocks masked, the connection test (custom and
+Anthropic), the model lists (custom, OpenAI's filter and the Ollama
+fallback), the sample summary, and regenerate's summarise phase for a
+new policy-fixture app, whole and streamed, where the core's stream is
+the spawned run the replay cannot reach. It compares what each server
+sent the provider too, prompts included, once the one random part, the
+nonce, is masked. The bundle probe's imports mark that app's analysis as
+an imported excerpt, which neither server will summarise, so the probe
+first writes the row back on both sides, as the operations fixture
+primes its running analyses. The first run caught exactly that: both
+servers skipped the summary identically, which only the stream check's
+count of phase lines noticed, so the probe now also checks that the
+provider was asked.
+
+**Node's behaviour, kept.** The regenerate route reads its body inside
+its `try`, so a body error is a 500 carrying the reader's message where
+other routes give a 400, 413 or 408; its `stream` flag must be the
+boolean `true`; its audit rows carry the id it trimmed while the run
+takes the app's own. The connection test and the model list word the
+same failures differently ("Hostname not found — check the base URL."
+against "Hostname not found."). The model list reads any failure that
+mentions a timeout as one, a JSON parse error quoting the body included.
+A custom endpoint's list failures are never reported: an empty list is
+the answer. And the streamed response's `Cache-Control: no-store,
+no-transform` reaches the browser as the gate's `no-store`, on both
+servers.
+
+**Negative controls, predicted before running.** OpenAI's realtime
+models let through: exactly the filter case. A numeric cursor never
+equal to itself: exactly the numeric-cursor case, which pages on. The
+logger not streaming the record it closes: exactly the five streamed
+runs that log phases. The admin token checked before the limit: exactly
+the case that pins their order. Live, the core's spawned stream dropping
+its phase lines failed exactly the probe's stream check, which the
+replay cannot see. Source restored byte for byte after each, fixed tree
+green.
+
+**Divergences, chosen.** As in 3a, the chat-model filter lowercases with
+Rust's rules, which differ from `toLowerCase` only in special casings no
+model id uses.
+
+Rust suite: 267 pass (266 + the replay).

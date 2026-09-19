@@ -1786,22 +1786,22 @@ export const QUARANTINE = [
   {
     route: "/api/ai/test",
     method: "POST",
-    why: "opens a connection to the configured AI provider",
+    why: "opens a connection to the configured AI provider; probeAiRoutes runs it on both against a loopback fake provider, the AI-routes oracle the rest",
   },
   {
     route: "/api/ai/models",
     method: "POST",
-    why: "lists models from the configured AI provider",
+    why: "lists models from the configured AI provider; probeAiRoutes runs it on both against a loopback fake provider, the AI-routes oracle the rest",
   },
   {
     route: "/api/ai/policy-sample",
     method: "POST",
-    why: "runs a live completion against the AI provider",
+    why: "runs a live completion against the AI provider; probeAiRoutes runs it on both against a loopback fake provider, the AI-routes oracle the rest",
   },
   {
     route: "/api/policy/regenerate",
     method: "POST",
-    why: "re-fetches policy text and calls the AI provider",
+    why: "re-fetches policy text and calls the AI provider; probeAiRoutes runs its summarise phase on both, whole and streamed, against a loopback fake provider, the AI-routes oracle the fetch",
   },
   {
     route: "/api/policy/sync-all",

@@ -76,6 +76,9 @@ mod preview;
 mod ratelimit;
 mod review;
 mod routes;
+mod routes_ai;
+#[cfg(test)]
+mod routes_ai_tests;
 mod routes_app;
 mod routes_apps;
 mod routes_content;
@@ -643,6 +646,17 @@ pub fn app(state: AppState) -> Router {
             get(routes_policy::manual_version),
         )
         .route("/api/policy/status/{app_id}", get(routes_policy::status))
+        // Phase 5, batch 3b: the AI routes.
+        .route(
+            "/api/policy/regenerate",
+            post(routes_writes::policy_regenerate_post),
+        )
+        .route(
+            "/api/ai/policy-sample",
+            post(routes_writes::ai_policy_sample_post),
+        )
+        .route("/api/ai/test", post(routes_writes::ai_test_post))
+        .route("/api/ai/models", post(routes_writes::ai_models_post))
         .route("/api/policy/version/{id}", get(routes_policy::version))
         .route(
             "/api/policy/version/{id}/diff",
