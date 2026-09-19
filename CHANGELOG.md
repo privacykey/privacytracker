@@ -46,6 +46,15 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- "Install & restart" in the desktop app's update banner now restarts into
+  the new version. The update installed, but the restart after it was
+  refused ("process.restart not allowed. Plugin not found") because the
+  desktop app was built without Tauri's process plugin, so the banner said
+  "Install failed" and offered a manual download of the version that had
+  just been installed. The plugin is now included, allowed to restart the
+  app and nothing else. If a restart ever fails after an update installs,
+  the banner now says the update is installed and asks you to quit and
+  reopen privacytracker to finish.
 - A notification webhook set to "Each change" now posts App Store changes.
   When a sync found an app's privacy labels, accessibility labels or age
   rating changed, it wrote the bell notification but posted nothing: only
