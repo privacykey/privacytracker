@@ -180,8 +180,11 @@ test("the AI Policy tab's rescrape passes the throttle", async () => {
 
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.ok(fetchedUrls.includes(POLICY_URL), fetchedUrls.join(", "));
-  assert.ok(!fetchedUrls.includes(OPENAI_URL));
+  assert.ok(
+    fetchedUrls.some((url) => url === POLICY_URL),
+    fetchedUrls.join(", ")
+  );
+  assert.ok(!fetchedUrls.some((url) => url === OPENAI_URL));
   // The route forces a new summary, so the fresh capture waits for one and
   // the summary it replaces becomes the previous one.
   assert.equal(body.analysis?.status, "source_ready");
@@ -197,8 +200,14 @@ test("the AI Policy tab's rescrape and summary passes the throttle", async () =>
 
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.ok(fetchedUrls.includes(POLICY_URL), fetchedUrls.join(", "));
-  assert.ok(fetchedUrls.includes(OPENAI_URL), fetchedUrls.join(", "));
+  assert.ok(
+    fetchedUrls.some((url) => url === POLICY_URL),
+    fetchedUrls.join(", ")
+  );
+  assert.ok(
+    fetchedUrls.some((url) => url === OPENAI_URL),
+    fetchedUrls.join(", ")
+  );
   assert.equal(body.analysis?.status, "ready");
   assert.equal(body.analysis?.summary?.overview, NEW_SUMMARY.overview);
   const stored = storedRow();
