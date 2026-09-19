@@ -65,7 +65,7 @@ pub(super) struct Notification {
 /// What the seed route hands the fan-out: `fireWebhookIfConfigured`'s
 /// two arguments, reduced to the headline it makes of them.
 #[derive(Debug, Clone)]
-pub(super) struct Immediate {
+pub(crate) struct Immediate {
     pub app_name: String,
     pub headline: String,
 }

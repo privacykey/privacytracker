@@ -411,7 +411,9 @@ pub(crate) async fn run_bulk_sync(
                 let _ = duration_ms;
                 Ok::<(), String>(())
             })?;
-            // `schedulePostAppUpdatePolicyFetch("sync")` is Phase 5.
+            if state.totals.succeeded > 0 {
+                super::policy_triggers::schedule("sync");
+            }
             Ok(RunResult {
                 synced: state.totals.succeeded,
                 changes: state.totals.changes,
@@ -826,6 +828,19 @@ pub(crate) async fn resume_app_store_sync(
 pub(crate) fn start_background(state: AppState) {
     let desktop = std::env::var("PRIVACYTRACKER_RUNTIME").is_ok_and(|v| v == "desktop");
     boot(&mut state.db_access(), Live.now(), desktop);
+
+    // What the deferred policy fetch's timer runs with.
+    let conn = state.conn.clone();
+    super::policy_triggers::install(Box::new(move || super::policy_triggers::Handles {
+        db: Box::new(crate::scrape::persist::Shared {
+            conn: conn.clone(),
+            log: None,
+            on_wait: Some(super::diag::record_lock_wait),
+        }),
+        fetcher: Arc::new(PublicHttp),
+        ids: Box::new(RandomIds),
+        clock: Arc::new(Live),
+    }));
 
     let wayback_state = state.clone();
     tokio::spawn(async move {

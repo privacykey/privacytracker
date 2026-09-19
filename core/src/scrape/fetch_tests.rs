@@ -223,12 +223,14 @@ fn fetch_layer_matches_node_calls_stream_rows_and_result() {
                     &canned,
                     &urls,
                     batch["resync"].as_bool().unwrap_or(false),
+                    false,
                     batch["options"]["trigger"].as_str(),
                     batch["options"]["stopOnRateLimit"]
                         .as_bool()
                         .unwrap_or(true),
                     now,
                     &mut ids,
+                    &mut vec![],
                 )
                 .await;
                 json!({"ok": true, "results": results})

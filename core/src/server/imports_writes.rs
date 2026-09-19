@@ -26,10 +26,11 @@
 //!   * **`total` is whatever number the creator sent**, stored as-is and
 //!     read back as-is (`2.5` stays `2.5`), so counters are JS numbers,
 //!     not integers, wherever Node arithmetic touches them.
-//!   * **The deferred policy fetch is a no-op.** Node arms a two-second
-//!     timer that starts a policy-source run when nothing else holds the
-//!     mutex; that run is Phase 5, and the oracle holds the mutex so the
-//!     timer never fires. The hook stays so the call sites match.
+//!   * **The deferred policy fetch is only queued here.** Node arms a
+//!     two-second timer that starts a policy-source run when nothing else
+//!     holds the mutex (`policy_triggers.rs`, Phase 5 batch 4b); this
+//!     oracle holds the mutex so Node's timer never fires, and a replay
+//!     arms none.
 #![allow(clippy::result_large_err)] // `Err` is the response the route returns.
 use super::{
     activity_log::{record_activity, record_activity_named},
@@ -280,10 +281,6 @@ pub(super) fn transaction<'a, 'b, T>(
         }
     }
 }
-
-/// `schedulePostAppUpdatePolicyFetch`: the deferred policy-source run is
-/// Phase 5; nothing is armed here.
-fn schedule_post_app_update_policy_fetch(_reason: &str) {}
 
 // ── lib/imports.ts ───────────────────────────────────────────────────
 
@@ -803,7 +800,7 @@ fn complete_import(cx: &mut Cx, import_id: &str) -> Result<Option<Value>, String
             super::diag::log_warn(format!("[imports] completion notification failed: {e}"));
         }
         if imported > 0 {
-            schedule_post_app_update_policy_fetch("import");
+            super::policy_triggers::schedule("import");
         }
     }
     Ok(after)
@@ -1922,11 +1919,24 @@ async fn scrape(
     let resync = prop(&body, "resync") == Some(&json!(true));
     let summarize_policies = prop(&body, "summarizePolicies") == Some(&json!(true));
     let trigger = str_prop(&body, "trigger").filter(|t| SCRAPE_TRIGGERS.contains(t));
-    let results = scrape_initial_urls(db, fetcher, &cleaned, resync, trigger, true, now, ids).await;
-    // `summarizePolicies` is the Phase 5 policy fetch; ignored here.
+    let mut follow_ups = vec![];
+    let results = scrape_initial_urls(
+        db,
+        fetcher,
+        &cleaned,
+        resync,
+        summarize_policies,
+        trigger,
+        true,
+        now,
+        ids,
+        &mut follow_ups,
+    )
+    .await;
     if !summarize_policies && results.iter().any(|r| r["status"] == "success") {
-        schedule_post_app_update_policy_fetch(if resync { "sync" } else { "import" });
+        super::policy_triggers::schedule(if resync { "sync" } else { "import" });
     }
+    super::policy_triggers::finish_later(db, fetcher, now, follow_ups).await;
     json_ok(&json!({ "results": results }))
 }
 

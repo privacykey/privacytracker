@@ -327,22 +327,38 @@ pub(crate) async fn fetch_and_parse_app(
 /// `scrapeInitialUrls`: each URL in turn; a rate limit either stops the
 /// batch (the rest are reported as queued) or, when told to continue, is
 /// recorded and the loop carries on — into the cooldown it just started.
+/// With `summarize_policies`, each app's policy goes through the policy
+/// pipeline right after its scrape, before the next URL, as
+/// `fetchAndParseApp(url, resync, true)` runs it; what those runs leave to
+/// finish is collected in `follow_ups`.
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn scrape_initial_urls(
     db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
     urls: &[String],
     resync: bool,
+    summarize_policies: bool,
     trigger: Option<&str>,
     stop_on_rate_limit: bool,
     now: i64,
     ids: &mut dyn Ids,
+    follow_ups: &mut Vec<crate::server::policy_triggers::FollowUps>,
 ) -> Vec<Value> {
     let trigger = trigger.unwrap_or(if resync { "manual" } else { "import" });
     let mut results = vec![];
     for url in urls {
         match fetch_and_parse_app(db, fetcher, url, resync, Some(trigger), now, ids).await {
-            Ok(outcome) => results.push(outcome.to_json()),
+            Ok(outcome) => {
+                if summarize_policies {
+                    follow_ups.push(
+                        crate::server::policy_triggers::summarize_after_scrape(
+                            db, ids, fetcher, now, &outcome,
+                        )
+                        .await,
+                    );
+                }
+                results.push(outcome.to_json());
+            }
             Err(error) => match error.retry_after_ms {
                 Some(retry_after_ms) => {
                     results.push(json!({
