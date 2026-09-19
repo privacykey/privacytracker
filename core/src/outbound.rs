@@ -211,6 +211,15 @@ pub struct Request {
     /// refused together below.
     #[serde(default)]
     pub body: Option<String>,
+    /// `allowPrivateHosts`: loopback and private hosts pass (a self-hosted
+    /// AI endpoint); a metadata host never does, whether named, written as
+    /// an address or resolved to one.
+    #[serde(default)]
+    pub allow_private_hosts: bool,
+    /// `redirect: "error"`: a redirect status is a network error, as undici
+    /// makes it, whatever the Location says. The AI calls ask for this.
+    #[serde(default)]
+    pub reject_redirects: bool,
 }
 fn default_max_url_length() -> usize {
     2048
@@ -235,6 +244,8 @@ impl Request {
             read_body: true,
             method: default_method(),
             body: None,
+            allow_private_hosts: false,
+            reject_redirects: false,
         }
     }
     /// `safeFetch` of any public http(s) URL with no host allowlist: the
@@ -262,6 +273,54 @@ impl Reply {
             .iter()
             .find(|(k, _)| k == name)
             .map(|(_, v)| v.as_str())
+    }
+}
+
+/// The `DOMException` a fired `AbortSignal.timeout` rejects with.
+pub const TIMEOUT_MESSAGE: &str = "The operation was aborted due to timeout";
+
+/// What `safeFetchStream` hands back: the response head, and a body the
+/// caller reads — decoded, uncapped — under the deadline that bounded the
+/// request, as `AbortSignal.timeout` keeps running while undici's body
+/// stream is read.
+pub struct Streamed {
+    pub status: u16,
+    /// The response's headers, names lowercased.
+    pub headers: Vec<(String, String)>,
+    pub final_url: String,
+    pub body: Pin<Box<dyn AsyncBufRead + Send>>,
+    pub deadline: tokio::time::Instant,
+}
+impl Streamed {
+    pub fn ok(&self) -> bool {
+        (200..300).contains(&self.status)
+    }
+    /// `reader.read()`: the next chunk as the transport delivered it, empty
+    /// at the end, or what undici's body stream rejects with — the
+    /// timeout's `DOMException`, or `terminated` for a connection lost
+    /// mid-body.
+    pub async fn next_chunk(&mut self) -> Result<Vec<u8>, String> {
+        let body = &mut self.body;
+        let read = async move {
+            let chunk = body
+                .as_mut()
+                .fill_buf()
+                .await
+                .map_err(|e| read_error(&e))?
+                .to_vec();
+            body.as_mut().consume(chunk.len());
+            Ok::<_, String>(chunk)
+        };
+        tokio::time::timeout_at(self.deadline, read)
+            .await
+            .map_err(|_| TIMEOUT_MESSAGE.to_string())?
+    }
+}
+fn read_error(e: &std::io::Error) -> String {
+    if e.kind() == std::io::ErrorKind::TimedOut {
+        TIMEOUT_MESSAGE.to_string()
+    } else {
+        "terminated".to_string()
     }
 }
 
@@ -311,9 +370,21 @@ impl Hop for Client {
 pub async fn fetch_via(hop: &dyn Hop, request: Request) -> Result<Reply, String> {
     bounded(hop, request, false).await
 }
+/// `safeFetchStream` over any hop, without the DNS preflight: the replay's
+/// entry.
+pub async fn stream_via(hop: &dyn Hop, request: Request) -> Result<Streamed, String> {
+    streamed(hop, request, false).await
+}
 pub type FetchFuture<'a> = Pin<Box<dyn Future<Output = Result<Reply, String>> + Send + 'a>>;
+pub type StreamFuture<'a> = Pin<Box<dyn Future<Output = Result<Streamed, String>> + Send + 'a>>;
 pub trait Fetcher: Send + Sync {
     fn fetch(&self, request: Request) -> FetchFuture<'_>;
+    /// `safeFetchStream`: one request, no redirect followed, the body left
+    /// to the caller. Only the transports the AI calls use answer it.
+    fn fetch_stream(&self, request: Request) -> StreamFuture<'_> {
+        drop(request);
+        Box::pin(async { Err("fetch failed".to_string()) })
+    }
     /// An owned handle for a run spawned off the request, when this
     /// fetcher can hand one out.
     fn shared(&self) -> Option<Arc<dyn Fetcher>> {
@@ -340,15 +411,48 @@ impl Resolve for PublicResolver {
         })
     }
 }
-fn builder() -> reqwest::ClientBuilder {
+/// The local-AI connector, `createDispatcher(true)`: every answer is
+/// checked, and only a metadata address is refused.
+#[derive(Debug)]
+struct PrivateResolver;
+impl Resolve for PrivateResolver {
+    fn resolve(&self, name: Name) -> Resolving {
+        Box::pin(async move {
+            let addrs: Vec<_> = tokio::net::lookup_host((name.as_str(), 0)).await?.collect();
+            if addrs.is_empty() || addrs.iter().any(|a| is_metadata(&a.ip().to_string())) {
+                return Err("Blocked URL: DNS resolved to a disallowed address".into());
+            }
+            Ok(Box::new(addrs.into_iter()) as Addrs)
+        })
+    }
+}
+fn builder_with<R: Resolve + 'static>(resolver: Arc<R>) -> reqwest::ClientBuilder {
     Client::builder()
         .redirect(reqwest::redirect::Policy::none())
         .no_proxy()
         .referer(false)
         .connect_timeout(Duration::from_secs(15))
-        .dns_resolver(Arc::new(PublicResolver))
+        .dns_resolver(resolver)
         .pool_max_idle_per_host(1)
         .pool_idle_timeout(Duration::from_secs(30))
+}
+fn builder() -> reqwest::ClientBuilder {
+    builder_with(Arc::new(PublicResolver))
+}
+/// One client per address policy, never a shared pool: a public-only
+/// request must not reuse a socket opened under the local-AI exception.
+fn client(allow_private_hosts: bool) -> &'static Client {
+    static PUBLIC: OnceLock<Client> = OnceLock::new();
+    static PRIVATE: OnceLock<Client> = OnceLock::new();
+    if allow_private_hosts {
+        PRIVATE.get_or_init(|| {
+            builder_with(Arc::new(PrivateResolver))
+                .build()
+                .expect("Rust TLS client")
+        })
+    } else {
+        PUBLIC.get_or_init(|| builder().build().expect("Rust TLS client"))
+    }
 }
 pub struct PublicHttp;
 impl Fetcher for PublicHttp {
@@ -357,9 +461,14 @@ impl Fetcher for PublicHttp {
     }
     fn fetch(&self, request: Request) -> FetchFuture<'_> {
         Box::pin(async move {
-            static CLIENT: OnceLock<Client> = OnceLock::new();
-            let client = CLIENT.get_or_init(|| builder().build().expect("Rust TLS client"));
+            let client = client(request.allow_private_hosts);
             bounded(client as &dyn Hop, request, true).await
+        })
+    }
+    fn fetch_stream(&self, request: Request) -> StreamFuture<'_> {
+        Box::pin(async move {
+            let client = client(request.allow_private_hosts);
+            streamed(client as &dyn Hop, request, true).await
         })
     }
 }
@@ -378,20 +487,42 @@ async fn preflight(u: &Url) -> Result<(), String> {
         "Blocked URL: host {host} did not resolve to a public address"
     ))
 }
-async fn bounded(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Reply, String> {
-    tokio::time::timeout(
-        Duration::from_millis(request.timeout_ms),
-        perform(hop, request, check_dns),
-    )
-    .await
-    .map_err(|_| "The operation was aborted due to timeout".to_string())?
+/// `hostResolvesToMetadata`, the preflight under `allowPrivateHosts`: an
+/// address or a named metadata host was decided by the validator, and a
+/// lookup that fails is left for the connection to report.
+async fn preflight_private(u: &Url) -> Result<(), String> {
+    let host = u.host_str().unwrap();
+    let plain = bare(host);
+    if is_metadata(&plain) {
+        return Err(format!(
+            "Blocked URL: host {host} resolves to a cloud-metadata endpoint"
+        ));
+    }
+    if plain.parse::<IpAddr>().is_ok() {
+        return Ok(());
+    }
+    if let Ok(addrs) = tokio::net::lookup_host((host, 0)).await {
+        if addrs.into_iter().any(|a| is_metadata(&a.ip().to_string())) {
+            return Err(format!(
+                "Blocked URL: host {host} resolves to a cloud-metadata endpoint"
+            ));
+        }
+    }
+    Ok(())
 }
-async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Reply, String> {
-    let hosts: Vec<_> = request.allowed_hosts.iter().map(String::as_str).collect();
-    let mut url = validate(&request.url, &hosts, request.max_url_length)
-        .map_err(|e| format!("Blocked URL: {} — {}", e.error, e.detail))?;
+async fn check_host(url: &Url, allow_private_hosts: bool) -> Result<(), String> {
+    if allow_private_hosts {
+        preflight_private(url).await
+    } else {
+        preflight(url).await
+    }
+}
+fn blocked(e: ValidationError) -> String {
+    format!("Blocked URL: {} — {}", e.error, e.detail)
+}
+fn outgoing_headers(pairs: &[(String, String)]) -> Result<HeaderMap, String> {
     let mut headers = HeaderMap::new();
-    for (k, v) in request.headers {
+    for (k, v) in pairs {
         headers.insert(
             reqwest::header::HeaderName::from_bytes(k.as_bytes()).map_err(|_| "fetch failed")?,
             v.parse().map_err(|_| "fetch failed")?,
@@ -405,6 +536,117 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
         .or_insert(reqwest::header::HeaderValue::from_static(
             "gzip, deflate, br",
         ));
+    Ok(headers)
+}
+fn header_pairs(headers: &HeaderMap) -> Vec<(String, String)> {
+    headers
+        .iter()
+        .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
+        .collect()
+}
+/// Undo each Content-Encoding, last applied first, as undici's fetch does.
+/// Content-Length is read by the caller before this: reqwest's own decoder
+/// would drop it.
+async fn decode(
+    mut reader: Pin<Box<dyn AsyncBufRead + Send>>,
+    headers: &HeaderMap,
+) -> Result<Pin<Box<dyn AsyncBufRead + Send>>, String> {
+    use async_compression::tokio::bufread::{
+        BrotliDecoder, DeflateDecoder, GzipDecoder, ZlibDecoder,
+    };
+    let encoding = headers
+        .get("content-encoding")
+        .and_then(|h| h.to_str().ok())
+        .unwrap_or("")
+        .to_string();
+    for coding in encoding.split(',').rev().map(str::trim) {
+        reader = match coding {
+            "gzip" | "x-gzip" => {
+                let mut d = GzipDecoder::new(reader);
+                d.multiple_members(true);
+                Box::pin(BufReader::new(d))
+            }
+            "br" => Box::pin(BufReader::new(BrotliDecoder::new(reader))),
+            "deflate" => {
+                let zlib = reader
+                    .as_mut()
+                    .fill_buf()
+                    .await
+                    .map_err(|_| "terminated")?
+                    .first()
+                    .is_some_and(|b| b & 15 == 8);
+                if zlib {
+                    Box::pin(BufReader::new(ZlibDecoder::new(reader)))
+                } else {
+                    Box::pin(BufReader::new(DeflateDecoder::new(reader)))
+                }
+            }
+            _ => reader,
+        };
+    }
+    Ok(reader)
+}
+/// `safeFetchStream`: the URL policy, one hop, redirects refused or handed
+/// back but never followed, and the decoded body returned unread. The
+/// deadline covers the request here and every read the caller makes.
+async fn streamed(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Streamed, String> {
+    let deadline = tokio::time::Instant::now() + Duration::from_millis(request.timeout_ms);
+    let head = async {
+        let hosts: Vec<_> = request.allowed_hosts.iter().map(String::as_str).collect();
+        let url = validate_with(
+            &request.url,
+            &hosts,
+            request.max_url_length,
+            request.allow_private_hosts,
+        )
+        .map_err(blocked)?;
+        if check_dns {
+            check_host(&url, request.allow_private_hosts).await?;
+        }
+        let headers = outgoing_headers(&request.headers)?;
+        let outgoing = Outgoing {
+            method: request.method.clone(),
+            body: request.body.as_ref().map(|b| b.as_bytes().to_vec()),
+        };
+        let RawReply {
+            status,
+            headers: reply_headers,
+            body,
+        } = hop.hop(url.clone(), headers, outgoing).await?;
+        if request.reject_redirects && [301, 302, 303, 307, 308].contains(&status) {
+            return Err("fetch failed".to_string());
+        }
+        let body = decode(body, &reply_headers).await?;
+        Ok(Streamed {
+            status,
+            headers: header_pairs(&reply_headers),
+            final_url: url.to_string(),
+            body,
+            deadline,
+        })
+    };
+    tokio::time::timeout_at(deadline, head)
+        .await
+        .map_err(|_| TIMEOUT_MESSAGE.to_string())?
+}
+async fn bounded(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Reply, String> {
+    tokio::time::timeout(
+        Duration::from_millis(request.timeout_ms),
+        perform(hop, request, check_dns),
+    )
+    .await
+    .map_err(|_| TIMEOUT_MESSAGE.to_string())?
+}
+async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Reply, String> {
+    let hosts: Vec<_> = request.allowed_hosts.iter().map(String::as_str).collect();
+    let mut url = validate_with(
+        &request.url,
+        &hosts,
+        request.max_url_length,
+        request.allow_private_hosts,
+    )
+    .map_err(blocked)?;
+    let mut headers = outgoing_headers(&request.headers)?;
     let outgoing = Outgoing {
         method: request.method.clone(),
         body: request.body.as_ref().map(|b| b.as_bytes().to_vec()),
@@ -412,7 +654,7 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
     let mut redirects = 0;
     loop {
         if check_dns {
-            preflight(&url).await?;
+            check_host(&url, request.allow_private_hosts).await?;
         }
         let RawReply {
             status,
@@ -431,9 +673,13 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
                 let candidate = url
                     .join(location)
                     .map_err(|_| format!("safeFetch: invalid redirect target: {location}"))?;
-                let next = validate(candidate.as_str(), &hosts, 2048).map_err(|e| {
-                    format!("safeFetch: redirect rejected — {}: {}", e.error, e.detail)
-                })?;
+                let next = validate_with(
+                    candidate.as_str(),
+                    &hosts,
+                    request.max_url_length,
+                    request.allow_private_hosts,
+                )
+                .map_err(|e| format!("safeFetch: redirect rejected — {}: {}", e.error, e.detail))?;
                 if next.origin() != url.origin() {
                     if outgoing.body.is_some() {
                         return Err(
@@ -453,10 +699,7 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
                 final_url: url.to_string(),
                 status,
                 body: Vec::new(),
-                headers: reply_headers
-                    .iter()
-                    .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
-                    .collect(),
+                headers: header_pairs(&reply_headers),
             });
         }
         let declared = reply_headers
@@ -469,41 +712,9 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
                 request.max_bytes
             ));
         }
-        let encoding = reply_headers
-            .get("content-encoding")
-            .and_then(|h| h.to_str().ok())
-            .unwrap_or("")
-            .to_string();
-        // Preserve Content-Length before decompressing; reqwest's automatic
-        // decoder drops it. Cap the decoded stream, including compressed bombs.
-        for coding in encoding.split(',').rev().map(str::trim) {
-            use async_compression::tokio::bufread::{
-                BrotliDecoder, DeflateDecoder, GzipDecoder, ZlibDecoder,
-            };
-            reader = match coding {
-                "gzip" | "x-gzip" => {
-                    let mut d = GzipDecoder::new(reader);
-                    d.multiple_members(true);
-                    Box::pin(BufReader::new(d))
-                }
-                "br" => Box::pin(BufReader::new(BrotliDecoder::new(reader))),
-                "deflate" => {
-                    let zlib = reader
-                        .as_mut()
-                        .fill_buf()
-                        .await
-                        .map_err(|_| "terminated")?
-                        .first()
-                        .is_some_and(|b| b & 15 == 8);
-                    if zlib {
-                        Box::pin(BufReader::new(ZlibDecoder::new(reader)))
-                    } else {
-                        Box::pin(BufReader::new(DeflateDecoder::new(reader)))
-                    }
-                }
-                _ => reader,
-            };
-        }
+        // Content-Length was read above; cap the decoded stream, compressed
+        // bombs included.
+        reader = decode(reader, &reply_headers).await?;
         let mut body = Vec::new();
         reader
             .take(request.max_bytes as u64 + 1)
@@ -520,10 +731,7 @@ async fn perform(hop: &dyn Hop, request: Request, check_dns: bool) -> Result<Rep
             final_url: url.to_string(),
             status,
             body,
-            headers: reply_headers
-                .iter()
-                .map(|(k, v)| (k.as_str().to_string(), v.to_str().unwrap_or("").to_string()))
-                .collect(),
+            headers: header_pairs(&reply_headers),
         });
     }
 }

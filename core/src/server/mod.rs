@@ -65,9 +65,13 @@ mod operations;
 mod operations_tests;
 mod osinfo;
 mod policy;
+mod policy_ai;
 mod policy_store;
 #[cfg(test)]
 mod policy_store_tests;
+mod policy_summary;
+#[cfg(test)]
+mod policy_summary_tests;
 mod preview;
 mod ratelimit;
 mod review;

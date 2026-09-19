@@ -11,7 +11,9 @@
 //! ROUTE cases call the handlers with the case's params and headers and
 //! compare the wire response, the stream and the tables. JSON cases hold
 //! `crate::jsjson` to V8's messages and `JSON.stringify(JSON.parse(s))`.
-use super::policy_store::{run_follow_ups, sync_policy_fetch, PolicyRequest, SyncOptions};
+use super::policy_store::{
+    run_follow_ups, sync_policy_analysis, Phase, PolicyRequest, SyncOptions,
+};
 use super::sync_runner::Clock;
 use crate::{
     outbound::{fetch_via, FetchFuture, Fetcher, Hop, HopFuture, Outgoing, Request},
@@ -251,9 +253,11 @@ fn policy_store_matches_node_calls_streams_rows_and_result() {
         let request = PolicyRequest {
             app_id: req["appId"].as_str().unwrap().to_string(),
             app_name: req["appName"].as_str().unwrap().to_string(),
+            developer: req["developer"].as_str().map(str::to_string),
             policy_url: req["policyUrl"].as_str().map(str::to_string),
         };
         let options = SyncOptions {
+            phase: Phase::Fetch,
             force_resummarise: case["options"]["forceResummarise"] == true,
             bypass_throttle: case["options"]["bypassThrottle"] == true,
         };
@@ -268,7 +272,7 @@ fn policy_store_matches_node_calls_streams_rows_and_result() {
                 log: Some(&mut stream),
                 on_wait: None,
             };
-            rt.block_on(sync_policy_fetch(
+            rt.block_on(sync_policy_analysis(
                 &mut db, &mut ids, &fetcher, &ticking, &request, options,
             ))
         };

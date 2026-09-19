@@ -29,6 +29,12 @@ impl Ids for CountingIds {
         self.next += 1;
         Ok(format!("{prefix}{:0width$}", self.next, width = bytes * 2))
     }
+    // The summariser oracle's `randomBytes(15)`: the same counter, spelled
+    // as the twenty digits its base64url round-trips to.
+    fn nonce(&mut self) -> String {
+        self.next += 1;
+        format!("{:020}", self.next)
+    }
 }
 
 pub(crate) fn to_sql(v: &Value) -> Sql {

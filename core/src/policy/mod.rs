@@ -1,11 +1,15 @@
 //! Phase 5: the AI policy pipeline — `lib/privacy-policy.ts` and the modules
 //! around it. Batch 1 is the source layer: `fetchPrivacyPolicySource` from
 //! a policy URL to a validated text or a structured failure, gated by
-//! `core/tests/fixtures/policy-source-cases.json`. Nothing here touches the
-//! database; the store, the summariser and the runner follow in later
-//! batches.
+//! `core/tests/fixtures/policy-source-cases.json`. Batch 3a adds what the
+//! summariser needs and nothing that touches the database: the AI
+//! configuration (`ai`) and the prompts, schemas and chunker (`prompts`).
+//! The store and the AI calls live in `server::policy_store` and
+//! `server::policy_ai`.
+pub mod ai;
 pub mod diag;
 pub mod diff;
+pub mod prompts;
 pub mod source;
 pub mod text;
 pub mod url;
