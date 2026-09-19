@@ -453,11 +453,14 @@ mod tests {
     use futures_util::FutureExt;
     use std::sync::{Arc, Mutex};
 
+    /// A request as sent: its method, URL and body.
+    type Sent = (String, String, Option<String>);
+
     /// A shareable transport, as the server's is, whose every request
     /// hangs: it records what it was asked to send and never answers.
     #[derive(Clone, Default)]
     struct Hanging {
-        seen: Arc<Mutex<Vec<(String, String, Option<String>)>>>,
+        seen: Arc<Mutex<Vec<Sent>>>,
     }
 
     impl Fetcher for Hanging {

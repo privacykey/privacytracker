@@ -116,9 +116,6 @@ db.transaction = (fn) => {
   };
 };
 
-// createNotification's webhook fan-out imports this lazily; warm it so the
-// import resolves in the same few ticks in every case.
-await import("../../lib/notification-webhooks.ts");
 const TEST = "/api/ai/test";
 const MODELS = "/api/ai/models";
 const SAMPLE = "/api/ai/policy-sample";

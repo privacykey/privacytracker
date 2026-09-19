@@ -2846,9 +2846,10 @@ through the transport like every other fetch, so a webhook can no more
 reach a private address than a scrape can, redirects not followed so
 the body is delivered once, 64 KiB back at most, ten seconds. The three
 call sites: `postImmediateWebhook` from `createNotification` — whose
-ONE caller is `POST /api/dev/seed-notification`, because a scrape
-inserts its change notification itself and fires nothing, on either
-backend — detached from the response on the server and inline in the
+ONE caller was then `POST /api/dev/seed-notification`, because a scrape
+inserted its change notification itself and fired nothing, on either
+backend (a label change posts it now: see the note closing this batch)
+— detached from the response on the server and inline in the
 replay; `maybePostSummaryWebhook` from the 30-minute tick, a day or a
 week after the last, the fifty newest notifications since, the cursor
 moved on an empty window and on a refused post but not on a failed
@@ -2955,6 +2956,31 @@ aborted", the transport here says why. Two callers racing one check:
 Node hands the second the first's promise; the core has it wait and
 answer from what the first wrote, without the first's error. None of
 the three is reachable from the fixture.
+
+**Later: label changes post the immediate webhook (2026-09-19).** A
+scrape that records changes now fires the fan-out once its commit has
+landed, on both backends; the bell row stays inside the commit, so the
+write stream is unchanged. In Node, `commitScrapedAppToDb` calls
+`fireWebhookIfConfigured`, which now imports `postImmediateWebhook`
+statically: the dynamic import cost twelve microtask ticks, enough for
+`scrapeInitialUrls` to request its next app's page before the POST, an
+order the core could only have copied by firing in the middle of the
+next scrape. In the core, the commit hands back what it owes on
+`Outcome::immediate`, and `scrape::fetch::fire_change_webhook` fires it
+as the committing section closes, in `fetch_and_parse_app`, the import
+queue's drain, retry and change-match, and the bulk sync. `fire_immediate`
+reads the config in place and detaches only the POST whenever the
+fetcher can be shared: the background ticks reach a scrape through
+`Locked`, which cannot be detached, and would otherwise have posted
+inline and waited (dropping the POST, under `now_or_never`). Twenty cases
+are appended across the fetch, imports, runners and seed oracles: the
+POST on every path that scrapes, after its own commit and before the
+next app; quiet hours deferring the bell and not the POST; a summary
+frequency and an unchanged resync posting nothing; a failed POST and a
+refused URL never failing the scrape; a Wayback import that writes a
+changed row and posts nothing. Dropping the fire failed exactly the
+sixteen cases that expect a POST; restoring the old spawn rule failed
+exactly the new unit test.
 
 
 ## Status — Phase 5 (the AI policy pipeline)
