@@ -46,6 +46,16 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- "Summarise" on an app's AI Policy tab now makes a summary after an AI
+  summary failed, and after the policy was fetched before an AI provider
+  was set up. In both cases the stored policy text is from the latest
+  fetch that worked, but Summarise did not summarise it: no summary was
+  made, and the Activity log recorded the earlier failure again ("Summary
+  failed: ...") or "AI not configured", even with a provider set up. The
+  only way to a summary was to fetch the policy again ("Rescrape +
+  summarise" or "Retry analysis"), which is refused while "Disable policy
+  scraping" is on. Summarise now summarises the stored text without
+  fetching it again, so it also works with scraping disabled.
 - Clicking "Summarise" on an app's AI Policy tab after a failed policy
   refresh no longer adds a failure to the Activity log. A failed refresh
   keeps the policy text from the last refresh that worked, and the button
@@ -54,10 +64,9 @@ Going forward, changes are recorded here as they land.
   although nothing had been fetched. The button is now disabled, and asks
   for a rescrape first, whenever the stored text will not be summarised:
   after a failed refresh or one that came back too short or in a format
-  that cannot be read, for an imported policy, and after an AI summary
-  that failed or had no AI provider set up. "Rescrape + summarise" does
-  both in one pass. A Summarise request that still arrives after a failed
-  refresh is logged as "Policy skipped: latest fetch failed".
+  that cannot be read, and for an imported policy. "Rescrape + summarise"
+  does both in one pass. A Summarise request that still arrives after a
+  failed refresh is logged as "Policy skipped: latest fetch failed".
 - Asking for an AI summary of an app whose privacy policy has never been
   fetched no longer shows up as a failure. With no policy text to work
   from, the summarise-only request (`POST /api/policy/regenerate` with

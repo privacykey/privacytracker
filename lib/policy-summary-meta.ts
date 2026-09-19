@@ -33,11 +33,16 @@ export type PolicyAnalysisStatus = (typeof POLICY_ANALYSIS_STATUSES)[number];
 
 /**
  * Whether the summarise phase will summarise an analysis from the text
- * stored on it: a clean capture waiting for its summary or, on a forced
- * run (every run the AI Policy tab starts is one), a capture already
- * summarised. `summariseStoredPolicy` declines everything else and returns
- * the analysis unchanged, and the tab's Summarise button reads this too, so
- * it is never offered for a run the server will decline. After a failed or
+ * stored on it: a clean capture with no summary of its own, or, on a
+ * forced run (every run the AI Policy tab starts is one), a capture
+ * already summarised. A clean capture without a summary is one waiting for
+ * it ('source_ready'), or one whose summary run found no AI provider
+ * ('needs_ai_config') or failed ('analysis_error'). Only the summarise
+ * phase writes those two, over a capture this rule accepted, and any later
+ * fetch replaces them, so their text is still the latest clean capture.
+ * `summariseStoredPolicy` declines everything else and returns the
+ * analysis unchanged, and the tab's Summarise button reads this too, so it
+ * is never offered for a run the server will decline. After a failed or
  * unusable fetch the stored text is an earlier capture, not the current
  * policy, and an audit-bundle import holds only an excerpt of it.
  */
@@ -51,6 +56,8 @@ export function canSummariseStoredPolicy(analysis: {
     analysis.model !== "imported" &&
     analysis.hasSourceText &&
     (analysis.status === "source_ready" ||
+      analysis.status === "needs_ai_config" ||
+      analysis.status === "analysis_error" ||
       (analysis.force && analysis.status === "ready"))
   );
 }
