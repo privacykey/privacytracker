@@ -2978,13 +2978,15 @@ start a fetch after a scrape or an import. Four batches:
 3. **The summariser**, in two parts. **3a, the engine:** the prompts,
    chunking, the OpenAI, Anthropic and custom providers, the timeouts and
    their notification, the AI debug log, the sample summary and the
-   prompt preview, with no routes. **3b, the routes (this batch):**
+   prompt preview, with no routes. **3b, the routes:**
    `POST /api/policy/regenerate`, `/api/ai/policy-sample`, `/api/ai/test`
    and `/api/ai/models`, with a loopback fake provider for the live gate.
-4. **The bulk runner, its resume and the triggers.** `runBulkPolicySync`,
-   `POST` and `DELETE /api/policy/sync-all`, the startup resume, the
-   post-update policy fetch, and `summarizePolicies` on a scrape and an
-   import, which `imports_writes.rs` still ignores.
+4. **The bulk runner, its resume and the triggers**, in two parts. **4a,
+   the runner (this batch):** `runBulkPolicySync`, `POST
+   /api/policy/sync-all` and the 12 s startup resume. **4b, the
+   triggers:** the deferred post-update policy fetch after an import or a
+   sync, and `summarizePolicies` on a scrape and the dev seed, which
+   `imports_writes.rs` and `seed_writes.rs` still skip.
 
 Everything stays inert: no shipping path calls the policy module, and
 `rust-core-inert.test.ts` is unchanged.
@@ -3506,3 +3508,79 @@ Rust's rules, which differ from `toLowerCase` only in special casings no
 model id uses.
 
 Rust suite: 267 pass (266 + the replay).
+
+### Batch 4a — the bulk policy runner and its resume (+1 handler, 1 ticker)
+
+`core/src/server/policy_runner.rs` ports `runBulkPolicySync` with its
+state (`lib/policy-bulk-state.ts`): the queue of every app with a policy
+link, by name; the `policy_bulk_state` blob and the `policy_sync_running`
+lock, persisted before and after each app; each app's
+`syncPrivacyPolicyAnalysis` in the run's phase (`all` forces a fresh
+summary, as `force` does, and `force` also bypasses the throttle); an app
+that has lost its link or gone since the queue was built skipped with the
+reason; the outcome buckets; and the NDJSON frames (`batch-start`,
+`app-start`, each app's `phase` records through batch 3b's run-logger
+sink, `app-done`, `summary`, `error`). A clean run writes its activity
+and audit rows and clears the state and the lock; a failure outside an
+app's own run leaves both for the next boot, as Node's outer catch does.
+
+`POST /api/policy/sync-all` (`runner_writes.rs`) keeps the route's order:
+the four-a-minute limit with its `Retry-After`, the body (every reader
+failure a 400 carrying its message), the kill-switch, a run already under
+way (the lock, or a blob that reads), no apps to sync, the start audit,
+then the run, buffered or streamed. A streamed run is spawned off the
+request on the server. The server arms the 12 s resume beside the Wayback
+and sync ones: nothing to do, the kill-switch dropping the queue, a stale
+lock or a finished queue healed with a notification, or the notification,
+the activity row and the resumed run.
+
+**The oracle — `core/scripts/extract-policy-runner-cases.mjs`.** Runs the
+REAL runner over 33 cases: 18 requests to the route (every refusal, then
+buffered and streamed runs across a fleet with a first capture, a fetch
+error and a throttled app, `force`, the `all` phase with a model and
+without one, and a state write refused mid-run); 6 direct runs as the
+deferred post-update fetch starts them (an automatic fetch, the
+kill-switch skipping what was never stored, no apps, the outer catch, a
+resumed queue naming why it skips, a sync that throws); and 9 runs of the
+resume closure captured from `register()`. Each app goes through the real
+policy pipeline with the network canned and Save Page Now held until the
+run is over. `core/src/server/policy_runner_tests.rs` replays all of them
+and CI regenerates the fixture ("Policy runner oracle is current"). The
+replay passed on its first run. Two cases were then appended: why a run
+skips an app, and a sync that throws, are visible only in frames, which
+no case had recorded.
+
+**The live gate.** `probePolicySyncRoute` in
+`scripts/parity/policy-probes.mjs` holds, on both servers, everything the
+route answers before a run: an unparseable and an empty body, a run
+already under way and the kill-switch (each written into both databases
+for the request and taken out again), and the fifth request in a minute
+refused with a `Retry-After` on both. A run itself would fetch every
+tracked app's developer site, which a parity run must not depend on, so
+it stays with the oracle.
+
+**Node's behaviour, kept, and two bugs filed.** Each bug has its own
+follow-up to fix Node and the core together. A throttled app is never
+counted as throttled: the analysis the store returns carries the log from
+before its own `throttled` line, so the runner's check of the last entry
+fails and the app counts as succeeded, and every summary says 0
+throttled. And a resumed run keeps the blob's original initiator, so
+`state.initiator === "resume"` is never true for a real resume, in this
+runner or the other two: TaskCenter's "Resumed after restart" card and
+the Wayback section's pill never appear, and "(resumed after restart)"
+never reaches the activity log. Also kept: a blob that does not parse is
+left in place when the resume heals a stale lock, since it is not a
+state.
+
+**Negative controls, predicted before running.** The two skip reasons
+swapped: exactly the resumed-queue case. No `attempted` count: exactly
+the fifteen cases that reach an app. The kill-switch checked after the
+stale-lock heal in the resume: predicted the two kill-switch cases, got
+one, because the other has pending work and takes the kill-switch branch
+in either order; only the lock-only case tells the orders apart. The
+outer catch's audit detail without its phase: exactly the three
+refused-state-write cases. Live, the core's "already running" refusal
+reworded failed exactly the probe's check for it. Source restored byte
+for byte after each, fixed tree green.
+
+Rust suite: 268 pass (267 + the replay).
