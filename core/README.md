@@ -4344,3 +4344,92 @@ The route ignoring `?devices=` again, live and in the visual net:
 Source restored byte for byte after each, fixed tree green.
 
 Rust suite: 301 lib tests pass (296 + 5), plus the embed test.
+
+### Batch 4a — the desktop app on this server, behind a feature
+
+The Tauri shell can now serve the app from this crate instead of
+spawning the Node sidecar. It is a cargo feature that is off by default
+(`rust-backend`), so every shipped build still runs Node until the
+cutover release, and CI compiles the shell both ways.
+
+`just tauri-dev-rust` runs it. That needs no `fetch-node-sidecar` and no
+standalone tarball: it builds the frontend and the app serves it.
+
+**The shell's three files.** `backend.rs` is what the rest of the shell
+talks to (where the backend is, how it stops, and `post`, its one way to
+send a mutating request). `sidecar.rs` is the Node implementation,
+compiled unless the feature is on. `embedded.rs` is this one, compiled
+only when it is. Nothing else in the shell knows which it got.
+
+**What the embedded backend does with what the sidecar did:**
+
+- **the same data directory**, resolved once in `backend.rs`, so either
+  build opens what the other wrote;
+- **the environment as a map**, not variables set on this process:
+  setting them inside a running GUI process is unsound, and the server
+  must see exactly what `env_clear()` gave Node — the data directory, a
+  loopback bind, `PRIVACYTRACKER_RUNTIME=desktop`, and no admin token
+  (the desktop relies on the loopback bind, and no token is also what
+  keeps the server from demanding one);
+- **the same `next build` output**, served from where it is staged
+  rather than extracted into the data directory;
+- **three seconds** for requests in flight when the app quits, the grace
+  the sidecar had between SIGTERM and SIGKILL;
+- **no readiness poll**: the listener is bound and the router built
+  before `boot` returns, where the sidecar had to be waited for.
+
+**The port is remembered.** The sidecar takes a fresh random port every
+launch, and a page's origin includes its port, so everything the app
+keeps in local storage — the accessibility quick toggles among them — is
+lost on every relaunch. The embedded backend reuses the last port when it
+is still free. That is the Rust build's alone, as decided.
+
+**Unchanged:** the window, the tray, the menu, the notifications
+watcher, deep links, the updater, the capability and its remote URL, all
+16 commands, and the shell's own POSTs with the Origin the CSRF gate
+wants.
+
+**The gate.**
+
+- The shell's tests, both ways: 24 on the Node path, 28 with the
+  feature. The four extra include a **boot test** that starts the server
+  for real over a temporary data directory and a small build, asks for a
+  page and an API read, checks the page carries the desktop CSP (which
+  is how the environment map is proved to have arrived), and stops it,
+  leaving the port free.
+- **The app itself, run on this backend.** It boots, opens its database
+  at `0600`, answers `/api/health`, the home page with the CSP and the
+  five security headers, a rewritten page and an API read; the Tauri
+  webview loads it (six connections from WebKit's networking process);
+  the shell's own settings read comes back; and a relaunch takes the same
+  port.
+- **CI**: `rust-check` compiles the shell with and without the feature
+  and runs its tests with it, so "off by default" is checked rather than
+  claimed.
+- **The inert guard** (`tests/app/rust-core-inert.test.ts`), narrowed
+  rather than deleted: the shell may name the core from `embedded.rs`,
+  which starts with the feature's `#![cfg]`, and declare it in its
+  manifest as an optional dependency reached only through the feature.
+  Everything else keeps the flat ban, the Dockerfile above all.
+
+**Negative controls, predicted before running.** Four behaved as
+predicted at once: an unwired dependency, a dropped
+`PRIVACYTRACKER_RUNTIME`, a remembered port trusted whatever it says, and
+a frontend that cannot be found (the app refuses to start and says where
+it looked, rather than opening a window onto a server with no pages).
+
+Two disagreed, and both taught something:
+
+- Removing `embedded.rs`'s `#![cfg]` was predicted to stop the default
+  build compiling. It did not: the module declaration in `main.rs` is
+  gated too, so the file was never compiled.
+- Removing that declaration's gate instead was then predicted to stop
+  it. It did not either: the file's own attribute empties the module.
+
+So the two gates are independent, and either alone keeps the core out —
+which means either could be dropped silently, leaving the invariant on
+one line. The guard now checks both, a third control proves the pair is
+what the compiler actually enforces (removing both stops the build), and
+the guard's own comment says so.
+
+Source restored byte for byte after each, fixed tree green.

@@ -71,6 +71,16 @@ fetch-node-sidecar:
 tauri-dev: fetch-node-sidecar
     pnpm run tauri:dev
 
+# Run the desktop app on the RUST backend (Phase 6): the app serves
+# itself from the Rust core instead of spawning the Node sidecar, so this
+# needs no `fetch-node-sidecar` and no standalone tarball — just a
+# `pnpm build` for the frontend it serves, which it runs for you. Shipped
+# builds stay on Node until the cutover release.
+[group("desktop")]
+tauri-dev-rust:
+    pnpm build
+    pnpm run tauri:dev:rust
+
 # Production desktop build (.app/.dmg via tauri-bundler)
 [group("desktop")]
 tauri-build: fetch-node-sidecar
