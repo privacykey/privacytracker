@@ -87,7 +87,9 @@ function differences(n, r) {
     out.push(`status ${n.status} vs ${r.status}`);
   }
   const sha = (b) => createHash("sha256").update(b).digest("hex");
-  let bodies = true;
+  // Assigned by both branches: a body that will not decode counts as a
+  // difference rather than throwing out of the comparison.
+  let bodies;
   try {
     bodies = sha(decoded(n)) === sha(decoded(r));
   } catch {
