@@ -18,12 +18,12 @@ use rusqlite::types::Value as SqlValue;
 use rusqlite::OptionalExtension;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::HashMap;
 
 use super::changelog::{get_changelog_page, ChangelogRow};
 use super::diff::{diff_snapshots, ChangeEntry, TypeSnapshot};
 use super::json::{json_error, json_ok};
 use super::now_ms;
+use super::routes_stats::{get, Params};
 use super::row::column;
 use super::trend::{compute_category_trend, compute_quarterly_changes};
 use super::AppState;
@@ -409,7 +409,7 @@ struct ChangelogBody {
 pub async fn app_changelog(
     State(state): State<AppState>,
     Path(id): Path<String>,
-    Query(q): Query<HashMap<String, String>>,
+    Query(q): Query<Params>,
 ) -> Response {
     if id.is_empty() {
         return json_error(StatusCode::BAD_REQUEST, "Missing id");
@@ -429,8 +429,8 @@ pub async fn app_changelog(
     }
 
     let mut before_ms: Option<f64> = None;
-    if let Some(raw) = q.get("before") {
-        let parsed = js_to_number(&Value::from(raw.as_str()));
+    if let Some(raw) = get(&q, "before") {
+        let parsed = js_to_number(&Value::from(raw));
         if !parsed.is_finite() || parsed < 0.0 {
             return json_error(
                 StatusCode::BAD_REQUEST,
@@ -441,7 +441,7 @@ pub async fn app_changelog(
     }
 
     let mut limit = CHANGELOG_DEFAULT_LIMIT;
-    if let Some(raw) = q.get("limit") {
+    if let Some(raw) = get(&q, "limit") {
         match js_parse_int(raw) {
             Some(parsed) if (1..=CHANGELOG_MAX_LIMIT).contains(&parsed) => limit = parsed,
             _ => {
@@ -469,6 +469,68 @@ pub async fn app_changelog(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Arc, Mutex};
+
+    /// One app with two snapshots, both after the epoch.
+    fn state() -> AppState {
+        let conn = crate::db::open_and_migrate(std::path::Path::new(":memory:")).unwrap();
+        conn.execute_batch(
+            "INSERT INTO apps (id, name, url, lastSynced) VALUES ('1', 'Alpha', 'https://e/1', 0);
+             INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json) VALUES
+               ('s1', '1', 1000, '[]'),
+               ('s2', '1', 2000, '[]');",
+        )
+        .unwrap();
+        AppState {
+            conn: Arc::new(Mutex::new(conn)),
+            rate_limiter: Arc::new(super::super::ratelimit::RateLimiter::new()),
+            started_at: std::time::Instant::now(),
+            bound_port: 0,
+        }
+    }
+
+    async fn read(query: &[(&str, &str)]) -> (StatusCode, Value) {
+        let q: Params = query
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        let res = app_changelog(State(state()), Path("1".to_string()), Query(q)).await;
+        let status = res.status();
+        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
+    /// `searchParams.get` returns the FIRST value, and the two parameters
+    /// answer a repeated key differently: an empty `before` is `Number("")`
+    /// = 0, which is valid and empties the page, while an empty `limit` is
+    /// `parseInt("")` = NaN, which 400s.
+    #[tokio::test]
+    async fn a_repeated_before_or_limit_keeps_its_first_value() {
+        // 2100-01-01: past every row, so the last value would answer with
+        // the whole page.
+        let future = "4102444800000";
+        let (status, body) = read(&[("before", ""), ("before", future)]).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["rows"].as_array().unwrap().len(), 0);
+        assert_eq!(body["hasMore"], false);
+        // The control for it: that value ALONE returns both rows.
+        let (status, body) = read(&[("before", future)]).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["rows"].as_array().unwrap().len(), 2);
+
+        let (status, body) = read(&[("limit", ""), ("limit", "5")]).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            body["error"],
+            "`limit` must be an integer between 1 and 200"
+        );
+        // And its control: 5 alone is accepted, so the 400 is the empty
+        // first value rather than the bound.
+        let (status, _) = read(&[("limit", "5")]).await;
+        assert_eq!(status, StatusCode::OK);
+    }
 
     #[test]
     fn truthiness_matches_javascript() {

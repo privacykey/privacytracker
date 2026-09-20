@@ -406,6 +406,21 @@ Going forward, changes are recorded here as they land.
   and the migration finishes. The Rust core, not yet active in any build,
   does the same.
 
+- Rust core: five read handlers now answer a repeated query key with its
+  FIRST value, as `URLSearchParams.get` does, instead of its last. They
+  extracted the query as `Query<HashMap<String, String>>`, which keeps the
+  last, so `GET /api/imports?id=&id=<real>` answered with that one import
+  rather than the list, `/api/verdicts?appId=&appId=<real>` answered 200
+  rather than the 400 Node sends for an empty `appId`,
+  `/api/diagnostics/errors?limit=1&limit=200` read as the whole ring rather
+  than one entry, and the empty first value of
+  `/api/apps/[id]/changelog?before=` / `?limit=` and
+  `/api/import/audit-bundle/recent?withinMs=` was discarded along with the
+  empty page or the 400 it produces. Every query-reading route in the core
+  now reads its parameters first-match, as the later ones always did.
+  Nothing in the parity gate had covered the class, because each path in
+  the manifest names every key once. Developer-facing only.
+
 - Rust core: the data directory and database path are process-wide
   configuration (a `OnceLock`, resolved once from `PRIVACYTRACKER_DATA_DIR`
   or `<cwd>/data` exactly as `lib/db.ts` resolves them at module scope),

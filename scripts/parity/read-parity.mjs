@@ -59,6 +59,7 @@ import { probeOperationsReads } from "./operations-probes.mjs";
 import { probePages } from "./page-probes.mjs";
 import { applyPolicyFixture } from "./policy-fixture.mjs";
 import { probePolicyRoutes, probePolicySyncRoute } from "./policy-probes.mjs";
+import { probeRepeatedKeys } from "./repeated-key-probes.mjs";
 import { probeSeedRoute } from "./seed-probes.mjs";
 import {
   applySinceInstallFixture,
@@ -1684,6 +1685,12 @@ async function probeRuntimeEnvelope(rustBase, nodeBase) {
  * route. So the assertions below require the RUST ring to hold entries and
  * hold each side's clamp to ITS OWN ring length; requiring Node's to be
  * non-empty would fail the gate on a bug that predates this port.
+ *
+ * That empty ring is also why the repeated `?limit=1&limit=200` case is
+ * here rather than in repeated-key-probes.mjs with the other first-wins
+ * checks: a Node-versus-Rust comparison on this route cannot see which
+ * value was taken, because Node answers the same empty list either way.
+ * The Rust side is held to the first value directly.
  */
 async function probeErrorRing(rustBase, nodeBase) {
   const get = async (base, route) => {
@@ -1703,7 +1710,7 @@ async function probeErrorRing(rustBase, nodeBase) {
     "/api/diagnostics/errors?limit=0",
     "/api/diagnostics/errors?limit=abc",
     "/api/diagnostics/errors?limit=2",
-    "/api/diagnostics/errors?limit=1&limit=5",
+    "/api/diagnostics/errors?limit=1&limit=200",
   ];
   const sides = [];
   for (const route of routes) {
@@ -1727,25 +1734,40 @@ async function probeErrorRing(rustBase, nodeBase) {
   const nodeFull = full.node.j?.entries.length ?? 0;
   const rustFull = full.rust.j?.entries.length ?? 0;
   // `Math.max(1, Math.min(200, …))` on both: 0 → 1, a non-number → the
-  // whole ring, 2 → 2 — each exact against that side's own ring length. A
-  // repeated key must not 400 (Node takes one and answers 200).
+  // whole ring, 2 → 2 — each exact against that side's own ring length.
   const clampOk =
     limit0.node.j?.entries.length === Math.min(1, nodeFull) &&
     limit0.rust.j?.entries.length === Math.min(1, rustFull) &&
     limitAbc.node.j?.entries.length === nodeFull &&
     limitAbc.rust.j?.entries.length === rustFull &&
     limit2.node.j?.entries.length === Math.min(2, nodeFull) &&
-    limit2.rust.j?.entries.length === Math.min(2, rustFull) &&
+    limit2.rust.j?.entries.length === Math.min(2, rustFull);
+  // A repeated key must not 400 (Node takes one and answers 200) AND must
+  // answer as the FIRST value does: `?limit=1&limit=200` is one entry, not
+  // the whole ring. Only the Rust side can be held to that here, because
+  // the answer is a slice of a per-process ring and Node's is empty — see
+  // the note above. The two values only disagree once the ring holds two
+  // rows, so that is asserted rather than assumed; the limiter probe ran
+  // first precisely to put them there.
+  const repeatedOk =
     repeated.node.status === 200 &&
-    repeated.rust.status === 200;
+    repeated.rust.status === 200 &&
+    rustFull >= 2 &&
+    repeated.rust.j?.entries.length === 1 &&
+    repeated.node.j?.entries.length === Math.min(1, nodeFull);
   const capacityOk = sides.every(
     (s) => s.node.j?.capacity === 200 && s.rust.j?.capacity === 200
   );
-  const ok = problems.length === 0 && clampOk && capacityOk && rustFull > 0;
+  const ok =
+    problems.length === 0 &&
+    clampOk &&
+    repeatedOk &&
+    capacityOk &&
+    rustFull > 0;
   console.log(
     ok
-      ? `  ✔ error log: the rust ring holds the limiter's denials (${rustFull}), both sides validate at capacity 200, and ?limit=0 / abc / 2 / repeated clamp identically against each side's own length (node reads ${nodeFull} — see this probe's note)`
-      : `  ✘ error log: node ${nodeFull} entries, rust ${rustFull}; clamp=${clampOk} capacity=${capacityOk}; ${problems.slice(0, 5).join("; ")}`
+      ? `  ✔ error log: the rust ring holds the limiter's denials (${rustFull}), both sides validate at capacity 200, ?limit=0 / abc / 2 clamp identically against each side's own length (node reads ${nodeFull} — see this probe's note), and ?limit=1&limit=200 answers as its FIRST value (one entry, not ${rustFull})`
+      : `  ✘ error log: node ${nodeFull} entries, rust ${rustFull}; clamp=${clampOk} repeated=${repeatedOk} (rust returned ${repeated.rust.j?.entries.length}) capacity=${capacityOk}; ${problems.slice(0, 5).join("; ")}`
   );
   return ok;
 }
@@ -1963,6 +1985,12 @@ async function main() {
 
   const devicesOk = await probeDeviceReads(args.node, rustBase, TOKEN);
   const statsOk = await probeStatsReads(args.node, rustBase, TOKEN);
+  // After both fixtures above: its cases name an import row from the
+  // devices fixture and an app from the stats one.
+  console.log(
+    "\n── repeated query keys (the manifest names each key once, so it cannot see these) ──"
+  );
+  const repeatedOk = await probeRepeatedKeys(args.node, rustBase, TOKEN);
   const contentOk = await probeContentReads(
     args.node,
     rustBase,
@@ -2128,6 +2156,7 @@ async function main() {
     discoveryOk &&
     operationsOk &&
     devicesOk &&
+    repeatedOk &&
     contentOk &&
     statsOk &&
     authOk &&

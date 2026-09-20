@@ -18,9 +18,9 @@ use axum::{
 };
 use rusqlite::Row;
 use serde::Serialize;
-use std::collections::HashMap;
 
 use super::json::{json_error, json_ok};
+use super::routes_stats::{get, Params};
 use super::row::column;
 use super::AppState;
 use rusqlite::{Connection, OptionalExtension};
@@ -207,12 +207,9 @@ pub(super) fn import_items(conn: &Connection, import_id: &str) -> rusqlite::Resu
         .collect()
 }
 
-pub async fn imports(
-    State(state): State<AppState>,
-    Query(q): Query<HashMap<String, String>>,
-) -> Response {
+pub async fn imports(State(state): State<AppState>, Query(q): Query<Params>) -> Response {
     // JS truthiness: an EMPTY ?id= is falsy and falls through to the list.
-    let id = q.get("id").filter(|v| !v.is_empty());
+    let id = get(&q, "id").filter(|v| !v.is_empty());
 
     let conn = state.db();
 
@@ -265,6 +262,57 @@ pub async fn imports(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::{Arc, Mutex};
+
+    fn state() -> AppState {
+        let conn = crate::db::open_and_migrate(std::path::Path::new(":memory:")).unwrap();
+        conn.execute_batch(
+            "INSERT INTO imports (id, created_at, source, total, imported) VALUES
+               ('imp-a', 10, 'cfgutil', 2, 2),
+               ('imp-b', 20, 'manual', 1, 1);",
+        )
+        .unwrap();
+        AppState {
+            conn: Arc::new(Mutex::new(conn)),
+            rate_limiter: Arc::new(super::super::ratelimit::RateLimiter::new()),
+            started_at: std::time::Instant::now(),
+            bound_port: 0,
+        }
+    }
+
+    async fn read(query: &[(&str, &str)]) -> (StatusCode, Value) {
+        let q: Params = query
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        let res = imports(State(state()), Query(q)).await;
+        let status = res.status();
+        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
+    /// `searchParams.get` returns the FIRST value, so the empty `?id=` stays
+    /// falsy and the request is the LIST branch whatever real id follows it.
+    #[tokio::test]
+    async fn a_repeated_id_keeps_its_first_value() {
+        let (status, listed) = read(&[("id", ""), ("id", "imp-a")]).await;
+        assert_eq!(status, StatusCode::OK);
+        let ids: Vec<&str> = listed
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|r| r["id"].as_str())
+            .collect();
+        assert_eq!(ids, ["imp-b", "imp-a"], "the list, newest first");
+        // The control: that id ALONE is the detail branch, so the case above
+        // is not reading as the list by accident.
+        let (status, detail) = read(&[("id", "imp-a")]).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(detail["import"]["id"], "imp-a");
+        assert!(detail["items"].is_array());
+    }
 
     #[test]
     fn unrecognised_stored_values_coerce_to_defaults() {

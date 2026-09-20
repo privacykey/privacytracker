@@ -4345,6 +4345,68 @@ Source restored byte for byte after each, fixed tree green.
 
 Rust suite: 301 lib tests pass (296 + 5), plus the embed test.
 
+### The remaining repeated-key readers (no new routes)
+
+Batch 3b moved `GET /api/apps` off `Query<HashMap<String, String>>` after
+the browser suite caught it counting the whole library for a scoped grid.
+Five handlers still had that extractor, and the same gap with it: a
+`HashMap` keeps the LAST value of a repeated key where
+`URLSearchParams.get` returns the FIRST, so `?x=a&x=b` answered
+differently on the two backends.
+
+| handler | key | what Node answers when the FIRST value is empty |
+|---|---|---|
+| `routes_imports::imports` | `id` | falsy, so the list rather than one import |
+| `routes_status::verdicts` | `appId` | falsy, so `400 appId is required` |
+| `routes_runtime::errors` | `limit` | the whole ring, not the last value's slice |
+| `routes_app::app_changelog` | `before`, `limit` | `Number("")` is 0, an empty page; `parseInt("")` is NaN, a 400 |
+| `routes_manual::audit_bundle_recent` | `withinMs` | present and NaN, so a 400 |
+
+All five now take `routes_stats::Params` — a `Vec` of pairs read
+first-match through `get` — as every query-reading route in this server
+does. A derived struct is still the wrong answer, and that is the reason
+the `errors` comment gives: axum refuses a repeated key with its own 400,
+where Node takes one value and answers 200.
+
+**Why no read had caught it.** Every path in the manifest names each key
+once, and no oracle-fixture URL repeats one either. The class was outside
+the gate, not passing it.
+
+**The gate.**
+
+- A unit test per handler, calling it directly with `State` and `Query`
+  as the `routes_apps.rs` tests do. Each asserts twice: that the repeated
+  answer is the FIRST value's, and that the last value ALONE answers
+  otherwise, so no test can pass on data too thin to tell them apart.
+  The `errors` test holds `trust::env_lock()` and drives the handler with
+  `block_on` from a plain `#[test]`, because the ring it measures is
+  process state that `maintenance_tests` clears per case.
+- `scripts/parity/repeated-key-probes.mjs`, five live checks. Each sends
+  the repeated key, the first value alone and the last value alone to
+  BOTH servers, and passes only when the two agree on all three, the
+  repeated answer is the first value's, and the last value's differs.
+- `/api/diagnostics/errors` cannot be held that way: its answer is a
+  slice of a per-process ring and Node's is empty in production, for the
+  reason the error-ring probe's own note gives. Its first-wins assertion
+  went there instead, against the Rust ring's own length, replacing a
+  repeated case that asserted only HTTP 200 on both sides.
+
+**Negative controls, predicted before running.** Reverting all five
+handlers to the last value of a repeated key — the reads, not the
+extractor type, since changing the type stops the tests compiling and so
+cannot show which assertions move:
+
+- the unit tests: exactly the five new ones. The other 301 pass.
+- the live gate: exactly the six predicted checks, the new probe's five
+  and the error ring's, out of 501. Every other check passes, which is
+  the same statement as above: the class had no other coverage to
+  disturb. Each failure names the reason, the core answering the last
+  value where Node answered the first, and reports the two single-key
+  controls agreeing on both sides.
+
+Source restored byte for byte after each, fixed tree green.
+
+Rust suite: 306 lib tests pass (301 + 5), plus the embed test.
 ### Batch 4a — the desktop app on this server, behind a feature
 
 The Tauri shell can now serve the app from this crate instead of
