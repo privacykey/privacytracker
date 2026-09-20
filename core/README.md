@@ -4026,11 +4026,13 @@ does not. Otherwise six steps, each between a "started" and a
 
 - a check that `feature_flag_overrides` and `annotations` exist;
 - the legacy `user_intent` (`curious`, `cleanup`, `hygiene`, `family`)
-  becomes a focus through `setActiveFocus` and goes; any other intent is
-  dropped with a warning;
+  becomes a focus through `setActiveFocus` and goes; any other intent,
+  an inherited name such as `toString` included, is dropped with a
+  warning;
 - the legacy `notification_prefs` blob becomes one override per type it
   names, `on` for `true`, `"on"` or `"true"` and `off` for anything else,
-  and goes; a blob that is not JSON is dropped with a warning;
+  and goes; a blob that is not JSON, or is JSON but not an object, is
+  dropped with a warning;
 - the four retired callout overrides are dropped;
 - overrides whose key the flag registry knows leave quarantine, and the
   rest enter it, each statement binding all 222 registry keys in
@@ -4046,11 +4048,11 @@ nests one transaction in another (`setActiveFocus` inside step 2), the
 port nests them as better-sqlite3 does, through savepoints.
 
 **The oracle — `core/scripts/extract-flag-migration-cases.mjs`.** Runs
-the REAL migration over 43 cases: the version gate (11 cases), each step
+the REAL migration over 45 cases: the version gate (11 cases), each step
 over the legacy state it migrates, every step at once on a legacy
 install, and the failures (a table missing, and a later step failing
 after an earlier one wrote). A frozen clock makes every duration 0 ms,
-and a case may drop a table inside its savepoint.
+and a case may drop a table or add a trigger inside its savepoint.
 `core/src/server/flag_migration_tests.rs` replays it, comparing what the
 run returned or threw, the write stream and three tables, and CI
 regenerates the fixture ("Flag migration oracle is current"). The replay
@@ -4073,23 +4075,44 @@ stopped before its first timer. The two boots wrote the same settings,
 overrides and 13 activity rows; only ids, the boots' own timestamps and
 the durations were normalised.
 
-**Node's behaviour, kept, and one bug filed.** Two stored values fail a
-step on every boot for good, so the marker is never written and the steps
-after the failure never run: a `notification_prefs` of JSON `null`
-(`Object.hasOwn(null, …)` throws), and a `user_intent` naming an inherited
-property such as `toString` or `__proto__` (the lookup finds the
-inherited member, whose audience is `undefined`, and better-sqlite3 binds
-that as NULL into a NOT NULL column). The app never writes either value,
-but a restored or edited database can hold them. The follow-up fixes
-Node and the core together. Also kept: an intent must match exactly
-(`"Curious "` is unknown), and an empty `notification_prefs` is left in
-place rather than deleted.
+**Node's behaviour, kept, and one bug filed and since fixed.** Two
+stored values failed a step on every boot for good, so the marker was
+never written and the steps after the failure never ran: a
+`notification_prefs` of JSON `null` (`Object.hasOwn(null, …)` threw), and
+a `user_intent` naming an inherited property such as `toString` or
+`__proto__` (the lookup found the inherited member, whose audience is
+`undefined`, and better-sqlite3 bound that as NULL into a NOT NULL
+column). The app never writes either value, but a restored or edited
+database can hold them. The follow-up fixed Node and the core together.
+A blob that parses to anything but an object (`null`, an array, a
+number, a string) is dropped with a warning and no transaction, as one
+that does not parse already was; before, all but `null` went through a
+transaction that wrote nothing and deleted the blob. The intent is
+looked up with `Object.hasOwn(INTENT_MAP, …)`, so an inherited name is an
+unknown intent, warned about and dropped. The oracle's five cases for
+the two values were re-recorded under names for what they now do (the
+`toString`, `__proto__` and version-1 `valueOf` intents dropped as
+unknown; `null` prefs dropped, alone and ahead of the later steps), and
+the two failure properties two of them carried moved to cases that still
+fail: a run from version 1 over a missing table leaves version 1, and a
+trigger refusing the prefs step's override write keeps step 2's focus
+while step 6 never runs. Of the other 38 cases, 35 re-recorded byte for
+byte, and the array, number and string prefs lost only the BEGIN and
+COMMIT around their delete. The fix's controls, predicted before
+running: the old inherited-intent write failed exactly the three cases
+with one; `null` prefs failing their step again, exactly the two with
+them; only `null` dropped, exactly the array, number and string cases;
+the marker written after a failure, exactly the four failure cases and
+the boot test. Source restored byte for byte after each. Also kept: an
+intent must match exactly (`"Curious "` is unknown), and an empty
+`notification_prefs` is left in place rather than deleted.
 
 **Negative controls, predicted before running.** The version gate
 comparing the string to `"2"`: exactly the three cases that skip by
 `parseInt` without being `"2"`. Inherited intent names read as unknown:
 exactly the three cases with one. Prefs of `null` not failing their
-step: exactly the two cases with them. The workflow inferred as if the
+step: exactly the two cases with them (these two are the port's
+behaviour since the fix above). The workflow inferred as if the
 audience were `self`: exactly the two `family` intents. The string
 `"true"` not switching a type on: exactly the case that sends it. An old
 goal key overwriting a new one already set: exactly the kept-key case

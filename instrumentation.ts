@@ -82,9 +82,10 @@ export async function register() {
     // Round 3 PR 1: feature-flag migration. Runs first (synchronously, before
     // any background tickers are scheduled) so the resolver and downstream
     // tickers see consistent state. Idempotent — safe to retry. On failure
-    // the runner throws MigrationError; we catch + log here so the rest of
-    // the server still comes up; the in-app error UI surfaces the failure
-    // when the user opens the app.
+    // the runner throws MigrationError without writing its version marker;
+    // we catch + log here so the rest of the server still comes up, and the
+    // next boot runs the migration again. Nothing retries it in between, and
+    // there is no in-app error UI for it.
     try {
       const { runFeatureFlagMigration } = await import(
         "./lib/migrations/v1_feature_flags"
@@ -98,8 +99,7 @@ export async function register() {
       }
     } catch (e) {
       console.error("[Migration] feature-flag v1 failed:", e);
-      // Don't rethrow — let the rest of the server come up so the user can
-      // see the error UI rendered by app/layout.tsx (PR 1 adds that surface).
+      // Don't rethrow: let the rest of the server come up.
     }
 
     const { getSchedulerStatus, runScheduledSync, setSetting } = await import(
