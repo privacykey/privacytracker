@@ -263,8 +263,11 @@ jobs:
     # core/ has no Tauri/webkit deps, so no apt webview packages and no
     # standalone stub are needed — just Rust + Node (the harness drives
     # better-sqlite3 + tsx to run the TypeScript side).
+    #
+    # Since batch 4b it also builds the frontend, because the handoff test
+    # at the end serves it from both backends; hence the wider timeout.
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -665,6 +668,25 @@ jobs:
         # Rust-migrated database against a TypeScript-migrated one on fresh,
         # legacy and current+state fixtures. Fails on any schema divergence.
         run: pnpm parity:schema
+
+      - name: Build the frontend
+        # Both the staging step and the handoff test below need a real
+        # build: one stages it, the other serves it from each backend.
+        run: pnpm build
+
+      - name: Stage the site a Rust bundle ships
+        # scripts/stage-site.mjs copies the four things the Rust core serves
+        # and nothing else. Running it on a real build is what proves the
+        # allowlist still matches what `next build` writes; the unit test
+        # covers the refusals over a synthetic one.
+        run: pnpm stage:site
+
+      - name: Database handoff between the backends
+        # Phase 6, batch 4b. Each backend seeds and mutates its own data
+        # directory, then the other opens that same directory (its `-wal`
+        # included) and has to answer identically. The rollback plan rests
+        # on this: a Node build must be able to open what a Rust build left.
+        run: node scripts/parity/handoff.mjs
 
   e2e-rust:
     # Rust-core Phase 6: the whole Playwright suite, run against the Rust
