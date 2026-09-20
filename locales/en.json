@@ -2671,6 +2671,7 @@
     "schedule_default": "Scheduled sync",
     "subtitle_resumed": "Resumed after restart",
     "subtitle_background": "Running in the background",
+    "subtitle_background_finished": "Ran in the background",
     "msg_cancelled": "Cancelled",
     "msg_unknown_error": "Unknown error"
   },

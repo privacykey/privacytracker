@@ -117,6 +117,20 @@ Going forward, changes are recorded here as they land.
   tab, or after Cancel (which stops the page following the run, not the
   run itself), the card showed the app and progress it first saw and then
   stood still until the run finished. It now follows the run to the end.
+- A finished "Privacy-policy sync" card in Background tasks no longer says
+  it is still running. A batch listed there because no tab of your own was
+  following it kept the words "Running in the background" after it was
+  done, under a tick in "Recently finished". It now reads "Ran in the
+  background". A run the app resumed after a restart still says "Resumed
+  after restart", which is just as true once the run ends.
+- A card in Background tasks now closes as soon as the run behind it ends,
+  even when the run that starts next is one Background tasks does not
+  list. If one run finished and another began within the same four
+  seconds, and that next run was started from Settings or was one of the
+  app's own automatic policy fetches, the old card stayed on the list as
+  "Running", showing the app and progress it last saw, until that next run
+  finished as well. This covers all three background jobs: App Store sync,
+  Wayback history import and privacy-policy sync.
 - "Install & restart" in the desktop app's update banner now restarts into
   the new version. The update installed, but the restart after it was
   refused ("process.restart not allowed. Plugin not found") because the
