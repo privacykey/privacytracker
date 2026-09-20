@@ -134,7 +134,7 @@ fn persist_debounced(level: f64) {
             return;
         }
         let body = format!("{{\"zoom_level\":{level}}}");
-        match crate::sidecar::post(&base_url, "/api/settings/desktop")
+        match crate::backend::post(&base_url, "/api/settings/desktop")
             .timeout(Duration::from_secs(3))
             .set("content-type", "application/json")
             .send_string(&body)

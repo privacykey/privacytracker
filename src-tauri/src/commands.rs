@@ -133,7 +133,7 @@ pub(crate) fn persist_devtools_open(open: bool) {
     let base_url = crate::state().sidecar_base_url.clone();
     std::thread::spawn(move || {
         let body = format!("{{\"devtools_open\":{}}}", open);
-        match crate::sidecar::post(&base_url, "/api/settings/desktop")
+        match crate::backend::post(&base_url, "/api/settings/desktop")
             .timeout(Duration::from_secs(3))
             .set("content-type", "application/json")
             .send_string(&body)

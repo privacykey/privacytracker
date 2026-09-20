@@ -15,7 +15,7 @@
 //
 // "Sync now" and "Wayback import" fire POSTs against the sidecar so the
 // tray does the same thing the Settings buttons do. Both go through
-// sidecar::post, which adds the Origin header the server's CSRF gate
+// backend::post, which adds the Origin header the server's CSRF gate
 // requires. Without it every tray POST was refused with a 403.
 
 use std::time::Duration;
@@ -105,7 +105,7 @@ pub fn install(app: &AppHandle, base_url: String, initial_visible: bool) -> taur
                     // same way. Hanging up early would log a failure for a
                     // sync that is still running: both backends finish a
                     // sync whose client has gone.
-                    match crate::sidecar::post(&base_url, "/api/sync/trigger").call() {
+                    match crate::backend::post(&base_url, "/api/sync/trigger").call() {
                         Ok(resp) => log::info!(
                             "Tray: sync finished: {}",
                             resp.into_string().unwrap_or_default(),
@@ -124,7 +124,7 @@ pub fn install(app: &AppHandle, base_url: String, initial_visible: bool) -> taur
                     // being closed mid-import. A refusal (409 already
                     // running, 429 throttled) comes back as an error, and
                     // "no apps to import" as a plain JSON 200.
-                    match crate::sidecar::post(&base_url, "/api/wayback/import-all?stream=1")
+                    match crate::backend::post(&base_url, "/api/wayback/import-all?stream=1")
                         .timeout(Duration::from_secs(10))
                         .call()
                     {

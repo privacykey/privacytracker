@@ -78,6 +78,15 @@ log = "0.4"
 # prefixed dirs like `.next/`. tar 0.4 is already a transitive dep
 # via tauri-plugin-updater so this declaration costs nothing extra.
 tar = "0.4"
+# The Rust backend (Phase 6), behind the `rust-backend` feature and off by
+# default: with it, this process serves the app itself instead of spawning
+# the Node sidecar (see src/backend.rs). Optional, so a default build
+# neither compiles nor links the crate, and shipped builds stay on Node
+# until the cutover release.
+privacytracker-core = { path = "../core", optional = true }
+# Only the embedded backend needs an async runtime of its own: the server
+# is started on Tauri's, and the shutdown waits on it.
+tokio = { version = "1", default-features = false, features = ["net", "rt"], optional = true }
 
 [target.'cfg(unix)'.dependencies]
 # Used by sidecar.rs's pre_exec hook to call setsid() on the spawned
@@ -132,6 +141,12 @@ core-foundation = "0.10"
 core-foundation-sys = "0.8"
 
 [features]
+# Serve the app from this process with the Rust core instead of spawning
+# the Node sidecar (Phase 6, batch 4). Off by default: every shipped build
+# stays on Node until the cutover release, and `cargo check` covers both
+# paths in CI. `just tauri-dev-rust` runs it, and it needs no
+# `fetch-node-sidecar`.
+rust-backend = ["dep:privacytracker-core", "dep:tokio"]
 # Enable `tauri build` without devtools baked into the bundle.
 custom-protocol = ["tauri/custom-protocol"]
 # Opt-in devtools. CI release jobs leave this off; `pnpm tauri:dev`

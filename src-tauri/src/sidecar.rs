@@ -1,5 +1,8 @@
-// Sidecar process management: spawn Node, wait for readiness, resolve URLs,
-// and `post`, the one way the shell sends the sidecar a mutating request.
+// The Node backend: spawn the sidecar, wait for it to answer, and find
+// what it needs on disk. Compiled unless the shell was built with
+// `--features rust-backend`, which serves the app from this process
+// instead (`embedded.rs`). Where the backend is and how the shell talks
+// to it live in `backend.rs`, which both paths answer to.
 //
 // In a shipped build, the "standalone" Next.js output lives at
 // <resources>/standalone/ and the bundled Node binary at
@@ -18,6 +21,8 @@ use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Manager};
+
+use crate::backend::Boot;
 
 pub struct SidecarHandle {
     pub child: Child,
@@ -114,12 +119,6 @@ impl Drop for SidecarHandle {
     }
 }
 
-pub struct Boot {
-    pub port: u16,
-    pub base_url: String,
-    pub child: Option<SidecarHandle>,
-}
-
 pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
     // Dev escape hatch: point at an already-running `npm run dev` so the
     // developer keeps hot reload. Nothing to spawn, nothing to kill.
@@ -138,12 +137,12 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
         return Ok(Boot {
             port,
             base_url: url,
-            child: None,
+            running: None,
         });
     }
 
     let port = pick_free_port()?;
-    let data_dir = resolve_data_dir(app)?;
+    let data_dir = crate::backend::resolve_data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
     // Private data dir (0700) before the sidecar boots — the Node side
     // chmods the DB files themselves on open (lib/db.ts), but the dir
@@ -241,7 +240,7 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
     Ok(Boot {
         port,
         base_url,
-        child: Some(SidecarHandle { child }),
+        running: Some(SidecarHandle { child }),
     })
 }
 
@@ -254,24 +253,6 @@ fn pick_free_port() -> io::Result<u16> {
     let port = listener.local_addr()?.port();
     drop(listener);
     Ok(port)
-}
-
-fn resolve_data_dir(_app: &AppHandle) -> Result<PathBuf, Box<dyn std::error::Error>> {
-    // Dev override: let developers point at a dedicated sandbox dir without
-    // mucking about with their real profile. Gated behind debug_assertions
-    // so release builds ignore the env var — same threat as the
-    // PRIVACYTRACKER_DEV_URL override above (pre-login attacker writes
-    // env, app reads on launch, attacker controls where data lives).
-    #[cfg(debug_assertions)]
-    if let Ok(dir) = std::env::var("PRIVACYTRACKER_DATA_DIR") {
-        return Ok(PathBuf::from(dir));
-    }
-
-    // macOS: ~/Library/Application Support/privacytracker
-    // Windows: %APPDATA%\privacytracker
-    // Linux: $XDG_DATA_HOME/privacytracker or ~/.local/share/privacytracker
-    let base = dirs::data_dir().ok_or("could not resolve user data dir")?;
-    Ok(base.join("privacytracker"))
 }
 
 /// Resolve the standalone Next.js server entry point.
@@ -677,117 +658,7 @@ pub fn wait_until_ready(base_url: &str) -> Result<(), Box<dyn std::error::Error>
     ).into())
 }
 
-/// Start a POST to the sidecar at `base_url` + `path`. Every mutating
-/// request the shell sends goes through here (a test below fails on a
-/// bare ureq mutation anywhere else in the shell), because proxy.ts's
-/// CSRF gate answers a mutating /api request with 403 "Cross-origin
-/// mutation rejected" unless its `Origin` matches the Host it was sent
-/// to or it carries the admin token. The webview's own fetches get an
-/// Origin from the browser. ureq sends none, and the desktop has no
-/// admin token: `boot` clears the environment and never sets
-/// AUDITOR_ADMIN_TOKEN.
-///
-/// The Origin is serialised from the same parsed URL that ureq writes
-/// `Host` from, so the two agree whatever the base URL looks like: a
-/// trailing slash, `localhost` from PRIVACYTRACKER_DEV_URL, or a default
-/// port that ureq leaves off Host.
-pub fn post(base_url: &str, path: &str) -> ureq::Request {
-    let url = format!("{}{path}", base_url.trim_end_matches('/'));
-    let request = ureq::post(&url);
-    match origin_of(&url) {
-        Some(origin) => request.set("Origin", &origin),
-        // Not an http(s) URL. ureq refuses it when the request is sent.
-        None => request,
-    }
-}
-
-/// `scheme://host[:port]` of `url`: what a page served from that origin
-/// sends as `Origin`.
-fn origin_of(url: &str) -> Option<String> {
-    let origin = tauri::Url::parse(url).ok()?.origin();
-    origin.is_tuple().then(|| origin.ascii_serialization())
-}
-
-// Note: an earlier `read_desktop_hide_dock` helper used to live here, hitting
-// /api/settings/desktop just to extract the single `desktop_hide_dock` field.
-// It was superseded by `settings::fetch()` (returns the full
-// `DesktopSettings` bundle including `hide_dock`), which is what main.rs
-// actually calls on boot. Kept this comment as a breadcrumb so anyone hunting
-// for the helper finds the new entry point.
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn origin_is_what_ureq_sends_as_host() {
-        assert_eq!(
-            origin_of("http://127.0.0.1:49152/api/settings/desktop").as_deref(),
-            Some("http://127.0.0.1:49152"),
-        );
-        // A PRIVACYTRACKER_DEV_URL (debug builds only) can name localhost.
-        assert_eq!(
-            origin_of("http://localhost:3000/api/sync/trigger").as_deref(),
-            Some("http://localhost:3000"),
-        );
-        // ureq leaves a scheme's default port off Host; so does the origin.
-        assert_eq!(
-            origin_of("http://127.0.0.1:80/api/sync/trigger").as_deref(),
-            Some("http://127.0.0.1"),
-        );
-        assert_eq!(origin_of("127.0.0.1:3000/api/sync/trigger"), None);
-    }
-
-    #[test]
-    fn post_joins_the_path_and_sets_origin() {
-        let request = post("http://127.0.0.1:49152/", "/api/wayback/import-all?stream=1");
-        assert_eq!(request.method(), "POST");
-        assert_eq!(
-            request.url(),
-            "http://127.0.0.1:49152/api/wayback/import-all?stream=1",
-        );
-        assert_eq!(request.header("Origin"), Some("http://127.0.0.1:49152"));
-    }
-
-    /// A ureq mutation that bypasses `post` goes out with no Origin and
-    /// is refused with a 403, so the helper's own call must be the only
-    /// one in the shell.
-    #[test]
-    fn every_shell_mutation_goes_through_post() {
-        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-        let mut helper_calls = 0;
-        let mut offenders = Vec::new();
-        for (path, text) in rust_sources(&src) {
-            for method in ["post", "put", "patch", "delete", "request"] {
-                // Assembled at runtime so this test doesn't match itself.
-                let needle = format!("ureq::{method}(");
-                let count = text.matches(needle.as_str()).count();
-                if method == "post" && path.ends_with("sidecar.rs") {
-                    helper_calls = count;
-                } else if count > 0 {
-                    offenders.push(format!("{} calls {needle}", path.display()));
-                }
-            }
-        }
-        // Proves the scan read the shell's sources rather than nothing.
-        assert_eq!(helper_calls, 1, "expected sidecar::post's own call in sidecar.rs");
-        assert!(
-            offenders.is_empty(),
-            "send shell mutations through sidecar::post so they carry an Origin: {offenders:?}",
-        );
-    }
-
-    fn rust_sources(dir: &Path) -> Vec<(PathBuf, String)> {
-        let mut sources = Vec::new();
-        for entry in fs::read_dir(dir).expect("read source dir") {
-            let path = entry.expect("source dir entry").path();
-            if path.is_dir() {
-                sources.extend(rust_sources(&path));
-            } else if path.extension().is_some_and(|ext| ext == "rs") {
-                let text = fs::read_to_string(&path).expect("read source file");
-                sources.push((path, text));
-            }
-        }
-        sources
-    }
-}
+// `post` and the data-directory resolver used to live here. They serve
+// both backends, so they moved to `backend.rs` when the Rust one was
+// added; the test that every shell mutation goes through the helper
+// moved with them.
