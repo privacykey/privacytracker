@@ -28,7 +28,7 @@
  * Exit 0 = identical; 1 = a difference; 2 = harness error.
  */
 import { execFileSync, spawn } from "node:child_process";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -56,6 +56,7 @@ import {
   primeOperationsAfterBoot,
 } from "./operations-fixture.mjs";
 import { probeOperationsReads } from "./operations-probes.mjs";
+import { probePages } from "./page-probes.mjs";
 import { applyPolicyFixture } from "./policy-fixture.mjs";
 import { probePolicyRoutes, probePolicySyncRoute } from "./policy-probes.mjs";
 import { probeSeedRoute } from "./seed-probes.mjs";
@@ -474,8 +475,14 @@ function restoreMigrationMarker(dataDir) {
 
 /** Start pt-core and resolve with its base URL once it reports listening. */
 function startRust(dataDir) {
+  // Phase 6, batch 3a: the core serves the frontend from the build in this
+  // working directory, as the Node server under comparison does from its
+  // own; see page-probes.mjs.
+  const site = existsSync(path.join(process.cwd(), ".next", "server", "app"))
+    ? ["--site", process.cwd()]
+    : [];
   return new Promise((resolve, reject) => {
-    const child = spawn(ptCore, ["serve"], {
+    const child = spawn(ptCore, ["serve", ...site], {
       env: {
         ...process.env,
         AUDITOR_ADMIN_TOKEN: TOKEN,
@@ -1860,6 +1867,11 @@ async function main() {
   const slashOk = await probeTrailingSlash(rustBase, args.node);
 
   console.log(
+    "\n── pages (the frontend, served by both from the same build) ──"
+  );
+  const pagesOk = await probePages(args.node, rustBase, TOKEN, process.cwd());
+
+  console.log(
     "\n── forwarded host + CSRF origin (the differ never forges either) ──"
   );
   const fwdOk = await probeForwardedHost(rustBase, args.node);
@@ -2120,6 +2132,7 @@ async function main() {
     statsOk &&
     authOk &&
     slashOk &&
+    pagesOk &&
     fwdOk &&
     sinceOk &&
     trendOk &&

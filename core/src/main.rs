@@ -7,7 +7,7 @@
 //! side, so only the migrator differs between the two.
 //!
 //!   pt-core migrate <path/to/privacy.db>   open + migrate in place
-//!   pt-core serve [--port N]                serve <PRIVACYTRACKER_DATA_DIR|cwd/data>/privacy.db
+//!   pt-core serve [--port N] [--site DIR]   serve <PRIVACYTRACKER_DATA_DIR|cwd/data>/privacy.db (and DIR's build)
 //!   pt-core version                         print crate + SQLite versions
 //!
 //! `serve` stops on SIGINT or SIGTERM, giving requests in flight three
@@ -70,10 +70,22 @@ fn main() -> ExitCode {
             // same two answers Node has.
             if args.get(2).map(|a| !a.starts_with("--")).unwrap_or(false) {
                 eprintln!(
-                    "usage: pt-core serve [--port N]   (set PRIVACYTRACKER_DATA_DIR, else <cwd>/data is used)"
+                    "usage: pt-core serve [--port N] [--site DIR]   (set PRIVACYTRACKER_DATA_DIR, else <cwd>/data is used)"
                 );
                 return ExitCode::from(2);
             }
+            // The directory `next start` would run in: with it, the
+            // frontend is served from its `.next` build and `public/` too.
+            let site = match args.iter().position(|a| a == "--site") {
+                Some(i) => match args.get(i + 1) {
+                    Some(dir) => Some(std::path::PathBuf::from(dir)),
+                    None => {
+                        eprintln!("pt-core: --site needs a directory");
+                        return ExitCode::from(2);
+                    }
+                },
+                None => None,
+            };
             // Default 0 = let the OS pick; the bound address is printed so a
             // supervising script reads it rather than guessing.
             let port: u16 = match args.iter().position(|a| a == "--port") {
@@ -94,7 +106,7 @@ fn main() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-            match rt.block_on(privacytracker_core::server::serve(addr)) {
+            match rt.block_on(privacytracker_core::server::serve(addr, site)) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(e) => {
                     eprintln!("pt-core: serve failed: {e}");

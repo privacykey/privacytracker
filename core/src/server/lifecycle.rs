@@ -42,6 +42,10 @@ pub struct ServeConfig {
     /// server's whole environment for the rest of the process, as the Tauri
     /// shell's `env_clear()` did for the Node sidecar; see `host_env`.
     pub env: Option<HashMap<String, String>>,
+    /// The directory `next start` would run in, holding `.next/` and
+    /// `public/`. When set, the server answers for the frontend too, from
+    /// that build (`site.rs`). One per process, like the environment.
+    pub site: Option<std::path::PathBuf>,
 }
 
 /// A running server. Dropping the handle leaves the server running; call
@@ -109,6 +113,12 @@ pub async fn serve_with(
             expected.display()
         )
         .into());
+    }
+
+    // The build is indexed before anything is served, as `next start`
+    // reads its manifests before it listens.
+    if let Some(dir) = &config.site {
+        super::site::install(super::site::Site::load(dir)?)?;
     }
 
     let mut conn = crate::db::open_and_migrate(&layout.db_path)?;

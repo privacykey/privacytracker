@@ -72,6 +72,7 @@ fn an_embedded_server_runs_on_its_host_environment_and_stops_within_the_grace() 
             listener,
             ServeConfig {
                 env: Some(host.clone()),
+                ..ServeConfig::default()
             },
         )
         .await
@@ -147,7 +148,10 @@ fn an_embedded_server_runs_on_its_host_environment_and_stops_within_the_grace() 
         other.insert("PRIVACYTRACKER_RUNTIME".into(), "docker".into());
         let second = serve_with(
             TcpListener::bind("127.0.0.1:0").await.unwrap(),
-            ServeConfig { env: Some(other) },
+            ServeConfig {
+                env: Some(other),
+                ..ServeConfig::default()
+            },
         )
         .await;
         assert!(second.is_err(), "a second, different environment is refused");
