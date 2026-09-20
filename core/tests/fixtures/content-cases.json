@@ -376,7 +376,7 @@
         "pt-content-notification-1",
         "89997001",
         "Content notification",
-        "[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]},{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]},{\"type\":\"added\",\"title\":\"New type\",\"details\":[]},{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}]",
+        "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}]",
         1789473599990,
         0,
         0,
@@ -389,7 +389,7 @@
         "pt-content-notification-2",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}]",
         1789473599980,
         0,
         0,
@@ -402,7 +402,7 @@
         "pt-content-notification-3",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}]",
+        "[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}]",
         1789473599970,
         0,
         1,
@@ -415,7 +415,7 @@
         "pt-content-notification-4",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}]",
+        "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}]",
         1789473599960,
         0,
         0,
@@ -428,7 +428,7 @@
         "pt-content-notification-5",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}]",
         1789473599950,
         1,
         0,
@@ -441,7 +441,7 @@
         "pt-content-notification-6",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}]",
         1789473599940,
         0,
         1,
@@ -454,7 +454,7 @@
         "pt-content-notification-7",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}]",
+        "[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}]",
         1789473599930,
         0,
         0,
@@ -467,7 +467,7 @@
         "pt-content-notification-8",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}]",
+        "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}]",
         1789473599920,
         0,
         0,
@@ -480,7 +480,7 @@
         "pt-content-notification-9",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}]",
         1789473599910,
         0,
         1,
@@ -493,7 +493,7 @@
         "pt-content-notification-10",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}]",
         1789473599900,
         1,
         0,
@@ -506,7 +506,7 @@
         "pt-content-notification-11",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}]",
+        "[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}]",
         1789473599890,
         0,
         0,
@@ -519,7 +519,7 @@
         "pt-content-notification-12",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}]",
+        "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}]",
         1789473599880,
         0,
         1,
@@ -532,7 +532,7 @@
         "pt-content-notification-13",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}]",
         1789473599870,
         0,
         0,
@@ -545,7 +545,7 @@
         "pt-content-notification-14",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}]",
         1789473599860,
         0,
         0,
@@ -558,7 +558,7 @@
         "pt-content-notification-15",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}]",
+        "[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}]",
         1789473599850,
         1,
         1,
@@ -571,7 +571,7 @@
         "pt-content-notification-16",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}]",
+        "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}]",
         1789473599840,
         0,
         0,
@@ -584,7 +584,7 @@
         "pt-content-notification-17",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}]",
         1789473599830,
         0,
         0,
@@ -597,7 +597,7 @@
         "pt-content-notification-18",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}]",
         1789473599820,
         0,
         1,
@@ -610,7 +610,7 @@
         "pt-content-notification-19",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}]",
+        "[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}]",
         1789473599810,
         0,
         0,
@@ -623,7 +623,7 @@
         "pt-content-notification-20",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}]",
+        "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}]",
         1789473599800,
         1,
         0,
@@ -636,7 +636,7 @@
         "pt-content-notification-21",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}]",
         1789473599790,
         0,
         1,
@@ -649,7 +649,7 @@
         "pt-content-notification-22",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}]",
         1789473599780,
         0,
         0,
@@ -662,7 +662,7 @@
         "pt-content-notification-23",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}]",
+        "[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}]",
         1789473599770,
         0,
         0,
@@ -675,7 +675,7 @@
         "pt-content-notification-24",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}]",
+        "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}]",
         1789473599760,
         0,
         1,
@@ -688,7 +688,7 @@
         "pt-content-notification-25",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}]",
         1789473599750,
         1,
         0,
@@ -701,7 +701,7 @@
         "pt-content-notification-26",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}]",
         1789473599740,
         0,
         0,
@@ -714,7 +714,7 @@
         "pt-content-notification-27",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}]",
+        "[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}]",
         1789473599730,
         0,
         1,
@@ -727,7 +727,7 @@
         "pt-content-notification-28",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}]",
+        "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}]",
         1789473599720,
         0,
         0,
@@ -740,7 +740,7 @@
         "pt-content-notification-29",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}]",
         1789473599710,
         0,
         0,
@@ -753,7 +753,7 @@
         "pt-content-notification-30",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}]",
         1789473599700,
         1,
         1,
@@ -766,7 +766,7 @@
         "pt-content-notification-31",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}]",
+        "[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}]",
         1789473599690,
         0,
         0,
@@ -779,7 +779,7 @@
         "pt-content-notification-32",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}]",
+        "[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}]",
         1789473599680,
         0,
         0,
@@ -792,7 +792,7 @@
         "pt-content-notification-33",
         "89997001",
         "Content notification",
-        "[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}]",
         1789473599670,
         0,
         1,
@@ -805,7 +805,7 @@
         "pt-content-notification-34",
         "__content_synthetic__",
         "Content notification",
-        "[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}]",
+        "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}]",
         1789473599660,
         0,
         0,
@@ -887,7 +887,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]},{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
         "type": "application/json",
         "disposition": null
       },
@@ -907,7 +907,7 @@
       "empty": true,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -922,7 +922,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -1616,7 +1616,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"}],\"unreadCount\":8}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"}],\"unreadCount\":8}",
         "type": "application/json",
         "disposition": null
       },
@@ -1669,7 +1669,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-4\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599960,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-8\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599920,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-12\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599880,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-16\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599840,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-20\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599800,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-24\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599760,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-28\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599720,\"read\":0,\"stale\":0,\"iconUrl\":null}],\"unreadCount\":8}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-4\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599960,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-8\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599920,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-12\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599880,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-16\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599840,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-20\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599800,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-24\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599760,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-28\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599720,\"read\":0,\"stale\":0,\"iconUrl\":null}],\"unreadCount\":8}",
         "type": "application/json",
         "disposition": null
       },
@@ -1722,7 +1722,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-5\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599950,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-9\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599910,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-13\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599870,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-17\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599830,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-21\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599790,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-25\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599750,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-29\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599710,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"}],\"unreadCount\":7}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-5\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599950,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-9\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599910,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-13\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599870,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-17\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599830,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-21\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599790,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-25\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599750,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-29\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599710,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"}],\"unreadCount\":7}",
         "type": "application/json",
         "disposition": null
       },
@@ -1775,7 +1775,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":7}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":7}",
         "type": "application/json",
         "disposition": null
       },
@@ -1936,7 +1936,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":\"\",\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":\"\",\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
         "type": "application/json",
         "disposition": null
       },
@@ -1963,7 +1963,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":{\"length\":0},\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":{\"length\":0},\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
         "type": "application/json",
         "disposition": null
       },
@@ -2017,7 +2017,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{},0,false,{\"type\":\"added\",\"details\":{\"length\":0}}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{},0,false,{\"type\":\"added\",\"details\":{\"length\":0}}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
         "type": "application/json",
         "disposition": null
       },
@@ -2050,7 +2050,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]},{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":14}",
         "type": "application/json",
         "disposition": null
       },
@@ -2103,7 +2103,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -2156,7 +2156,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":false,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":false,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":false,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":false,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -2188,7 +2188,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"policyUpdates\":false,\"labelChanges\":true},\"stored\":{\"policyUpdates\":false,\"labelChanges\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"policyUpdates\":false,\"labelChanges\":true},\"stored\":{\"policyUpdates\":false,\"labelChanges\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -2220,7 +2220,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{},\"stored\":{},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{},\"stored\":{},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -2252,7 +2252,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{},\"stored\":{},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{},\"stored\":{},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -4535,7 +4535,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]},{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]},{\"type\":\"added\",\"title\":\"New type\",\"details\":[]},{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-4\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599960,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-5\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599950,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-8\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599920,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-9\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599910,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-12\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599880,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-13\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599870,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-16\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599840,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-17\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599830,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-20\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599800,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-21\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599790,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-24\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599760,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-25\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599750,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New category\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-28\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"changed\",\"category\":\"privacy-policy\",\"details\":[]}],\"created_at\":1789473599720,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-29\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"details\":[]}],\"created_at\":1789473599710,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"title\":\"New type\",\"details\":[]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":27}",
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]},{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"},{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]},{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-3\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599970,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-4\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599960,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-5\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599950,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-6\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599940,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-7\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599930,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-8\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599920,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-9\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599910,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-10\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599900,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-11\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599890,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-12\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599880,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-13\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599870,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-14\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599860,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-15\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599850,\"read\":1,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-16\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599840,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-17\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599830,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-18\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599820,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-19\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599810,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-20\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599800,\"read\":1,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-21\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599790,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-22\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599780,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-23\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599770,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-24\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599760,\"read\":0,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-25\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599750,\"read\":1,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-26\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599740,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-27\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"\\\"Data Linked to You\\\" now collects: Contacts\"}],\"created_at\":1789473599730,\"read\":0,\"stale\":1,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-28\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy\",\"category\":\"privacy-policy\",\"description\":\"Privacy policy has been updated.\",\"details\":[]}],\"created_at\":1789473599720,\"read\":0,\"stale\":0,\"iconUrl\":null},{\"id\":\"pt-content-notification-29\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"category\":\"accessibility\",\"description\":\"Now supports accessibility feature: \\\"VoiceOver\\\"\"}],\"created_at\":1789473599710,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"},{\"id\":\"pt-content-notification-30\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Used to Track You\\\"\",\"details\":[\"Contacts\"]}],\"created_at\":1789473599700,\"read\":1,\"stale\":1,\"iconUrl\":null}],\"unreadCount\":27}",
         "type": "application/json",
         "disposition": null
       },
@@ -4579,7 +4579,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -4623,7 +4623,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":false,\"manualAppsPrompt\":true,\"aiTimeout\":false},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":false,\"manualAppsPrompt\":true,\"aiTimeout\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":false,\"manualAppsPrompt\":true,\"aiTimeout\":false,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":false,\"manualAppsPrompt\":true,\"aiTimeout\":false,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -4667,7 +4667,7 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
         "type": "application/json",
         "disposition": null
       },
@@ -4711,7 +4711,302 @@
       "empty": false,
       "expected": {
         "status": 200,
-        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+        "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
+        "type": "application/json",
+        "disposition": null
+      },
+      "survivingNotes": [
+        "pt-content-note-0",
+        "pt-content-note-1",
+        "pt-content-note-2",
+        "pt-content-note-3"
+      ]
+    },
+    {
+      "name": "notifications all off, ai_timeout survives",
+      "route": "/api/notifications",
+      "search": "",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.label_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.policy_updates",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.accessibility_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.new_privacy_types",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "UPDATE notifications SET change_summary=? WHERE id='pt-content-notification-1'",
+          "params": [
+            "[{\"type\":\"ai_timeout\",\"description\":\"ai_timeout notice\"}]"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": {
+        "status": 200,
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"ai_timeout\",\"description\":\"ai_timeout notice\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"}],\"unreadCount\":1}",
+        "type": "application/json",
+        "disposition": null
+      },
+      "survivingNotes": [
+        "pt-content-note-0",
+        "pt-content-note-1",
+        "pt-content-note-2",
+        "pt-content-note-3"
+      ]
+    },
+    {
+      "name": "notifications all off, sync_resumed survives",
+      "route": "/api/notifications",
+      "search": "",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.label_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.policy_updates",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.accessibility_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.new_privacy_types",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "UPDATE notifications SET change_summary=? WHERE id='pt-content-notification-1'",
+          "params": [
+            "[{\"type\":\"sync_resumed\",\"description\":\"sync_resumed notice\"}]"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": {
+        "status": 200,
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"sync_resumed\",\"description\":\"sync_resumed notice\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"}],\"unreadCount\":1}",
+        "type": "application/json",
+        "disposition": null
+      },
+      "survivingNotes": [
+        "pt-content-note-0",
+        "pt-content-note-1",
+        "pt-content-note-2",
+        "pt-content-note-3"
+      ]
+    },
+    {
+      "name": "notifications all off, policy_stale_cleared survives",
+      "route": "/api/notifications",
+      "search": "",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.label_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.policy_updates",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.accessibility_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.new_privacy_types",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "UPDATE notifications SET change_summary=? WHERE id='pt-content-notification-1'",
+          "params": [
+            "[{\"type\":\"policy_stale_cleared\",\"description\":\"policy_stale_cleared notice\"}]"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": {
+        "status": 200,
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"policy_stale_cleared\",\"description\":\"policy_stale_cleared notice\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"}],\"unreadCount\":1}",
+        "type": "application/json",
+        "disposition": null
+      },
+      "survivingNotes": [
+        "pt-content-note-0",
+        "pt-content-note-1",
+        "pt-content-note-2",
+        "pt-content-note-3"
+      ]
+    },
+    {
+      "name": "notifications all off, parser_fallthrough survives",
+      "route": "/api/notifications",
+      "search": "",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.label_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.policy_updates",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.accessibility_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.new_privacy_types",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "UPDATE notifications SET change_summary=? WHERE id='pt-content-notification-1'",
+          "params": [
+            "[{\"type\":\"parser_fallthrough\",\"description\":\"parser_fallthrough notice\"}]"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": {
+        "status": 200,
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"parser_fallthrough\",\"description\":\"parser_fallthrough notice\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"}],\"unreadCount\":1}",
+        "type": "application/json",
+        "disposition": null
+      },
+      "survivingNotes": [
+        "pt-content-note-0",
+        "pt-content-note-1",
+        "pt-content-note-2",
+        "pt-content-note-3"
+      ]
+    },
+    {
+      "name": "notifications all off, not_a_type_anyone_knows survives",
+      "route": "/api/notifications",
+      "search": "",
+      "query": [],
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.label_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.policy_updates",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.accessibility_changes",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO feature_flag_overrides (flag_key,override_value,quarantined,set_at) VALUES (?,?,0,?)",
+          "params": [
+            "flag.notifications.types.new_privacy_types",
+            "off",
+            1789473600000
+          ]
+        },
+        {
+          "sql": "UPDATE notifications SET change_summary=? WHERE id='pt-content-notification-1'",
+          "params": [
+            "[{\"type\":\"not_a_type_anyone_knows\",\"description\":\"not_a_type_anyone_knows notice\"}]"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": {
+        "status": 200,
+        "body": "{\"notifications\":[{\"id\":\"pt-content-notification-0\",\"app_id\":\"__content_synthetic__\",\"app_name\":\"Content notification\",\"change_summary\":[],\"created_at\":1789473600000,\"read\":1,\"stale\":1,\"iconUrl\":null},{\"id\":\"pt-content-notification-1\",\"app_id\":\"89997001\",\"app_name\":\"Content notification\",\"change_summary\":[{\"type\":\"not_a_type_anyone_knows\",\"description\":\"not_a_type_anyone_knows notice\"}],\"created_at\":1789473599990,\"read\":0,\"stale\":0,\"iconUrl\":\"https://example.test/icon.png\"}],\"unreadCount\":1}",
         "type": "application/json",
         "disposition": null
       },

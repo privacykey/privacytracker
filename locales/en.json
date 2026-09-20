@@ -2696,7 +2696,13 @@
     "manual_apps_prompt_example": "e.g. \"3 rows didn't match the App Store — track them under Manual apps.\"",
     "ai_timeout_label": "AI policy summary timeouts",
     "ai_timeout_desc": "When an AI-powered privacy-policy summary call aborts because it exceeded the configured timeout.",
-    "ai_timeout_example": "e.g. \"AI direct summary call aborted after 60s (limit: 60s).\""
+    "ai_timeout_example": "e.g. \"AI direct summary call aborted after 60s (limit: 60s).\"",
+    "job_resumed_label": "Background job resumed",
+    "job_resumed_desc": "When a bulk sync, Wayback import or policy sync is picked back up after the server restarted mid-run, or a lock left behind by one is cleared. Turning this off hides the card; the job still resumes.",
+    "job_resumed_example": "e.g. \"Wayback import resumed: 12 of 40 apps still to process.\"",
+    "parser_fallthrough_label": "Privacy-label parser warnings",
+    "parser_fallthrough_desc": "When the App Store page parser cannot read an app’s privacy labels, usually because Apple changed the page format. Turning this off means no fresh label data lands and nothing says so.",
+    "parser_fallthrough_example": "e.g. \"Privacy labels couldn’t be parsed for 3 apps in this batch.\""
   },
   "notifications": {
     "title": "Notifications",

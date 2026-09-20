@@ -17,7 +17,12 @@ export type {
   UnacknowledgedChangeEvent,
   UnacknowledgedChanges,
 } from "./changelog-types";
-export { SNOOZE_DAYS_OPTIONS } from "./changelog-types";
+export {
+  DIFF_CHANGE_TYPES,
+  isWholeNewPrivacyType,
+  NEW_PRIVACY_TYPE_PREFIX,
+  SNOOZE_DAYS_OPTIONS,
+} from "./changelog-types";
 
 import type {
   ChangeEntry,
@@ -32,6 +37,7 @@ import type {
   UnacknowledgedChangeEvent,
   UnacknowledgedChanges,
 } from "./changelog-types";
+import { NEW_PRIVACY_TYPE_PREFIX } from "./changelog-types";
 
 /** Build a snapshot of an app's current privacy state directly from DB rows. */
 export function buildSnapshot(appId: string): PrivacyTypeSnapshot[] {
@@ -68,7 +74,9 @@ export function diffSnapshots(
     if (!oldTypes.has(id)) {
       changes.push({
         type: "added",
-        description: `New privacy label: "${newType.title}"`,
+        // The prefix is the discriminator consumers use to tell this
+        // entry from the `now collects` one below — both are `added`.
+        description: `${NEW_PRIVACY_TYPE_PREFIX}"${newType.title}"`,
         details: newType.categories.map((c) => c.title),
       });
     }

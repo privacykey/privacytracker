@@ -128,11 +128,36 @@ export function contentStatements(now) {
       i % 2 ? null : i * 200
     );
   }
+  // One entry per classifyChange branch, in the shape its producer really
+  // emits: lib/privacy-policy.ts for policy, lib/accessibility.ts for
+  // accessibility, and diffSnapshots' two `added` shapes, which differ by
+  // the NEW_PRIVACY_TYPE_PREFIX on the description and NOT by `details`
+  // (the whole-new type is the one that carries them). The old stand-ins
+  // used `type: "changed"` and a `title` field, neither of which is a real
+  // ChangeEntry, so the policy and new-privacy-type branches went
+  // unexercised once the classifier started reading `type` and
+  // `description`.
   const changes = [
-    { type: "changed", category: "privacy-policy", details: [] },
-    { type: "added", category: "accessibility", details: [] },
-    { type: "added", title: "New type", details: [] },
-    { type: "added", title: "New category", details: ["Contacts"] },
+    {
+      type: "policy",
+      category: "privacy-policy",
+      description: "Privacy policy has been updated.",
+      details: [],
+    },
+    {
+      type: "added",
+      category: "accessibility",
+      description: 'Now supports accessibility feature: "VoiceOver"',
+    },
+    {
+      type: "added",
+      description: 'New privacy label: "Data Used to Track You"',
+      details: ["Contacts"],
+    },
+    {
+      type: "added",
+      description: '"Data Linked to You" now collects: Contacts',
+    },
   ];
   for (let i = 0; i < 35; i++) {
     add(

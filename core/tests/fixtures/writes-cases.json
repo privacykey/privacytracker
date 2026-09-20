@@ -5456,7 +5456,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -5555,7 +5555,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -5642,7 +5642,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -5717,7 +5717,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -5815,7 +5815,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"labelChanges\":false,\"policyUpdates\":false},\"stored\":{\"labelChanges\":false,\"policyUpdates\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"labelChanges\":false,\"policyUpdates\":false},\"stored\":{\"labelChanges\":false,\"policyUpdates\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -15360,7 +15360,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -15466,7 +15466,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":false},\"stored\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":false},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":false,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":false,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -15510,7 +15510,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -15594,7 +15594,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":false,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":false,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -15704,7 +15704,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":false,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":false,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":false,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":false,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -15783,7 +15783,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -15856,7 +15856,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":true,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -15930,7 +15930,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -16031,7 +16031,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -16101,7 +16101,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":true,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":true,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -16153,7 +16153,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true}}",
+    "body": "{\"prefs\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"stored\":{\"label_changes\":true,\"policy_updates\":false,\"accessibility_changes\":false,\"new_privacy_types\":true,\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":false,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true},\"defaults\":{\"labelChanges\":true,\"profileMismatch\":true,\"policyUpdates\":false,\"versionUpdates\":true,\"importCompleted\":true,\"manualAppsPrompt\":true,\"aiTimeout\":true,\"jobResumed\":true,\"parserFallthrough\":true}}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null

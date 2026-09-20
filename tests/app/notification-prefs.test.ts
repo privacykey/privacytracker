@@ -112,3 +112,54 @@ test("classifyNotificationType maps synthetic payload markers before fallbacks",
     "labelChanges"
   );
 });
+
+test("classifyNotificationType routes the resume and stale-cleared cards", () => {
+  // All six are one concept to the user — "a background job was
+  // interrupted and picked back up" — so they share one switch, matching
+  // how `flag.notifications.resume.enabled` groups them write-side.
+  for (const type of [
+    "sync_resumed",
+    "wayback_resumed",
+    "policy_resumed",
+    "sync_stale_cleared",
+    "wayback_stale_cleared",
+    "policy_stale_cleared",
+  ]) {
+    assert.equal(classifyNotificationType([{ type }]), "jobResumed", type);
+  }
+});
+
+test("classifyNotificationType routes the parser-fallthrough warning", () => {
+  assert.equal(
+    classifyNotificationType([{ type: "parser_fallthrough" }]),
+    "parserFallthrough"
+  );
+});
+
+test("every synthetic notification type has its own pref key", () => {
+  // The bug this guards: a synthetic writer whose `type` no branch
+  // recognises falls through to `labelChanges`, so turning label changes
+  // off silently hides it. Any new writer must be added here and to
+  // `classifyNotificationType` together.
+  const SYNTHETIC_TYPES = [
+    "ai_timeout",
+    "manual_apps_prompt",
+    "import_completed",
+    "profile_mismatch",
+    "version_update",
+    "sync_resumed",
+    "wayback_resumed",
+    "policy_resumed",
+    "sync_stale_cleared",
+    "wayback_stale_cleared",
+    "policy_stale_cleared",
+    "parser_fallthrough",
+  ];
+  for (const type of SYNTHETIC_TYPES) {
+    assert.notEqual(
+      classifyNotificationType([{ type }]),
+      "labelChanges",
+      `${type} falls through to labelChanges`
+    );
+  }
+});

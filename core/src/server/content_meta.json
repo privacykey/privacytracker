@@ -33,7 +33,9 @@
     "versionUpdates": true,
     "importCompleted": true,
     "manualAppsPrompt": true,
-    "aiTimeout": true
+    "aiTimeout": true,
+    "jobResumed": true,
+    "parserFallthrough": true
   },
   "tasks": [
     {

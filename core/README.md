@@ -1225,7 +1225,12 @@ arbitrary JSON details (including JavaScript number precision and key order).
 Notifications limit to 30 rows before applying the four resolved type flags,
 include synthetic rows, respect quiet-hours deferral, and count all eligible
 unread rows. Their malformed-JSON error path matches Next's empty HTTP 500.
-Preferences answer the four resolved flags, then the seven camelCase types
+`classify_change` mirrors Node's `classifyChange`: only the five ChangeEntry
+diff types are governed by a flag at all, and the two `added` shapes are
+told apart by the `New privacy label: ` description prefix rather than by
+`details`. Both rules changed in Node before this port was updated to
+match; see the CHANGELOG's Unreleased "Fixed" entry.
+Preferences answer the four resolved flags, then the nine camelCase types
 Settings and the bell read: the legacy blob over the defaults, with label
 changes and policy updates taken from their flags. They fall back to the
 legacy stored booleans alone when the resolver throws.
@@ -1251,7 +1256,7 @@ resolved flag changes, task state, cleanup side effects, malformed JSON and
 both rate limits. Only JSON export's freshly generated `exported_at` varies;
 the probe validates that timestamp and compares every remaining field.
 
-Regenerate the 109 fixed-clock Node handler scenarios with:
+Regenerate the 118 fixed-clock Node handler scenarios with:
 
 ```sh
 node --conditions=react-server --import tsx core/scripts/extract-content-meta.mjs

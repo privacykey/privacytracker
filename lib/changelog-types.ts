@@ -55,6 +55,37 @@ export interface ChangeEntry {
 }
 
 /**
+ * The `type` values `diffSnapshots` and the policy/wayback timeline
+ * writers emit — i.e. every entry that describes an actual change to an
+ * app. A `change_summary` entry whose `type` is outside this set is a
+ * system notice written by one of the synthetic helpers in
+ * lib/notifications.ts (resume cards, AI timeouts, import completions,
+ * parser fallthrough), not a change to an app.
+ */
+export const DIFF_CHANGE_TYPES: ReadonlySet<string> = new Set<
+  ChangeEntry["type"]
+>(["added", "removed", "modified", "policy", "wayback"]);
+
+/**
+ * Description prefix `diffSnapshots` gives an entry for a privacy type
+ * that did not exist on the previous snapshot. It is the only thing
+ * separating that entry from one for a category added to a type already
+ * present — both are `type: 'added'` — so consumers must key on this
+ * rather than on `details`, which only the type-level entry carries and
+ * which is empty when the new type arrives with no categories.
+ */
+export const NEW_PRIVACY_TYPE_PREFIX = "New privacy label: ";
+
+/** Whether `entry` describes a privacy type that is wholly new. */
+export function isWholeNewPrivacyType(entry: ChangeEntry): boolean {
+  return (
+    entry.type === "added" &&
+    typeof entry.description === "string" &&
+    entry.description.startsWith(NEW_PRIVACY_TYPE_PREFIX)
+  );
+}
+
+/**
  * One row on the Change History timeline. Interleaves `privacy_snapshots`
  * with `change_review_actions` rows so the timeline shows when/how the user
  * acknowledged change sets. The `kind` discriminator drives client rendering.

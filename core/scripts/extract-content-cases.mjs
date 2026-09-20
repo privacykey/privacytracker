@@ -408,6 +408,31 @@ for (const raw of [
   );
 }
 
+// System notices carry their own `type` tag, which is not one of the five
+// ChangeEntry diff types, so none of the four type flags governs them and
+// all four being off must leave them in the bell. Appended last, so no
+// earlier case moves.
+for (const type of [
+  "ai_timeout",
+  "sync_resumed",
+  "policy_stale_cleared",
+  "parser_fallthrough",
+  "not_a_type_anyone_knows",
+]) {
+  await run(
+    `notifications all off, ${type} survives`,
+    "/api/notifications",
+    "",
+    [
+      ...types.map((t) => flag(`notifications.types.${t}`, "off")),
+      stmt(
+        "UPDATE notifications SET change_summary=? WHERE id='pt-content-notification-1'",
+        JSON.stringify([{ type, description: `${type} notice` }])
+      ),
+    ]
+  );
+}
+
 writeFileSync(
   new URL("../tests/fixtures/content-cases.json", import.meta.url),
   `${JSON.stringify({ now, base, cases }, null, 2)}\n`

@@ -4,7 +4,7 @@ use super::{
     flags,
     routes_stats::{get, Params},
     settings::get_setting_with,
-    stats::{query, text, truthy, Result},
+    stats::{query, text, Result},
 };
 use crate::{
     jsnum::js_number,
@@ -198,6 +198,39 @@ fn empty_length(v: &Value) -> bool {
         || v.as_object()
             .is_some_and(|m| m.get("length") == Some(&json!(0)))
 }
+/// `DIFF_CHANGE_TYPES` in lib/changelog-types.ts: every `type` that
+/// describes an actual change to an app. An entry outside this set is a
+/// system notice from one of the synthetic writers in lib/notifications.ts.
+const DIFF_CHANGE_TYPES: [&str; 5] = ["added", "removed", "modified", "policy", "wayback"];
+/// `NEW_PRIVACY_TYPE_PREFIX` in lib/changelog-types.ts.
+const NEW_PRIVACY_TYPE_PREFIX: &str = "New privacy label: ";
+/// Node's `classifyChange`. `None` is its `null`: no type flag governs
+/// this entry, so `filter_changes` keeps it whatever the four flags say.
+/// The two `added` shapes `diffSnapshots` emits are told apart by the
+/// description prefix, never by `details` — only the whole-new-type entry
+/// carries any, and it carries none when the type has no categories yet.
+fn classify_change(c: &Value) -> Option<usize> {
+    if !c["type"]
+        .as_str()
+        .is_some_and(|t| DIFF_CHANGE_TYPES.contains(&t))
+    {
+        return None;
+    }
+    if c["category"] == "privacy-policy" {
+        return Some(1);
+    }
+    if c["category"] == "accessibility" {
+        return Some(2);
+    }
+    if c["type"] == "added"
+        && c["description"]
+            .as_str()
+            .is_some_and(|d| d.starts_with(NEW_PRIVACY_TYPE_PREFIX))
+    {
+        return Some(3);
+    }
+    Some(0)
+}
 fn filter_changes(parsed: &Value, enabled: &[bool; 4]) -> Result<Value> {
     if empty_length(parsed) {
         return Ok(parsed.clone());
@@ -208,18 +241,7 @@ fn filter_changes(parsed: &Value, enabled: &[bool; 4]) -> Result<Value> {
         if c.is_null() {
             return Err("null notification change".into());
         }
-        let details = &c["details"];
-        let empty_details = empty_length(details);
-        let i = if c["category"] == "privacy-policy" {
-            1
-        } else if c["category"] == "accessibility" {
-            2
-        } else if c["type"] == "added" && (!truthy(details) || empty_details) {
-            3
-        } else {
-            0
-        };
-        if enabled[i] {
+        if classify_change(c).is_none_or(|i| enabled[i]) {
             out.push(c.clone());
         }
     }
