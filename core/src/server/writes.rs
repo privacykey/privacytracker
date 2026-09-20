@@ -79,7 +79,7 @@ const AI_TIMEOUT_MAX_MS: f64 = 900_000.0;
 const MASKED_SECRET_VALUE: &str = "__SET__";
 const WEBHOOK_FORMATS: [&str; 4] = ["slack", "discord", "teams", "generic"];
 const WEBHOOK_FREQUENCIES: [&str; 4] = ["immediate", "daily_summary", "weekly_summary", "off"];
-const NOTIFICATION_TYPE_KEYS: [&str; 7] = [
+const NOTIFICATION_TYPE_KEYS: [&str; 9] = [
     "labelChanges",
     "profileMismatch",
     "policyUpdates",
@@ -87,6 +87,8 @@ const NOTIFICATION_TYPE_KEYS: [&str; 7] = [
     "importCompleted",
     "manualAppsPrompt",
     "aiTimeout",
+    "jobResumed",
+    "parserFallthrough",
 ];
 const NOTIFICATION_FLAGS: [(&str, &str); 4] = [
     ("label_changes", "flag.notifications.types.label_changes"),

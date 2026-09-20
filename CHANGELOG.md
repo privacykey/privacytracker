@@ -46,6 +46,34 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- The Notifications type switches now filter what their labels say. The
+  bell mapped each change to one of the four `flag.notifications.types.*`
+  switches, and got two of them backwards from the first commit onward. A
+  privacy type an app had never declared before counted as an "app label
+  change", while a new category on a type it already declared counted as a
+  "new privacy type". The rule keyed on whether the entry carried a list
+  of category titles, and it is the whole-new type that carries them. So
+  turning off new privacy types hid the wrong half of the labels, and the
+  only case that landed right was a new type that arrived with no
+  categories at all. The two are now told apart by what the change
+  actually says.
+
+- System notices are no longer hidden by the app-label switch. Every
+  operational notice the bell raises counted as an app label change, so
+  turning label changes off emptied both the bell and its unread count of
+  all of them: a bulk sync, Wayback import or policy sync resumed after a
+  restart, a lock left behind by one of those cleared, an import finished,
+  import rows that matched no App Store listing, an AI summary that timed
+  out, an app that started exceeding your privacy profile, a new App Store
+  version, and the warning that privacy labels could not be parsed. None
+  of the four switches governs any of them now. The five that already had
+  their own switch keep it, and two new ones cover the rest: **Background
+  job resumed** (the resume and lock-cleared cards; hiding them does not
+  stop the job resuming, and `flag.notifications.resume.enabled` still
+  decides whether they are written at all) and **Privacy-label parser
+  warnings**. Both default on, and both sit in Settings, under
+  Notifications.
+
 - A device re-sync now merges only the duplicate apps its preview found.
   When a re-sync finds one app stored twice, under two App Store ids with
   the same bundle ID, confirming it moves the notes, verdicts, shortlist

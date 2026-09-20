@@ -20,6 +20,8 @@ export const NOTIFICATION_TYPE_KEYS = [
   "importCompleted",
   "manualAppsPrompt",
   "aiTimeout",
+  "jobResumed",
+  "parserFallthrough",
 ] as const;
 
 export type NotificationTypeKey = (typeof NOTIFICATION_TYPE_KEYS)[number];
@@ -98,7 +100,42 @@ export const NOTIFICATION_TYPE_META: Record<
     example: 'e.g. "AI direct summary call aborted after 60s (limit: 60s)."',
     defaultOn: true,
   },
+  jobResumed: {
+    key: "jobResumed",
+    label: "Background job resumed",
+    description:
+      // Read-side only: `flag.notifications.resume.enabled` is the
+      // separate write-side gate that decides whether these rows exist.
+      "When a bulk sync, Wayback import or policy sync is picked back up after the server restarted mid-run, or a lock left behind by one is cleared. Turning this off hides the card; the job still resumes.",
+    example: 'e.g. "Wayback import resumed: 12 of 40 apps still to process."',
+    defaultOn: true,
+  },
+  parserFallthrough: {
+    key: "parserFallthrough",
+    label: "Privacy-label parser warnings",
+    description:
+      "When the App Store page parser cannot read an app\u2019s privacy labels, usually because Apple changed the page format. Turning this off means no fresh label data lands and nothing says so.",
+    example:
+      'e.g. "Privacy labels couldn\u2019t be parsed for 3 apps in this batch."',
+    defaultOn: true,
+  },
 };
+
+/**
+ * Synthetic `type` tags that mean "a background job was interrupted and
+ * picked back up", or "a lock one left behind was cleared". One switch
+ * covers all six because they are one idea to the user, and because the
+ * write-side gate (`flag.notifications.resume.enabled`) groups them the
+ * same way.
+ */
+const JOB_RESUME_TYPES: ReadonlySet<string> = new Set([
+  "sync_resumed",
+  "wayback_resumed",
+  "policy_resumed",
+  "sync_stale_cleared",
+  "wayback_stale_cleared",
+  "policy_stale_cleared",
+]);
 
 export type NotificationPrefs = Partial<Record<NotificationTypeKey, boolean>>;
 
@@ -194,6 +231,11 @@ export function resolvePrefs(
  * `resolvedPrefs[key]`. Synthetic types (ai_timeout, manual_apps_prompt,
  * etc.) are checked first; label-change payloads with a policy entry
  * classify as `policyUpdates`; everything else falls back to `labelChanges`.
+ *
+ * Every synthetic writer in lib/notifications.ts must have a branch here.
+ * One without falls to `labelChanges` and is then hidden by a switch that
+ * has nothing to do with it — the read-side half of the bug that left the
+ * resume cards and the parser warning governed by label changes.
  */
 export function classifyNotificationType(
   entries: Array<{ type?: string }> | null | undefined
@@ -216,6 +258,12 @@ export function classifyNotificationType(
   }
   if (firstType === "version_update") {
     return "versionUpdates";
+  }
+  if (typeof firstType === "string" && JOB_RESUME_TYPES.has(firstType)) {
+    return "jobResumed";
+  }
+  if (firstType === "parser_fallthrough") {
+    return "parserFallthrough";
   }
   // Any policy entry → classify the whole notification as a policy update
   // (only affects the user's on/off toggle; bell still renders the full list).

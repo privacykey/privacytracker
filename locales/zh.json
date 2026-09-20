@@ -2696,7 +2696,13 @@
     "manual_apps_prompt_example": "例如：\"有 3 行未匹配 App Store — 请在手动应用下追踪它们。\"",
     "ai_timeout_label": "AI 政策摘要超时",
     "ai_timeout_desc": "AI 驱动的隐私政策摘要调用因超过配置的超时而中止时。",
-    "ai_timeout_example": "例如：\"AI 直接摘要调用在 60 秒后中止（上限：60 秒）。\""
+    "ai_timeout_example": "例如：\"AI 直接摘要调用在 60 秒后中止（上限：60 秒）。\"",
+    "job_resumed_label": "后台任务已恢复",
+    "job_resumed_desc": "批量同步、Wayback 导入或政策同步在服务器中途重启后继续运行，或其遗留的锁被清除时。关闭后仅隐藏提示卡片，任务仍会恢复。",
+    "job_resumed_example": "例如：“Wayback 导入已恢复：尚有 40 个应用中的 12 个待处理。”",
+    "parser_fallthrough_label": "隐私标签解析警告",
+    "parser_fallthrough_desc": "App Store 页面解析器无法读取应用的隐私标签时，通常是因为 Apple 更改了页面格式。关闭后将无法获取新的标签数据，且不会有任何提示。",
+    "parser_fallthrough_example": "例如：“本批次中有 3 个应用的隐私标签无法解析。”"
   },
   "notifications": {
     "title": "通知",

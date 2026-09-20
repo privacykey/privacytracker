@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { AiTimeoutPhase } from "./ai-config";
 import type { ChangeEntry } from "./changelog";
+import { DIFF_CHANGE_TYPES, isWholeNewPrivacyType } from "./changelog-types";
 import db from "./db";
 import { HARD_DEFAULTS } from "./feature-flag-rules";
 import { postImmediateWebhook } from "./notification-webhooks";
@@ -721,12 +722,23 @@ export function createPolicyResumeNotification(
 }
 
 /**
- * Per-type notification filter. Each change is mapped to one of four
- * type keys; when the matching flag is `off`, the change is filtered
- * out, and a row whose changes are all filtered is suppressed.
+ * Per-type notification filter. A change that describes something an app
+ * did is mapped to one of the four `flag.notifications.types.*` keys;
+ * when the matching flag is `off` the change is filtered out, and a row
+ * whose changes are all filtered is suppressed.
  *
- * Synthetic notifications (AI timeout, manual-apps, import completion,
- * resume cards) carry an empty change_summary and always pass through.
+ * Returns `null` for an entry none of the four flags governs, which
+ * `applyTypeFilter` keeps unconditionally. That covers every system
+ * notice written by the synthetic helpers above (the three resume and
+ * three stale-cleared cards, import completion, manual-apps prompt, AI
+ * timeout, profile mismatch, version update, parser fallthrough): each
+ * writes one entry carrying its own `type` tag, so classifying them as
+ * `label_changes` meant turning label changes off silently emptied the
+ * bell of operational notices that have nothing to do with labels. The
+ * user's own per-type switches for these live in the camelCase prefs of
+ * lib/notification-prefs.ts, which the bell applies client-side. An
+ * entry with an unrecognised `type` lands here too and is kept — a
+ * notice shown that could have been hidden beats one silently dropped.
  */
 function classifyChange(
   c: ChangeEntry
@@ -734,15 +746,24 @@ function classifyChange(
   | "label_changes"
   | "policy_updates"
   | "accessibility_changes"
-  | "new_privacy_types" {
+  | "new_privacy_types"
+  | null {
+  if (!DIFF_CHANGE_TYPES.has(c.type)) {
+    return null;
+  }
   if (c.category === "privacy-policy") {
     return "policy_updates";
   }
   if (c.category === "accessibility") {
     return "accessibility_changes";
   }
-  // Whole-new privacy type: `type: 'added'` with empty/missing details.
-  if (c.type === "added" && (!c.details || c.details.length === 0)) {
+  // `diffSnapshots` emits two `added` shapes and the description prefix
+  // is what tells them apart: a whole-new privacy type carries its
+  // category titles in `details`, while a category added to a type
+  // already present carries none. Keying on `details` being empty — as
+  // this did since 641cccc — therefore read both backwards, and only a
+  // new type that happens to have no categories landed correctly.
+  if (isWholeNewPrivacyType(c)) {
     return "new_privacy_types";
   }
   return "label_changes";
@@ -804,9 +825,16 @@ function applyTypeFilter(
   enabled: ReturnType<typeof getEnabledTypeFilter>
 ): ChangeEntry[] {
   if (changes.length === 0) {
-    return changes; // synthetic — pass through
+    // A row with no entries at all: nothing to classify, nothing to drop.
+    return changes;
   }
-  return changes.filter((c) => enabled[classifyChange(c)]);
+  return changes.filter((c) => {
+    const kind = classifyChange(c);
+    // `null` — a system notice, or an entry shape none of the four
+    // flags describes. Nothing here is the user's label-change filter's
+    // business, so it stays.
+    return kind === null || enabled[kind];
+  });
 }
 
 export function getNotifications(limit = 30) {
