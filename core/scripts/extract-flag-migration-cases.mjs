@@ -12,7 +12,7 @@
  *
  * Determinism as the other oracles: a frozen clock (so every step takes
  * 0 ms), counted ids and each case in a SAVEPOINT. A case may drop a table
- * inside its savepoint; the rollback restores it.
+ * or add a trigger inside its savepoint; the rollback restores the schema.
  */
 process.env.TZ = "UTC";
 
@@ -125,6 +125,11 @@ const override = (
     quarantined
   );
 const drop = (table) => stmt(`DROP TABLE ${table}`);
+// A stored value a step cannot use is dropped, not failed on, so a step
+// after the schema check fails only on a broken schema: here, a trigger.
+const refuseOverrideInserts = stmt(
+  "CREATE TRIGGER refuse_override_inserts BEFORE INSERT ON feature_flag_overrides BEGIN SELECT RAISE(ABORT, 'feature_flag_overrides is read-only'); END"
+);
 const prefs = (value) =>
   setting(
     "notification_prefs",
@@ -211,11 +216,15 @@ run("an intent replaces a stored focus", [
   setting("flag.focus.workflow", "self_cleanup"),
   setting("flag.focus.child_age_band", "13_15"),
 ]);
-run("an intent named like an object method fails its step", [
+run("an intent named like an object method is dropped as unknown", [
   setting("user_intent", "toString"),
 ]);
-run("the __proto__ intent fails its step", [
+run("the __proto__ intent is dropped as unknown", [
   setting("user_intent", "__proto__"),
+]);
+run("an inherited intent from version 1 is dropped and the run completes", [
+  version("1"),
+  setting("user_intent", "valueOf"),
 ]);
 
 // ── Step 3: notification_prefs becomes overrides ────────────────────
@@ -246,7 +255,12 @@ run("an override already there is replaced", [
   prefs({ label_changes: false }),
 ]);
 run("prefs that are not JSON are dropped", [prefs("{label_changes: true")]);
-run("prefs of null fail their step", [prefs("null")]);
+run("prefs of null are dropped", [prefs("null")]);
+run("prefs of null are dropped and the later steps still run", [
+  setting("user_intent", "hygiene"),
+  prefs("null"),
+  setting("flag.focus.goal.understand", "true"),
+]);
 run("prefs that are an array write nothing", [prefs("[true, true]")]);
 run("prefs that are a number write nothing", [prefs("5")]);
 run("prefs that are a string write nothing", [prefs('"label_changes"')]);
@@ -296,12 +310,13 @@ run("a missing annotations table fails the schema check", [
 ]);
 run("a later step's failure keeps the earlier steps' writes", [
   setting("user_intent", "hygiene"),
-  prefs("null"),
+  refuseOverrideInserts,
+  prefs({ label_changes: true }),
   setting("flag.focus.goal.understand", "true"),
 ]);
 run("a failed run from version 1 leaves version 1", [
   version("1"),
-  setting("user_intent", "valueOf"),
+  drop("annotations"),
 ]);
 
 // ── Everything at once ───────────────────────────────────────────────

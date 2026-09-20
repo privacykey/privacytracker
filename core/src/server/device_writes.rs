@@ -9,8 +9,8 @@
 //! apply a device's app list. The backup check is the one that reads the
 //! disk — a MobileSync backup must be a real, non-empty `Manifest.db` in a
 //! direct child of Apple's backup root — and it is ported with Node's
-//! checks in Node's order, including one it gets wrong: a path whose
-//! relative form is `..` (the root's own parent) passes as a direct child.
+//! checks in Node's order. The root's own parent, whose relative form is
+//! `..`, is not a direct child; both used to let it through.
 //!
 //! Gated by `core/tests/fixtures/device-routes-cases.json`, recorded by
 //! `core/scripts/extract-device-routes-cases.mjs` over a MobileSync-shaped
@@ -319,8 +319,9 @@ fn mobile_sync_root() -> PathBuf {
         .join("Backup")
 }
 
-/// `isDirectChild`: `path.relative` is one segment with no separator. For
-/// the parent itself that segment is `..`, which Node accepts too.
+/// `isDirectChild`: `path.relative` is one segment with no separator, and
+/// not `..`, its spelling of the parent's own parent; and the candidate's
+/// dirname is the parent.
 fn is_direct_child(parent: &Path, candidate: &Path) -> bool {
     let names = |p: &Path| -> Vec<String> {
         p.components()
@@ -330,16 +331,16 @@ fn is_direct_child(parent: &Path, candidate: &Path) -> bool {
             })
             .collect()
     };
-    let (parent, candidate) = (names(parent), names(candidate));
-    let common = parent
-        .iter()
-        .zip(&candidate)
-        .take_while(|(a, b)| a == b)
-        .count();
-    let mut segments: Vec<&str> = vec![".."; parent.len() - common];
-    segments.extend(candidate[common..].iter().map(String::as_str));
+    let (from, to) = (names(parent), names(candidate));
+    let common = from.iter().zip(&to).take_while(|(a, b)| a == b).count();
+    let mut segments: Vec<&str> = vec![".."; from.len() - common];
+    segments.extend(to[common..].iter().map(String::as_str));
     let relative = segments.join("/");
-    !relative.is_empty() && !relative.contains('/') && !relative.contains('\\')
+    !relative.is_empty()
+        && relative != ".."
+        && !relative.contains('/')
+        && !relative.contains('\\')
+        && candidate.parent() == Some(parent)
 }
 
 fn verify_backup(path: &str, now: i64) -> Result<Verified, &'static str> {
@@ -1085,8 +1086,10 @@ mod tests {
             Path::new("/a/MobileSync/Backup/X/Y")
         ));
         assert!(!is_direct_child(root, Path::new("/a/Elsewhere")));
-        // Node's `..`: the root's parent passes.
-        assert!(is_direct_child(root, Path::new("/a/MobileSync")));
+        // `..`, the root's own parent, is one segment with no separator.
+        assert!(!is_direct_child(root, Path::new("/a/MobileSync")));
+        // Only `..` itself: a name that starts with it is still a child.
+        assert!(is_direct_child(root, Path::new("/a/MobileSync/Backup/..X")));
         assert!(!is_direct_child(
             root,
             Path::new("/a/MobileSync/Backup/a\\b")

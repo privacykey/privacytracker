@@ -137,12 +137,21 @@ const TREE = [
     size: 100,
     mtime: now - HOUR,
   },
-  // The root's parent, with a Manifest.db of its own: Node's direct-child
-  // test reads `..` as a child, so this records as a backup.
+  // The root's parent, with a Manifest.db of its own, so only the
+  // direct-child test refuses it: `path.relative` spells it `..`, one
+  // segment with no separator.
   {
     path: "MobileSync/Manifest.db",
     kind: "file",
     size: 300,
+    mtime: now - HOUR,
+  },
+  // The root, with a Manifest.db of its own, so only the direct-child test
+  // refuses it too: its relative form is empty.
+  {
+    path: "MobileSync/Backup/Manifest.db",
+    kind: "file",
+    size: 200,
     mtime: now - HOUR,
   },
 ];
@@ -574,7 +583,7 @@ async function bodyCases(route, limit, extra = {}) {
     route,
     json: record({ path: at("NOMANIFEST/../FRESH") }),
   });
-  await run("backup: the root's parent reads as a child", {
+  await run("backup: the root's parent is not a child", {
     route,
     json: record({ path: path.join(BASE, "MobileSync") }),
   });
@@ -1179,6 +1188,32 @@ async function bodyCases(route, limit, extra = {}) {
         { previousAppId: A5, incomingAppId: "2002" },
       ],
     },
+  });
+}
+
+// ── POST /api/device-actions/backup: the direct-child test ───────────
+// Appended last: each case's forwarded address comes from a global
+// counter, so a case added up in the route's own block would shift every
+// later case. Template strings, not `path.join`, which would resolve the
+// `..` before the handler sees it.
+{
+  const route = "/api/device-actions/backup";
+  const record = (target) => ({
+    ecid: ECID,
+    path: target,
+    deviceName: "Kid's iPad",
+  });
+  await run("backup: the root's parent spelled with a dot-dot", {
+    route,
+    json: record(`${ROOT}/..`),
+  });
+  await run("backup: the root itself is not a child", {
+    route,
+    json: record(ROOT),
+  });
+  await run("backup: a dot-dot path back to the root", {
+    route,
+    json: record(`${at("FRESH")}/..`),
   });
 }
 
