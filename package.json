@@ -28,6 +28,7 @@
     "tauri": "tauri",
     "tauri:build": "tauri build",
     "tauri:dev": "node scripts/ensure-standalone-stub.mjs && tauri dev --features devtools",
+    "tauri:dev:rust": "node scripts/ensure-standalone-stub.mjs && cargo run --manifest-path src-tauri/Cargo.toml --no-default-features --features rust-backend,devtools",
     "test": "node --conditions=react-server --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/**/*.test.ts",
     "test:core": "cargo test --manifest-path core/Cargo.toml",
     "test:coverage": "rm -rf coverage && mkdir -p coverage/v8 && NODE_V8_COVERAGE=coverage/v8 node --conditions=react-server --experimental-test-coverage --import tsx --import ./tests/helpers/setup-env.ts --test tests/app/**/*.test.ts",
@@ -35,6 +36,7 @@
     "test:ios-import-helper": "python3 -m unittest discover -s tests/ios-app-import -p '*_test.py'",
     "test:release": "node --test tests/release/*.test.mjs",
     "test:tauri": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "test:tauri:rust": "cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features rust-backend",
     "pretypecheck": "next typegen",
     "typecheck": "tsc --noEmit"
   },

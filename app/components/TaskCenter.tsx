@@ -38,9 +38,11 @@ import {
   useState,
 } from "react";
 import {
+  finishedCardSubtitleKey,
+  type ServerJobCardReason,
   type ServerJobInitiator,
   type ServerJobKey,
-  serverJobCardReason,
+  serverJobCardStep,
 } from "../../lib/task-center-server-jobs";
 import { useResolvedFlag } from "../../lib/use-flag-bundle";
 
@@ -299,9 +301,27 @@ export function TaskCenterProvider({
   // (the calling UI already owns those via startTask). The actual poll
   // callback is declared after startTask below.
   const serverTasksRef = useRef<
-    Map<ServerJobKey, { handle: TaskHandle; runId: string }>
+    Map<
+      ServerJobKey,
+      { handle: TaskHandle; reason: ServerJobCardReason; runId: string }
+    >
   >(new Map());
   const policyRunTasksRef = useRef<Map<string, TaskHandle>>(new Map());
+
+  // End the card TaskCenter shows for a server job, swapping out a subtitle
+  // that only held while the run was going. Without this a finished
+  // background batch sat under "Recently finished" with a tick beside
+  // "Running in the background".
+  const finishServerCard = useCallback(
+    (card: { handle: TaskHandle; reason: ServerJobCardReason }) => {
+      const subtitleKey = finishedCardSubtitleKey(card.reason);
+      if (subtitleKey) {
+        card.handle.update({ subtitle: t(subtitleKey) });
+      }
+      card.handle.complete("done");
+    },
+    [t]
+  );
 
   const scheduleAutoDismiss = useCallback(
     (id: string) => {
@@ -519,60 +539,64 @@ export function TaskCenterProvider({
       for (const [jobKey, job] of jobs) {
         const existing = serverTasksRef.current.get(jobKey);
 
-        // Nothing running or run blob already cleared → complete any
-        // tracked task for this job and move on.
-        if (!(job.running && job.runId)) {
-          if (existing) {
-            existing.handle.complete("done");
-            serverTasksRef.current.delete(jobKey);
-          }
-          continue;
-        }
-
         // Show resumed jobs even after a reload. Also show manual policy
         // batches when there is no local SettingsView-owned task (e.g. the
         // user refreshed or opened a second tab mid-run). This keeps bulk
         // re-summarise visible without duplicating the task that launched it.
         // TaskCenter's own card for the job links to the same place, so it
-        // goes in as `cardId` and is not mistaken for that task.
-        const reason = serverJobCardReason({
+        // goes in as the card and is not mistaken for that task.
+        const step = serverJobCardStep({
           jobKey,
-          initiator: job.initiator,
+          job,
           href: SERVER_JOB_HREF[jobKey],
-          cardId: existing?.handle.id,
+          card: existing
+            ? { id: existing.handle.id, runId: existing.runId }
+            : undefined,
           tasks: tasksRef.current,
           resumeCardsEnabled,
         });
-        if (!reason) {
+
+        // Close-out comes first, and stays independent of whether the run
+        // that replaced this one gets a card: a run TaskCenter leaves alone
+        // (a batch Settings owns, an automatic policy fetch) beginning in
+        // the same 4 s window used to strand the old card mid-progress.
+        if (step.close && existing) {
+          finishServerCard(existing);
+          serverTasksRef.current.delete(jobKey);
+        }
+
+        // `step.reason` is only set for a running job with a runId; naming
+        // the runId here is what narrows it for the card below.
+        const runId = job.runId;
+        if (!(step.reason && runId)) {
           continue;
         }
+
         // The subtitle says why the card is shown. Only a run the server
         // picked up again after a restart was resumed; a manual batch shown
         // for want of a local task was never interrupted.
         const subtitle =
-          reason === "resumed"
+          step.reason === "resumed"
             ? t("subtitle_resumed")
             : t("subtitle_background");
-
-        // Run boundary — a different runId means the previous one ended
-        // and a new one started between polls. Close the old card first.
-        if (existing && existing.runId !== job.runId) {
-          existing.handle.complete("done");
-          serverTasksRef.current.delete(jobKey);
-        }
 
         const done = job.summary?.done ?? 0;
         const total = job.summary?.total ?? 0;
         const label = job.currentAppName ?? undefined;
 
-        if (serverTasksRef.current.has(jobKey)) {
-          const current = serverTasksRef.current.get(jobKey)!;
+        const current = serverTasksRef.current.get(jobKey);
+        if (current) {
           // Refresh the subtitle with the progress: a manual batch the
           // server resumes after a restart keeps its runId, so the same
-          // card goes on to show a resumed run.
+          // card goes on to show a resumed run. The stored reason follows
+          // it, or closing the card would pick the wrong final subtitle.
           current.handle.update({
             subtitle,
             progress: { current: done, total, label },
+          });
+          serverTasksRef.current.set(jobKey, {
+            ...current,
+            reason: step.reason,
           });
         } else {
           const handle = startTask({
@@ -582,7 +606,11 @@ export function TaskCenterProvider({
             href: SERVER_JOB_HREF[jobKey],
             progress: { current: done, total, label },
           });
-          serverTasksRef.current.set(jobKey, { handle, runId: job.runId });
+          serverTasksRef.current.set(jobKey, {
+            handle,
+            reason: step.reason,
+            runId,
+          });
         }
       }
 
@@ -634,7 +662,7 @@ export function TaskCenterProvider({
       // Network blip — keep last known state. The next tick will recover.
       console.warn("[tasks] Active-tasks poll failed:", err);
     }
-  }, [startTask, resumeCardsEnabled, t]);
+  }, [startTask, finishServerCard, resumeCardsEnabled, t]);
 
   useEffect(() => {
     if (!pollingEnabled) {

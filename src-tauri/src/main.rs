@@ -1,14 +1,15 @@
 // privacytracker — Tauri desktop shell.
 //
 // Boot sequence:
-//   1. Pick a free localhost port.
-//   2. Resolve the per-user data directory (PRIVACYTRACKER_DATA_DIR).
-//   3. Spawn the bundled Node sidecar running Next.js standalone's server.js
-//      with PORT / HOSTNAME / PRIVACYTRACKER_DATA_DIR env set.
-//   4. Poll http://127.0.0.1:<port>/api/apps until it responds (Next.js is
-//      live). The existing endpoint is used by the Docker healthcheck for
-//      the same reason — it's the cheapest round-trip that proves lib/db.ts
-//      initialised cleanly.
+//   1-3. Start the backend (backend.rs). By default that spawns the bundled
+//      Node sidecar on a free loopback port, over the per-user data
+//      directory. Built with `--features rust-backend`, the Rust core
+//      serves the app from this process instead, on the port this install
+//      used last. Either way the rest of the shell only sees a base URL.
+//   4. Wait for the sidecar to answer (Node path only: the embedded server
+//      is listening before it reports its address). We poll /api/apps, as
+//      the Docker healthcheck does — the cheapest round-trip that proves
+//      the database opened cleanly.
 //   5. Point the main window at 127.0.0.1:<port> and show it — unless the
 //      process was started with --hidden (the autostart plugin passes this
 //      when "launch hidden in tray" is enabled) or desktop_require_unlock
@@ -26,6 +27,10 @@
 
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
+mod backend;
+#[cfg(feature = "rust-backend")]
+mod embedded;
+#[cfg(not(feature = "rust-backend"))]
 mod sidecar;
 mod tray;
 mod commands;
@@ -47,16 +52,20 @@ use once_cell::sync::OnceCell;
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
 
-/// State that outlives any one window: the sidecar child process handle and
-/// the port it's listening on. Wrapped in a Mutex so the tray menu and
+/// State that outlives any one window: the handle that stops the backend
+/// and the port it's listening on. Wrapped in a Mutex so the tray menu and
 /// commands can cooperate with the boot path without racing each other.
+///
+/// The `sidecar_*` names predate the Rust backend and are what the webview
+/// asks for (the `sidecar_base_url` command); they mean "the backend" on
+/// either path.
 pub struct AppState {
     pub sidecar_port: u16,
     pub sidecar_base_url: String,
     /// `None` in `tauri dev` when the user is pointing at their own
-    /// `next dev` server via the PRIVACYTRACKER_DEV_URL env var (see
-    /// sidecar::resolve_base_url). `Some` in every shipped build.
-    pub sidecar: Mutex<Option<sidecar::SidecarHandle>>,
+    /// `next dev` server via the PRIVACYTRACKER_DEV_URL env var. `Some`
+    /// in every shipped build.
+    pub backend: Mutex<Option<backend::Running>>,
 }
 
 static STATE: OnceCell<AppState> = OnceCell::new();
@@ -160,10 +169,10 @@ fn main() {
             // failure message to the actionable bit (sidecar boot
             // path's own error string, e.g. "Bundled standalone
             // tarball is incomplete… delete it and re-run").
-            let boot = match sidecar::boot(&app.handle()) {
+            let boot = match backend::boot(&app.handle()) {
                 Ok(b) => b,
                 Err(e) => {
-                    eprintln!("\n[privacytracker] FATAL: failed to spawn the Node sidecar: {e}\n");
+                    eprintln!("\n[privacytracker] FATAL: failed to start the backend: {e}\n");
                     std::process::exit(1);
                 }
             };
@@ -172,7 +181,7 @@ fn main() {
                 .set(AppState {
                     sidecar_port: boot.port,
                     sidecar_base_url: boot.base_url.clone(),
-                    sidecar: Mutex::new(boot.child),
+                    backend: Mutex::new(boot.running),
                 })
                 .ok()
                 .expect("AppState already initialised");
@@ -195,6 +204,10 @@ fn main() {
             // trace. The user sees the actionable message and we exit
             // with a non-zero status that any wrapper script (CI,
             // make, etc.) treats as a failure normally.
+            //
+            // The embedded backend has nothing to wait for: its listener
+            // is bound and its router built before `boot` returns.
+            #[cfg(not(feature = "rust-backend"))]
             if let Err(e) = sidecar::wait_until_ready(&boot.base_url) {
                 eprintln!("\n[privacytracker] FATAL: {e}\n");
                 eprintln!(
@@ -376,9 +389,9 @@ fn main() {
             // returns.
             if matches!(event, tauri::RunEvent::ExitRequested { .. }) {
                 if let Some(state) = STATE.get() {
-                    if let Ok(mut guard) = state.sidecar.lock() {
+                    if let Ok(mut guard) = state.backend.lock() {
                         if let Some(handle) = guard.take() {
-                            log::info!("ExitRequested — shutting down sidecar");
+                            log::info!("ExitRequested — stopping the backend");
                             handle.shutdown();
                         }
                     }
