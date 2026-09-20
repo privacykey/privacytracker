@@ -5,8 +5,6 @@
 //! (`imports/queue`), and interval arithmetic over stored epoch values
 //! (`sync/status`).
 
-use std::collections::HashMap;
-
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -15,6 +13,7 @@ use axum::{
 use serde::Serialize;
 
 use super::json::{json_error, json_ok};
+use super::routes_stats::{get, Params};
 use super::settings::get_setting;
 use super::AppState;
 use crate::jsnum::js_parse_int;
@@ -118,12 +117,9 @@ struct VerdictsBody {
     verdicts: Vec<Verdict>,
 }
 
-pub async fn verdicts(
-    State(state): State<AppState>,
-    Query(q): Query<HashMap<String, String>>,
-) -> Response {
+pub async fn verdicts(State(state): State<AppState>, Query(q): Query<Params>) -> Response {
     // JS truthiness: empty string is falsy, so it 400s like a missing param.
-    let Some(app_id) = q.get("appId").filter(|v| !v.is_empty()) else {
+    let Some(app_id) = get(&q, "appId").filter(|v| !v.is_empty()) else {
         return json_error(StatusCode::BAD_REQUEST, "appId is required");
     };
 
@@ -291,6 +287,51 @@ pub async fn imports_queue(State(state): State<AppState>) -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
+    use std::sync::{Arc, Mutex};
+
+    fn state() -> AppState {
+        let conn = crate::db::open_and_migrate(std::path::Path::new(":memory:")).unwrap();
+        conn.execute_batch(
+            "INSERT INTO apps (id, name, url, lastSynced) VALUES ('1', 'Alpha', 'https://e/1', 0);
+             INSERT INTO app_verdicts (id, app_id, verdict, source, set_at, updated_at)
+               VALUES ('v1', '1', 'safe', 'user', 5, 5);",
+        )
+        .unwrap();
+        AppState {
+            conn: Arc::new(Mutex::new(conn)),
+            rate_limiter: Arc::new(super::super::ratelimit::RateLimiter::new()),
+            started_at: std::time::Instant::now(),
+            bound_port: 0,
+        }
+    }
+
+    async fn read(query: &[(&str, &str)]) -> (StatusCode, Value) {
+        let q: Params = query
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        let res = verdicts(State(state()), Query(q)).await;
+        let status = res.status();
+        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
+    /// `searchParams.get` returns the FIRST value, so the empty `?appId=` is
+    /// still the 400 with a real app id after it.
+    #[tokio::test]
+    async fn a_repeated_app_id_keeps_its_first_value() {
+        let (status, body) = read(&[("appId", ""), ("appId", "1")]).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(body["error"], "appId is required");
+        // The control: that id ALONE answers 200 with the row, so the 400
+        // above is the empty first value and not an unknown app.
+        let (status, body) = read(&[("appId", "1")]).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["verdicts"].as_array().unwrap().len(), 1);
+    }
 
     #[test]
     fn manual_schedule_is_never_due_and_has_no_next_run() {

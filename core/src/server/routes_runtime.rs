@@ -8,8 +8,6 @@
 //! POST that clear rings and flip profiling on the Node route are write
 //! routes and wait for the writers phase.
 
-use std::collections::HashMap;
-
 use axum::{
     extract::{Query, State},
     response::Response,
@@ -21,6 +19,7 @@ use super::deployment::redact_home_dir;
 use super::diag::{error_log_snapshot, ErrorLogSnapshot};
 use super::json::json_ok;
 use super::osinfo::{node_arch, uname_parts};
+use super::routes_stats::{get, Params};
 use super::runtime_diag::{self, sqlite_metrics, RuntimeDiagnostics};
 use super::settings::get_setting_with;
 use super::sysproc::{cpu_count, host_memory};
@@ -214,15 +213,59 @@ pub async fn desktop_diagnostics(State(state): State<AppState>) -> Response {
 /// `limit` means "the whole ring"; the clamp to `1..=200` happens in the
 /// snapshot.
 ///
-/// A `HashMap` extractor, like every other query-reading route here: a
-/// derived struct rejects a repeated `?limit=1&limit=5` with axum's 400,
-/// where `searchParams.get` just takes one and answers 200.
-pub async fn errors(Query(q): Query<HashMap<String, String>>) -> Response {
-    let limit = q
-        .get("limit")
-        .map(String::as_str)
+/// The query is a `Vec` of pairs read first-match through
+/// `routes_stats::get`, as every query-reading route in this server does. A
+/// derived struct would reject a repeated `?limit=1&limit=5` with axum's
+/// 400, where `searchParams.get` takes the FIRST value and answers 200. A
+/// `HashMap` answers 200 as well, but on the LAST value, so it read
+/// `?limit=1&limit=200` as the whole ring instead of one entry.
+pub async fn errors(Query(q): Query<Params>) -> Response {
+    let limit = get(&q, "limit")
         .filter(|s| !s.is_empty())
         .and_then(js_parse_int);
     let body: ErrorLogSnapshot = error_log_snapshot(limit);
     json_ok(&body)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// `?limit=1&limit=200` answers with the FIRST value — one entry — where
+    /// a `HashMap` extractor read the last one and returned the whole ring.
+    ///
+    /// The ring is process state, and `maintenance_tests` clears it per case,
+    /// so this holds the crate's test lock while it measures. `block_on`
+    /// inside a plain `#[test]` is what keeps that guard off an `.await`, as
+    /// `routes_ai_tests` does.
+    #[test]
+    fn a_repeated_limit_keeps_its_first_value() {
+        let _env = crate::server::trust::env_lock();
+        crate::server::diag::clear_error_log();
+        for i in 0..3 {
+            crate::server::diag::log_warn(format!("repeated-key probe {i}"));
+        }
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let read = |query: &[(&str, &str)]| -> Value {
+            let q: Params = query
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect();
+            let res = rt.block_on(errors(Query(q)));
+            let bytes = rt
+                .block_on(axum::body::to_bytes(res.into_body(), usize::MAX))
+                .unwrap();
+            serde_json::from_slice(&bytes).unwrap()
+        };
+
+        let repeated = read(&[("limit", "1"), ("limit", "200")]);
+        let entries = repeated["entries"].as_array().unwrap();
+        assert_eq!(entries.len(), 1);
+        // Newest first, so the single entry is the last warning pushed.
+        assert_eq!(entries[0]["message"], "repeated-key probe 2");
+        // The control: that limit ALONE returns all three, so the case above
+        // is not agreeing with the last value on a ring too short to tell.
+        let whole = read(&[("limit", "200")]);
+        assert_eq!(whole["entries"].as_array().unwrap().len(), 3);
+    }
 }

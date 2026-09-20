@@ -10,11 +10,11 @@ use axum::{
     response::Response,
 };
 use serde::Serialize;
-use std::collections::HashMap;
 
 use super::json::{json_error, json_ok};
 use super::now_ms;
 use super::ratelimit::key_for_request;
+use super::routes_stats::{get, Params};
 use super::AppState;
 use crate::jsnum::js_parse_int;
 
@@ -241,7 +241,7 @@ struct RecentBody {
 pub async fn audit_bundle_recent(
     State(state): State<AppState>,
     headers: HeaderMap,
-    Query(q): Query<HashMap<String, String>>,
+    Query(q): Query<Params>,
 ) -> Response {
     if let Some(denied) = rate_gate(&state, &headers, "audit-bundle.recent", 120, 60_000) {
         return denied;
@@ -251,7 +251,7 @@ pub async fn audit_bundle_recent(
     // so an empty `?withinMs=` IS present and fails validation — unlike the
     // truthiness checks elsewhere in this API.
     let mut within_ms = DEFAULT_WITHIN_MS;
-    if let Some(raw) = q.get("withinMs") {
+    if let Some(raw) = get(&q, "withinMs") {
         match js_parse_int(raw) {
             Some(parsed) if parsed > 0 && parsed <= MAX_WITHIN_MS => within_ms = parsed,
             _ => {
@@ -293,6 +293,58 @@ pub async fn audit_bundle_recent(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::Value;
+    use std::sync::{Arc, Mutex};
+
+    /// One accepted bundle, imported just now, so a valid window finds it.
+    fn state() -> AppState {
+        let conn = crate::db::open_and_migrate(std::path::Path::new(":memory:")).unwrap();
+        conn.execute(
+            "INSERT INTO audit_bundle_imports (id, exported_at, imported_at, recommender_name)
+             VALUES ('b1', '2026-09-20T00:00:00.000Z', ?, 'Fixture recommender')",
+            [now_ms()],
+        )
+        .unwrap();
+        AppState {
+            conn: Arc::new(Mutex::new(conn)),
+            rate_limiter: Arc::new(super::super::ratelimit::RateLimiter::new()),
+            started_at: std::time::Instant::now(),
+            bound_port: 0,
+        }
+    }
+
+    async fn read(query: &[(&str, &str)]) -> (StatusCode, Value) {
+        let q: Params = query
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect();
+        let res = audit_bundle_recent(State(state()), HeaderMap::new(), Query(q)).await;
+        let status = res.status();
+        let bytes = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        (status, serde_json::from_slice(&bytes).unwrap())
+    }
+
+    /// `searchParams.get` returns the FIRST value, and this route checks
+    /// PRESENCE rather than truthiness: an empty `?withinMs=` is present,
+    /// `parseInt("")` is NaN, and the answer is the 400 even with a valid
+    /// window after it.
+    #[tokio::test]
+    async fn a_repeated_within_ms_keeps_its_first_value() {
+        let day = "86400000";
+        let (status, body) = read(&[("withinMs", ""), ("withinMs", day)]).await;
+        assert_eq!(status, StatusCode::BAD_REQUEST);
+        assert_eq!(
+            body["error"],
+            format!("withinMs must be an integer in 1..{MAX_WITHIN_MS}")
+        );
+        // The control: that window ALONE answers 200 and finds the row, so
+        // the 400 above is the empty first value.
+        let (status, body) = read(&[("withinMs", day)]).await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["recent"]["recommenderName"], "Fixture recommender");
+    }
 
     #[test]
     fn source_metadata_is_emitted_in_declared_order() {
