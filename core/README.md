@@ -1826,8 +1826,13 @@ the short and the legacy key when a body carries both, and skips a value
 it will not store rather than refusing. `/api/notification-prefs`
 projects four booleans onto flag overrides, reading `labelChanges` and
 `policyUpdates` (what Settings sends) when the snake_case key is not a
-boolean, and, when the resolver throws on a garbage audience, answers
-from the legacy blob instead. The focus
+boolean. It writes only the flags whose value the body changes, both
+resolutions read before the first write: a change onto the flag's focus
+default clears the override and any other change sets one, while a flag
+the body leaves out is not touched. The camelCase keys are merged into
+the legacy blob, a stored key keeping its place. When the resolver
+throws on a garbage audience it sets every value the body carries and
+answers from the legacy blob instead. The focus
 write is one transaction of seven rows; the profile and layout writes
 record an activity row only across a preset boundary, with the previous
 state read before the write. The override clear with `?surface=` (empty)
@@ -1835,7 +1840,7 @@ clears everything and reports scope `""`. The locale cookie carries the
 `Expires` Next derives from `Max-Age`.
 
 **The oracle — `core/scripts/extract-writes-cases.mjs`.** Runs the REAL
-handlers over 255 requests with a frozen clock, counted ids, a distinct
+handlers over 266 requests with a frozen clock, counted ids, a distinct
 forwarded address per case behind `PRIVACYTRACKER_TRUST_PROXY=1` (so
 Node's process-wide limiter keeps one bucket per case), the admin token
 set per case, and a write recorder; it records the request, the setup

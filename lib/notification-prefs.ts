@@ -1,13 +1,15 @@
 /**
  * Client-safe notification preferences. Defines the bell's notification
- * types, their default on/off state, and defensive parsers shared by the
- * API route, settings view, and bell filter. No db/fs imports — safe to
- * import from client components.
+ * types, their default on/off state, defensive parsers shared by the API
+ * route and settings view, and the bell's filter. No db/fs imports — safe
+ * to import from client components.
  *
- * Storage: single JSON blob under `notification_prefs` in app_settings,
- * shape `{ [NotificationTypeKey]: boolean }`. Missing keys fall back to
- * DEFAULT_NOTIFICATION_PREFS so new types start enabled without a
- * migration.
+ * Storage (see app/api/notification-prefs/route.ts): `labelChanges` and
+ * `policyUpdates` are the `flag.notifications.types.*` flags; the other
+ * types are a JSON blob under `notification_prefs` in app_settings, shape
+ * `{ [NotificationTypeKey]: boolean }`. Missing keys fall back to
+ * DEFAULT_NOTIFICATION_PREFS so new types start with their default
+ * without a migration.
  */
 
 export const NOTIFICATION_TYPE_KEYS = [
@@ -223,4 +225,35 @@ export function classifyNotificationType(
     return "policyUpdates";
   }
   return "labelChanges";
+}
+
+/**
+ * The bell's per-type filter. Keeps the rows whose classified type is on
+ * in `prefs` and counts the unread rows it keeps and hides, so the badge
+ * follows the list. Hidden rows stay in the database, so turning a type
+ * back on shows them again.
+ */
+export function filterNotificationsByPrefs<
+  T extends {
+    change_summary?: Array<{ type?: string }> | null;
+    read: number;
+  },
+>(
+  notifications: readonly T[],
+  prefs: Record<NotificationTypeKey, boolean>
+): { hiddenUnread: number; visible: T[]; visibleUnread: number } {
+  const visible: T[] = [];
+  let visibleUnread = 0;
+  let hiddenUnread = 0;
+  for (const n of notifications) {
+    if (prefs[classifyNotificationType(n.change_summary ?? [])]) {
+      visible.push(n);
+      if (n.read === 0) {
+        visibleUnread += 1;
+      }
+    } else if (n.read === 0) {
+      hiddenUnread += 1;
+    }
+  }
+  return { hiddenUnread, visible, visibleUnread };
 }

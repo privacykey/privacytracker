@@ -6,8 +6,8 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { setDockBadge } from "../../lib/desktop";
 import {
-  classifyNotificationType,
   DEFAULT_NOTIFICATION_PREFS,
+  filterNotificationsByPrefs,
   type NotificationPrefs,
   type NotificationTypeKey,
   resolvePrefs as resolveNotificationPrefs,
@@ -221,27 +221,14 @@ export default function NotificationBell({
   // (so flipping a toggle back on re-surfaces them), we just hide rows
   // whose classified type is muted. The unread badge follows the filtered
   // list — hidden rows don't count toward "look at me!" volume.
-  const { visibleNotifs, visibleUnread, hiddenUnread } = useMemo(() => {
-    let vUnread = 0;
-    let hUnread = 0;
-    const visible: NotifEntry[] = [];
-    for (const n of notifs) {
-      const typeKey = classifyNotificationType(n.change_summary ?? []);
-      if (notificationPrefs[typeKey]) {
-        visible.push(n);
-        if (n.read === 0) {
-          vUnread += 1;
-        }
-      } else if (n.read === 0) {
-        hUnread += 1;
-      }
-    }
-    return {
-      visibleNotifs: visible,
-      visibleUnread: vUnread,
-      hiddenUnread: hUnread,
-    };
-  }, [notifs, notificationPrefs]);
+  const {
+    visible: visibleNotifs,
+    visibleUnread,
+    hiddenUnread,
+  } = useMemo(
+    () => filterNotificationsByPrefs(notifs, notificationPrefs),
+    [notifs, notificationPrefs]
+  );
 
   // Cmd-Z undo for the bell's auto-mark-as-read. Stash the ids that
   // were unread BEFORE the open call into a small ring; on undo we
