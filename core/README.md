@@ -3933,18 +3933,18 @@ then the `device_resync.last_committed_at` setting and a
 `device_sync.commit` audit row. The two keep their limits (30 and 15 a
 minute) and their body caps (512 KiB and 256 KiB).
 
-**The oracle — `core/scripts/extract-device-routes-cases.mjs`.** 140
-cases through the REAL handlers: 40 for the backup, 27 for the gate's
+**The oracle — `core/scripts/extract-device-routes-cases.mjs`.** 143
+cases through the REAL handlers: 43 for the backup, 27 for the gate's
 GET, 29 for its POST, 23 for the preview and 21 for the commit, each
 POST with the five body-reader outcomes and its non-object bodies, and
 the two limited routes with the burst past the limit. The backup check
-reads the disk, so the oracle builds a MobileSync-shaped tree of 14
+reads the disk, so the oracle builds a MobileSync-shaped tree of 15
 entries (two fresh backups, and one each stale, empty, from the future
 and without a manifest; a directory and a symlink where the manifest
 should be; a symlinked backup, a file, a nested backup, one outside the
-root and a manifest beside `Backup/`), sets every manifest time against
-the frozen clock, writes the tree into the fixture as data and spells
-its scratch directory `<BASE>` everywhere.
+root, a manifest beside `Backup/` and one in it), sets every manifest
+time against the frozen clock, writes the tree into the fixture as data
+and spells its scratch directory `<BASE>` everywhere.
 `core/src/server/device_writes_tests.rs` builds the same tree, swaps the
 real directory in and back out, runs each case through `precheck` and
 `perform` (the GET through its own handler) and compares the wire, the
@@ -3967,11 +3967,12 @@ pair act on a list the client sends.
 
 **Node's behaviour, kept, and two bugs filed.** Each bug has its own
 follow-up to fix Node and the core together. The direct-child test
-accepts the MobileSync root's own parent, whose relative form `..` is
+accepted the MobileSync root's own parent, whose relative form `..` is
 one segment with no separator, so a non-empty `Manifest.db` beside
-`Backup/` verifies. And the commit merges any two apps the client names:
-nothing checks that the preview proposed the pair, so a crafted or stale
-request can fold one app into another and delete it. Also kept: a
+`Backup/` verified; that one is fixed (below). And the commit merges
+any two apps the client names: nothing checks that the preview proposed
+the pair, so a crafted or stale request can fold one app into another
+and delete it. Also kept: a
 shortlist entry never stops a remove from reading as orphaning its app,
 through the same failing probe as Phase 4's orphan sweep; the uninstall
 log binds the client's app id as better-sqlite3 does, a number as a REAL
@@ -3991,6 +3992,21 @@ ECID refusal reworded, and an add's `iconUrl` key renamed) failed
 exactly the probe's two checks for them, 484 of 486 passing. Source
 restored byte for byte after each, fixed tree green.
 
+**The root's parent, refused.** Node's `isDirectChild` and the core's
+`is_direct_child` now refuse a relative form of `..` and also require
+the candidate's dirname to be the root, so the MobileSync folder's
+parent no longer records as a backup, and so can no longer stand in for
+one at the uninstall gate. The oracle's case for it is renamed "the
+root's parent is not a child" and records the 422 with no writes, where
+it used to record a stamp and an activity row. Three cases appended
+after every other hold the same refusal for the parent spelled
+`Backup/..`, the root itself and a dot-dot path back to it, and the
+tree gains a `Manifest.db` in the root so that only the direct-child
+test refuses the root. The 139 other earlier cases are byte-identical in
+place. Negative controls: the old `is_direct_child` fails exactly two
+replay cases, the renamed one and the parent spelled with a dot-dot, and
+the old `isDirectChild` moves exactly those two in the recording.
+
 Rust suite: 281 lib tests pass (278 + 2 unit tests + the replay), plus
 the embed test.
 
@@ -4009,11 +4025,13 @@ does not. Otherwise six steps, each between a "started" and a
 
 - a check that `feature_flag_overrides` and `annotations` exist;
 - the legacy `user_intent` (`curious`, `cleanup`, `hygiene`, `family`)
-  becomes a focus through `setActiveFocus` and goes; any other intent is
-  dropped with a warning;
+  becomes a focus through `setActiveFocus` and goes; any other intent,
+  an inherited name such as `toString` included, is dropped with a
+  warning;
 - the legacy `notification_prefs` blob becomes one override per type it
   names, `on` for `true`, `"on"` or `"true"` and `off` for anything else,
-  and goes; a blob that is not JSON is dropped with a warning;
+  and goes; a blob that is not JSON, or is JSON but not an object, is
+  dropped with a warning;
 - the four retired callout overrides are dropped;
 - overrides whose key the flag registry knows leave quarantine, and the
   rest enter it, each statement binding all 222 registry keys in
@@ -4029,11 +4047,11 @@ nests one transaction in another (`setActiveFocus` inside step 2), the
 port nests them as better-sqlite3 does, through savepoints.
 
 **The oracle — `core/scripts/extract-flag-migration-cases.mjs`.** Runs
-the REAL migration over 43 cases: the version gate (11 cases), each step
+the REAL migration over 45 cases: the version gate (11 cases), each step
 over the legacy state it migrates, every step at once on a legacy
 install, and the failures (a table missing, and a later step failing
 after an earlier one wrote). A frozen clock makes every duration 0 ms,
-and a case may drop a table inside its savepoint.
+and a case may drop a table or add a trigger inside its savepoint.
 `core/src/server/flag_migration_tests.rs` replays it, comparing what the
 run returned or threw, the write stream and three tables, and CI
 regenerates the fixture ("Flag migration oracle is current"). The replay
@@ -4056,23 +4074,44 @@ stopped before its first timer. The two boots wrote the same settings,
 overrides and 13 activity rows; only ids, the boots' own timestamps and
 the durations were normalised.
 
-**Node's behaviour, kept, and one bug filed.** Two stored values fail a
-step on every boot for good, so the marker is never written and the steps
-after the failure never run: a `notification_prefs` of JSON `null`
-(`Object.hasOwn(null, …)` throws), and a `user_intent` naming an inherited
-property such as `toString` or `__proto__` (the lookup finds the
-inherited member, whose audience is `undefined`, and better-sqlite3 binds
-that as NULL into a NOT NULL column). The app never writes either value,
-but a restored or edited database can hold them. The follow-up fixes
-Node and the core together. Also kept: an intent must match exactly
-(`"Curious "` is unknown), and an empty `notification_prefs` is left in
-place rather than deleted.
+**Node's behaviour, kept, and one bug filed and since fixed.** Two
+stored values failed a step on every boot for good, so the marker was
+never written and the steps after the failure never ran: a
+`notification_prefs` of JSON `null` (`Object.hasOwn(null, …)` threw), and
+a `user_intent` naming an inherited property such as `toString` or
+`__proto__` (the lookup found the inherited member, whose audience is
+`undefined`, and better-sqlite3 bound that as NULL into a NOT NULL
+column). The app never writes either value, but a restored or edited
+database can hold them. The follow-up fixed Node and the core together.
+A blob that parses to anything but an object (`null`, an array, a
+number, a string) is dropped with a warning and no transaction, as one
+that does not parse already was; before, all but `null` went through a
+transaction that wrote nothing and deleted the blob. The intent is
+looked up with `Object.hasOwn(INTENT_MAP, …)`, so an inherited name is an
+unknown intent, warned about and dropped. The oracle's five cases for
+the two values were re-recorded under names for what they now do (the
+`toString`, `__proto__` and version-1 `valueOf` intents dropped as
+unknown; `null` prefs dropped, alone and ahead of the later steps), and
+the two failure properties two of them carried moved to cases that still
+fail: a run from version 1 over a missing table leaves version 1, and a
+trigger refusing the prefs step's override write keeps step 2's focus
+while step 6 never runs. Of the other 38 cases, 35 re-recorded byte for
+byte, and the array, number and string prefs lost only the BEGIN and
+COMMIT around their delete. The fix's controls, predicted before
+running: the old inherited-intent write failed exactly the three cases
+with one; `null` prefs failing their step again, exactly the two with
+them; only `null` dropped, exactly the array, number and string cases;
+the marker written after a failure, exactly the four failure cases and
+the boot test. Source restored byte for byte after each. Also kept: an
+intent must match exactly (`"Curious "` is unknown), and an empty
+`notification_prefs` is left in place rather than deleted.
 
 **Negative controls, predicted before running.** The version gate
 comparing the string to `"2"`: exactly the three cases that skip by
 `parseInt` without being `"2"`. Inherited intent names read as unknown:
 exactly the three cases with one. Prefs of `null` not failing their
-step: exactly the two cases with them. The workflow inferred as if the
+step: exactly the two cases with them (these two are the port's
+behaviour since the fix above). The workflow inferred as if the
 audience were `self`: exactly the two `family` intents. The string
 `"true"` not switching a type on: exactly the case that sends it. An old
 goal key overwriting a new one already set: exactly the kept-key case
