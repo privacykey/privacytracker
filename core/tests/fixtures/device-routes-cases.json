@@ -77,6 +77,12 @@
       "kind": "file",
       "size": 300,
       "mtime": 1789470000000
+    },
+    {
+      "path": "MobileSync/Backup/Manifest.db",
+      "kind": "file",
+      "size": 200,
+      "mtime": 1789470000000
     }
   ],
   "cases": [
@@ -1824,7 +1830,7 @@
       }
     },
     {
-      "name": "backup: the root's parent reads as a child",
+      "name": "backup: the root's parent is not a child",
       "route": "/api/device-actions/backup",
       "method": "POST",
       "search": "",
@@ -1837,30 +1843,7 @@
       "repeat": 1,
       "mobileSyncRoot": null,
       "setup": [],
-      "stream": [
-        {
-          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
-          "params": [
-            "cfgutil_last_backup_9118908BB6027",
-            "{\"finishedAt\":1789470000000,\"manifestBytes\":300,\"path\":\"<BASE>/MobileSync\"}"
-          ]
-        },
-        {
-          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          "params": [
-            "00000000-0000-4000-8000-000000000001",
-            "cfgutil_backup",
-            "ok",
-            null,
-            null,
-            "Backed up Kid's iPad",
-            "{\"ecid\":\"0x9118908BB6027\",\"path\":\"<BASE>/MobileSync\",\"manifestBytes\":300,\"verified\":true,\"deviceName\":\"Kid's iPad\",\"finishedAt\":1789470000000}",
-            1789470000000,
-            1789473600000,
-            3600000
-          ]
-        }
-      ],
+      "stream": [],
       "rows": {
         "apps": [],
         "devices": [],
@@ -1869,31 +1852,13 @@
         "app_verdicts": [],
         "shortlist_entries": [],
         "privacy_snapshots": [],
-        "activity_log": [
-          {
-            "id": "00000000-0000-4000-8000-000000000001",
-            "type": "cfgutil_backup",
-            "status": "ok",
-            "app_id": null,
-            "app_name": null,
-            "summary": "Backed up Kid's iPad",
-            "detail": "{\"ecid\":\"0x9118908BB6027\",\"path\":\"<BASE>/MobileSync\",\"manifestBytes\":300,\"verified\":true,\"deviceName\":\"Kid's iPad\",\"finishedAt\":1789470000000}",
-            "started_at": 1789470000000,
-            "ended_at": 1789473600000,
-            "duration_ms": 3600000
-          }
-        ],
+        "activity_log": [],
         "audit_log": [],
-        "app_settings": [
-          {
-            "key": "cfgutil_last_backup_9118908BB6027",
-            "value": "{\"finishedAt\":1789470000000,\"manifestBytes\":300,\"path\":\"<BASE>/MobileSync\"}"
-          }
-        ]
+        "app_settings": []
       },
       "expected": {
-        "status": 200,
-        "body": "{\"ok\":true,\"lastBackup\":{\"finishedAt\":1789470000000,\"manifestBytes\":300,\"path\":\"<BASE>/MobileSync\"}}",
+        "status": 422,
+        "body": "{\"error\":\"backup_not_verified\",\"reason\":\"backup_outside_mobile_sync\"}",
         "type": "application/json",
         "retryAfter": null
       }
@@ -14240,6 +14205,108 @@
       "expected": {
         "status": 200,
         "body": "{\"added\":0,\"removed\":0,\"orphanedAndDeleted\":0,\"merged\":1}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "backup: the root's parent spelled with a dot-dot",
+      "route": "/api/device-actions/backup",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.141.2",
+        "user-agent": "device-oracle/1.0"
+      },
+      "body": "{\"ecid\":\"0x9118908BB6027\",\"path\":\"<BASE>/MobileSync/Backup/..\",\"deviceName\":\"Kid's iPad\"}",
+      "repeat": 1,
+      "mobileSyncRoot": null,
+      "setup": [],
+      "stream": [],
+      "rows": {
+        "apps": [],
+        "devices": [],
+        "app_devices": [],
+        "annotations": [],
+        "app_verdicts": [],
+        "shortlist_entries": [],
+        "privacy_snapshots": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": []
+      },
+      "expected": {
+        "status": 422,
+        "body": "{\"error\":\"backup_not_verified\",\"reason\":\"backup_outside_mobile_sync\"}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "backup: the root itself is not a child",
+      "route": "/api/device-actions/backup",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.142.2",
+        "user-agent": "device-oracle/1.0"
+      },
+      "body": "{\"ecid\":\"0x9118908BB6027\",\"path\":\"<BASE>/MobileSync/Backup\",\"deviceName\":\"Kid's iPad\"}",
+      "repeat": 1,
+      "mobileSyncRoot": null,
+      "setup": [],
+      "stream": [],
+      "rows": {
+        "apps": [],
+        "devices": [],
+        "app_devices": [],
+        "annotations": [],
+        "app_verdicts": [],
+        "shortlist_entries": [],
+        "privacy_snapshots": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": []
+      },
+      "expected": {
+        "status": 422,
+        "body": "{\"error\":\"backup_not_verified\",\"reason\":\"backup_outside_mobile_sync\"}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "backup: a dot-dot path back to the root",
+      "route": "/api/device-actions/backup",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.143.2",
+        "user-agent": "device-oracle/1.0"
+      },
+      "body": "{\"ecid\":\"0x9118908BB6027\",\"path\":\"<BASE>/MobileSync/Backup/FRESH/..\",\"deviceName\":\"Kid's iPad\"}",
+      "repeat": 1,
+      "mobileSyncRoot": null,
+      "setup": [],
+      "stream": [],
+      "rows": {
+        "apps": [],
+        "devices": [],
+        "app_devices": [],
+        "annotations": [],
+        "app_verdicts": [],
+        "shortlist_entries": [],
+        "privacy_snapshots": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": []
+      },
+      "expected": {
+        "status": 422,
+        "body": "{\"error\":\"backup_not_verified\",\"reason\":\"backup_outside_mobile_sync\"}",
         "type": "application/json",
         "retryAfter": null
       }

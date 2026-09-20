@@ -1,8 +1,8 @@
 //! Replays `core/tests/fixtures/flag-migration-cases.json`: each case on a
 //! wiped in-memory database with foreign keys ON, its setup rows (a case
-//! may drop a table), then `flag_migration::run` under the fixture's frozen
-//! clock. Compared: what the run returned or threw, the write stream and
-//! the three tables, a dropped one reading as null.
+//! may drop a table or add a trigger), then `flag_migration::run` under
+//! the fixture's frozen clock. Compared: what the run returned or threw,
+//! the write stream and the three tables, a dropped one reading as null.
 use super::{
     flag_migration,
     sync_runner::{self, Fixed},
@@ -50,7 +50,7 @@ fn flag_migration_matches_node_outcome_stream_and_rows() {
     .unwrap();
     let now = fixture["now"].as_i64().unwrap();
     let cases = fixture["cases"].as_array().unwrap();
-    assert!(cases.len() >= 43, "fixture has {} cases", cases.len());
+    assert!(cases.len() >= 45, "fixture has {} cases", cases.len());
     let mut failures = vec![];
     for case in cases {
         let name = case["name"].as_str().unwrap();
