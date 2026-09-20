@@ -4243,7 +4243,13 @@
     "subtitle": "privacytracker is built on open-source software. This page lists every third-party library bundled with the app, grouped by SPDX licence identifier, with a short description, how we use it, and links to the source. The app itself is released under the Apache 2.0 licence — see the <code>LICENSE</code> file in the repository.",
     "audit_bundle_note": "<strong>Audit bundles.</strong> If you export an audit bundle from Settings → Export Data, the resulting file contains your tracked apps, public privacy labels, change history, and any non-private annotations you've made. Annotations marked <em>private</em> never travel — the SQL filter in <code>lib/audit-bundle.ts</code> excludes them at the source, with no force-include path. Bundles do not include your AI provider keys, your sync schedule preferences, or any device identifiers. Treat exported bundles like any sensitive data file: encrypt at rest, share over secure channels.",
     "sidebar_aria": "Legal page navigation",
-    "sidebar_jump": "By licence"
+    "sidebar_jump": "By licence",
+    "rust_crates": {
+      "heading": "Rust crates (desktop app)",
+      "sidebar": "Rust crates",
+      "blurb": "The desktop app can serve itself with a Rust backend instead of a bundled Node runtime. That build links {crates} crates, almost all of them under permissive licences. The {direct} chosen directly are listed below; the complete list, transitive dependencies included, ships with the app as <code>third-party/THIRD-PARTY-RUST.md</code>, beside <code>NOTICE</code>, <code>LICENSE</code> and <code>V8-LICENSE</code>.",
+      "full_list": "Full crate list ↗"
+    }
   },
   "about": {
     "title": "privacytracker",

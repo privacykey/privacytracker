@@ -15,11 +15,16 @@
 /resources/standalone.tar
 /resources/standalone.tar.ready
 
-# ── Staged frontend for the Rust backend (scripts/stage-site.mjs) ────
-# What `pnpm tauri:build:rust` bundles in place of the tarball above:
-# the pages, chunks, CSP hashes and public files the Rust core serves,
-# rewritten from `.next` on every build.
+# ── Staged for the Rust backend's bundle ─────────────────────────────
+# What `pnpm tauri:build:rust` bundles in place of the tarball above,
+# both rewritten on every build:
+#   site/         the pages, chunks, CSP hashes and public files the
+#                 core serves (scripts/stage-site.mjs)
+#   third-party/  NOTICE, LICENSE, V8-LICENSE and the generated crate
+#                 list (scripts/stage-notices.mjs). Their sources are
+#                 committed; only these copies are not.
 /resources/site
+/resources/third-party
 
 # ── Bundled Node sidecar binaries ────────────────────────────────────
 # These are large (~115MB each) and downloaded on demand — see

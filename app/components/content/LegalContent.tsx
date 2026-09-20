@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import FlagGated from "@/app/components/FlagGated";
 import RequireFlagGate from "@/app/components/RequireFlagGate";
+import rustCrates from "@/lib/rust-crates.json";
 import pkg from "@/package.json";
 
 /**
@@ -467,6 +468,90 @@ function DepCard({ dep }: { dep: DependencyEntry }) {
   );
 }
 
+/** The anchor the sidebar links to for the Rust section. */
+const RUST_SECTION_ID = "rust-crates";
+
+/**
+ * The desktop app's other half. Everything above this is an npm package
+ * read from package.json; the desktop build on the Rust backend links
+ * compiled crates instead, which cargo knows about and package.json does
+ * not. `lib/rust-crates.json` is generated from cargo's own dependency
+ * graph (`pnpm notices:rust`, checked in CI), so this cannot drift from
+ * what is built.
+ *
+ * The crates named here are the ones chosen directly. The complete list,
+ * every transitive dependency included, ships inside the app at
+ * `third-party/THIRD-PARTY-RUST.md` and is in the repository.
+ *
+ * The prose is translated like the rest of the page chrome; the rows are
+ * not, because a crate name, a version and an SPDX identifier are the
+ * upstream's own spelling and translating them would misquote a licence.
+ */
+function RustCrates() {
+  const t = useTranslations("legal_page.rust_crates");
+  const licences = Object.entries(rustCrates.licenses);
+  return (
+    <section
+      aria-labelledby={`${RUST_SECTION_ID}-heading`}
+      className="legal-license-group"
+      id={RUST_SECTION_ID}
+    >
+      <header className="legal-license-head">
+        <h2 className="legal-license-name" id={`${RUST_SECTION_ID}-heading`}>
+          {t("heading")}
+        </h2>
+        <p className="legal-license-blurb">
+          {t.rich("blurb", {
+            code: (chunks) => <code>{chunks}</code>,
+            crates: rustCrates.crates,
+            direct: rustCrates.direct.length,
+          })}{" "}
+          <a
+            href="https://github.com/privacykey/privacytracker/blob/main/src-tauri/THIRD-PARTY-RUST.md"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {t("full_list")}
+          </a>
+        </p>
+        {/* Every declared licence, most common first, as the crates spell
+            them: "MIT OR Apache-2.0" and "MIT/Apache-2.0" are the same
+            choice written two ways, and rewriting either would be us
+            paraphrasing someone else's licence. */}
+        <p className="legal-license-blurb">
+          {licences.map(([id, count]) => `${id} (${count})`).join(" · ")}
+        </p>
+      </header>
+      <div className="legal-dep-list">
+        {rustCrates.direct.map((crate) => (
+          <article
+            className="legal-dep-card"
+            key={`${crate.name}@${crate.version}`}
+          >
+            <header className="legal-dep-head">
+              <h3 className="legal-dep-name">{crate.name}</h3>
+              <span className="legal-dep-version">{crate.version}</span>
+              <span className="legal-dep-license">{crate.license}</span>
+            </header>
+            {crate.repository && (
+              <div className="legal-dep-links">
+                <a
+                  className="legal-dep-link"
+                  href={crate.repository}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  Source ↗
+                </a>
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function LegalContent() {
   // Round 3 PR 6.1: gate on `flag.legal.terms_page`. Default on; toggling
   // off in Dev Options 404s the route. Same caveat as /privacy-policy —
@@ -524,6 +609,14 @@ export default function LegalContent() {
                   </a>
                 </li>
               ))}
+              <li>
+                <a className="legal-sidebar-link" href={`#${RUST_SECTION_ID}`}>
+                  <span>{t("rust_crates.sidebar")}</span>
+                  <span className="legal-sidebar-count">
+                    {rustCrates.direct.length}
+                  </span>
+                </a>
+              </li>
             </ul>
           </aside>
 
@@ -563,6 +656,7 @@ export default function LegalContent() {
                 </section>
               );
             })}
+            <RustCrates />
           </div>
         </div>
       </div>

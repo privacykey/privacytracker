@@ -4578,3 +4578,64 @@ noted here rather than given a cause it has not earned.
 
 **Still owed by batch 5b:** the third-party notices for the Rust crates and
 the entry on `/legal`, and the hosted docs' desktop page.
+
+### Batch 5b — what the app discloses
+
+The Node build's disclosures come from `package.json`, which `/legal`
+reads directly. A Rust build ships compiled crates instead, which
+`package.json` knows nothing about, so the list comes from cargo.
+
+**Generated, not written.** `scripts/generate-rust-notices.mjs`
+(`pnpm notices:rust`) walks `cargo metadata` for the shell built with
+`--features rust-backend`, filtered to one macOS target, and writes:
+
+- `src-tauri/THIRD-PARTY-RUST.md`: every crate that can end up in the
+  binary, with version, licence and repository. 342 of them, and the
+  licence breakdown at the top;
+- `lib/rust-crates.json`: the summary `/legal` renders, small because a
+  client component imports it.
+
+Only NORMAL dependencies are walked. Build dependencies run at compile
+time and their own code does not ship, and dev dependencies are tests;
+including them would inflate the list by 19 crates and make it describe
+something other than the app. The file says which it lists.
+
+**Four files travel with the app**, staged by
+`scripts/stage-notices.mjs` into `Contents/Resources/third-party/`:
+`NOTICE`, `LICENSE`, `V8-LICENSE` (for the ports of V8's date parser and
+JSON error messages in `jsdate` and `jsjson`, which `core/README.md` asks
+for by name) and the generated crate list. A notice that exists only in
+the repository is not shipped with anything, so the release verifier
+refuses a bundle that is missing one or carries an empty one.
+
+**`/legal` gained a section.** It names the 37 crates chosen directly,
+gives the licence breakdown as the crates spell it (`MIT OR Apache-2.0`
+and `MIT/Apache-2.0` are the same choice written two ways, and rewriting
+either would be paraphrasing someone else's licence), and says the
+complete list ships with the app. The page renders it from the generated
+summary, so it cannot drift from what is built. The prose is translated
+like the rest of the page chrome, in both shipped locales; the rows are
+not, because a crate name, a version and an SPDX identifier are the
+upstream's own spelling.
+
+**The gate.** CI's `rust-check` job regenerates the two files and fails on
+a difference: a crate added, removed or bumped without regenerating is a
+disclosure that no longer matches what ships. That job already has the
+dependency graph, which is why it lives there rather than in the parity
+job. The verifier's bundle checks cover the shipped copies.
+
+**Negative controls, predicted before running.** A stale checked-in list,
+a generator that counts build dependencies (342 becomes 361), a notice
+missing from the bundle, and a notice that ships empty. Each failed
+exactly its own check.
+
+The first run of the stale-list control reported a pass, and the fault was
+in the control rather than the gate: it compared the regenerated file with
+a pristine copy, which can only catch a generator change, where CI
+compares it with what is committed. Fixed, it fails as predicted. Worth
+recording because a control that cannot fail is worse than no control.
+
+**Not in this batch:** the hosted docs' desktop page, which lives in
+`privacykey/docs-privacytracker` and describes the app as shipped. It is
+filed as its own task, to land with the cutover release rather than
+before it.

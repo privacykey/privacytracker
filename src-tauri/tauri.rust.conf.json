@@ -1,11 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "build": {
-    "beforeBuildCommand": "pnpm build && node scripts/stage-site.mjs"
+    "beforeBuildCommand": "pnpm build && node scripts/stage-site.mjs && node scripts/stage-notices.mjs"
   },
   "bundle": {
     "resources": {
-      "resources/site": "site"
+      "resources/site": "site",
+      "resources/third-party": "third-party"
     },
     "macOS": {
       "entitlements": "entitlements-rust.plist"
