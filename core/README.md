@@ -3925,18 +3925,21 @@ library, and diffs the list against the device's links: the adds, the
 removes (each saying whether unlinking would orphan the app), the
 unchanged count, and the bundle-id merges, where a new app id carries the
 bundle id of an app already on the device. `POST /api/device-sync/commit`
-applies a selection in one transaction: the merges first (the old id's
+applies a selection in one transaction: the merges first, keeping only
+the client's pairs the diff would propose, all judged before the first
+one runs (the old app on the device, the new one in the library and not
+on it, the same non-empty bundle id on both); for each, the old id's
 annotations, verdicts, shortlist entries and snapshots moved to the new
 one, whose own conflicting verdicts and shortlist entries are dropped
-first, then the old id's links copied and the old app deleted), then the
+first, then the old id's links copied and the old app deleted; then the
 adds, the removes with the orphan sweep, and the device's sync time;
 then the `device_resync.last_committed_at` setting and a
 `device_sync.commit` audit row. The two keep their limits (30 and 15 a
 minute) and their body caps (512 KiB and 256 KiB).
 
-**The oracle — `core/scripts/extract-device-routes-cases.mjs`.** 143
+**The oracle — `core/scripts/extract-device-routes-cases.mjs`.** 149
 cases through the REAL handlers: 43 for the backup, 27 for the gate's
-GET, 29 for its POST, 23 for the preview and 21 for the commit, each
+GET, 29 for its POST, 23 for the preview and 27 for the commit, each
 POST with the five body-reader outcomes and its non-object bodies, and
 the two limited routes with the burst past the limit. The backup check
 reads the disk, so the oracle builds a MobileSync-shaped tree of 15
@@ -3966,14 +3969,37 @@ the differ's quarantine, with their reasons rewritten in
 backup and the gate read the host's MobileSync folder, and the re-sync
 pair act on a list the client sends.
 
-**Node's behaviour, kept, and two bugs filed.** Each bug has its own
-follow-up to fix Node and the core together. The direct-child test
-accepted the MobileSync root's own parent, whose relative form `..` is
-one segment with no separator, so a non-empty `Manifest.db` beside
-`Backup/` verified; that one is fixed (below). And the commit merges
-any two apps the client names: nothing checks that the preview proposed
-the pair, so a crafted or stale request can fold one app into another
-and delete it. Also kept: a
+**The merge check, fixed in Node and the core together.** The commit used
+to merge any two apps the client named: nothing checked that the preview
+had proposed the pair, so a crafted, buggy or stale request could fold
+one app into another and delete it. It now keeps only the pairs the diff
+would propose for the device, read from the library by one query that
+Node and the core share word for word, and judges them all before the
+first merge runs, so a merge that links its new app to the device cannot
+qualify a follow-up pair from that app. One difference from the diff is
+deliberate: with two same-bundle rows on the device, the diff proposes a
+merge for the last one its read returns, and the commit accepts a pair
+for each, since they are all the same app. `merged` counts only the
+pairs applied. In the oracle, the case that pinned the bug (an app with
+no bundle id folded into Instagram) now records the refusal under a new
+name, and the merge that moves the user's data keeps its request with a
+setup the preview would propose (Signal not on the device, both rows on
+the iPad, so copying the links still collides there). Six cases follow
+every other: a merge across two bundle ids, beside an add and a remove
+that still apply; an old app not on the device; a new app already on
+it; empty bundle ids on both rows; a chain whose second pair only
+qualifies after the first merge; and two same-bundle rows on the device
+merged into one app. The other 138 cases are byte-identical in place.
+Negative controls, predicted before running: the core's commit from
+before the fix fails exactly six cases, the five refusals and the chain,
+whose second pair it merged; judging each pair inside the loop fails
+exactly the chain and the two same-bundle rows; and the verdict-conflict
+control below, run again, fails exactly the three cases that now apply a
+merge. Source restored byte for byte after each, fixed tree green.
+
+**Node's behaviour, kept.** The two bugs this batch filed are fixed,
+each in Node and the core together: the merge check above and the
+root's parent below. Kept as Node has it: a
 shortlist entry never stops a remove from reading as orphaning its app,
 through the same failing probe as Phase 4's orphan sweep; the uninstall
 log binds the client's app id as better-sqlite3 does, a number as a REAL
@@ -3987,7 +4013,8 @@ exactly the two cases with another person's device and no
 acknowledgement (none recorded, and a stamp of zero). No bundle-id
 backfill: exactly the four preview cases whose answer uses a bundle id
 the library filled in. No verdict-conflict delete in a merge: exactly the
-two cases that apply a merge. A numeric app id bound as an integer:
+cases that apply a merge (two when the batch landed, three since the
+merge check). A numeric app id bound as an integer:
 exactly the case that sends one. Live, two faults at once (the backup's
 ECID refusal reworded, and an add's `iconUrl` key renamed) failed
 exactly the probe's two checks for them, 484 of 486 passing. Source

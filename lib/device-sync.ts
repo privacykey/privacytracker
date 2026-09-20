@@ -155,7 +155,9 @@ export function computeDeviceSyncDiff(
     // Fall back to bundle-ID overlap. A previous row with the same
     // bundle ID but a different track ID is the migration artifact
     // we want to collapse — treat it as unchanged for the user-visible
-    // counts and queue a merge for the commit step.
+    // counts and queue a merge for the commit step. The commit checks
+    // each pair again with `isProposedBundleIdMerge`, which restates
+    // this rule; change both together.
     const bundleId = row.bundleId ?? null;
     if (bundleId) {
       const prev = previousByBundleId.get(bundleId);
@@ -251,6 +253,10 @@ export interface ApplyDeviceSyncSelection {
    * device links, snapshots) from `previousAppId` to `incomingAppId`
    * and deletes the orphaned previous row. Optional so the existing
    * test fixtures + callers that don't surface merges still work.
+   *
+   * These come from the client, so each pair is checked again before
+   * it runs (`isProposedBundleIdMerge`): a pair the diff would not
+   * propose for this device is skipped and not counted in `merged`.
    */
   bundleIdMerges?: ReadonlyArray<{
     previousAppId: string;
@@ -269,12 +275,52 @@ export interface ApplyDeviceSyncResult {
 }
 
 /**
+ * Whether `computeDeviceSyncDiff` would propose merging `previousAppId`
+ * into `incomingAppId` on this device, judged from the library alone:
+ * the previous app is linked to the device, the incoming app exists and
+ * is not linked to it, and both rows carry the same non-empty bundle ID.
+ * The preview reads the incoming bundle ID from the library too unless
+ * the client sends one, and a bundle ID the client sends can't be
+ * trusted here.
+ *
+ * One difference from the diff: when the device holds two rows with the
+ * same bundle ID, the diff proposes a merge for only one of them (the
+ * last its unordered read returns), while this accepts a pair for each,
+ * since they are all the same app. Keep the two in step if the matching
+ * rule changes.
+ */
+function isProposedBundleIdMerge(
+  deviceId: string,
+  previousAppId: string,
+  incomingAppId: string
+): boolean {
+  const row = db
+    .prepare(`
+      SELECT 1
+      FROM apps prev
+      JOIN apps inc ON inc.bundleId = prev.bundleId
+      WHERE prev.id = ?
+        AND inc.id = ?
+        AND prev.bundleId != ''
+        AND EXISTS (
+          SELECT 1 FROM app_devices WHERE app_id = prev.id AND device_id = ?
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM app_devices WHERE app_id = inc.id AND device_id = ?
+        )
+    `)
+    .get(previousAppId, incomingAppId, deviceId, deviceId);
+  return row !== undefined;
+}
+
+/**
  * Commit the user's diff selection. Single transaction: process
  * bundle-ID merges first (so a "remove" doesn't trip an orphan sweep
  * before the user data has been transferred), then bulk add via
  * `upsertAppDeviceLink`, bulk remove via direct delete, then
  * orphan-sweep over the removed app ids. Touches
- * `devices.last_synced_at`.
+ * `devices.last_synced_at`. Only the merges the diff would propose
+ * for this device run; see `isProposedBundleIdMerge`.
  */
 export function applyDeviceSyncDiff(
   deviceId: string,
@@ -292,13 +338,21 @@ export function applyDeviceSyncDiff(
   let merged = 0;
 
   const tx = db.transaction(() => {
+    // A merge deletes the previous app row, and the pairs come from the
+    // client. Keep only the ones the diff would propose for this device,
+    // all judged before the first merge changes any links, so a crafted
+    // pair, a buggy client or a stale preview can't fold an unrelated
+    // app into another and delete it.
+    const merges = (selection.bundleIdMerges ?? []).filter((pair) =>
+      isProposedBundleIdMerge(deviceId, pair.previousAppId, pair.incomingAppId)
+    );
     // Process bundle-ID merges up front. Each merge transfers all
     // user data from the previous appId onto the incoming appId, then
     // drops the previous row entirely. Doing this first means a later
     // `removeAppIds` entry pointing at the same previousAppId becomes
     // a no-op (the row is gone) rather than tripping an orphan sweep
     // that would lose the data we just transferred.
-    for (const pair of selection.bundleIdMerges ?? []) {
+    for (const pair of merges) {
       const { previousAppId, incomingAppId } = pair;
       if (
         !(previousAppId && incomingAppId) ||

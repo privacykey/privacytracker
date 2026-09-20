@@ -22,11 +22,36 @@ function reset() {
     /* missing */
   }
 }
-function seedApp(id: string) {
+function seedApp(id: string, bundleId: string | null = null) {
   const now = Date.now();
   db.prepare(
-    "INSERT INTO apps (id, name, url, lastSynced, firstSeen) VALUES (?, ?, ?, ?, ?)"
-  ).run(id, `App ${id}`, `https://apps.apple.com/app/id${id}`, now, now);
+    "INSERT INTO apps (id, name, url, lastSynced, firstSeen, bundleId) VALUES (?, ?, ?, ?, ?, ?)"
+  ).run(
+    id,
+    `App ${id}`,
+    `https://apps.apple.com/app/id${id}`,
+    now,
+    now,
+    bundleId
+  );
+}
+function seedUserVerdict(id: string, appId: string) {
+  const now = Date.now();
+  db.prepare(
+    "INSERT INTO app_verdicts (id, app_id, verdict, source, source_name, set_at, updated_at) VALUES (?, ?, 'safe', 'user', NULL, ?, ?)"
+  ).run(id, appId, now, now);
+}
+function appExists(id: string): boolean {
+  return db.prepare("SELECT 1 FROM apps WHERE id = ?").get(id) !== undefined;
+}
+function deviceAppIds(deviceId: string): string[] {
+  return (
+    db
+      .prepare("SELECT app_id FROM app_devices WHERE device_id = ?")
+      .all(deviceId) as { app_id: string }[]
+  )
+    .map((r) => r.app_id)
+    .sort();
 }
 afterEach(() => reset());
 
@@ -209,6 +234,97 @@ test("preview → commit round-trip applies adds + removes", async () => {
   assert.equal(commitBody.added, 1);
   assert.equal(commitBody.removed, 1);
   assert.equal(commitBody.orphanedAndDeleted, 1);
+});
+
+test("preview → commit round-trip applies the preview's bundle-ID merge", async () => {
+  reset();
+  seedApp("old-track", "com.microsoft.Office.Excel");
+  seedApp("new-track", "com.microsoft.Office.Excel");
+  const d = createDevice({ name: "iPhone" });
+  upsertAppDeviceLink("old-track", d.id);
+  seedUserVerdict("v-old", "old-track");
+
+  // The re-sync overlay sends no bundle IDs; the preview fills them in
+  // from the library.
+  const prev = await previewRoute.POST(
+    makeJsonRequest("http://127.0.0.1/api/device-sync/preview", "POST", {
+      deviceId: d.id,
+      currentImport: [{ appId: "new-track", name: "Excel" }],
+    }) as never
+  );
+  const { diff } = await prev.json();
+  assert.equal(prev.status, 200);
+  const merges = diff.bundleIdMerges.map(
+    (m: { previousAppId: string; incomingAppId: string }) => ({
+      previousAppId: m.previousAppId,
+      incomingAppId: m.incomingAppId,
+    })
+  );
+  assert.deepEqual(merges, [
+    { previousAppId: "old-track", incomingAppId: "new-track" },
+  ]);
+
+  // Forwarded back exactly as DeviceSyncDiffOverlay does.
+  const commit = await commitRoute.POST(
+    makeJsonRequest("http://127.0.0.1/api/device-sync/commit", "POST", {
+      deviceId: d.id,
+      addAppIds: [],
+      removeAppIds: [],
+      bundleIdMerges: merges,
+    }) as never
+  );
+  assert.equal(commit.status, 200);
+  assert.deepEqual(await commit.json(), {
+    added: 0,
+    removed: 0,
+    orphanedAndDeleted: 0,
+    merged: 1,
+  });
+  assert.ok(!appExists("old-track"));
+  assert.deepEqual(deviceAppIds(d.id), ["new-track"]);
+  const verdict = db
+    .prepare("SELECT app_id FROM app_verdicts WHERE id = ?")
+    .get("v-old") as { app_id: string } | undefined;
+  assert.equal(verdict?.app_id, "new-track");
+});
+
+test("commit ignores a crafted merge of two unrelated apps", async () => {
+  reset();
+  seedApp("instagram", "com.burbn.instagram");
+  seedApp("threads", "com.burbn.barcelona");
+  seedApp("maps");
+  const d = createDevice({ name: "iPhone" });
+  upsertAppDeviceLink("instagram", d.id);
+  upsertAppDeviceLink("maps", d.id);
+  seedUserVerdict("v-maps", "maps");
+
+  const commit = await commitRoute.POST(
+    makeJsonRequest("http://127.0.0.1/api/device-sync/commit", "POST", {
+      deviceId: d.id,
+      addAppIds: [],
+      removeAppIds: [],
+      bundleIdMerges: [
+        { previousAppId: "maps", incomingAppId: "threads" },
+        { previousAppId: "instagram", incomingAppId: "threads" },
+      ],
+    }) as never
+  );
+  assert.equal(commit.status, 200);
+  assert.deepEqual(await commit.json(), {
+    added: 0,
+    removed: 0,
+    orphanedAndDeleted: 0,
+    merged: 0,
+  });
+  // Nothing moved and nothing was deleted.
+  for (const id of ["instagram", "threads", "maps"]) {
+    assert.ok(appExists(id), `${id} must survive`);
+  }
+  assert.deepEqual(deviceAppIds(d.id), ["instagram", "maps"]);
+  const verdict = db
+    .prepare("SELECT app_id FROM app_verdicts WHERE id = ?")
+    .get("v-maps") as { app_id: string } | undefined;
+  assert.equal(verdict?.app_id, "maps");
 });
 
 test("preview returns 404 for unknown deviceId", async () => {

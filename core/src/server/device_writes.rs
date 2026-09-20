@@ -66,6 +66,8 @@ const TRANSFER: [&str; 5] = [
 ];
 const TRANSFER_SNAPSHOTS: &str = "UPDATE privacy_snapshots SET app_id = ? WHERE app_id = ?";
 const PREVIOUS_ROWS: &str = "\n      SELECT ad.app_id AS app_id, a.name AS name, a.bundleId AS bundle_id\n      FROM app_devices ad\n      JOIN apps a ON a.id = ad.app_id\n      WHERE ad.device_id = ?\n    ";
+/// `isProposedBundleIdMerge`, bound `(previous, incoming, device, device)`.
+const PROPOSED_MERGE: &str = "\n      SELECT 1\n      FROM apps prev\n      JOIN apps inc ON inc.bundleId = prev.bundleId\n      WHERE prev.id = ?\n        AND inc.id = ?\n        AND prev.bundleId != ''\n        AND EXISTS (\n          SELECT 1 FROM app_devices WHERE app_id = prev.id AND device_id = ?\n        )\n        AND NOT EXISTS (\n          SELECT 1 FROM app_devices WHERE app_id = inc.id AND device_id = ?\n        )\n    ";
 
 pub(super) fn handles(spec: &RouteSpec) -> bool {
     spec.method == Method::POST
@@ -857,6 +859,23 @@ fn exists(cx: &Cx, app_id: &str) -> Result<bool, String> {
         .map_err(|e| e.to_string())
 }
 
+/// `isProposedBundleIdMerge`: whether the diff would propose this merge
+/// for the device, read from the library alone. The old app is on the
+/// device, the new one exists and is not, and both rows carry the same
+/// non-empty bundle id. Unlike the diff, which absorbs only the last of
+/// two same-bundle rows on the device, it accepts a pair for each.
+fn proposed_merge(
+    cx: &Cx,
+    device_id: &str,
+    previous: &str,
+    incoming: &str,
+) -> Result<bool, String> {
+    cx.w.conn
+        .prepare(PROPOSED_MERGE)
+        .and_then(|mut stmt| stmt.exists([previous, incoming, device_id, device_id]))
+        .map_err(|e| e.to_string())
+}
+
 /// `transferUserDataAcrossAppIds`: each statement on its own, a failure
 /// logged and skipped, as Node's try/catch does.
 fn transfer(cx: &mut Cx, old: &str, new: &str) {
@@ -879,7 +898,9 @@ fn transfer(cx: &mut Cx, old: &str, new: &str) {
 
 /// `applyDeviceSyncDiff`: one transaction — the merges first, so a remove
 /// naming a merged row finds it gone, then the adds, the removes with the
-/// orphan sweep, and the device's sync time.
+/// orphan sweep, and the device's sync time. Only the client's pairs the
+/// diff would propose run, all judged before the first merge moves any
+/// links (`proposed_merge`).
 fn apply(
     cx: &mut Cx,
     device_id: &str,
@@ -901,7 +922,13 @@ fn apply(
             orphaned_and_deleted: 0,
             merged: 0,
         };
+        let mut proposed = vec![];
         for &(previous, incoming) in merges {
+            if proposed_merge(cx, device_id, previous, incoming)? {
+                proposed.push((previous, incoming));
+            }
+        }
+        for (previous, incoming) in proposed {
             if previous == incoming {
                 continue;
             }
