@@ -6,6 +6,9 @@
   "bundle": {
     "resources": {
       "resources/site": "site"
+    },
+    "macOS": {
+      "entitlements": "entitlements-rust.plist"
     }
   }
 }

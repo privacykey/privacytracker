@@ -14,8 +14,11 @@ a bad public release.
   is published only on localhost: other containers can reach the service.
   See [secure deployment](SECURE_DEPLOYMENT.md) for login and proxy setup.
   A missing token must fail closed, rather than expose private data.
-- **macOS:** v0.2 requires **13.5 or later** on Intel and Apple Silicon, matching
-  the bundled Node 24 runtime. v0.1.2 cannot negotiate an OS minimum through its
+- **macOS:** v0.2 requires **13.5 or later** on Intel and Apple Silicon. That
+  floor came from the bundled Node 24 runtime; a build on the Rust backend
+  carries no Node, and keeps 13.5 anyway, because that is the floor the app
+  has shipped and been tested against. Lowering it is a deliberate decision
+  with its own testing, not a side effect of dropping Node. v0.1.2 cannot negotiate an OS minimum through its
   static updater. Upgrade once using the matching v0.2 DMG or Homebrew on a
   supported Mac. v0.2 then uses `latest-v2.json` for normal in-app updates.
   Every release retains the original signed v0.1.2 `latest.json`; older clients
@@ -65,8 +68,9 @@ that an ordinary branch cannot enter the signing environment.
    only after checking the tag and commit.
 4. Desktop jobs build natively on Intel and Apple Silicon. They check bundle
    version, OS minimum, architecture, native-addon loading, code signatures,
-   notarization and Gatekeeper. The extracted server must also pass an isolated
-   v0.1.2 upgrade, authenticated restore and restart rehearsal. The assembler requires both platforms and
+   notarization and Gatekeeper. The server must also pass an isolated
+   v0.1.2 upgrade, authenticated restore and restart rehearsal: the extracted
+   standalone tree on the node backend, the packaged app itself on the rust one. The assembler requires both platforms and
    verifies updater signatures with the same verifier used by Tauri. Missing,
    altered or wrongly signed archives stop manifest creation.
 5. Docker jobs scan the **exact immutable image digest** for each architecture,
@@ -76,6 +80,27 @@ that an ordinary branch cannot enter the signing environment.
    the final cryptographic attestation verification against the repository,
    publishing workflow and source commit. Docker tags are produced by this workflow;
    GitHub desktop assets remain draft until the manual publication step.
+
+### Which backend a build ships
+
+**macOS desktop release** takes a `backend` input. `node`, the default,
+bundles the Next.js standalone tree and a verified Node binary, as every
+release so far has. `rust` ships the Rust backend instead: the app serves
+itself, the frontend is staged into `Contents/Resources/site` (about 9 MB
+against the tarball's ~200 MB), no Node is fetched or bundled, and the
+bundle is signed with `entitlements-rust.plist`, which grants none of the
+three entitlements V8 needed.
+
+`Prepare verified release draft` calls the desktop workflow without that
+input, so tagged releases stay on Node until the cutover flips it. To
+rehearse a Rust build, dispatch **macOS desktop release** on a reviewed tag
+with `backend=rust` and `dry_run=true`.
+
+Either way the verifier checks the same things about the bundle (version,
+OS minimum, architecture, signature, notarisation) and then what is specific
+to the backend: for `rust`, that no Node ships, that the staged site is
+complete, that the entitlements are the strict set, and that the packaged
+app itself opens a v0.1.2 database, serves its pages and survives a restart.
 
 For a signing-only rehearsal, run **macOS desktop release** on an existing
 reviewed tag with the same `tag` input and `dry_run=true`. It uploads workflow

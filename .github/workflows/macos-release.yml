@@ -2,6 +2,12 @@ name: macOS desktop release
 
 on:
   workflow_call:
+    inputs:
+      backend:
+        description: 'Which backend the app ships: node (the bundled sidecar) or rust (the app serves itself).'
+        required: false
+        default: node
+        type: string
   workflow_dispatch:
     inputs:
       tag:
@@ -13,12 +19,26 @@ on:
         required: false
         default: false
         type: boolean
+      backend:
+        description: 'Which backend the app ships.'
+        required: false
+        default: node
+        type: choice
+        options:
+          - node
+          - rust
 
 env:
   # Node 24 LTS ("Krypton"), active-LTS channel through Apr 2028.
   # Must match the sidecar Node version packaged into src-tauri/binaries/
   # so better-sqlite3's native ABI lines up — see comments further down.
+  # The `rust` backend ships no Node, so its leg builds under .nvmrc
+  # instead and this pin does not apply to it.
   NODE_VERSION: '24.20.0'
+  # node until the cutover release, rust after it. Every Node-only step
+  # below is gated on this, and the verifier is told which bundle it is
+  # looking at.
+  BACKEND: ${{ inputs.backend || 'node' }}
 
 permissions:
   actions: read
@@ -79,7 +99,8 @@ jobs:
         # package.json, the single source of truth.
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
 
-      - name: Install Node
+      - name: Install Node (node backend)
+        if: ${{ env.BACKEND == 'node' }}
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
           # Deliberately NOT `node-version-file: .nvmrc` (major-only): the
@@ -87,6 +108,17 @@ jobs:
           # NODE_VERSION at the top of this file so better-sqlite3's
           # native ABI lines up with the bundled runtime.
           node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install Node (rust backend)
+        if: ${{ env.BACKEND == 'rust' }}
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
+        with:
+          # Nothing of Node ships in this build, so nothing constrains the
+          # version beyond what the repository asks for: Node only builds
+          # the frontend here, and the app serves it with SQLite compiled
+          # into the binary.
+          node-version-file: '.nvmrc'
           cache: 'pnpm'
 
       - name: Install Rust toolchain (${{ matrix.target }})
@@ -110,13 +142,18 @@ jobs:
           restore-keys: |
             cargo-${{ matrix.target }}-
 
-      - name: Install native JS dependencies
+      - name: Install JS dependencies
         env:
           EXPECTED_ARCH: ${{ matrix.node_arch }}
         run: |
           node -e 'if (process.arch !== process.env.EXPECTED_ARCH) throw new Error("Wrong runner architecture")'
           pnpm install --frozen-lockfile
-          node -e 'const db = require("better-sqlite3") (":memory:"); db.close()'
+
+      - name: Check the native SQLite addon loads
+        # Only the node backend ships better-sqlite3; the rust one compiles
+        # SQLite into the binary, so this check has nothing to say about it.
+        if: ${{ env.BACKEND == 'node' }}
+        run: node -e 'const db = require("better-sqlite3") (":memory:"); db.close()'
 
       # Fetch the exact Node binary we ship as a sidecar. Must match the
       # NODE_MODULE_VERSION that `better-sqlite3` was installed against in
@@ -142,6 +179,7 @@ jobs:
       # TAURI_BUILD_TARGET is the same variable stage-standalone.mjs reads
       # when it picks which binary to wrap, so both halves stay in step.
       - name: Download + verify bundled Node ${{ env.NODE_VERSION }} (${{ matrix.node_arch }})
+        if: ${{ env.BACKEND == 'node' }}
         env:
           # NODE_VERSION comes from the workflow-level `env:` block.
           TAURI_BUILD_TARGET: ${{ matrix.target }}
@@ -156,6 +194,11 @@ jobs:
       # inside the tar. Two keychains on the search list co-exist
       # cleanly; the cleanup step at the bottom removes ours.
       - name: Set up staging signing keychain
+        # Only the node backend needs it: it exists so stage-standalone.mjs
+        # can codesign the Mach-O files it puts inside standalone.tar. The
+        # rust backend stages a directory of pages and assets, none of which
+        # is code, and tauri-action's own keychain signs the app.
+        if: ${{ env.BACKEND == 'node' }}
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -208,10 +251,24 @@ jobs:
         # inside stage-standalone.mjs — without it the script prunes
         # but does not sign, leaving notarytool to reject every
         # surviving .node / .dylib inside standalone.tar.
+        if: ${{ env.BACKEND == 'node' }}
         env:
           TAURI_BUILD_TARGET: ${{ matrix.target }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: pnpm build:standalone
+
+      # The rust backend's equivalent, and far less: the frontend the app
+      # serves, staged as a directory inside the bundle. No Node, no
+      # tarball, nothing to codesign (scripts/stage-site.mjs refuses to
+      # stage anything but pages, assets and the CSP hashes). The tauri
+      # build below runs the same two commands through the overlay's
+      # beforeBuildCommand; doing it here as well keeps the failure close
+      # to its cause when a build is broken.
+      - name: Build and stage the frontend
+        if: ${{ env.BACKEND == 'rust' }}
+        run: |
+          pnpm build
+          pnpm stage:site
 
       # Materialise the App Store Connect API key (.p8) to disk. The secret
       # stores the file *contents*; notarytool needs a file path. We write
@@ -303,8 +360,12 @@ jobs:
           # `tauri build`, so without this guard the second run would
           # wipe the pre-signed tarball and die on the codesign call.
           # See the matching `STANDALONE_PRE_BUILT === '1'` early-exit
-          # in scripts/stage-standalone.mjs.
-          STANDALONE_PRE_BUILT: '1'
+          # in scripts/stage-standalone.mjs. The rust backend has no
+          # pre-signed tarball to protect: its beforeBuildCommand only
+          # rebuilds and re-stages the frontend, which costs nothing to
+          # repeat and keeps the bundle's contents a function of the build
+          # that produced it.
+          STANDALONE_PRE_BUILT: ${{ env.BACKEND == 'node' && '1' || '' }}
         with:
           # `pnpm tauri` without the trailing `--`. pnpm 11.0.x silently
           # stripped a trailing `--` separator before running the script;
@@ -314,7 +375,11 @@ jobs:
           # equivalent for arg forwarding — pnpm already passes the
           # action's `build --target …` straight through to the script.
           tauriScript: node scripts/run-release-tauri.mjs
-          args: --target ${{ matrix.target }}
+          # The rust backend adds three things: the cargo feature, the
+          # config overlay that bundles the staged site and swaps in the
+          # stricter entitlements, and `--no-default-features` for cargo
+          # AFTER the separator — the tauri CLI rejects it before one.
+          args: ${{ env.BACKEND == 'rust' && format('--target {0} --features rust-backend --config src-tauri/tauri.rust.conf.json -- --no-default-features', matrix.target) || format('--target {0}', matrix.target) }}
           # Draft release keyed on the git tag. On tag push, GITHUB_REF_NAME
           # is the tag (e.g. v0.1.0). On workflow_dispatch, use the input.
           tagName: ${{ !inputs.dry_run && github.ref_name || '' }}
@@ -346,7 +411,7 @@ jobs:
           TARGET: ${{ matrix.target }}
           NODE_ARCH: ${{ matrix.node_arch }}
           RELEASE_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
-        run: node scripts/verify-macos-bundle.mjs "src-tauri/target/$TARGET/release/bundle/macos/privacytracker.app" "$NODE_ARCH"
+        run: node scripts/verify-macos-bundle.mjs "src-tauri/target/$TARGET/release/bundle/macos/privacytracker.app" "$NODE_ARCH" "$BACKEND"
 
       # Stage the per-arch updater signature so the assemble job can
       # build a multi-platform latest.json without re-running tauri.

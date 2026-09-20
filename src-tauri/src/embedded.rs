@@ -95,7 +95,7 @@ pub fn boot(app: &AppHandle) -> Result<Boot, BoxError> {
         let _ = std::fs::set_permissions(&data_dir, std::fs::Permissions::from_mode(0o700));
     }
 
-    let site = resolve_site_dir(app)?;
+    let site = resolve_site_dir(Some(app.path().resource_dir()?))?;
     log::info!(
         "Serving from this process: data {} site {}",
         data_dir.display(),
@@ -137,6 +137,50 @@ pub fn start(data_dir: &Path, site: &Path) -> Result<(ServerHandle, SocketAddr),
         .map_err(|e| -> BoxError { e.to_string().into() })?;
         Ok((handle, addr))
     })
+}
+
+/// `--smoke-server <dir>`: serve over that directory and wait, with no
+/// window, no tray and nothing else. The release verifier drives a
+/// PACKAGED app through this, which is the only way to prove that what was
+/// signed and notarised opens a database and answers: `pt-core` is not in
+/// the bundle, and a window would need someone to look at it.
+///
+/// The directory is a command-line argument, never the environment and
+/// never the user's own: a release build ignores `PRIVACYTRACKER_DATA_DIR`,
+/// and this mode touches only the directory it was handed.
+pub fn smoke(data_dir: &Path) -> ! {
+    let site = match resolve_site_dir(resources_beside_executable()) {
+        Ok(site) => site,
+        Err(e) => {
+            eprintln!("smoke server: {e}");
+            std::process::exit(1);
+        }
+    };
+    match start(data_dir, &site) {
+        Ok((_handle, addr)) => {
+            // The verifier reads these two lines: where to talk to it, and
+            // which frontend it is serving.
+            println!("smoke server listening on http://{addr}");
+            println!("smoke server site {}", site.display());
+            // Serve until killed. The handle lives as long as this thread.
+            loop {
+                std::thread::sleep(Duration::from_secs(3600));
+            }
+        }
+        Err(e) => {
+            eprintln!("smoke server: {e}");
+            std::process::exit(1);
+        }
+    }
+}
+
+/// `Contents/Resources` of the bundle this executable sits in, if it sits
+/// in one. `tauri::path` answers this for the running app; the smoke mode
+/// has no app, so it walks up from the executable instead.
+fn resources_beside_executable() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    // <app>/Contents/MacOS/<exe> → <app>/Contents/Resources
+    Some(exe.parent()?.parent()?.join("Resources"))
 }
 
 /// The server's whole environment, as `env_clear()` plus a handful of
@@ -201,7 +245,7 @@ fn remember_port(data_dir: &Path, port: u16) {
 /// so nothing is extracted into the data directory and nothing writable
 /// is ever served. A dev build falls back to the repository's own build,
 /// which is what `just tauri-dev-rust` produces.
-fn resolve_site_dir(app: &AppHandle) -> Result<PathBuf, BoxError> {
+fn resolve_site_dir(resources: Option<PathBuf>) -> Result<PathBuf, BoxError> {
     #[cfg(debug_assertions)]
     if let Ok(dir) = std::env::var("PRIVACYTRACKER_DEV_SITE") {
         let explicit = PathBuf::from(dir);
@@ -215,7 +259,7 @@ fn resolve_site_dir(app: &AppHandle) -> Result<PathBuf, BoxError> {
         );
     }
 
-    let staged = app.path().resource_dir()?.join("site");
+    let staged = resources.unwrap_or_default().join("site");
     if is_site(&staged) {
         return Ok(staged);
     }

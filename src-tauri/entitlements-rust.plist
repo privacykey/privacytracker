@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Hardened-runtime entitlements for the RUST backend build, where the app
+  serves itself and no Node process is bundled (Phase 6). Every entitlement
+  the Node build needs exists for Node, so this file grants none of them.
+
+  What the Node build grants, and why it is gone here:
+
+  • allow-jit
+      V8 JIT-compiles at runtime, which the hardened runtime blocks without
+      this. There is no V8 in this build. The webview still JITs, but
+      WebKit does that in its own process (com.apple.WebKit.WebContent),
+      which Apple ships with its own entitlements; the host app does not
+      need them.
+
+  • allow-unsigned-executable-memory
+      For the V8 codepaths that write pages codesign would otherwise
+      reject. Nothing in this build writes executable memory: the server is
+      compiled Rust.
+
+  • allow-dyld-environment-variables
+      So the Node helper could find the adjacent .node bindings. This build
+      loads no dynamic libraries of its own: SQLite is compiled into the
+      binary (rusqlite's bundled build).
+
+  Still deliberately NOT set, as in the Node build:
+
+  • disable-library-validation
+      Library validation is what stops a tampered library being loaded into
+      a signed process, and nothing here needs it relaxed.
+
+  An empty dict is intentional: it is the strictest thing that can be
+  signed, and the release verifier asserts the shipped binary carries no
+  entitlement the Node build needed.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+</dict>
+</plist>

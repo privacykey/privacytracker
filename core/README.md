@@ -4502,3 +4502,79 @@ Two live, and both taught something:
   is the handover rather than the backfill.
 
 Source restored byte for byte after each, fixed tree green.
+
+### Batch 5a — releasing a build on the Rust backend
+
+`macos-release.yml` takes a `backend` input. `node` is the default and is
+what every release still ships. `rust` builds the app on this crate:
+
+- no Node is fetched, GPG-verified or bundled, and the better-sqlite3
+  load check does not apply (SQLite is compiled into the binary);
+- no staging keychain, because nothing inside the bundle is code that
+  needs signing before the app is sealed: `stage-site.mjs` stages pages,
+  assets and the CSP hashes, and the bundler signs the app itself;
+- `pnpm build` and `pnpm stage:site` in place of `build:standalone`, and
+  therefore no `STANDALONE_PRE_BUILT` guard;
+- the build runs with the feature, the config overlay and cargo's
+  `--no-default-features` after the separator, which is the one spelling
+  the tauri CLI accepts;
+- `.nvmrc` decides the build's Node, since nothing pins it to a shipped
+  runtime any more.
+
+`Prepare verified release draft` calls the workflow without the input, so
+tagged releases stay on Node until the cutover flips that one line. A Rust
+build is rehearsed by dispatching the workflow on a reviewed tag with
+`backend=rust` and `dry_run=true`.
+
+**The entitlements shrink to nothing.** `entitlements-rust.plist` grants
+none of the three the Node build needs: `allow-jit`,
+`allow-unsigned-executable-memory` and `allow-dyld-environment-variables`
+all exist for V8, and there is no V8 here. The webview still JITs, but
+WebKit does that in its own process, which Apple entitles. That is a claim
+worth testing rather than believing, so it was: a bundle signed with the
+hardened runtime and an EMPTY entitlements dict runs, and its webview loads
+the app (six connections from WebKit's networking process, the home page
+answering 200).
+
+**The verifier gained a backend.** `verify-macos-bundle.mjs <app> <arch>
+[backend]` checks the same things about any bundle (version, OS minimum,
+architecture, signature, notarisation, Gatekeeper) and then what belongs to
+the backend. For `rust`:
+
+- nothing of Node ships: no helper bundle, no interpreter, and a tarball
+  only if it is the 0-byte stub cargo needs to exist;
+- the staged site is complete (both pages, the CSP hashes, chunks and
+  public files);
+- the binary carries none of the three entitlements;
+- and the packaged app itself is driven over HTTP.
+
+**The packaged app drives itself.** `--smoke-server <dir>` (`embedded.rs`)
+serves over the directory it is given and waits, with no window and no
+tray. It exists because the only thing worth verifying at release time is
+what was signed and notarised: `pt-core` is not in the bundle, and a window
+would need someone to look at it. The directory is a command-line argument,
+never the environment, so a shipped app cannot be pointed at a user's data
+this way. `smoke-packaged-rust.mjs` then runs the Node smoke's checks over
+it — a v0.1.2 database opens and migrates, a backup exports with every
+table, a restore is trusted, the data survives a restart — plus two that
+belong to this build: the pages come from inside the bundle, and a read
+needs no token, which is the desktop's posture.
+
+**What was run.** A bundle was built with the overlay, signed ad-hoc with
+the hardened runtime, and the verifier run against it end to end: 98 static
+and 7 public files staged, entitlements empty, and the packaged smoke
+passing. `actionlint` is clean on the changed workflows.
+
+**Negative controls, predicted before running.** Each breaks the built
+bundle, re-signs it so the verifier reaches the backend checks, and fails
+exactly its own assertion: signing with the Node entitlements, a page
+missing from the staged site, and a Node interpreter in the Resources. The
+restored bundle passes.
+
+One thing is recorded rather than explained: the very first verifier run
+against a freshly signed bundle failed inside the packaged smoke, and no
+re-run has reproduced it, including immediately after re-signing. It is
+noted here rather than given a cause it has not earned.
+
+**Still owed by batch 5b:** the third-party notices for the Rust crates and
+the entry on `/legal`, and the hosted docs' desktop page.
