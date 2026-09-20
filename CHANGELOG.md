@@ -111,6 +111,12 @@ Going forward, changes are recorded here as they land.
   "Privacy-policy sync", and that card said it had been resumed after a
   restart although nothing had restarted. It now says "Running in the
   background". A run the app resumed after a restart still says so.
+- The "Privacy-policy sync" card in Background tasks now keeps up with
+  the batch it shows. When a "Re-scrape all policies" or "Summarise all
+  policies" run was still going after the page was reloaded, in a second
+  tab, or after Cancel (which stops the page following the run, not the
+  run itself), the card showed the app and progress it first saw and then
+  stood still until the run finished. It now follows the run to the end.
 - "Install & restart" in the desktop app's update banner now restarts into
   the new version. The update installed, but the restart after it was
   refused ("process.restart not allowed. Plugin not found") because the

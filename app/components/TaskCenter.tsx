@@ -37,6 +37,11 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  type ServerJobInitiator,
+  type ServerJobKey,
+  serverJobCardReason,
+} from "../../lib/task-center-server-jobs";
 import { useResolvedFlag } from "../../lib/use-flag-bundle";
 
 type TaskKind = "sync" | "scrape" | "policy" | "import" | "other";
@@ -70,7 +75,7 @@ const ACTIVE_TASKS_POLL_MS = 4000;
 
 interface ActiveJobView {
   currentAppName: string | null;
-  initiator: "manual" | "scheduled" | "automatic" | "resume" | null;
+  initiator: ServerJobInitiator;
   mutexHeld: boolean;
   runId: string | null;
   running: boolean;
@@ -102,8 +107,6 @@ interface ActivePolicyRunView {
   runStartedAt: number | null;
   updatedAt: number | null;
 }
-
-type ServerJobKey = "wayback" | "sync" | "policy";
 
 const SERVER_JOB_KIND: Record<ServerJobKey, TaskKind> = {
   wayback: "import",
@@ -526,27 +529,30 @@ export function TaskCenterProvider({
           continue;
         }
 
-        const hasLocalTask = tasksRef.current.some(
-          (task) =>
-            task.status === "running" && task.href === SERVER_JOB_HREF[jobKey]
-        );
-
         // Show resumed jobs even after a reload. Also show manual policy
         // batches when there is no local SettingsView-owned task (e.g. the
         // user refreshed or opened a second tab mid-run). This keeps bulk
         // re-summarise visible without duplicating the task that launched it.
-        const resumed = job.initiator === "resume" && resumeCardsEnabled;
-        const detachedPolicyBatch =
-          jobKey === "policy" && job.initiator === "manual" && !hasLocalTask;
-        if (!(resumed || detachedPolicyBatch)) {
+        // TaskCenter's own card for the job links to the same place, so it
+        // goes in as `cardId` and is not mistaken for that task.
+        const reason = serverJobCardReason({
+          jobKey,
+          initiator: job.initiator,
+          href: SERVER_JOB_HREF[jobKey],
+          cardId: existing?.handle.id,
+          tasks: tasksRef.current,
+          resumeCardsEnabled,
+        });
+        if (!reason) {
           continue;
         }
         // The subtitle says why the card is shown. Only a run the server
         // picked up again after a restart was resumed; a manual batch shown
         // for want of a local task was never interrupted.
-        const subtitle = resumed
-          ? t("subtitle_resumed")
-          : t("subtitle_background");
+        const subtitle =
+          reason === "resumed"
+            ? t("subtitle_resumed")
+            : t("subtitle_background");
 
         // Run boundary — a different runId means the previous one ended
         // and a new one started between polls. Close the old card first.
