@@ -4433,3 +4433,72 @@ what the compiler actually enforces (removing both stops the build), and
 the guard's own comment says so.
 
 Source restored byte for byte after each, fixed tree green.
+
+### Batch 4b — the site inside the bundle, and the database handed over
+
+Two things a packaged Rust build needs, and one the rollback does.
+
+**The site is staged into the bundle.** `scripts/stage-site.mjs` copies
+the four things the core serves and nothing else: the prerendered pages
+with their metadata, RSC payloads and segments (`.html`, `.meta`,
+`.rsc`, `.body`), `.next/static`, `.next/csp-hashes.json` and
+`public/`. Not the route modules a build writes beside the pages, not
+the cache, not a standalone tree, not `node_modules`: the desktop app
+never runs that code, and what is not shipped cannot be loaded. The
+result is about 9 MB, against the Node path's ~200 MB tarball, and it
+sits read-only inside the signed bundle instead of being extracted into
+the data directory.
+
+It refuses what it should: a build with no not-found page (the core
+would refuse to load it), a missing build (naming the command that makes
+one), and any database file (a bundle must ship no user data). It wipes
+its destination first, so a page deleted since the last staging cannot
+be served from a stale copy.
+
+`src-tauri/tauri.rust.conf.json` is the overlay that bundles it:
+`pnpm tauri:build:rust`, or `just tauri-build-rust`. The base config
+stays the Node one, so a default build is untouched. Tauri merges the
+two, so the Rust bundle still lists the Node tarball as a resource; on a
+machine that has never staged one that is the 0-byte stub, and dropping
+it belongs with the rest of release engineering (batch 5).
+
+**Verified by building one.** A debug bundle carries
+`Contents/Resources/site` at 9.8 MB, and the packaged app, launched from
+outside the repository so nothing could fall back to it, served its
+pages from there.
+
+**The handoff test** (`scripts/parity/handoff.mjs`, `just handoff`, and
+CI's `core-parity` job) is what the rollback rests on: a Node build has
+to open the database a Rust build left behind. Each backend seeds its
+own fresh data directory, replays the manifest's mutations over it and
+answers a set of reads; it stops, the other backend opens **the same
+directory** and has to be ready and answer identically. Then the two
+swap. That covers what `read-parity.mjs` structurally cannot: it always
+compares over a COPY of a database Node wrote, one way round, with the
+WAL already checkpointed. Here it is the directory as the other process
+left it, `-wal` and all, in both directions, across two SQLite versions
+(rusqlite 3.46, better-sqlite3 3.53). 40 checks pass.
+
+**Negative controls, predicted before running.** Three on the staging
+script: copying everything under `server/app`, not wiping the
+destination, and staging a database. Each failed exactly its own test.
+
+Two live, and both taught something:
+
+- **The receiving backend opens a different directory.** Predicted: the
+  fleet checks and six compared reads. Two of those six did not fail:
+  `/api/shortlist` and the universal `/api/changelog` were EMPTY on
+  either side, so they were proving nothing. Nothing in the replayable
+  mutation set adds a shortlist entry, and the universal changelog lists
+  changes, of which a seeded install has none. The script now writes a
+  shortlist entry and compares the per-app timeline, and the control then
+  fails exactly the fleet checks and nine reads per direction.
+- **The mutations are not replayed.** Predicted: the two count guards.
+  They failed, and so did `/api/devices` and the grid's `meta=grid` in
+  both directions. The cause is real: a database with apps and no devices
+  gains a placeholder device the next time EITHER backend opens it (the
+  unknown-device backfill), which would make a handover look wrong. The
+  script now asserts the writes left a device behind, so what it compares
+  is the handover rather than the backfill.
+
+Source restored byte for byte after each, fixed tree green.

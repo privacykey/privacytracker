@@ -15,6 +15,12 @@
 /resources/standalone.tar
 /resources/standalone.tar.ready
 
+# ── Staged frontend for the Rust backend (scripts/stage-site.mjs) ────
+# What `pnpm tauri:build:rust` bundles in place of the tarball above:
+# the pages, chunks, CSP hashes and public files the Rust core serves,
+# rewritten from `.next` on every build.
+/resources/site
+
 # ── Bundled Node sidecar binaries ────────────────────────────────────
 # These are large (~115MB each) and downloaded on demand — see
 # binaries/README.md for the curl invocation. CI fetches them fresh

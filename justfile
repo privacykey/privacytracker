@@ -86,6 +86,19 @@ tauri-dev-rust:
 tauri-build: fetch-node-sidecar
     pnpm run tauri:build
 
+# Desktop build on the RUST backend: stages the frontend into the bundle's
+# Resources (scripts/stage-site.mjs) instead of the Node standalone tree,
+# so it needs no bundled Node. Release engineering for it is batch 5.
+[group("desktop")]
+tauri-build-rust:
+    pnpm run tauri:build:rust
+
+# Hand a database from one backend to the other, both ways (needs a
+# `pnpm build` and a built pt-core).
+[group("rust-core")]
+handoff:
+    node scripts/parity/handoff.mjs
+
 # Rust-side unit tests only
 [group("desktop")]
 test-tauri:
