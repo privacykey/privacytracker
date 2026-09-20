@@ -19,6 +19,11 @@
 //! "both run SQLite" is not an argument that the planner agrees. Keeping the
 //! SQL byte-identical is what makes it agree in practice; adding a tiebreak
 //! to the Rust side alone would guarantee it does not.
+//!
+//! **Every list read takes the request's device scope** (`?devices=`), and
+//! the route passes the unrestricted scope when the param is absent, so a
+//! bare request still gets the whole fleet. Export is the exception: it
+//! calls [`get_all_apps`], which is never scoped.
 
 use rusqlite::Connection;
 use serde_json::Value;
@@ -33,7 +38,7 @@ const COUNT_COLUMNS: &str = "COALESCE(pc.categoryCount, 0) AS categoryCount,
       COALESCE(sc.syncCount, 0) AS syncCount,
       COALESCE(ac.accessibilityCount, 0) AS accessibilityCount";
 
-/// Port of `getAllApps` — the bare `/api/apps` array, whole fleet.
+/// Port of `getAllApps` with no scope: the whole fleet, as export needs it.
 pub fn get_all_apps(conn: &Connection) -> rusqlite::Result<Vec<Value>> {
     get_all_apps_scoped(conn, &super::scope::Scope::default())
 }
@@ -84,13 +89,24 @@ pub(super) fn get_all_apps_scoped(
 /// Port of `getAppsPage`. Same row shape as `get_all_apps`, with the count
 /// CTEs scoped to the page so a 500-row page does 500 apps' worth of
 /// aggregation rather than the whole fleet's.
-pub fn get_apps_page(conn: &Connection, limit: i64, offset: i64) -> rusqlite::Result<Vec<Value>> {
+///
+/// The device scope goes INSIDE `page_apps`, before `LIMIT`/`OFFSET`, so the
+/// offsets page through the scoped set. Filtering the page afterwards would
+/// return short or empty pages and break the grid's offset arithmetic.
+pub(super) fn get_apps_page(
+    conn: &Connection,
+    limit: i64,
+    offset: i64,
+    scope: &super::scope::Scope,
+) -> rusqlite::Result<Vec<Value>> {
+    let filter = scope.fragment("WHERE", "a.id");
     let sql = format!(
         "
     WITH page_apps AS (
-      SELECT *
-      FROM apps
-      ORDER BY name ASC, id ASC
+      SELECT a.*
+      FROM apps a
+      {filter}
+      ORDER BY a.name ASC, a.id ASC
       LIMIT ? OFFSET ?
     ),
     privacy_counts AS (
@@ -126,14 +142,25 @@ pub fn get_apps_page(conn: &Connection, limit: i64, offset: i64) -> rusqlite::Re
     ORDER BY a.name ASC, a.id ASC
   "
     );
+    let mut params = scope.params();
+    params.push(limit.into());
+    params.push(offset.into());
     let mut stmt = conn.prepare(&sql)?;
-    let rows = stmt.query_map(rusqlite::params![limit, offset], row_to_json)?;
+    let rows = stmt.query_map(rusqlite::params_from_iter(params), row_to_json)?;
     rows.collect()
 }
 
-/// Port of `countApps` — the WHOLE fleet, not the page.
-pub fn count_apps(conn: &Connection) -> rusqlite::Result<i64> {
-    conn.query_row("SELECT COUNT(*) AS n FROM apps", [], |row| row.get(0))
+/// Port of `countApps` — the whole SCOPE, not the page, so the grid's
+/// "loaded N of TOTAL" counts the same set the pages come from.
+pub(super) fn count_apps(conn: &Connection, scope: &super::scope::Scope) -> rusqlite::Result<i64> {
+    conn.query_row(
+        &format!(
+            "SELECT COUNT(*) AS n FROM apps a{}",
+            scope.fragment("WHERE", "a.id")
+        ),
+        rusqlite::params_from_iter(scope.params()),
+        |row| row.get(0),
+    )
 }
 
 // ── ?id=<app> ────────────────────────────────────────────────────────
@@ -250,12 +277,31 @@ fn privacy_type_display_rank(identifier: &str) -> i64 {
 ///
 /// The object spread `{...group, categories: […]}` overwrites `categories`
 /// in place, so it stays FOURTH rather than moving to the end.
-pub fn get_grouped_privacy_view(conn: &Connection) -> rusqlite::Result<Vec<Value>> {
-    // `SELECT id, name, iconUrl, developer FROM apps` — an explicit
-    // projection, so this one is a fixed key order.
-    let mut app_stmt = conn.prepare("SELECT id, name, iconUrl, developer FROM apps")?;
+///
+/// A device scope filters BOTH queries. The category rows go through the
+/// same scope rather than being checked against the app map afterwards, so
+/// a category whose only apps are out of scope disappears instead of staying
+/// as an empty entry.
+pub(super) fn get_grouped_privacy_view(
+    conn: &Connection,
+    scope: &super::scope::Scope,
+) -> rusqlite::Result<Vec<Value>> {
+    let clause = scope.clause("a.id");
+    let (scope_where, row_scope_where) = if clause.is_empty() {
+        (String::new(), String::new())
+    } else {
+        (
+            format!("WHERE {clause}"),
+            format!("WHERE EXISTS (SELECT 1 FROM apps a WHERE a.id = pt.app_id AND {clause})"),
+        )
+    };
+    // `SELECT a.id, a.name, a.iconUrl, a.developer FROM apps a` — an
+    // explicit projection, so this one is a fixed key order.
+    let mut app_stmt = conn.prepare(&format!(
+        "SELECT a.id, a.name, a.iconUrl, a.developer FROM apps a {scope_where}"
+    ))?;
     let app_rows: Vec<(String, Value)> = app_stmt
-        .query_map([], |row| {
+        .query_map(rusqlite::params_from_iter(scope.params()), |row| {
             Ok((row.get::<_, String>("id")?, row_to_json(row)?))
         })?
         .collect::<rusqlite::Result<_>>()?;
@@ -266,7 +312,7 @@ pub fn get_grouped_privacy_view(conn: &Connection) -> rusqlite::Result<Vec<Value
         app_map.insert(id, row);
     }
 
-    let mut stmt = conn.prepare(
+    let mut stmt = conn.prepare(&format!(
         "
     SELECT
       pt.identifier  AS typeId,
@@ -277,8 +323,9 @@ pub fn get_grouped_privacy_view(conn: &Connection) -> rusqlite::Result<Vec<Value
       pt.app_id
     FROM privacy_types pt
     JOIN privacy_categories pc ON pc.type_id = pt.id
-  ",
-    )?;
+    {row_scope_where}
+  "
+    ))?;
 
     struct Category {
         identifier: Value,
@@ -295,7 +342,7 @@ pub fn get_grouped_privacy_view(conn: &Connection) -> rusqlite::Result<Vec<Value
     // Insertion-ordered, because that is what `Object.values` replays.
     let mut groups: Vec<(String, Group)> = Vec::new();
 
-    let rows = stmt.query_map([], |row| {
+    let rows = stmt.query_map(rusqlite::params_from_iter(scope.params()), |row| {
         Ok((
             row.get::<_, Option<String>>("typeId")?.unwrap_or_default(),
             column(row, "typeId")?,
@@ -414,6 +461,94 @@ mod tests {
         c
     }
 
+    fn all() -> super::super::scope::Scope {
+        super::super::scope::Scope::default()
+    }
+
+    fn scoped(c: &Connection, raw: &str) -> super::super::scope::Scope {
+        super::super::scope::Scope::from_request(c, Some(raw))
+    }
+
+    /// `seeded()` plus devices: both Alphas on d1, nothing on d2, and Beta
+    /// on no device at all.
+    fn with_devices() -> Connection {
+        let c = seeded();
+        c.execute_batch(
+            "INSERT INTO devices (id, name, created_at, last_synced_at) VALUES
+               ('d1', 'Phone', 0, 0),
+               ('d2', 'Empty tablet', 0, 0);
+             INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES
+               ('1', 'd1', 0, 0),
+               ('3', 'd1', 0, 0);",
+        )
+        .expect("device rows");
+        c
+    }
+
+    fn ids(rows: &[Value]) -> Vec<&str> {
+        rows.iter().filter_map(|r| r["id"].as_str()).collect()
+    }
+
+    #[test]
+    fn a_device_scope_pages_and_counts_inside_the_scope() {
+        let c = with_devices();
+        let d1 = scoped(&c, "d1");
+        assert_eq!(count_apps(&c, &d1).unwrap(), 2);
+        assert_eq!(ids(&get_apps_page(&c, 1, 1, &d1).unwrap()), ["3"]);
+
+        // The fleet's first page is Alpha (1), which is attached, so a filter
+        // applied after LIMIT would return nothing here.
+        let unattached = scoped(&c, "unattached");
+        assert_eq!(ids(&get_apps_page(&c, 1, 0, &unattached).unwrap()), ["2"]);
+        assert_eq!(count_apps(&c, &unattached).unwrap(), 1);
+
+        let empty = scoped(&c, "d2");
+        assert_eq!(count_apps(&c, &empty).unwrap(), 0);
+        assert!(get_apps_page(&c, 250, 0, &empty).unwrap().is_empty());
+        assert!(get_all_apps_scoped(&c, &empty).unwrap().is_empty());
+
+        // A device that no longer exists is the unrestricted scope.
+        assert_eq!(count_apps(&c, &scoped(&c, "gone")).unwrap(), 3);
+        assert_eq!(get_all_apps(&c).unwrap().len(), 3);
+    }
+
+    #[test]
+    fn a_scoped_grouped_view_drops_categories_with_no_app_in_scope() {
+        let c = with_devices();
+        c.execute_batch(
+            "INSERT INTO privacy_types (id, app_id, identifier, title) VALUES
+               ('t1', '1', 'DATA_LINKED_TO_YOU', 'Linked'),
+               ('t2', '2', 'DATA_NOT_LINKED_TO_YOU', 'Not linked'),
+               ('t3', '2', 'DATA_LINKED_TO_YOU', 'Linked');
+             INSERT INTO privacy_categories (id, type_id, identifier, title) VALUES
+               ('c1', 't1', 'CONTACT_INFO', 'Contact Info'),
+               ('c2', 't2', 'LOCATION', 'Location'),
+               ('c3', 't3', 'CONTACT_INFO', 'Contact Info');",
+        )
+        .unwrap();
+        let types = |groups: &[Value]| -> Vec<String> {
+            groups
+                .iter()
+                .map(|g| g["identifier"].as_str().unwrap().to_owned())
+                .collect()
+        };
+
+        let whole = get_grouped_privacy_view(&c, &all()).unwrap();
+        assert_eq!(
+            types(&whole),
+            ["DATA_NOT_LINKED_TO_YOU", "DATA_LINKED_TO_YOU"]
+        );
+
+        let d1 = get_grouped_privacy_view(&c, &scoped(&c, "d1")).unwrap();
+        assert_eq!(types(&d1), ["DATA_LINKED_TO_YOU"]);
+        let apps = d1[0]["categories"][0]["apps"].as_array().unwrap();
+        assert_eq!(ids(apps), ["1"], "Beta is out of scope");
+
+        assert!(get_grouped_privacy_view(&c, &scoped(&c, "d2"))
+            .unwrap()
+            .is_empty());
+    }
+
     #[test]
     fn the_bare_list_orders_by_name_and_appends_the_six_counts() {
         let c = seeded();
@@ -452,11 +587,11 @@ mod tests {
         // Two apps named "Alpha" (ids 1 and 3). The paged query's `, id ASC`
         // makes their order defined; the bare query leaves it to the planner,
         // which is why the two are not interchangeable.
-        let page = get_apps_page(&c, 2, 0).expect("query");
+        let page = get_apps_page(&c, 2, 0, &all()).expect("query");
         let ids: Vec<&str> = page.iter().filter_map(|r| r["id"].as_str()).collect();
         assert_eq!(ids, vec!["1", "3"]);
 
-        let second = get_apps_page(&c, 2, 2).expect("query");
+        let second = get_apps_page(&c, 2, 2, &all()).expect("query");
         assert_eq!(second.len(), 1);
         assert_eq!(second[0]["name"], Value::from("Beta"));
     }
@@ -465,7 +600,7 @@ mod tests {
     fn the_page_and_the_bare_list_agree_on_row_shape() {
         let c = seeded();
         let bare = get_all_apps(&c).expect("query");
-        let page = get_apps_page(&c, 500, 0).expect("query");
+        let page = get_apps_page(&c, 500, 0, &all()).expect("query");
         let keys = |v: &Value| {
             v.as_object()
                 .unwrap()
@@ -483,8 +618,8 @@ mod tests {
     #[test]
     fn count_is_the_whole_fleet_not_the_page() {
         let c = seeded();
-        assert_eq!(count_apps(&c).expect("count"), 3);
-        assert_eq!(get_apps_page(&c, 1, 0).expect("query").len(), 1);
+        assert_eq!(count_apps(&c, &all()).expect("count"), 3);
+        assert_eq!(get_apps_page(&c, 1, 0, &all()).expect("query").len(), 1);
     }
 
     #[test]
@@ -519,6 +654,6 @@ mod tests {
     #[test]
     fn an_offset_past_the_end_is_an_empty_page_not_an_error() {
         let c = seeded();
-        assert!(get_apps_page(&c, 10, 99).expect("query").is_empty());
+        assert!(get_apps_page(&c, 10, 99, &all()).expect("query").is_empty());
     }
 }

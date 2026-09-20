@@ -265,5 +265,49 @@ export async function probeDeviceReads(nodeBase, rustBase, token) {
     (j) => j.devices.length === 0,
     400
   );
+  // The apps grid asks for its pages with `?devices=`. The manifest's
+  // /api/apps reads are all unscoped, which let a core that ignored the
+  // param pass them while serving every app for a device that had none.
+  const deviceApp = (a) => a.id.startsWith("8999800");
+  await check(
+    "a device with no apps scopes the bare app list to nothing",
+    `/api/apps?devices=${DEVICE_EMPTY}`,
+    (j) => Array.isArray(j) && j.length === 0
+  );
+  await check(
+    "a device with no apps scopes the grid page and its total to nothing",
+    `/api/apps?limit=250&offset=0&meta=grid&devices=${DEVICE_EMPTY}`,
+    (j) => j.apps.length === 0 && j.total === 0
+  );
+  await check(
+    "a scoped page counts the scope and pages inside it",
+    `/api/apps?limit=2&offset=1&meta=grid&devices=${DEVICE_A}`,
+    (j) => j.total === 6 && j.apps.length === 2 && j.apps.every(deviceApp)
+  );
+  await check(
+    "the bare app list keeps only the device's apps",
+    `/api/apps?devices=${DEVICE_B}`,
+    (j) => j.length === 2 && j.every(deviceApp)
+  );
+  await check(
+    "the unattached scope leaves out every app on a device",
+    "/api/apps?limit=500&devices=unattached",
+    (j) => j.total === j.apps.length && !j.apps.some(deviceApp)
+  );
+  await check(
+    "an unknown device is the whole fleet",
+    "/api/apps?limit=1&devices=deleted-device",
+    (j) => j.total > 6
+  );
+  await check(
+    "the first repeated devices param wins",
+    `/api/apps?limit=1&devices=&devices=${DEVICE_EMPTY}`,
+    (j) => j.total > 6
+  );
+  await check(
+    "the first repeated limit wins",
+    `/api/apps?limit=1&limit=2&devices=${DEVICE_A}`,
+    (j) => j.limit === 1 && j.apps.length === 1 && j.total === 6
+  );
   return ok;
 }

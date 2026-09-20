@@ -526,6 +526,11 @@ early returns: `?id=X&changelog=true` → `?id=X` → `?view=grouped` →
 before any could ship — which is why the changelog kernel (#234) landed
 first: `?id&changelog=true` is `getChangelog(id, 50)`.
 
+**`?devices=` was missed here.** Every branch after the two `?id` ones
+also runs under the request's device scope, and this port ignored it (and
+kept the last of a repeated param, where Node keeps the first) until the
+Playwright suite ran against the core in Phase 6, batch 3b.
+
 **Five of the eight responses had no manifest entry.** The coverage gate
 counts routes, and two entries already made `/api/apps` look covered. The
 `?id`, `?changelog=true` and `?view=grouped` shapes and both error branches
@@ -4267,3 +4272,75 @@ Live:
 Source restored byte for byte after each, fixed tree green.
 
 Rust suite: 296 lib tests pass (283 + 13), plus the embed test.
+
+### Batch 3b — the browser suite against the core (one route fixed)
+
+The Playwright suite now runs against the core as well as against `next
+start`. `playwright.config.ts` takes `PLAYWRIGHT_CORE_BIN`: when it is
+set, the suite's web server is `pt-core serve --site .` over the same
+`next build` output, in place of `pnpm start`. CI's new `e2e-rust` job
+runs the suite that way on every push. It is not a required check yet;
+it becomes one after a week green.
+
+**What the suite found.** One port gap, in `GET /api/apps`: the core
+ignored `?devices=`. Node runs every branch after the two `?id` ones
+under the request's device scope, and the grid asks for its pages with
+the param. After picking a device, the grid still drew the right cards
+(it also filters in the browser) but counted the whole library: "3 of
+10 apps" where Node says "3 apps tracked". The read gate could not see
+it, because every manifest read of `/api/apps` is unscoped. The
+route now takes the scope as the stats reads do (`Scope::from_request`),
+and the page, count and grouped queries take it with Node's SQL:
+
+- the scope goes inside `page_apps`, before `LIMIT` and `OFFSET`, so the
+  offsets page through the scoped set;
+- the total is the scope's, not the fleet's;
+- the grouped view filters its category rows through the same scope, so
+  a category whose only apps are out of scope disappears;
+- export stays unscoped.
+
+The route also kept the LAST of a repeated param (a `HashMap`), where
+`URLSearchParams.get` returns the first; it now reads its params as the
+later routes do.
+
+The first run's two other failures were knock-ons. Each failed test
+restarts the Playwright worker, and the restarts' extra seeds hit the
+dev seed's rate limit (30 in 10 minutes).
+
+**The gate.**
+
+- Unit tests in `apps.rs` and `routes_apps.rs`: a device with no apps,
+  paging inside a scope, the unattached scope, an unknown device, the
+  grouped view, and a repeated param.
+- The live gate: the device probe gains 8 checks on scoped `/api/apps`
+  and the stats probe one on the scoped grouped view. 496 checks pass.
+- The whole suite against the core, through the new switch: 73 passed
+  and 22 skipped, as against Node. Pointing the switch at a missing
+  binary stops the run before any test, so the pass is the core's.
+- The visual net, with its baselines captured from `next start`: all 20
+  shots match the core, as they match a second `next start` run.
+
+**Negative controls, predicted before running.** In the unit tests:
+
+- the route ignoring `?devices=`: exactly the two route tests that
+  scope;
+- a repeated param keeping its last value: exactly the repeated-param
+  test;
+- the scope applied after `LIMIT`: exactly the paging test and the
+  route test that pages the unattached scope;
+- the grouped view scoping its app map but not its rows: exactly the
+  grouped test.
+
+The route ignoring `?devices=` again, live and in the visual net:
+
+- the gate: exactly the 7 predicted checks (6 device, 1 stats). The
+  unknown device and the repeated empty `devices` still pass, because
+  both servers answer with the whole fleet;
+- the visual net: exactly the 2 predicted shots, the scoped grid and the
+  focus-switch prompt drawn over it. The other 18 pass: every other
+  shot starts unscoped, and the two other scoped shots read nothing
+  from `/api/apps`.
+
+Source restored byte for byte after each, fixed tree green.
+
+Rust suite: 301 lib tests pass (296 + 5), plus the embed test.
