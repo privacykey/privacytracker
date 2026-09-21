@@ -12,13 +12,14 @@ import path from "node:path";
 import { minimumMacOSVersions } from "./macos-binary-checks.mjs";
 import { readReleaseMetadata } from "./release-metadata.mjs";
 
-// Which backend this bundle ships (Phase 6). `node` bundles the standalone
-// tree and a Node binary; `rust` serves the app from the binary itself and
-// bundles only the frontend. Everything above the backend split -- the
-// version, the deployment target, the signature, the notarisation -- is
+// Which backend this bundle ships (Phase 6). `rust`, what releases ship
+// since the desktop cutover, serves the app from the binary itself and
+// bundles only the frontend; `node`, the rollback until 1.0, bundles the
+// standalone tree and a Node binary. Everything above the backend split --
+// the version, the deployment target, the signature, the notarisation -- is
 // checked the same way for both.
 const [appArg, arch, backendArg] = process.argv.slice(2);
-const backend = backendArg ?? "node";
+const backend = backendArg ?? "rust";
 assert.ok(appArg && ["arm64", "x64"].includes(arch));
 assert.ok(["node", "rust"].includes(backend), `Unknown backend: ${backend}`);
 const app = path.resolve(appArg);

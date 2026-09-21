@@ -14,6 +14,28 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- The desktop app runs on the Rust backend (Rust core Phase 6, the desktop
+  cutover). The next desktop release serves the app from its own process
+  instead of a bundled Node server: no Node runtime ships in it, and the
+  frontend it carries is about 9 MB where the Node build extracted a
+  ~200 MB server. On a 5,000-app library the server's own memory measured
+  12 MB idle and 110 MB under load, against Node's 138 MB and 263 MB. Most
+  requests were as fast or faster; a few heavier reads were slower, the
+  notifications list most of all (18 ms against 8 ms). Settings kept in the
+  page, the accessibility quick
+  toggles among them, now survive a relaunch, because the app keeps its
+  port. The server a Node build extracted into the data directory is
+  deleted once the new build is serving. The data itself is untouched:
+  either build opens the database the other wrote, which is what keeps a
+  rollback possible. For contributors, `just tauri-dev` and
+  `just tauri-build` (and `pnpm tauri:dev` / `pnpm tauri:build`) now build
+  this backend and need no Node sidecar; the Node build is
+  `just tauri-dev-node` / `just tauri-build-node`, kept as the rollback until
+  1.0, and the release workflow's `backend` input defaults to `rust`. A
+  development build run from `target/` now serves the frontend `pnpm build`
+  just wrote, not a copy an earlier bundle build left there. No version
+  bump comes with this change.
+
 - Privacy-policy changes are off by default in Notifications, and the
   "Privacy policy updates" toggle (`flag.notifications.types.policy_updates`)
   now does what its label says. With it on, a policy whose text changed

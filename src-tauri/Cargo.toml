@@ -14,9 +14,9 @@ tauri-build = { version = "2", features = [] }
 # `devtools` is no longer compiled in by default — it's an opt-in cargo
 # feature on this crate (`--features devtools`). Production release builds
 # omit it so a local attacker can't attach the Web Inspector to the running
-# webview and dump in-memory app state. Dev builds (`pnpm tauri:dev`) pass
-# `--features devtools` via the tauri CLI to preserve the diagnostic
-# affordance.
+# webview and dump in-memory app state. Dev builds (`pnpm tauri:dev`, and
+# `pnpm tauri:dev:node` for the sidecar) pass `--features devtools` to
+# preserve the diagnostic affordance.
 tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
 tauri-plugin-shell = "2"
 # Updater is wired up so we don't have to add it later. The release CI signs
@@ -142,14 +142,14 @@ core-foundation-sys = "0.8"
 
 [features]
 # Serve the app from this process with the Rust core instead of spawning
-# the Node sidecar (Phase 6, batch 4). Off by default: every shipped build
-# stays on Node until the cutover release, and `cargo check` covers both
-# paths in CI. `just tauri-dev-rust` runs it, and it needs no
-# `fetch-node-sidecar`.
+# the Node sidecar (Phase 6). The desktop release and `just tauri-dev` pass
+# it. It stays out of the default set so that a build without it is still
+# the Node sidecar, the rollback until 1.0; CI's `cargo check` covers both
+# paths.
 rust-backend = ["dep:privacytracker-core", "dep:tokio"]
 # Enable `tauri build` without devtools baked into the bundle.
 custom-protocol = ["tauri/custom-protocol"]
-# Opt-in devtools. CI release jobs leave this off; `pnpm tauri:dev`
-# passes `--features devtools` so contributors keep the Web Inspector
-# during local development.
+# Opt-in devtools. CI release jobs leave this off; `pnpm tauri:dev` and
+# `pnpm tauri:dev:node` pass `--features devtools` so contributors keep the
+# Web Inspector during local development.
 devtools = ["tauri/devtools"]

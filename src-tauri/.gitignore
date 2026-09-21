@@ -16,7 +16,7 @@
 /resources/standalone.tar.ready
 
 # ── Staged for the Rust backend's bundle ─────────────────────────────
-# What `pnpm tauri:build:rust` bundles in place of the tarball above,
+# What `pnpm tauri:build` bundles in place of the tarball above,
 # both rewritten on every build:
 #   site/         the pages, chunks, CSP hashes and public files the
 #                 core serves (scripts/stage-site.mjs)

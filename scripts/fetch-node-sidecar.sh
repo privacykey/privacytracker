@@ -7,7 +7,7 @@
 # a fake `.node-helper.app` bundle (macOS only — LSUIElement keeps the
 # sidecar out of the Dock) and tars it into `standalone.tar`. That step
 # is FATAL when the binary is missing, so a fresh clone cannot run
-# `pnpm tauri:dev` / `pnpm tauri:build` until this script has run once.
+# `pnpm tauri:dev:node` / `pnpm tauri:build:node` until this script has run once.
 # The binaries are ~115MB each and gitignored (see src-tauri/.gitignore),
 # which is why they are fetched on demand rather than committed.
 #

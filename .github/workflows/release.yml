@@ -33,6 +33,12 @@ jobs:
   desktop:
     needs: preflight
     uses: ./.github/workflows/macos-release.yml
+    with:
+      # The desktop app serves itself with the Rust backend. To roll back
+      # to the Node sidecar (buildable until 1.0), set this to node and
+      # release a NEW patch version: the updater never installs an older
+      # one, so an earlier build cannot be re-promoted.
+      backend: rust
     secrets: inherit
   docker:
     needs: preflight

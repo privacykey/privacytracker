@@ -51,7 +51,7 @@ export interface ImportQueueTickResult {
  * Drain due queued rows. Safe to call on every instrumentation tick; no-ops
  * when the queue is empty, another tick is in flight, or a previous 429
  * hasn't expired. Logs at least one [ImportQueue] line per tick (or one
- * skip reason for quiet ticks) so operators can grep tauri:dev.
+ * skip reason for quiet ticks) so operators can grep tauri:dev:node.
  */
 export async function runImportQueueTick(): Promise<ImportQueueTickResult> {
   // Respect a prior 429 pause before touching the mutex.

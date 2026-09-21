@@ -4706,3 +4706,104 @@ recording because a control that cannot fail is worse than no control.
 `privacykey/docs-privacytracker` and describes the app as shipped. It is
 filed as its own task, to land with the cutover release rather than
 before it.
+
+### The desktop cutover — Rust by default
+
+Batches 1 to 5 built the Rust desktop path behind a feature. This step
+makes it the default, with no version bump and no release: the plan has
+no release between the desktop and Docker cutovers, so the next desktop
+release (1.0) is the first to ship it.
+
+**What flips.** `release.yml` passes `backend: rust` to **macOS desktop
+release**, whose own default (for a dispatch) is `rust` as well, and
+`verify-macos-bundle.mjs` defaults to checking a Rust bundle. For
+contributors, `pnpm tauri:dev` / `pnpm tauri:build` and `just tauri-dev` /
+`just tauri-build` build the Rust backend; the Node build moved to
+`:node` / `-node` names. The old `just tauri-dev-rust` and
+`just tauri-build-rust` remain as aliases. Cargo's default feature set is
+unchanged on purpose: a build without `rust-backend` is still the pure Node
+sidecar, which is the rollback.
+
+**The rollback.** Set `backend: node` in `release.yml` and release a new
+patch version (the updater never installs an older one). The handoff test
+already proves either backend serves the database the other wrote. The
+inert test was narrowed again rather than deleted, although its header said
+to delete it once Rust shipped: it now guards the two Node builds that
+remain, the Docker image and the desktop rollback, which would stop being
+Node the moment either wired in the core. Batch 6 narrows it for Docker and
+batch 7 deletes it.
+
+**An upgraded install is tidied.** A Node build extracted its server,
+about 200 MB, into `<data>/standalone`, with a freshness marker beside it.
+Once the Rust server is serving, `start` removes both, on its own thread.
+It touches only those names, leaves a symlink and whatever it points at
+alone, leaves a directory that merely shares the name (no `server.js`, no
+`node_modules`), and renames the tree before deleting it, so `standalone`
+is only ever whole or gone: an interrupted delete leaves
+`.standalone-removing` for the next launch, and a rollback build that
+finds no `standalone/server.js` extracts its tarball again whatever its
+marker says. Launching the app (`pnpm tauri:dev`, the renamed script) over
+a data directory holding a database a Node server had written, WAL
+included, plus a Node tree and marker: both were gone within a second of
+the server listening, and the database was served untouched. The packaged
+bundle's smoke mode does the same over its own directory.
+
+**A dev launch served a stale frontend.** That same launch served
+`target/debug/site`, a copy an earlier debug bundle build had left there,
+instead of the `pnpm build` just run: the staged site always won. Now a
+binary inside an app bundle serves the site staged in it, and one run
+straight from `target/` serves the repository's build first, falling back
+to a staged copy only when there is none. The packaged verifier confirms
+the bundle still serves its own.
+
+**The measurement the plan asked for.** The core has one database
+connection behind a mutex, where Node commits its bulk writes on a worker
+thread, so the plan called for a load test on a large fleet before the
+flip. Same machine, one backend at a time, a release `pt-core` against
+`next start` (both with `PRIVACYTRACKER_RUNTIME=desktop`), each over its
+own copy of a seeded 5,000-app fleet (110,000 history rows, 20,000
+notifications, 261 MB). A probe polled `/api/tasks/active` every 10 ms
+around each heavy operation; the stall is its worst response while the
+operation ran.
+
+| Measure | Node | Rust |
+|---|---|---|
+| Cold start (spawn to `/api/ready`) | 428 ms | 556 ms |
+| Server memory, idle / after the run | 138 / 263 MB | 12 / 110 MB |
+| `/api/tasks/active`, p50 | 1.3 ms | 0.4 ms |
+| `/dashboard`, p50 | 1.3 ms | 0.6 ms |
+| `/api/apps` page of 250 with grid meta, p50 | 9.6 ms | 12.3 ms |
+| `/api/apps`, all 5,000, p50 | 62.8 ms | 69.1 ms |
+| `/api/stats`, p50 | 111 ms | 126 ms |
+| `/api/notifications`, p50 | 7.8 ms | 18.5 ms |
+| Five whole-fleet reads at once: took / probe stall | 326 / 313 ms | 367 / 361 ms |
+| 10,000 import items in two requests: took / stall | 1,324 / 1,230 ms | 1,501 / 1,364 ms |
+| Deleting 65,000 archived rows: took / stall | 551 / 539 ms | 642 / 634 ms |
+
+The worry does not survive it. Node's worker did take both import writes
+(17 and 21 ms of SQL, none inline), and Node still stalled 1.2 s, on the
+parsing and planning around them on its main thread; its long delete runs
+on the main thread outright. The core's stalls are 10 to 17% longer than
+Node's on the same operations, at under half the memory. What it did
+surface is `/api/notifications` at 2.4 times Node's latency: 18.5 ms is not
+something a person notices on a 30-second poll, but it is the one route
+that moved that much, and it is recorded as a follow-up rather than fixed
+here. The harness is not committed. The table is one run of each backend;
+an earlier Node run, identical but for one route, agreed within 10%.
+
+**Negative controls, predicted before running.** Six, each a one-line
+mutation of `embedded.rs`, and each failed exactly the one test predicted:
+reading the tree through a symlink, treating any `standalone` as the
+sidecar's, never finishing an interrupted removal, keeping stale markers,
+starting the server without tidying (the wiring check, which only the boot
+test covers), and preferring a staged copy over the repository's build in
+a dev binary.
+
+**Checked:** the shell's tests on both backends (34 with the feature, 24
+without), both built without warnings; a debug bundle built through the
+overlay, signed with the hardened runtime and `entitlements-rust.plist`,
+passing `verify-macos-bundle.mjs` with no backend argument (on the
+dry-run path: an ad hoc signature cannot be notarised); and the two real
+launches above.
+
+**Next: batch 6, the Docker cutover.**

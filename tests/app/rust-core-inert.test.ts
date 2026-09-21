@@ -1,38 +1,38 @@
 /**
- * The Rust core must stay INERT on main, except where the desktop shell
- * opts into it behind a Cargo feature that is off by default.
+ * The Rust core stays out of the NODE builds.
  *
- * `core/` is a standalone crate that no shipped artifact builds, imports or
- * runs. That property is what lets the migration land on `main` in reviewable
- * pieces instead of accumulating on a long-lived branch — the design study
- * ranks that divergence ("two brains during the transition") as its #4 debt
- * and says to keep the window short. Merging inert code costs `main` nothing.
+ * Until the desktop cutover this test kept `core/` inert on main: no shipped
+ * artifact built, imported or ran it, which is what let the migration land in
+ * reviewable pieces instead of on a long-lived branch. Since the cutover the
+ * desktop release IS built on the core (`--features rust-backend`, passed by
+ * the release workflow and `just tauri-dev`). Two Node builds remain, and this
+ * test is what keeps them Node:
  *
- * But inertness is only worth anything if it is enforced. Without this test it
- * is a convention, and conventions erode one innocuous-looking import at a
- * time. So: if any file on a shipping path starts referencing the Rust core,
- * this fails, and whoever did it has to delete the guard deliberately.
+ * - the Docker image, which runs `next start` until its own cutover
+ *   (Phase 6, batch 6);
+ * - the desktop shell built WITHOUT the feature, which spawns the Node
+ *   sidecar and is the rollback until 1.0 (`backend: node` in release.yml).
  *
- * Phase 6, batch 4 narrowed it rather than deleting it. The desktop shell can
- * now serve the app from the Rust core instead of spawning the Node sidecar,
- * but only when it is built with `--features rust-backend`, which no shipped
- * build passes. So the shell gets exactly two allowances, both checked below
- * rather than assumed:
+ * A rollback that quietly linked the core would not be a rollback, and a
+ * Node server that half-used it would be a third backend nobody tests. So if
+ * a file on a Node path starts referencing the core, this fails.
+ *
+ * The desktop shell gets exactly two allowances, both checked below rather
+ * than assumed:
  *
  * 1. `src-tauri/src/embedded.rs` may name the crate, because the file starts
  *    with `#![cfg(feature = "rust-backend")]` and therefore compiles to
  *    nothing without the feature.
  * 2. `src-tauri/Cargo.toml` may declare it, as an OPTIONAL dependency reached
- *    only through that feature, so a default build neither compiles nor links
- *    it. CI's rust-check builds the shell both ways, which is what makes the
- *    claim more than a comment.
+ *    only through that feature, so a build without it neither compiles nor
+ *    links it. CI's rust-check builds the shell both ways, which is what makes
+ *    the claim more than a comment.
  *
- * Everything else keeps the flat ban — the Dockerfile above all, since Docker
- * stays on Node through the whole of Phase 6. This file goes away in the
- * batch that makes the Rust backend what ships, so the removal is visible in
- * the review of that PR.
+ * Everything else keeps the flat ban, the Dockerfile above all. Batch 6
+ * narrows this again when Docker moves; batch 7, which deletes the Node
+ * paths, deletes this file.
  *
- * What is NOT a shipping path, and is allowed to reference the core freely:
+ * What is NOT a Node build path, and is allowed to reference the core freely:
  * `scripts/parity/**` (the harnesses exist to drive it), `core/**` itself,
  * CI workflows, the justfile, and package.json script entries.
  */
@@ -214,12 +214,13 @@ test("no shipping path wires in the Rust core", () => {
   assert.deepEqual(
     offenders,
     [],
-    "The Rust core must stay inert on main — no shipped artifact may build, import or run it.\n\n" +
+    "The Rust core must stay out of the Node builds: the Docker image and the desktop rollback.\n\n" +
       `${offenders.join("\n")}\n\n` +
       `The desktop shell is the exception, and only on its terms: name the core from ${GATED_SOURCE}, ` +
       `which starts with ${GATE}, and declare it in ${MANIFEST} as an optional dependency reached ` +
-      `through the ${FEATURE} feature. If this is the batch that makes the Rust backend what ships, ` +
-      "delete tests/app/rust-core-inert.test.ts in the same commit, so the removal is visible in review."
+      `through the ${FEATURE} feature. If this is the batch that moves Docker to the Rust backend, ` +
+      "narrow this test for the Dockerfile in the same commit; if it deletes the Node paths, delete " +
+      "tests/app/rust-core-inert.test.ts, so either change is visible in review."
   );
 });
 

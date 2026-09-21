@@ -59,7 +59,7 @@ stage-standalone: cannot find Node binary at .../src-tauri/binaries/node-aarch64
 Error The "beforeDevCommand" terminated with a non-zero status code.
 ```
 
-`pnpm tauri:dev` and `pnpm tauri:build` both run
+`pnpm tauri:dev:node` and `pnpm tauri:build:node` both run
 `scripts/stage-standalone.mjs`, so both need this. Nothing else does —
 `bundle.externalBin` in `tauri.conf.json` is empty; this directory is
 consumed only by the staging script.
