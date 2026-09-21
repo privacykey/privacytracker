@@ -256,7 +256,7 @@ jobs:
         # rather than at release time. This job already has that graph.
         run: |
           node scripts/generate-rust-notices.mjs
-          git diff --exit-code -- src-tauri/THIRD-PARTY-RUST.md lib/rust-crates.json
+          git diff --exit-code -- src-tauri/THIRD-PARTY-RUST.md lib/rust-crates.json core/THIRD-PARTY-RUST.md
 
       - name: Desktop shell tests on the Rust backend
         # The shell's own tests, including the boot test: the embedded
@@ -779,7 +779,7 @@ jobs:
     env:
       AUDITOR_ADMIN_TOKEN: ci-smoke-token
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: quality
 
     steps:
@@ -790,6 +790,28 @@ jobs:
 
       - name: Build Docker image
         run: docker build -t privacytracker-smoke .
+
+      - name: The image is the Rust server, with its notices
+        # The default image runs pt-core. Nothing of Node ships in it, and the
+        # four notices travel with the binary, as they do in the desktop app.
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint sh privacytracker-smoke -c '
+            set -e
+            if command -v node >/dev/null; then echo "node is in the image"; exit 1; fi
+            test ! -e /app/node_modules || { echo "node_modules is in the image"; exit 1; }
+            for f in NOTICE LICENSE V8-LICENSE THIRD-PARTY-RUST.md; do
+              test -s "/app/third-party/$f" || { echo "missing or empty: $f"; exit 1; }
+            done
+            pt-core version
+          '
+          # The core leaves TZ to the C library, which needs tzdata for a
+          # zone name. Without it Australia/Sydney silently reads as UTC.
+          zone=$(docker run --rm -e TZ=Australia/Sydney --entrypoint date privacytracker-smoke +%Z)
+          case "$zone" in
+            AEST|AEDT) echo "TZ resolves: $zone" ;;
+            *) echo "TZ=Australia/Sydney resolved to $zone"; exit 1 ;;
+          esac
 
       - name: Scan final runtime image
         # Export the image so the scanner never needs the Docker socket.
@@ -855,6 +877,25 @@ jobs:
           docker compose -f deploy/caddy/compose.yaml logs || true
           exit 1
 
+      - name: Log in over TLS through Caddy
+        # The login cookie is Secure only when the server sees the request
+        # arrived over https, which behind a proxy it learns from Caddy's
+        # X-Forwarded-Proto (PRIVACYTRACKER_TRUST_PROXY=1 in the compose file).
+        env:
+          AUDITOR_ADMIN_TOKEN: ci-smoke-token
+        run: |
+          set -euo pipefail
+          headers=$(curl -ksS -D - -o /dev/null \
+            --resolve privacytracker.localhost:443:127.0.0.1 \
+            -H 'Content-Type: application/json' \
+            -H 'Origin: https://privacytracker.localhost' \
+            --data "{\"token\":\"$AUDITOR_ADMIN_TOKEN\"}" \
+            https://privacytracker.localhost/api/auth/admin-token/login)
+          echo "$headers"
+          echo "$headers" | head -1 | grep -q ' 200' || { echo "login was refused"; exit 1; }
+          echo "$headers" | grep -i '^set-cookie: pt_admin_token=' | grep -qi 'secure' \
+            || { echo "the login cookie is not Secure behind TLS"; exit 1; }
+
       - name: Stop Caddy reverse proxy
         if: always()
         run: docker compose -f deploy/caddy/compose.yaml down -v || true
@@ -882,6 +923,30 @@ jobs:
         if: always()
         run: docker compose -f deploy/traefik/compose.yaml down -v || true
 
+      # The Node image is the rollback until 1.0, so it has to keep building
+      # and booting. It shares the build stage with the image above, so this
+      # mostly re-uses that stage's layers.
+      - name: Build and boot the Node rollback image
+        run: |
+          set -euo pipefail
+          docker build --build-arg BACKEND=node -t privacytracker-smoke-node .
+          docker run -d --rm --name privacytracker-smoke-node \
+            -p 127.0.0.1:3000:3000 privacytracker-smoke-node
+          for attempt in {1..40}; do
+            if curl -fsS http://127.0.0.1:3000/api/ready; then
+              echo "The Node rollback image is healthy"
+              exit 0
+            fi
+            echo "Waiting for the Node rollback image (${attempt}/40)…"
+            sleep 3
+          done
+          docker logs privacytracker-smoke-node || true
+          exit 1
+
+      - name: Stop the Node rollback image
+        if: always()
+        run: docker stop privacytracker-smoke-node || true
+
   compose-smoke:
     env:
       AUDITOR_ADMIN_TOKEN: privacytracker-ci-test-token
@@ -893,7 +958,7 @@ jobs:
     #     fresh Linux host (root-owned auto-created bind source) → /api/ready never
     #     goes green. macOS Docker Desktop hides this by uid-mapping bind mounts.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: quality
 
     steps:
@@ -930,14 +995,16 @@ jobs:
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/brand-icon.png
 
       - name: Assert private data requires authentication inside Docker
+        # From the runner through the published port, the way a browser
+        # reaches it. This used to run `node -e` inside the container; the
+        # image has no Node now.
         run: |
-          docker compose exec -T web node --input-type=module -e '
-            const url = "http://127.0.0.1:3000/api/apps";
-            const anonymous = await fetch(url, {headers: {Host: "localhost:3000"}});
-            if (anonymous.status !== 401) throw new Error("Unauthenticated private read allowed");
-            const signedIn = await fetch(url, {headers: {"x-auditor-admin-token": process.env.AUDITOR_ADMIN_TOKEN}});
-            if (signedIn.status !== 200) throw new Error("Authenticated private read failed");
-          '
+          set -euo pipefail
+          anonymous=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 http://127.0.0.1:3000/api/apps)
+          test "$anonymous" = 401 || { echo "Unauthenticated private read got HTTP $anonymous"; exit 1; }
+          signed_in=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+            -H "x-auditor-admin-token: $AUDITOR_ADMIN_TOKEN" http://127.0.0.1:3000/api/apps)
+          test "$signed_in" = 200 || { echo "Authenticated private read got HTTP $signed_in"; exit 1; }
 
       - name: Stop root compose (named volume)
         if: always()

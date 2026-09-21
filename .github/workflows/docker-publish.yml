@@ -5,6 +5,17 @@ on:
     branches:
       - main
   workflow_call:
+    inputs:
+      backend:
+        description: 'Which server the image runs: rust (pt-core) or node (next start, kept for rollback until 1.0).'
+        required: false
+        default: rust
+        type: string
+
+env:
+  # rust since the Docker cutover; a push to main has no inputs and gets it
+  # too. The Dockerfile's BACKEND build argument picks the runtime stage.
+  BACKEND: ${{ inputs.backend || 'rust' }}
 
 permissions:
   contents: read
@@ -84,7 +95,7 @@ jobs:
     env:
       AUDITOR_ADMIN_TOKEN: ci-smoke-token
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: quality
 
     steps:
@@ -94,7 +105,7 @@ jobs:
           persist-credentials: false
 
       - name: Build Docker image
-        run: docker build -t privacytracker-smoke .
+        run: docker build --build-arg BACKEND="$BACKEND" -t privacytracker-smoke .
 
       - name: Run Docker container
         run: |
@@ -232,6 +243,7 @@ jobs:
           # Node/pnpm/native-addon install path under QEMU has produced
           # illegal-instruction crashes and CI jobs that sat until cancelled.
           platforms: ${{ matrix.platform }}
+          build-args: BACKEND=${{ env.BACKEND }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=docker-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=docker-${{ matrix.arch }}

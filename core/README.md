@@ -4878,3 +4878,87 @@ warning's condition ignoring `NODE_ENV` (caught only by the truth table,
 which is why it has one), the CSP-hashes line never logged, unknown
 options ignored again, `PORT` not read, and `--host` not reaching the
 security checks.
+
+### Batch 6b — the Docker image on the Rust server
+
+**The image.** One Dockerfile, two runtimes, chosen by a `BACKEND` build
+argument whose default is `rust`. The build stage is shared: it installs,
+builds and now also stages the site with `scripts/stage-site.mjs --into
+/app/site` (the same allowlist the desktop bundle stages). `rust` adds a
+toolchain stage (`rust:1.96.1-alpine3.24`, pinned by digest like the Node
+image) that compiles `pt-core` statically for musl with `cargo auditable`,
+and a runtime on `alpine:3.24.2` holding the binary, the staged site, the
+notices and `tzdata`, and nothing else. `node` is the previous runner stage,
+byte for byte, kept as the rollback until 1.0. The Rust image is 56 MB; the
+Node one is 1.36 GB.
+
+**The contract stays where it was,** so no compose file changed beyond an
+optional build argument: `/app` as the working directory, the `/app/data`
+volume, port 3000, the same environment, the same busybox `wget`
+healthcheck, and the `audit` user, now pinned to 100:101 rather than left
+to `adduser -S`, because an existing volume is owned 100:101 and a
+different id could not open what the Node image wrote. The staged site is
+owned by root, so the server cannot rewrite what it serves. Compose reads
+`PRIVACYTRACKER_BACKEND` for its build argument, so a self-hoster's
+rollback is one line in `.env`; published images take a `backend` input on
+**Build & Push Docker image**, and `release.yml` passes `rust`.
+
+**Found on the way.**
+
+- *Time zones.* The core leaves `TZ` to the C library, and a bare Alpine
+  has no zone database: `TZ=Australia/Sydney` read as `UTC +0000`, where
+  the Node image answers it from Node's built-in ICU data. The runtime
+  installs `tzdata`, and CI now asserts the zone resolves.
+- *The two Linux targets link different crates.* x86_64 links
+  `cpufeatures` and aarch64 does not, which the notices generator caught
+  the first time it walked both. `core/THIRD-PARTY-RUST.md`, the image's
+  list, is the union, with the one crate marked x86_64 only.
+- *What the list claims against what the binary holds.* Trivy reads the
+  dependency list `cargo auditable` embeds (138 crates on arm64, the core
+  itself included). Every crate in the binary is on the notices list; the
+  list's only extras are four procedural-macro crates (`serde_derive`,
+  `tokio-macros`, `thiserror-impl`, `futures-macro`), which run at compile
+  time and do not ship. The desktop list has the same four; over-disclosure
+  is the safe direction, and it is noted rather than changed here.
+- *Three `libc::time_t` deprecation warnings* in the date-parser port, on
+  musl only: the libc crate warns about a 32-bit change, and both targets
+  the image is built for are 64-bit. Left as they are rather than editing
+  the V8 port for a lint.
+
+**CI.** `container-smoke` checks the default image carries no Node and no
+`node_modules`, ships its four notices, and resolves a `TZ` zone name; logs
+in over TLS through the Caddy example and expects a `Secure` cookie (the
+proxy's `X-Forwarded-Proto`, trusted, is what makes it Secure: the one
+thing the survey found untested on the core); and builds and boots the
+`BACKEND=node` image, since the rollback has to keep working until 1.0.
+`compose-smoke`'s authentication check ran `node -e` inside the container;
+it now makes the same two requests from the runner, through the published
+port. The inert test no longer lists the Dockerfile: it keeps guarding the
+Next.js server and the desktop rollback.
+
+**Checked locally, on arm64.** Built both images. The Rust one: no Node,
+the four notices, `audit` at 100:101, `/api/ready` 200 without a token,
+`/api/apps` 401, the network-exposed warning logged once, Docker's own
+healthcheck healthy, 7.7 MiB idle. Compose with a named volume: the fonts
+and the brand icon served, pages redirecting to `/login`, the API 401
+without the token and 200 with it. Caddy over TLS: a 200 login with a
+`Secure; HttpOnly; SameSite=strict` cookie. Traefik: ready. Then a volume
+handed from the Node image to the Rust one and back: Node seeded it
+(196 MiB), Rust served `/api/apps` and `/api/stats` byte for byte as Node
+had (3 MiB), wrote a shortlist entry, and Node read it back identically,
+the directory still `0700` and the database files `0600`, owned by
+`audit`. Trivy: no HIGH or CRITICAL finding in either the 17 Alpine
+packages or the binary's crates.
+
+**Negative controls, predicted before running.** Each rebuilt the image
+with one mutation and ran CI's own step against it, after the unmutated
+image passed that step: the notices left out ("missing or empty: NOTICE"),
+the runtime built on the Node base ("node is in the image"), and `tzdata`
+dropped ("resolved to UTC"). Two more outside the image: the Dockerfile
+back on the inert test's list fails that test, naming the Dockerfile for
+the `pt-core` binary, the core's build output and its `COPY` of `core/`
+(I predicted two of those three signals; the build output is the cache
+path); and a row deleted from the image's crate list fails the notices
+gate on that file alone.
+
+**Next:** the UX tests and the cleanup, then 1.0, which the user cuts.

@@ -3,19 +3,24 @@
  *
  * Until the desktop cutover this test kept `core/` inert on main: no shipped
  * artifact built, imported or ran it, which is what let the migration land in
- * reviewable pieces instead of on a long-lived branch. Since the cutover the
- * desktop release IS built on the core (`--features rust-backend`, passed by
- * the release workflow and `just tauri-dev`). Two Node builds remain, and this
- * test is what keeps them Node:
+ * reviewable pieces instead of on a long-lived branch. Since the cutovers the
+ * desktop release and the Docker image are both built on the core. What
+ * remains Node is the rollback, kept buildable until 1.0, and this test is
+ * what keeps it Node:
  *
- * - the Docker image, which runs `next start` until its own cutover
- *   (Phase 6, batch 6);
- * - the desktop shell built WITHOUT the feature, which spawns the Node
- *   sidecar and is the rollback until 1.0 (`backend: node` in release.yml).
+ * - the Next.js server itself (`app/`, `lib/`, `proxy.ts` and the rest),
+ *   which the Node Docker image (`--build-arg BACKEND=node`) and the Node
+ *   sidecar both run;
+ * - the desktop shell built WITHOUT the feature, which spawns that sidecar
+ *   (`backend: node` in release.yml).
  *
  * A rollback that quietly linked the core would not be a rollback, and a
  * Node server that half-used it would be a third backend nobody tests. So if
  * a file on a Node path starts referencing the core, this fails.
+ *
+ * The Dockerfile left the list in Phase 6, batch 6b: it builds the core for
+ * its default runtime, and the Node runtime beside it is a separate stage
+ * that copies nothing of the core (CI builds and boots both).
  *
  * The desktop shell gets exactly two allowances, both checked below rather
  * than assumed:
@@ -28,9 +33,8 @@
  *    links it. CI's rust-check builds the shell both ways, which is what makes
  *    the claim more than a comment.
  *
- * Everything else keeps the flat ban, the Dockerfile above all. Batch 6
- * narrows this again when Docker moves; batch 7, which deletes the Node
- * paths, deletes this file.
+ * Everything else keeps the flat ban. Batch 7, which deletes the Node paths,
+ * deletes this file.
  *
  * What is NOT a Node build path, and is allowed to reference the core freely:
  * `scripts/parity/**` (the harnesses exist to drive it), `core/**` itself,
@@ -58,7 +62,6 @@ const SHIPPING_PATHS = [
   "src-tauri/src",
   "src-tauri/Cargo.toml",
   "src-tauri/tauri.conf.json",
-  "Dockerfile",
   "docker-compose.yml",
   "scripts/stage-standalone.mjs",
   "scripts/start-next.mjs",
@@ -214,13 +217,12 @@ test("no shipping path wires in the Rust core", () => {
   assert.deepEqual(
     offenders,
     [],
-    "The Rust core must stay out of the Node builds: the Docker image and the desktop rollback.\n\n" +
+    "The Rust core must stay out of the Node builds: the Next.js server and the desktop rollback.\n\n" +
       `${offenders.join("\n")}\n\n` +
       `The desktop shell is the exception, and only on its terms: name the core from ${GATED_SOURCE}, ` +
       `which starts with ${GATE}, and declare it in ${MANIFEST} as an optional dependency reached ` +
-      `through the ${FEATURE} feature. If this is the batch that moves Docker to the Rust backend, ` +
-      "narrow this test for the Dockerfile in the same commit; if it deletes the Node paths, delete " +
-      "tests/app/rust-core-inert.test.ts, so either change is visible in review."
+      `through the ${FEATURE} feature. If this is the batch that deletes the Node paths, delete ` +
+      "tests/app/rust-core-inert.test.ts in the same commit, so the removal is visible in review."
   );
 });
 

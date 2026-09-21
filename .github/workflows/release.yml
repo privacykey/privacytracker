@@ -43,6 +43,11 @@ jobs:
   docker:
     needs: preflight
     uses: ./.github/workflows/docker-publish.yml
+    with:
+      # The image runs the Rust server. To roll back to `next start`
+      # (buildable until 1.0), set this to node and release a new patch
+      # version, as for the desktop app above.
+      backend: rust
     secrets: inherit
   verify-draft:
     needs: [desktop, docker]
