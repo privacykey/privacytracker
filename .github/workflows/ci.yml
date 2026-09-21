@@ -248,6 +248,16 @@ jobs:
         # mean something: the check above never links the core.
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --features rust-backend --locked
 
+      - name: Third-party crate notices are current
+        # scripts/generate-rust-notices.mjs walks cargo's dependency graph
+        # for the Rust-backend build and writes what the app discloses. A
+        # crate added, removed or bumped without regenerating it is a
+        # disclosure that no longer matches what ships, so it fails here
+        # rather than at release time. This job already has that graph.
+        run: |
+          node scripts/generate-rust-notices.mjs
+          git diff --exit-code -- src-tauri/THIRD-PARTY-RUST.md lib/rust-crates.json
+
       - name: Desktop shell tests on the Rust backend
         # The shell's own tests, including the boot test: the embedded
         # server started for real over a temporary data directory and a

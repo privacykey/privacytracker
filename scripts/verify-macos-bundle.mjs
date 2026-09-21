@@ -125,6 +125,18 @@ if (backend === "rust") {
   countSite(path.join(site, "public"), "public");
   assert.ok(staticFiles > 0 && publicFiles > 0, "the staged site is empty");
 
+  // The notices travel with the app, not only in the repository.
+  for (const notice of [
+    "NOTICE",
+    "LICENSE",
+    "V8-LICENSE",
+    "THIRD-PARTY-RUST.md",
+  ]) {
+    const file = path.join(resources, "third-party", notice);
+    assert.ok(existsSync(file), `the bundle is missing ${notice}`);
+    assert.ok(statSync(file).size > 0, `${notice} is empty`);
+  }
+
   // The hardened runtime, with none of the entitlements Node needed. On a
   // signed bundle this is the strongest statement the verifier can make
   // about what the app is allowed to do.

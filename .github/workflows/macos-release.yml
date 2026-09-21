@@ -264,11 +264,12 @@ jobs:
       # build below runs the same two commands through the overlay's
       # beforeBuildCommand; doing it here as well keeps the failure close
       # to its cause when a build is broken.
-      - name: Build and stage the frontend
+      - name: Build and stage the frontend and notices
         if: ${{ env.BACKEND == 'rust' }}
         run: |
           pnpm build
           pnpm stage:site
+          pnpm stage:notices
 
       # Materialise the App Store Connect API key (.p8) to disk. The secret
       # stores the file *contents*; notarytool needs a file path. We write

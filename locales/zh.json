@@ -4249,7 +4249,13 @@
     "subtitle": "privacytracker基于开源软件构建。本页列出了与应用捆绑的所有第三方库，按 SPDX 许可证标识符分组，并附带简短说明、用途以及源码链接。应用本身依据 Apache 2.0 许可证发布 — 请参阅仓库中的 <code>LICENSE</code> 文件。",
     "audit_bundle_note": "<strong>审查捆绑包。</strong>如果你在「设置 → 导出数据」中导出审查捆绑包，生成的文件将包含你追踪的应用、公开的隐私标签、变更历史以及你撰写的所有非私密注释。被标记为<em>私密</em>的注释永远不会一同导出 — <code>lib/audit-bundle.ts</code> 中的 SQL 过滤器会从源头排除，且没有强制包含的路径。捆绑包不包含你的 AI 提供方密钥、同步计划偏好，也不含任何设备标识符。请将导出的捆绑包视作敏感数据文件：静态加密存储，通过安全渠道分享。",
     "sidebar_aria": "法律页导航",
-    "sidebar_jump": "按许可证"
+    "sidebar_jump": "按许可证",
+    "rust_crates": {
+      "heading": "Rust crate（桌面应用）",
+      "sidebar": "Rust crate",
+      "blurb": "桌面应用可以由 Rust 后端自行提供服务，而不依赖捆绑的 Node 运行时。该构建会链接 {crates} 个 crate，其中绝大多数采用宽松许可证。下面列出直接选用的 {direct} 个；完整清单（含全部传递依赖）会以 <code>third-party/THIRD-PARTY-RUST.md</code> 的形式随应用一同发布，与 <code>NOTICE</code>、<code>LICENSE</code> 和 <code>V8-LICENSE</code> 放在一起。",
+      "full_list": "完整 crate 清单 ↗"
+    }
   },
   "about": {
     "title": "privacytracker",
