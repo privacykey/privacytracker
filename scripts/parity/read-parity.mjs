@@ -483,7 +483,9 @@ function startRust(dataDir) {
     ? ["--site", process.cwd()]
     : [];
   return new Promise((resolve, reject) => {
-    const child = spawn(ptCore, ["serve", ...site], {
+    // Any free port, said outright: `pt-core serve` falls back to PORT, as
+    // `next start` does, and a PORT in the caller's shell must not decide it.
+    const child = spawn(ptCore, ["serve", "--port", "0", ...site], {
       env: {
         ...process.env,
         AUDITOR_ADMIN_TOKEN: TOKEN,

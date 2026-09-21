@@ -797,9 +797,10 @@ fn front_door(inner: Router) -> Router {
 /// SIGKILL.
 pub const SHUTDOWN_GRACE: Duration = Duration::from_secs(3);
 
-/// `pt-core serve`: bind `addr`, serve the database the process environment
-/// names (`serve_with`), and stop on SIGINT or SIGTERM, Docker's stop
-/// signal, within [`SHUTDOWN_GRACE`].
+/// `pt-core serve`: bind `addr`, serve the database `config`'s environment
+/// names (`serve_with`; the process's own unless the CLI was given `--host`),
+/// and stop on SIGINT or SIGTERM, Docker's stop signal, within
+/// [`SHUTDOWN_GRACE`].
 ///
 /// The database is opened by `db::open_and_migrate`, so the pragmas are
 /// byte-identical to the Node server's: `busy_timeout` and `foreign_keys`
@@ -812,18 +813,11 @@ pub const SHUTDOWN_GRACE: Duration = Duration::from_secs(3);
 /// connect info so the peer address can stand in for `socket.remoteAddress`.
 pub async fn serve(
     addr: SocketAddr,
-    site: Option<PathBuf>,
+    config: ServeConfig,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     let bound = listener.local_addr()?;
-    let server = serve_with(
-        listener,
-        ServeConfig {
-            site,
-            ..ServeConfig::default()
-        },
-    )
-    .await?;
+    let server = serve_with(listener, config).await?;
     // Printed so a supervising script can wait for readiness on stdout
     // rather than polling a port it only assumes is right. The boot writes
     // have landed by now.

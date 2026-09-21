@@ -150,6 +150,7 @@ pub fn start(data_dir: &Path, site: &Path) -> Result<(ServerHandle, SocketAddr),
             ServeConfig {
                 env: Some(env),
                 site: Some(site),
+                ..ServeConfig::default()
             },
         )
         .await

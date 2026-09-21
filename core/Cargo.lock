@@ -760,6 +760,8 @@ dependencies = [
  "async-compression",
  "axum",
  "futures-util",
+ "hyper",
+ "hyper-util",
  "libc",
  "log",
  "regex",

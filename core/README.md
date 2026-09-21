@@ -4807,3 +4807,74 @@ dry-run path: an ad hoc signature cannot be notarised); and the two real
 launches above.
 
 **Next: batch 6, the Docker cutover.**
+
+### Batch 6a — the server, ready for a network
+
+The Docker image is to run `pt-core serve` where it ran `next start`,
+listening on every interface behind a published port. A survey of what
+the image relies on found the core already doing nearly all of it: the
+whole login flow, the trust-proxy handling, the timers, the file
+permissions, the health endpoints and every API route. This batch is the
+rest, in the core. The image itself is 6b.
+
+**Listening where it is told.** `pt-core serve` took `--port` and `--site`
+and bound 127.0.0.1 whatever else it was given. An unknown option was
+ignored, so `--hostname 0.0.0.0` ran a server on loopback that no
+published port could reach, while the in-container healthcheck, which
+probes loopback, still passed. It now takes `--host <ip>` (loopback by
+default, so the desktop app and every harness are unchanged), reads `PORT`
+as `next start` does when `--port` is absent, and refuses anything else
+with its usage line. With `--host`, the server's environment is the
+process's own with `PRIVACYTRACKER_BIND_HOST` set to that host, as
+`scripts/start-next.mjs` does for Node: the security checks classify the
+bind from that variable, so it cannot disagree with where the server
+listens. `read-parity.mjs` now passes `--port 0`, so a `PORT` in the
+caller's shell cannot move it.
+
+**Slow clients.** The core served through `axum::serve`, which builds each
+hyper connection without a timer, and without one hyper's header-read
+timeout never fires: a client could hold a connection open indefinitely
+by sending its headers a byte at a time. Node's HTTP server gives up
+after 60 s (`headersTimeout`, read from a running Node rather than from
+memory; `next start` leaves it alone). The accept loop is now axum's own,
+rebuilt step for step (the accept-error handling, `ConnectInfo`, the
+graceful shutdown), with the timer set and the timeout at Node's 60 s.
+In hyper the same timer also closes a keep-alive connection left idle
+waiting for its next request, after the same 60 s, where Node's
+`keepAliveTimeout` is 5 s; the test pins that behaviour rather than
+calling it a match. The dependency features are axum's own. hyper-util's
+`server-auto`, the obvious choice, also switches on HTTP/2 and pulls in
+the h2 crate, where this server speaks HTTP/1 as Node's does: the
+lockfile gaining two crates is what showed it, and it was backed out.
+Naming hyper, hyper-util and tower directly does change one generated
+file: the desktop's notices now list 40 crates chosen directly, where
+they listed 37. The total stays at 342, since all three were already in
+the build, and batch 5b's gate is what asked for the regeneration.
+
+**What Node says at boot.** Two lines Node prints that the core did not:
+the `[security] … network-exposed but no AUDITOR_ADMIN_TOKEN is set`
+warning (production, no token, exposed; it warns and does not refuse,
+because requests already fail closed), and proxy.ts's `[proxy]
+csp-hashes.json not found` error for a build without its hashes. Both now
+go to the log and the diagnostics tail, word for word, so an operator's
+search finds the same line on either server.
+
+**Checked.** Unit tests for the options (five) and for the warning's
+condition (every combination of environment, token and exposure). A new
+test binary, `tests/network_serving.rs`, serves the Docker configuration
+with the token forgotten, over loopback and with a 300 ms timeout: both
+boot lines logged once each, `/api/health` 200, `/api/apps` 401, a client
+that stops mid-headers cut off after the timeout, and an idle keep-alive
+connection closed after it too. Then, over the new accept loop: the core's
+suite, the handoff (40 of 40), the live read and write gate (196 read
+checks and 57 write checks, none failed) and the Playwright suite against
+the core (73 passed, none failed).
+
+**Negative controls, predicted before running.** Seven, each a one-line
+mutation, and each failed exactly the test predicted, with the predicted
+message where it was an assertion in the network test: no header timeout
+(the slow client is never cut off), the warning never logged, the
+warning's condition ignoring `NODE_ENV` (caught only by the truth table,
+which is why it has one), the CSP-hashes line never logged, unknown
+options ignored again, `PORT` not read, and `--host` not reaching the
+security checks.
