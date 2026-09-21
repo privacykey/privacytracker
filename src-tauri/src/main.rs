@@ -82,7 +82,38 @@ fn launched_hidden() -> bool {
     std::env::args().any(|a| a == "--hidden")
 }
 
+/// `--smoke-server <dir>`: the hidden mode the release verifier drives
+/// against a packaged app (see `embedded::smoke`). The directory comes on
+/// the command line, never from the environment, so a shipped app can
+/// never be pointed at a user's data this way. The flag without a
+/// directory exits rather than falling through to a window nobody asked
+/// for.
+#[cfg(feature = "rust-backend")]
+fn smoke_server_dir() -> Option<std::path::PathBuf> {
+    let mut args = std::env::args_os().skip(1);
+    while let Some(arg) = args.next() {
+        if arg == "--smoke-server" {
+            return match args.next() {
+                Some(dir) => Some(std::path::PathBuf::from(dir)),
+                None => {
+                    eprintln!("--smoke-server needs a directory to serve over");
+                    std::process::exit(2);
+                }
+            };
+        }
+    }
+    None
+}
+
 fn main() {
+    // The release verifier's hidden mode, before anything else starts: it
+    // serves over the directory it was given and waits, with no window and
+    // no tray. Never returns.
+    #[cfg(feature = "rust-backend")]
+    if let Some(dir) = smoke_server_dir() {
+        embedded::smoke(&dir);
+    }
+
     // NOTE: do NOT call `env_logger::init()` here. `tauri-plugin-log` (added
     // below) installs the global `log` facade subscriber for us, and Rust's
     // `log` facade rejects a second registration with
