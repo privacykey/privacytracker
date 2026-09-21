@@ -192,7 +192,7 @@ pub(super) fn notification_prefs(conn: &Connection) -> Result<Value> {
     };
     Ok(json!({"prefs":prefs,"stored":prefs,"defaults":metadata()["notificationDefaults"]}))
 }
-fn empty_length(v: &Value) -> bool {
+pub(super) fn empty_length(v: &Value) -> bool {
     v.as_array().is_some_and(|a| a.is_empty())
         || v.as_str().is_some_and(|s| s.is_empty())
         || v.as_object()
@@ -201,37 +201,55 @@ fn empty_length(v: &Value) -> bool {
 /// `DIFF_CHANGE_TYPES` in lib/changelog-types.ts: every `type` that
 /// describes an actual change to an app. An entry outside this set is a
 /// system notice from one of the synthetic writers in lib/notifications.ts.
-const DIFF_CHANGE_TYPES: [&str; 5] = ["added", "removed", "modified", "policy", "wayback"];
+pub(super) const DIFF_CHANGE_TYPES: [&str; 5] =
+    ["added", "removed", "modified", "policy", "wayback"];
+/// The two `category` values that pick their own type flag: policy
+/// updates, then accessibility changes.
+pub(super) const FLAGGED_CATEGORIES: [&str; 2] = ["privacy-policy", "accessibility"];
 /// `NEW_PRIVACY_TYPE_PREFIX` in lib/changelog-types.ts.
-const NEW_PRIVACY_TYPE_PREFIX: &str = "New privacy label: ";
-/// Node's `classifyChange`. `None` is its `null`: no type flag governs
-/// this entry, so `filter_changes` keeps it whatever the four flags say.
-/// The two `added` shapes `diffSnapshots` emits are told apart by the
-/// description prefix, never by `details` — only the whole-new-type entry
-/// carries any, and it carries none when the type has no categories yet.
-fn classify_change(c: &Value) -> Option<usize> {
-    if !c["type"]
-        .as_str()
-        .is_some_and(|t| DIFF_CHANGE_TYPES.contains(&t))
-    {
+pub(super) const NEW_PRIVACY_TYPE_PREFIX: &str = "New privacy label: ";
+/// Node's `classifyChange`, over the three things it reads from an entry:
+/// its `type` and `category` when they are strings, and whether its
+/// `description` is a string starting with `NEW_PRIVACY_TYPE_PREFIX`.
+/// `None` is its `null`: no type flag governs this entry, so the filter
+/// keeps it whatever the four flags say. The two `added` shapes
+/// `diffSnapshots` emits are told apart by the description prefix, never by
+/// `details` — only the whole-new-type entry carries any, and it carries
+/// none when the type has no categories yet.
+///
+/// Shared by the list, which reads a parsed entry (`classify_change`), and
+/// the unread count, which streams it (`unread_count`). The count passes a
+/// `type` or `category` only when it is one of the strings compared here,
+/// which cannot change the answer.
+pub(super) fn classify(
+    kind: Option<&str>,
+    category: Option<&str>,
+    new_type_description: bool,
+) -> Option<usize> {
+    if !kind.is_some_and(|t| DIFF_CHANGE_TYPES.contains(&t)) {
         return None;
     }
-    if c["category"] == "privacy-policy" {
+    if category == Some(FLAGGED_CATEGORIES[0]) {
         return Some(1);
     }
-    if c["category"] == "accessibility" {
+    if category == Some(FLAGGED_CATEGORIES[1]) {
         return Some(2);
     }
-    if c["type"] == "added"
-        && c["description"]
-            .as_str()
-            .is_some_and(|d| d.starts_with(NEW_PRIVACY_TYPE_PREFIX))
-    {
+    if kind == Some("added") && new_type_description {
         return Some(3);
     }
     Some(0)
 }
-fn filter_changes(parsed: &Value, enabled: &[bool; 4]) -> Result<Value> {
+fn classify_change(c: &Value) -> Option<usize> {
+    classify(
+        c["type"].as_str(),
+        c["category"].as_str(),
+        c["description"]
+            .as_str()
+            .is_some_and(|d| d.starts_with(NEW_PRIVACY_TYPE_PREFIX)),
+    )
+}
+pub(super) fn filter_changes(parsed: &Value, enabled: &[bool; 4]) -> Result<Value> {
     if empty_length(parsed) {
         return Ok(parsed.clone());
     }
@@ -262,14 +280,9 @@ pub(super) fn notifications(conn: &Connection, now: i64) -> Result<Value> {
     let unread = if enabled.iter().all(|b| *b) {
         query(conn,"SELECT COUNT(*) AS n FROM notifications WHERE read=0 AND (not_before IS NULL OR not_before <= ?)",&[SqlValue::Integer(now)])?[0]["n"].as_u64().unwrap_or(0)
     } else {
-        let mut count = 0;
-        for r in query(conn,"SELECT change_summary FROM notifications WHERE read=0 AND (not_before IS NULL OR not_before <= ?)",&[SqlValue::Integer(now)])? {
-            // Only unread counting recovers corrupt JSON as a synthetic row.
-            let parsed=parse(text(&r["change_summary"])).unwrap_or(json!([]));
-            let filtered=filter_changes(&parsed,&enabled)?;
-            if empty_length(&parsed) || filtered.as_array().is_some_and(|a|!a.is_empty()) {count+=1;}
-        }
-        count
+        // Streamed rather than parsed like the page's rows: see
+        // unread_count.rs.
+        super::unread_count::filtered(conn, now, &enabled)?
     };
     Ok(json!({"notifications":notifications,"unreadCount":unread}))
 }
