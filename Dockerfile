@@ -1,3 +1,15 @@
+# Which server the image runs. `rust`, the default since the Docker
+# cutover, is the Rust core (`pt-core serve`) over the prerendered build.
+# `node` is `next start`, as every image before it ran, kept buildable as
+# the rollback until 1.0:
+#
+#   docker build --build-arg BACKEND=node .
+#
+# Both serve the same `next build`, open the same database in the same
+# /app/data volume as the same non-root user, and answer the same
+# healthcheck, so switching either way needs no data migration.
+ARG BACKEND=rust
+
 # Stage 1 — Build
 #
 # Keep the builder and runner on the same supported Node LTS release so
@@ -13,6 +25,17 @@ ARG NODE_IMAGE=node:24.20.0-alpine@sha256:e67514e5d0f6c46656005e1b693b2ec9d52e80
 # in the same grouped PR as the other pnpm pins — don't edit it by hand
 # unless you're changing all of them together.
 ARG PNPM_VERSION=11.18.0
+# The Rust core's toolchain, and the runtime its binary runs on. Pinned like
+# NODE_IMAGE, version and digest, both multi-architecture. The toolchain
+# image carries gcc and musl-dev, which the bundled SQLite and ring compile
+# with; the binary it builds is static, so the runtime needs no libraries
+# of its own.
+ARG RUST_IMAGE=rust:1.96.1-alpine3.24@sha256:a41f7740f8b45d45795624eec13a8b42263cc700f19f7e4e86e04d3dda08a479
+ARG ALPINE_IMAGE=alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+# cargo-auditable writes the binary's dependency list into the binary, so
+# the image scan and the SBOM see the Rust crates the way they saw
+# node_modules. Without it, a vulnerable crate would pass the scan unseen.
+ARG CARGO_AUDITABLE_VERSION=0.7.6
 
 # The pinned Node image can predate an Alpine security release. Require the
 # patched TLS libraries in both stages; fail the build if unavailable.
@@ -60,10 +83,15 @@ RUN pnpm prune --prod
 # so the runtime image does not carry their compiler-toolchain vulnerabilities.
 RUN rm -rf node_modules/.pnpm/typescript@* node_modules/.pnpm/@typescript+typescript-*
 
+# The part of the build the Rust core serves, staged as the desktop bundle
+# stages it: the prerendered pages, the static chunks, the CSP hashes and
+# public/. Nothing that runs; the Node runtime below does not use it.
+RUN node scripts/stage-site.mjs --into /app/site
+
 # Stage 2 — Runtime (no build tools needed). Stays on the same major
 # as the builder so the better-sqlite3 binding compiled above keeps
 # its NODE_MODULE_VERSION compatible at runtime.
-FROM base AS runner
+FROM base AS runner-node
 
 # Package managers are build tools; none are needed to serve the app. Remove
 # their dependency trees and launchers from the final image only.
@@ -118,3 +146,71 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/ready || exit 1
 
 CMD ["node", "--require", "./lib/request-limits.cjs", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0"]
+
+# The Rust core, built once per architecture on that architecture.
+FROM ${RUST_IMAGE} AS core-builder
+
+ARG CARGO_AUDITABLE_VERSION
+
+WORKDIR /src
+
+RUN cargo install cargo-auditable --version ${CARGO_AUDITABLE_VERSION} --locked
+
+# The core reads the app's name and version from the repository's
+# package.json at compile time, one directory above the crate.
+COPY package.json ./package.json
+COPY core ./core
+# The cargo caches are mounts, not layers, so the binary is copied out of
+# target/ in the same step.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/src/core/target \
+    cargo auditable build --release --locked --manifest-path core/Cargo.toml --bin pt-core \
+    && cp core/target/release/pt-core /usr/local/bin/pt-core
+
+# Stage 2 — Runtime for the Rust core: the binary, the staged build and the
+# notices, and nothing else. No Node, no node_modules, no package manager.
+FROM ${ALPINE_IMAGE} AS runner-rust
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PRIVACYTRACKER_BIND_HOST=0.0.0.0
+ENV PRIVACYTRACKER_NETWORK_EXPOSED=1
+# `pt-core serve` reads PORT as `next start` does, so `-e PORT=…` moves both.
+ENV PORT=3000
+
+# The core leaves `TZ` to the C library, which needs the zone database to
+# honour a named zone. Without it `TZ=Australia/Sydney` would quietly mean
+# UTC here, where Node answers it from its own built-in time zone data.
+RUN apk add --no-cache tzdata
+
+# The same user as the Node image at the same ids, pinned rather than left
+# to `adduser -S`: an existing volume is owned 100:101, and a different id
+# here could not open the database the Node image wrote.
+RUN addgroup -S -g 101 audit && adduser -S -u 100 -G audit audit
+
+COPY --from=core-builder /usr/local/bin/pt-core /usr/local/bin/pt-core
+# Owned by root and only readable by the server: nothing it serves can be
+# rewritten by the process serving it.
+COPY --from=builder /app/site ./site
+# What the image is built from, beside it: the app's own licence and notice,
+# the V8 notice for the core's ports of V8's date parser and JSON messages,
+# and every Rust crate in the binary (generated; see core/THIRD-PARTY-RUST.md).
+COPY NOTICE LICENSE core/V8-LICENSE core/THIRD-PARTY-RUST.md ./third-party/
+
+RUN mkdir -p /app/data && chown audit:audit /app/data
+
+VOLUME ["/app/data"]
+
+EXPOSE 3000
+
+USER audit
+
+# The same check as the Node image, through busybox's wget, so the compose
+# files that restate it work with either.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/ready || exit 1
+
+CMD ["pt-core", "serve", "--host", "0.0.0.0", "--site", "/app/site"]
+
+FROM runner-${BACKEND}

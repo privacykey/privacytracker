@@ -14,6 +14,23 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- The Docker image runs the Rust server (Rust core Phase 6, the Docker
+  cutover). `docker compose up --build -d` and the published image now run
+  `pt-core` on Alpine: the image is about 56 MB where the Node one was
+  1.36 GB, it carries no Node runtime and no `node_modules`, and the server
+  idles in under 8 MB of memory. Everything a deployment relies on stays as
+  it was: the `/app/data` volume, opened by the same non-root user (uid 100,
+  gid 101), port 3000, the admin token and the sign-in page, the healthcheck
+  and the compose files. A named `TZ` still works, and a client that sends
+  its request headers too slowly is still cut off after 60 seconds. One
+  answer differs: an oversized upload from a client that is not signed in
+  gets 401 instead of 413, because this server checks the token before it
+  reads a body. To go back to the Node server
+  until 1.0, set `PRIVACYTRACKER_BACKEND=node` in `.env` and rebuild; both
+  open the same volume. The image ships its notices under
+  `/app/third-party/`, and the binary is built so vulnerability scanners
+  can see its Rust dependencies.
+
 - The desktop app runs on the Rust backend (Rust core Phase 6, the desktop
   cutover). The next desktop release serves the app from its own process
   instead of a bundled Node server: no Node runtime ships in it, and the

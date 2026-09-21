@@ -52,20 +52,37 @@ port. Cookies do not bypass this check; explicit token headers support scripts.
 
 ## Running directly and the desktop app
 
-`pnpm dev` and `pnpm start` bind `127.0.0.1` explicitly. The desktop sidecar does the
-same. These local listeners can run without a token; setting a token opts them
-into authentication too. To listen on another interface, use for example
-`pnpm start --hostname 0.0.0.0` and configure the token and allowed hosts.
+`pnpm dev` and `pnpm start` bind `127.0.0.1` explicitly, as does the Rust server
+(`pt-core serve`) unless given `--host`, and the desktop app does the same. These
+local listeners can run without a token; setting a token opts them into
+authentication too. To listen on another interface, use for example
+`pnpm start --hostname 0.0.0.0` or `pt-core serve --host 0.0.0.0`, and configure
+the token and allowed hosts.
 
-The launcher passes the actual bind to the security checks. Custom launchers must
+Both launchers pass the actual bind to the security checks. Custom launchers must
 keep `PRIVACYTRACKER_BIND_HOST` consistent with the real listener. An unknown or
 wildcard bind requires authentication. `HOSTNAME` alone is not a trusted bind
 signal. Never claim a loopback bind for a listener reachable on other interfaces.
+`pt-core serve` refuses options it does not know rather than ignoring them, so a
+mistyped host cannot leave it listening somewhere other than intended.
+
+## Request limits
+
+The Docker image and the desktop app run the Rust server, which limits each
+request body by route: 4 KiB for sign-in, 512 KiB for ordinary requests, 8 MiB
+for audit bundles and 100 MiB for backup preview/restore, with a 30-second upload
+deadline. It reads a body only after the request has passed authentication and
+the origin check, so an anonymous client on the network cannot upload anything:
+an oversized anonymous upload is answered 401, where the Node server answers 413.
+A client also has 60 seconds to send its request headers, as with Node. Reverse
+proxies should set matching or smaller upload limits and deadlines.
 
 ## Custom Node launchers
 
-Load `lib/request-limits.cjs` before starting Next. The supplied `pnpm start`,
-`pnpm dev`, Docker command and staged desktop entry point do this automatically.
+The Node server (`pnpm start`, and the rollback image built with
+`--build-arg BACKEND=node`) needs `lib/request-limits.cjs` loaded before Next.
+The supplied `pnpm start`, `pnpm dev`, Node image command and staged sidecar entry
+point do this automatically.
 It limits raw HTTP uploads before Next Proxy clones their bodies: 4 KiB for
 sign-in, 512 KiB for ordinary requests, 8 MiB for audit bundles and 100 MiB for
 backup preview/restore, with a 30-second upload deadline. The larger import limits
@@ -77,11 +94,14 @@ Reverse proxies should set matching or smaller upload limits and deadlines.
 ## Content Security Policy
 
 The app emits its own strict CSP on every response — in the Docker image and
-in the desktop sidecar alike — so it does **not** depend on a reverse proxy
+in the desktop app alike — so it does **not** depend on a reverse proxy
 for it. The policy is hash-based: `pnpm build` runs
 `scripts/generate-csp-hashes.mjs`, which hashes each prerendered page's inline
 scripts into `.next/csp-hashes.json` and fails the build if any page stopped
-prerendering. `proxy.ts` serves the matching hashes per route.
+prerendering. The server sends the matching hashes per route (`proxy.ts` in
+Node, the same rules in the Rust server). Both log an error when the build has
+no `csp-hashes.json`: Node on the first page it serves, the Rust server at
+startup.
 
 `PRIVACYTRACKER_CSP` controls the mode: `enforce` (default), `report-only`
 (sends `Content-Security-Policy-Report-Only` so you can watch what *would* be

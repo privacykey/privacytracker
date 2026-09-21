@@ -101,6 +101,15 @@ a rollback needs no data migration. To rehearse a build without releasing,
 dispatch **macOS desktop release** on a reviewed tag with `dry_run=true`,
 and `backend=node` for the rollback build.
 
+**Build & Push Docker image** takes the same `backend` input, passed to the
+Dockerfile as its `BACKEND` build argument, and `Prepare verified release
+draft` passes `backend: rust` to it as well. `rust` builds the Rust server on
+Alpine (about 56 MB, no Node); `node` builds the `next start` image every
+release up to v0.2.0 shipped. The two open the same volume as the same user,
+so a Docker rollback is the same one-line change in `release.yml` and a new
+patch version. A self-hoster who builds from the compose file rolls back with
+`PRIVACYTRACKER_BACKEND=node` in `.env`.
+
 Either way the verifier checks the same things about the bundle (version,
 OS minimum, architecture, signature, notarisation) and then what is specific
 to the backend: for `rust`, that no Node ships, that the staged site is
@@ -153,6 +162,9 @@ OS versions and results in the release review. A green PR alone is insufficient.
       rehearse the rollback: run a `backend=node` dry-run build over the data
       directory the Rust build wrote, and confirm it serves it.
 - [ ] Upgrade an existing Docker volume and the optional bind-mount deployment.
+      On the first release on the Rust backend, the volume must be one the last
+      Node image (v0.2.0) wrote, and the rollback is rehearsed too: the same
+      volume opened again by an image built with `BACKEND=node`.
       Confirm authenticated access, denied anonymous private reads, readiness,
       persistence across restart and successful backup restore.
 - [ ] Restore a same-installation backup and a trusted cross-installation backup.

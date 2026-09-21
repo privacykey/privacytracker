@@ -18,7 +18,8 @@
 // other half of why nothing is extracted into the data directory any more.
 //
 // Run via `pnpm stage:site`, or by the Rust bundle's beforeBuildCommand
-// (src-tauri/tauri.rust.conf.json). Idempotent: wipes the destination
+// (src-tauri/tauri.rust.conf.json). The Docker image stages the same tree
+// for its server with `--into /app/site`. Idempotent: wipes the destination
 // first, so a page deleted since the last build cannot linger.
 
 import {
@@ -167,7 +168,14 @@ if (
   path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   try {
-    const result = stageSite();
+    // `--into <dir>` stages somewhere other than the desktop bundle's
+    // resources: the Docker image's build does.
+    const flag = process.argv.indexOf("--into");
+    if (flag !== -1 && !process.argv[flag + 1]) {
+      throw new Error("stage-site: --into needs a directory");
+    }
+    const into = flag === -1 ? undefined : path.resolve(process.argv[flag + 1]);
+    const result = stageSite({ into });
     console.log(
       `stage-site: ${result.pages} pages, ${result.files} files, ${(result.bytes / 1024 / 1024).toFixed(1)} MB → ${path.relative(repo, result.target)}`
     );

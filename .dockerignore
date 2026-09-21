@@ -3,9 +3,16 @@ node_modules
 .next
 tsconfig.tsbuildinfo
 
+# The Rust core's local build output. The image compiles the core itself,
+# and a developer's target/ runs to several GB, all of which would otherwise
+# be sent to the builder on every build.
+core/target
+
 # Local desktop/Tauri build output — huge, machine-specific, and not part of
 # the production web image.
 src-tauri/target
+src-tauri/resources/site
+src-tauri/resources/third-party
 src-tauri/gen
 src-tauri/resources/standalone
 src-tauri/resources/standalone.tar

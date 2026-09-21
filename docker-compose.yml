@@ -2,7 +2,15 @@ name: privacytracker
 
 services:
   web:
-    build: .
+    build:
+      context: .
+      args:
+        # The server the image runs: rust (the default) or node, which is
+        # `next start` as every image before the Docker cutover ran, kept
+        # as the rollback until 1.0. To roll back, set
+        # PRIVACYTRACKER_BACKEND=node in .env and `docker compose up --build -d`;
+        # both open the same volume.
+        BACKEND: ${PRIVACYTRACKER_BACKEND:-rust}
     # Keep host access local. Other containers can still reach the app on the
     # Docker network, so an access token is required even with this mapping.
     ports:

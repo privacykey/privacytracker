@@ -21,6 +21,13 @@ on this machine: scraping, diffing, AI calls, and the SQLite database. The Rust 
 the only piece that can touch a connected iPhone. The web/Docker build is the same server
 without the shell column.
 
+**Since Phase 6 the shipped builds run the Rust port of this server** (`core/`, the
+`pt-core` binary) in place of Next.js: the desktop app serves itself from its own process
+on a remembered loopback port, and the Docker image runs `pt-core serve`. The port follows
+these flows route for route, with the Node server as its specification (the parity gates
+compare the two) and as the rollback until 1.0. The diagrams below still describe the
+Node implementation; `core/README.md` records where the Rust one differs.
+
 ```mermaid
 flowchart LR
   subgraph mac["This Mac · Tauri desktop app"]
