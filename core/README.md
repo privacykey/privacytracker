@@ -1270,6 +1270,74 @@ coercions, per-type filtering, legacy preference fallbacks, all task focus
 combinations, task timestamps, global purge boundaries, scoped/global
 shortlists, both export formats and database failures.
 
+**The unread count, streamed.** The pre-cutover load test (PR #313) put
+`GET /api/notifications` at 2.4 times Node's latency, the only read that
+far off. The page was not the cause; the unread count was.
+`flag.notifications.types.policy_updates` is off by default, so every
+fresh install takes `getUnreadCount`'s slow path: each unread row's
+`change_summary` is parsed and run through the type filter, and the rows
+it leaves something in are counted. The port did that with the page's
+helpers, so each row became a `Value`, was renormalised to JavaScript's
+numbers and key order, and had its surviving entries copied into a new
+list, only to be counted. On the seeded 5,000-app fleet (20,000
+notifications, 10,000 unread) that was about 17 of the handler's 21 ms,
+where Node spends 2.2 ms in SQLite and 3.1 ms in `JSON.parse` over the
+same rows. The query plans were not the difference: `EXPLAIN QUERY PLAN`
+shows the same index scans on SQLite 3.46 (the core) and 3.53
+(better-sqlite3).
+
+`unread_count.rs` now borrows each row's text from SQLite and streams it
+through serde_json with visitors that keep only what the filter reads, and
+`classify` is shared by the page and the count. No tree is built and
+nothing is copied, beyond serde_json's scratch buffer for a string with
+escapes in it. Every value still goes through `deserialize_any`, so
+strings, numbers and nesting depth are checked exactly as they are for a
+`Value`; `IgnoredAny` would be faster, but it skips those checks and would
+count rows the full parse rejects. Two differences are deliberate, and
+both move toward Node. An object whose first key is serde_json's private
+`RawValue` token is an ordinary object here, where a `Value` re-parses the
+string it holds (axum turns on the `raw_value` feature). And invalid UTF-8
+is replaced, as better-sqlite3 replaces it, where rusqlite's `Value`
+conversion panicked.
+
+Measured as the load test measured it: one Mac, one backend at a time,
+each over its own fresh copy of the fleet, `PRIVACYTRACKER_RUNTIME=desktop`,
+three warm-ups and then 20 sequential requests. Each figure is the median
+of the p50s of 15 such runs, from three interleaved launches of each
+server.
+
+| `GET /api/notifications`, p50 | Before | After |
+|---|---|---|
+| Rust (`pt-core serve`, release) | 21.8 ms | 6.0 ms |
+| Node (`next start`) | 7.8 ms | 7.8 ms |
+
+All three servers returned byte-identical bodies (8,727 bytes). In
+process the handler now takes 4.6 ms, of which SQLite's walk over the
+unread rows is 1.8 ms. One thing noticed on the way and not changed here:
+better-sqlite3 builds SQLite with a 16 MB page cache
+(`DEFAULT_CACHE_SIZE=-16000`), while the core's bundled SQLite keeps the
+2 MB default. That walk takes 1.4 ms with the larger cache instead of 1.9,
+and the setting would apply to every read.
+
+**Gates.** Five unit tests in `unread_count.rs` hold the stream to the old
+parse-and-filter answer under all 16 combinations of the type flags: 76
+hand-picked rows (the oracle's malformed shapes, `length` edge cases,
+repeated keys, escapes, and every kind of input a `Value` refuses, each
+beside an entry the filter can drop, so that a laxer parse would change
+the answer), nesting around the depth limit, 4,000 generated rows (a third
+of them damaged a character at a time), the `RawValue` token, and a walk
+over real rows with a BLOB, invalid UTF-8, read rows and quiet hours. The
+118 content cases, all 321 crate tests and the live gate
+(`read-parity.mjs`: 196 checks and its content probes) pass. Eight
+negative controls, each a single mutation, were all caught: skipping with
+`IgnoredAny`, the first repeated key winning, -0 not counting as zero,
+`null` entries ignored, no trailing-input check, non-object entries
+dropped, the two categories swapped in the shared `classify` (which only
+the Node oracle and the walk's fixed counts can see, since both paths
+share it), and quiet hours dropped from the walk. Six of them also failed
+tests beyond the ones predicted: the generated corpus caught five, and the
+nesting test and the walk's fixed counts two each.
+
 ### Operational reads (+9 routes, 63 total)
 
 Ports `/api/tasks/active`, the GETs on `/api/wayback/import-all` and
@@ -4789,7 +4857,9 @@ surface is `/api/notifications` at 2.4 times Node's latency: 18.5 ms is not
 something a person notices on a 30-second poll, but it is the one route
 that moved that much, and it is recorded as a follow-up rather than fixed
 here. The harness is not committed. The table is one run of each backend;
-an earlier Node run, identical but for one route, agreed within 10%.
+an earlier Node run, identical but for one route, agreed within 10%. (The
+follow-up has since landed, at 6.0 ms against Node's 7.8: see **The unread
+count, streamed**, under User content.)
 
 **Negative controls, predicted before running.** Six, each a one-line
 mutation of `embedded.rs`, and each failed exactly the one test predicted:

@@ -134,6 +134,7 @@ mod sysproc;
 mod timing;
 mod trend;
 pub mod trust;
+mod unread_count;
 mod update_check;
 mod user_content;
 mod user_tasks;
