@@ -246,11 +246,11 @@ fn main() {
                      \n\
                      Most common cause: the bundled standalone tarball at\n\
                        src-tauri/resources/standalone.tar\n\
-                     is incomplete (left over from a previous `pnpm tauri:dev` that was\n\
+                     is incomplete (left over from a previous `pnpm tauri:dev:node` that was\n\
                      killed before stage-standalone.mjs finished writing it). Recover with:\n\
                      \n\
                        rm src-tauri/resources/standalone.tar\n\
-                       pnpm tauri:dev\n\
+                       pnpm tauri:dev:node\n\
                      \n\
                      The next BeforeDevCommand will write a fresh tarball and the sidecar\n\
                      will extract it cleanly.\n",

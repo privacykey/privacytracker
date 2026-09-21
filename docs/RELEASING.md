@@ -83,18 +83,23 @@ that an ordinary branch cannot enter the signing environment.
 
 ### Which backend a build ships
 
-**macOS desktop release** takes a `backend` input. `node`, the default,
-bundles the Next.js standalone tree and a verified Node binary, as every
-release so far has. `rust` ships the Rust backend instead: the app serves
-itself, the frontend is staged into `Contents/Resources/site` (about 9 MB
-against the tarball's ~200 MB), no Node is fetched or bundled, and the
-bundle is signed with `entitlements-rust.plist`, which grants none of the
-three entitlements V8 needed.
+**macOS desktop release** takes a `backend` input. `rust`, the default since
+the desktop cutover, ships the Rust backend: the app serves itself, the
+frontend is staged into `Contents/Resources/site` (about 9 MB against the
+Node tarball's ~200 MB), no Node is fetched or bundled, and the bundle is
+signed with `entitlements-rust.plist`, which grants none of the three
+entitlements V8 needed. `node` bundles the Next.js standalone tree and a
+verified Node binary, as every release up to v0.2.0 did. It stays buildable
+as the rollback until 1.0.
 
-`Prepare verified release draft` calls the desktop workflow without that
-input, so tagged releases stay on Node until the cutover flips it. To
-rehearse a Rust build, dispatch **macOS desktop release** on a reviewed tag
-with `backend=rust` and `dry_run=true`.
+`Prepare verified release draft` passes `backend: rust`. To roll back,
+change that line in `.github/workflows/release.yml` to `node` in a reviewed
+PR and release a NEW patch version: the updater never installs an older
+version, so an earlier Node build cannot be re-promoted. Either backend
+opens the database the other wrote (CI's handoff test checks both ways), so
+a rollback needs no data migration. To rehearse a build without releasing,
+dispatch **macOS desktop release** on a reviewed tag with `dry_run=true`,
+and `backend=node` for the rollback build.
 
 Either way the verifier checks the same things about the bundle (version,
 OS minimum, architecture, signature, notarisation) and then what is specific
@@ -138,6 +143,15 @@ OS versions and results in the release review. A green PR alone is insufficient.
 - [ ] Rehearse a crash during each bulk job and verify one safe resume, no
       duplicate snapshots and cleared locks on completion. The automated suite
       covers runner behavior; inspect it on the packaged runtime too.
+- [ ] **First release on the Rust backend only.** Upgrade an installation of
+      the last Node release (v0.2.0) holding a copy of a real database, through
+      the in-app update where possible. Confirm the data survives, that
+      `standalone/` is gone from the data directory after the first launch,
+      and that the accessibility quick toggles survive a quit and relaunch
+      (the port is stable now, so the page's storage is too). Compare the
+      bundle's size and the running app's memory with the Node build. Then
+      rehearse the rollback: run a `backend=node` dry-run build over the data
+      directory the Rust build wrote, and confirm it serves it.
 - [ ] Upgrade an existing Docker volume and the optional bind-mount deployment.
       Confirm authenticated access, denied anonymous private reads, readiness,
       persistence across restart and successful backup restore.

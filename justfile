@@ -56,42 +56,46 @@ test-all: test
 storybook:
     pnpm run storybook
 
-# Both tauri recipes below hard-fail without this; it's a no-op once the
-# binary is present. src-tauri/binaries/README.md covers why the binary
-# isn't committed and why the version must match your `pnpm install` Node.
+# The two `-node` recipes below hard-fail without this; it's a no-op once
+# the binary is present, and the default recipes never need it.
+# src-tauri/binaries/README.md covers why the binary isn't committed and
+# why the version must match your `pnpm install` Node.
 # One-time per clone: fetch + GPG-verify the bundled Node sidecar
 [group("desktop")]
 fetch-node-sidecar:
     bash scripts/fetch-node-sidecar.sh
 
-# Needs the Rust toolchain + tauri-cli (cargo install tauri-cli) and a
-# one-time `just fetch-node-sidecar`.
-# Run the desktop app: standalone stub, then `tauri dev` with devtools
+# Needs the Rust toolchain. The app serves itself from the Rust core, so
+# there is no sidecar and no standalone tarball, only the frontend
+# `pnpm build` writes, which this runs for you.
+# Run the desktop app on the Rust backend, with devtools
 [group("desktop")]
-tauri-dev: fetch-node-sidecar
+tauri-dev:
+    pnpm build
     pnpm run tauri:dev
 
-# Run the desktop app on the RUST backend (Phase 6): the app serves
-# itself from the Rust core instead of spawning the Node sidecar, so this
-# needs no `fetch-node-sidecar` and no standalone tarball — just a
-# `pnpm build` for the frontend it serves, which it runs for you. Shipped
-# builds stay on Node until the cutover release.
+# The Node sidecar build is the rollback until 1.0. Needs a one-time
+# `just fetch-node-sidecar`.
+# Run the desktop app on the Node sidecar, with devtools
 [group("desktop")]
-tauri-dev-rust:
-    pnpm build
-    pnpm run tauri:dev:rust
+tauri-dev-node: fetch-node-sidecar
+    pnpm run tauri:dev:node
 
-# Production desktop build (.app/.dmg via tauri-bundler)
+# Stages the frontend and the third-party notices into the bundle's
+# Resources (scripts/stage-site.mjs, scripts/stage-notices.mjs).
+# Production desktop build (.app/.dmg) on the Rust backend
 [group("desktop")]
-tauri-build: fetch-node-sidecar
+tauri-build:
     pnpm run tauri:build
 
-# Desktop build on the RUST backend: stages the frontend into the bundle's
-# Resources (scripts/stage-site.mjs) instead of the Node standalone tree,
-# so it needs no bundled Node. Release engineering for it is batch 5.
+# Production desktop build (.app/.dmg) on the Node sidecar, the rollback
 [group("desktop")]
-tauri-build-rust:
-    pnpm run tauri:build:rust
+tauri-build-node: fetch-node-sidecar
+    pnpm run tauri:build:node
+
+# The names the Rust recipes had while that backend was opt-in.
+alias tauri-dev-rust := tauri-dev
+alias tauri-build-rust := tauri-build
 
 # Hand a database from one backend to the other, both ways (needs a
 # `pnpm build` and a built pt-core).

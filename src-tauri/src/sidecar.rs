@@ -338,7 +338,7 @@ fn resolve_server_js(
 
     // Wait for BeforeDevCommand to finish writing a real tarball.
     //
-    // `pnpm tauri:dev` runs cargo and BeforeDevCommand (`pnpm
+    // `pnpm tauri:dev:node` runs cargo and BeforeDevCommand (`pnpm
     // build:standalone:dev` — next build + stage-standalone.mjs) in
     // parallel. Cargo finishes in ~7s and the Rust binary boots while
     // BeforeDevCommand is still 20+ seconds from done. Worse, the
@@ -359,7 +359,7 @@ fn resolve_server_js(
     // Strategy: poll for a sibling `standalone.tar.ready` marker.
     // stage-standalone.mjs writes the marker atomically AFTER the
     // renameSync of the tarball; ensure-standalone-stub.mjs deletes
-    // the marker at the start of every `pnpm tauri:dev`. So:
+    // the marker at the start of every `pnpm tauri:dev:node`. So:
     //
     //   - marker absent  → tarball (if any) is stale, keep waiting
     //   - marker present → check its key matches the on-disk tarball
@@ -542,7 +542,7 @@ fn resolve_server_js(
     // watcher will pick up the next tarball update (from a freshly-
     // completing BeforeDevCommand) and restart the binary cleanly.
     //
-    // This guards against the scenario where a prior `pnpm tauri:dev`
+    // This guards against the scenario where a prior `pnpm tauri:dev:node`
     // session was killed mid-build (Cmd-C, OOM, debugger detach) before
     // stage-standalone.mjs's atomic rename committed, leaving a
     // corrupt resource tarball that an otherwise-happy freshness check
@@ -559,7 +559,7 @@ fn resolve_server_js(
              \n\
              Fix: delete the stale resource tarball and re-run:\n\
                rm {}\n\
-               pnpm tauri:dev\n\
+               pnpm tauri:dev:node\n\
              \n\
              The next BeforeDevCommand will write a fresh tarball and the \
              sidecar will extract it cleanly.",

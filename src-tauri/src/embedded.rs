@@ -1,10 +1,15 @@
 #![cfg(feature = "rust-backend")]
 //! The Rust backend: this process serves the app itself.
 //!
-//! Compiled only with `--features rust-backend`, which is off by default,
-//! so a shipped build still spawns the Node sidecar (`sidecar.rs`) until
-//! the cutover release. Everything above this module is unchanged either
-//! way: the shell talks to a base URL, and this one is its own.
+//! Compiled only with `--features rust-backend`. The desktop release and
+//! `just tauri-dev` pass it; a build without it spawns the Node sidecar
+//! (`sidecar.rs`) instead, which stays buildable for rollback until 1.0.
+//! Everything above this module is unchanged either way: the shell talks
+//! to a base URL, and this one is its own.
+//!
+//! **An upgraded install is tidied.** The Node build extracted its server
+//! into the data directory; once this backend is serving, that goes
+//! ([`remove_node_leftovers`]).
 //!
 //! What the sidecar does with a process and an environment, this does with
 //! a call:
@@ -45,6 +50,19 @@ const SHUTDOWN_GRACE: Duration = Duration::from_secs(3);
 
 /// The file under the data directory holding the port to try first.
 const PORT_FILE: &str = ".desktop-port";
+
+/// What the Node sidecar extracts into the data directory (`sidecar.rs`):
+/// its server, about 200 MB, and the markers recording which tarball that
+/// came from. Nothing on this path reads any of it.
+const NODE_TREE: &str = "standalone";
+const NODE_MARKERS: [&str; 2] = [
+    ".standalone-extracted-from-size-mtime",
+    ".standalone-extracted-from-size",
+];
+
+/// Where [`remove_node_leftovers`] moves the tree before deleting it, so a
+/// removal cut short leaves something only this module ever names.
+const NODE_TREE_REMOVING: &str = ".standalone-removing";
 
 /// A running server, stopped from main.rs's `ExitRequested` handler.
 pub struct EmbeddedServer {
@@ -114,8 +132,9 @@ pub fn boot(app: &AppHandle) -> Result<Boot, BoxError> {
     })
 }
 
-/// Bind and serve. Separate from [`boot`] so the boot test can run the
-/// real thing over a temporary data directory and site, with no app.
+/// Bind and serve, then tidy what a Node build left in the data directory.
+/// Separate from [`boot`] so the boot test can run the real thing over a
+/// temporary data directory and site, with no app.
 ///
 /// One server per process: the data directory and the environment are
 /// process state in the core, set once.
@@ -123,7 +142,7 @@ pub fn start(data_dir: &Path, site: &Path) -> Result<(ServerHandle, SocketAddr),
     let env = environment(data_dir)?;
     let preferred = remembered_port(data_dir);
     let site = site.to_path_buf();
-    tauri::async_runtime::block_on(async move {
+    let served = tauri::async_runtime::block_on(async move {
         let listener = bind(preferred).await?;
         let addr = listener.local_addr()?;
         let handle = serve_with(
@@ -135,8 +154,17 @@ pub fn start(data_dir: &Path, site: &Path) -> Result<(ServerHandle, SocketAddr),
         )
         .await
         .map_err(|e| -> BoxError { e.to_string().into() })?;
-        Ok((handle, addr))
-    })
+        Ok::<_, BoxError>((handle, addr))
+    })?;
+
+    // An install upgraded from a Node build still holds the server that
+    // build extracted. It goes once this backend is serving: a rollback
+    // build extracts its own again when it finds none. Off this thread,
+    // because it is tens of thousands of files and the window is waiting.
+    let leftovers = data_dir.to_path_buf();
+    std::thread::spawn(move || remove_node_leftovers(&leftovers));
+
+    Ok(served)
 }
 
 /// `--smoke-server <dir>`: serve over that directory and wait, with no
@@ -238,13 +266,87 @@ fn remember_port(data_dir: &Path, port: u16) {
     }
 }
 
+/// Remove what the Node sidecar extracted into `data_dir`. Best effort: a
+/// failure is logged and costs disk space, nothing more.
+///
+/// It touches only the names above, and the tree only when it is a real
+/// directory that looks like the sidecar's: a symlink is left alone, and
+/// so is wherever it points.
+///
+/// The tree is renamed before it is deleted, so `standalone` is only ever
+/// whole or gone. An interrupted delete leaves [`NODE_TREE_REMOVING`] for
+/// the next launch to finish, and a rollback build that finds no
+/// `standalone/server.js` extracts its tarball again whatever its marker
+/// says (`sidecar.rs`), so neither build ever runs from a half-deleted tree.
+fn remove_node_leftovers(data_dir: &Path) {
+    remove_tree(&data_dir.join(NODE_TREE_REMOVING));
+
+    let tree = data_dir.join(NODE_TREE);
+    match std::fs::symlink_metadata(&tree) {
+        // No tree, so any marker left is stale.
+        Err(_) => remove_markers(data_dir),
+        // `symlink_metadata` does not follow links: a symlink is not a dir.
+        Ok(meta) if meta.is_dir() && looks_like_node_tree(&tree) => {
+            remove_markers(data_dir);
+            let doomed = data_dir.join(NODE_TREE_REMOVING);
+            match std::fs::rename(&tree, &doomed) {
+                Ok(()) => {
+                    if remove_tree(&doomed) {
+                        log::info!("Removed the Node build's server from {}", tree.display());
+                    }
+                }
+                Err(e) => log::warn!(
+                    "could not remove the Node build's server at {} ({e})",
+                    tree.display()
+                ),
+            }
+        }
+        Ok(_) => log::info!(
+            "{} is not the Node build's server; leaving it",
+            tree.display()
+        ),
+    }
+}
+
+/// The sidecar's tree holds its server and that server's modules; a
+/// directory that merely shares the name does not.
+fn looks_like_node_tree(dir: &Path) -> bool {
+    dir.join("server.js").is_file() || dir.join("node_modules").is_dir()
+}
+
+fn remove_markers(data_dir: &Path) {
+    for marker in NODE_MARKERS {
+        let path = data_dir.join(marker);
+        match std::fs::remove_file(&path) {
+            Ok(()) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => log::warn!("could not remove {} ({e})", path.display()),
+        }
+    }
+}
+
+/// Delete `dir` if it is a real directory (not a symlink). True when it was
+/// there and is gone.
+fn remove_tree(dir: &Path) -> bool {
+    match std::fs::symlink_metadata(dir) {
+        Ok(meta) if meta.is_dir() => match std::fs::remove_dir_all(dir) {
+            Ok(()) => true,
+            Err(e) => {
+                log::warn!("could not finish removing {} ({e})", dir.display());
+                false
+            }
+        },
+        _ => false,
+    }
+}
+
 /// The directory `next start` would run in: it holds `.next/` and
 /// `public/`.
 ///
 /// A shipped build stages it beside the binary, inside the signed bundle,
 /// so nothing is extracted into the data directory and nothing writable
-/// is ever served. A dev build falls back to the repository's own build,
-/// which is what `just tauri-dev-rust` produces.
+/// is ever served. A binary run from target/ uses the repository's own
+/// build, which is what `just tauri-dev` produces.
 fn resolve_site_dir(resources: Option<PathBuf>) -> Result<PathBuf, BoxError> {
     #[cfg(debug_assertions)]
     if let Ok(dir) = std::env::var("PRIVACYTRACKER_DEV_SITE") {
@@ -260,32 +362,62 @@ fn resolve_site_dir(resources: Option<PathBuf>) -> Result<PathBuf, BoxError> {
     }
 
     let staged = resources.unwrap_or_default().join("site");
-    if is_site(&staged) {
-        return Ok(staged);
-    }
+    let exe = std::env::current_exe().ok();
+    let cwd = std::env::current_dir()?;
+    choose_site(&staged, exe.as_deref(), &cwd).ok_or_else(|| {
+        format!(
+            "Could not find a built frontend. A shipped build expects one staged at {}; \
+             a dev build uses the repository's own, so run `pnpm build` first (or point \
+             PRIVACYTRACKER_DEV_SITE at a directory holding .next/ and public/).",
+            staged.display(),
+        )
+        .into()
+    })
+}
 
-    // `tauri dev` runs the binary from src-tauri/, plain `cargo run` from
-    // the repository root, and a nested workspace deeper still: walk up as
-    // the sidecar's standalone probe does.
-    let mut probe = std::env::current_dir()?;
+/// Which build to serve: the one staged beside the binary, or the
+/// repository's own found from `cwd`.
+///
+/// A binary inside an app bundle serves the site staged in that bundle. One
+/// run straight from target/ (`cargo run`, `just tauri-dev`) serves the
+/// repository's build first: a site under target/<profile>/ is only ever a
+/// copy an earlier bundle build left there, and preferring it served a
+/// stale frontend after every `pnpm build`.
+fn choose_site(staged: &Path, exe: Option<&Path>, cwd: &Path) -> Option<PathBuf> {
+    if exe.is_some_and(in_app_bundle) && is_site(staged) {
+        return Some(staged.to_path_buf());
+    }
+    if let Some(repository) = repository_build(cwd) {
+        return Some(repository);
+    }
+    is_site(staged).then(|| staged.to_path_buf())
+}
+
+/// The repository's own build, walking up from `cwd` as the sidecar's
+/// standalone probe does: `tauri dev` runs the binary from src-tauri/,
+/// plain `cargo run` from the repository root, and a nested workspace
+/// deeper still.
+fn repository_build(cwd: &Path) -> Option<PathBuf> {
+    let mut probe = cwd.to_path_buf();
     for _ in 0..4 {
         if is_site(&probe) {
             log::info!("Using the repository's own build at {}", probe.display());
-            return Ok(probe);
+            return Some(probe);
         }
-        match probe.parent() {
-            Some(parent) => probe = parent.to_path_buf(),
-            None => break,
-        }
+        probe = probe.parent()?.to_path_buf();
     }
+    None
+}
 
-    Err(format!(
-        "Could not find a built frontend. A shipped build expects one staged at {}; \
-         a dev build uses the repository's own, so run `pnpm build` first (or point \
-         PRIVACYTRACKER_DEV_SITE at a directory holding .next/ and public/).",
-        staged.display(),
-    )
-    .into())
+/// Is this executable inside a macOS app bundle
+/// (`<name>.app/Contents/MacOS/<exe>`), as every shipped build is?
+fn in_app_bundle(exe: &Path) -> bool {
+    let macos = exe.parent();
+    let contents = macos.and_then(Path::parent);
+    let app = contents.and_then(Path::parent);
+    macos.and_then(Path::file_name).is_some_and(|name| name == "MacOS")
+        && contents.and_then(Path::file_name).is_some_and(|name| name == "Contents")
+        && app.and_then(Path::extension).is_some_and(|ext| ext == "app")
 }
 
 /// A directory `next build` has written a servable app into. The pages
@@ -347,6 +479,8 @@ mod tests {
         let (data, site) = (root.join("data"), root.join("site"));
         std::fs::create_dir_all(&data).expect("data dir");
         write_site(&site);
+        // As an install upgraded from the Node build finds it.
+        write_node_tree(&data.join(NODE_TREE));
 
         let (handle, addr) = start(&data, &site).expect("the server starts");
         let base = format!("http://{addr}");
@@ -370,6 +504,17 @@ mod tests {
         assert!(
             data.join("privacy.db").is_file(),
             "the database is in the directory we named, not the process's own",
+        );
+
+        // Starting is what tidies the Node build's server away, on its own
+        // thread, so give it a moment.
+        let tidied = (0..50).any(|_| {
+            std::thread::sleep(Duration::from_millis(100));
+            !data.join(NODE_TREE).exists()
+        });
+        assert!(
+            tidied,
+            "the Node build's server should be gone once the backend serves"
         );
 
         tauri::async_runtime::block_on(handle.shutdown(SHUTDOWN_GRACE)).expect("stops");
@@ -409,6 +554,168 @@ mod tests {
             br#"{"all":["sha256-a"],"routes":{"/":["sha256-a"]}}"#,
         )
         .expect("csp hashes");
+    }
+
+    fn temp(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("pt-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        dir
+    }
+
+    /// What the sidecar extracts: a server and the modules it requires.
+    fn write_node_tree(tree: &Path) {
+        let next = tree.join("node_modules").join("next");
+        std::fs::create_dir_all(&next).expect("tree");
+        std::fs::write(tree.join("server.js"), "require('next')").expect("server");
+        std::fs::write(next.join("package.json"), "{}").expect("module");
+    }
+
+    #[test]
+    fn the_node_builds_server_goes_and_nothing_else_does() {
+        let dir = temp("leftovers");
+        write_node_tree(&dir.join(NODE_TREE));
+        for marker in NODE_MARKERS {
+            std::fs::write(dir.join(marker), "196904960:1700000000").expect("marker");
+        }
+        std::fs::write(dir.join("privacy.db"), "db").expect("database");
+        std::fs::write(dir.join(PORT_FILE), "49152").expect("port");
+
+        remove_node_leftovers(&dir);
+
+        assert!(!dir.join(NODE_TREE).exists(), "the tree is gone");
+        assert!(
+            !dir.join(NODE_TREE_REMOVING).exists(),
+            "and so is the name it was moved to"
+        );
+        for marker in NODE_MARKERS {
+            assert!(!dir.join(marker).exists(), "{marker} is gone");
+        }
+        assert!(dir.join("privacy.db").is_file(), "the database is untouched");
+        assert!(dir.join(PORT_FILE).is_file(), "the port file is untouched");
+
+        remove_node_leftovers(&dir);
+        assert!(
+            dir.join("privacy.db").is_file(),
+            "a second launch has nothing to do"
+        );
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn a_directory_that_only_shares_the_name_is_left_alone() {
+        let dir = temp("not-node");
+        std::fs::create_dir_all(dir.join(NODE_TREE)).expect("dir");
+        std::fs::write(dir.join(NODE_TREE).join("notes.txt"), "mine").expect("file");
+
+        remove_node_leftovers(&dir);
+
+        assert!(dir.join(NODE_TREE).join("notes.txt").is_file());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_tree_and_what_it_points_at_are_left_alone() {
+        let dir = temp("linked");
+        let elsewhere = temp("linked-target");
+        write_node_tree(&elsewhere);
+        std::os::unix::fs::symlink(&elsewhere, dir.join(NODE_TREE)).expect("symlink");
+        std::fs::write(dir.join(NODE_MARKERS[0]), "1:1").expect("marker");
+
+        remove_node_leftovers(&dir);
+
+        let link = std::fs::symlink_metadata(dir.join(NODE_TREE)).expect("still there");
+        assert!(link.file_type().is_symlink(), "the link itself stays");
+        assert!(elsewhere.join("server.js").is_file(), "and so does its target");
+        assert!(
+            dir.join(NODE_MARKERS[0]).is_file(),
+            "nothing is touched in a layout this module did not make"
+        );
+        std::fs::remove_dir_all(&dir).ok();
+        std::fs::remove_dir_all(&elsewhere).ok();
+    }
+
+    #[test]
+    fn a_removal_cut_short_is_finished_by_the_next_launch() {
+        let dir = temp("interrupted");
+        let half_gone = dir.join(NODE_TREE_REMOVING).join("node_modules").join("left");
+        std::fs::create_dir_all(&half_gone).expect("half-removed tree");
+        std::fs::write(half_gone.join("index.js"), "").expect("file");
+
+        remove_node_leftovers(&dir);
+
+        assert!(!dir.join(NODE_TREE_REMOVING).exists());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn markers_without_a_tree_are_stale_and_go() {
+        let dir = temp("markers");
+        for marker in NODE_MARKERS {
+            std::fs::write(dir.join(marker), "1:1").expect("marker");
+        }
+
+        remove_node_leftovers(&dir);
+
+        for marker in NODE_MARKERS {
+            assert!(!dir.join(marker).exists(), "{marker} is gone");
+        }
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn a_bundle_serves_its_own_site_and_a_dev_binary_the_repositorys() {
+        let root = temp("choose-site");
+        let staged = root.join("target").join("debug").join("site");
+        let repository = root.join("repo");
+        for site in [&staged, &repository] {
+            std::fs::create_dir_all(site.join(".next").join("server").join("app"))
+                .expect("site");
+        }
+        let cwd = repository.join("src-tauri");
+        std::fs::create_dir_all(&cwd).expect("cwd");
+        let bundled = Path::new("/Applications/privacytracker.app/Contents/MacOS/privacytracker");
+        let dev = root.join("target").join("debug").join("privacytracker");
+        let elsewhere = root.join("elsewhere");
+
+        assert_eq!(
+            choose_site(&staged, Some(bundled), &cwd),
+            Some(staged.clone()),
+            "a bundle serves the site it carries"
+        );
+        assert_eq!(
+            choose_site(&staged, Some(&dev), &cwd),
+            Some(repository.clone()),
+            "a dev binary serves the build just made, not a copy left in target/"
+        );
+        assert_eq!(
+            choose_site(&staged, Some(&dev), &elsewhere),
+            Some(staged.clone()),
+            "with no repository build in reach, the staged copy still serves"
+        );
+        assert_eq!(
+            choose_site(&root.join("missing"), Some(bundled), &elsewhere),
+            None,
+            "nothing to serve is an error, not a guess"
+        );
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn only_a_binary_inside_an_app_bundle_counts_as_bundled() {
+        assert!(in_app_bundle(Path::new(
+            "/Applications/privacytracker.app/Contents/MacOS/privacytracker"
+        )));
+        for dev in [
+            "/repo/src-tauri/target/debug/privacytracker",
+            "/repo/src-tauri/target/release/privacytracker",
+            "/x/Contents/MacOS/privacytracker",
+            "/x/privacytracker.app/MacOS/privacytracker",
+            "privacytracker",
+        ] {
+            assert!(!in_app_bundle(Path::new(dev)), "{dev} is not in a bundle");
+        }
     }
 
     #[test]

@@ -222,7 +222,7 @@ if (process.platform === "darwin") {
   // Resolution order:
   //   1. TAURI_BUILD_TARGET (explicit env var set by the release workflow)
   //   2. TAURI_ENV_TARGET_TRIPLE (Tauri's own build-script env var)
-  //   3. Host arch fallback for local `npm run tauri:build`
+  //   3. Host arch fallback for local `pnpm tauri:build:node`
   const targetTriple =
     process.env.TAURI_BUILD_TARGET ||
     process.env.TAURI_ENV_TARGET_TRIPLE ||
@@ -418,7 +418,7 @@ if (process.platform === "darwin" && process.env.APPLE_SIGNING_IDENTITY) {
 // lib/db.ts creates `<cwd>/data/privacy.db` (+ `-wal` / `-shm`) the
 // first time the server boots when PRIVACYTRACKER_DATA_DIR is unset.
 // If a maintainer or self-hoster ran the standalone `server.js` before
-// `pnpm tauri:build` (or against the staged tree itself), that
+// `pnpm tauri:build:node` (or against the staged tree itself), that
 // populated DB lands here and would be tarred straight into the
 // shipped .app/.dmg. The file carries the user's scraped apps AND the
 // `app_settings` table — which is where AI-provider API keys + custom
@@ -568,7 +568,7 @@ console.log(
 //
 // Atomic write: .ready.tmp → .ready so a reader never sees a partially-
 // written marker. ensure-standalone-stub.mjs deletes this marker at
-// the start of every `pnpm tauri:dev`, so a non-existent .ready means
+// the start of every `pnpm tauri:dev:node`, so a non-existent .ready means
 // "stale, wait for me to rebuild".
 const readyMarker = `${tauriTarball}.ready`;
 const readyMarkerTmp = `${readyMarker}.tmp`;
