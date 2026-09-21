@@ -3089,6 +3089,8 @@ dependencies = [
  "async-compression",
  "axum",
  "futures-util",
+ "hyper",
+ "hyper-util",
  "libc",
  "log",
  "regex",
@@ -3099,6 +3101,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-util",
+ "tower",
  "url",
 ]
 

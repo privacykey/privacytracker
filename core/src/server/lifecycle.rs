@@ -18,7 +18,7 @@
 
 use std::any::Any;
 use std::collections::HashMap;
-use std::future::{Future, IntoFuture};
+use std::future::Future;
 use std::net::SocketAddr;
 use std::panic::AssertUnwindSafe;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
@@ -46,7 +46,30 @@ pub struct ServeConfig {
     /// `public/`. When set, the server answers for the frontend too, from
     /// that build (`site.rs`). One per process, like the environment.
     pub site: Option<std::path::PathBuf>,
+    /// How long a client gets to send a request's headers, and how long an
+    /// idle keep-alive connection waits for the next request, before the
+    /// connection is closed. `None` is [`HEADER_READ_TIMEOUT`]; tests pass
+    /// something short.
+    pub header_read_timeout: Option<Duration>,
 }
+
+/// Node's `server.headersTimeout` default, which `next start` leaves alone.
+/// Without one, a client could hold a connection open indefinitely by
+/// sending its headers a byte at a time: harmless on loopback, not once the
+/// server faces a network (Docker).
+pub const HEADER_READ_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// What Node's `instrumentation.ts` prints at boot when the instance is
+/// network-exposed with no admin token, word for word, so the line an
+/// operator searches for is the same whichever server they run.
+const EXPOSED_WITHOUT_TOKEN: &str = "[security] This instance is declared network-exposed but no \
+AUDITOR_ADMIN_TOKEN is set — private pages and API calls will be \
+REFUSED until you set one. See docker-compose.yml for setup.";
+
+/// proxy.ts's line for a build with no readable `csp-hashes.json`, word for
+/// word.
+const CSP_HASHES_MISSING: &str = "[proxy] csp-hashes.json not found — was `next build` run \
+without scripts/generate-csp-hashes.mjs? Failing closed (script-src 'self').";
 
 /// A running server. Dropping the handle leaves the server running; call
 /// [`ServerHandle::shutdown`] to stop it.
@@ -115,10 +138,28 @@ pub async fn serve_with(
         .into());
     }
 
+    // instrumentation.ts's deployment-trust warning: once, at boot, and into
+    // the diagnostics tail as well as the log. It warns and does not
+    // refuse: requests fail closed on their own.
+    if let Some(warning) = posture_warning(
+        crate::host_env::var("NODE_ENV").ok().as_deref(),
+        super::auth::admin_token_configured(),
+        super::trust::is_network_exposed(),
+    ) {
+        diag::log_warn(warning);
+    }
+
     // The build is indexed before anything is served, as `next start`
     // reads its manifests before it listens.
     if let Some(dir) = &config.site {
-        super::site::install(super::site::Site::load(dir)?)?;
+        let site = super::site::Site::load(dir)?;
+        // Pages still serve without the hashes, under `script-src 'self'`,
+        // which (enforced) blocks their inline scripts and leaves them
+        // blank. proxy.ts says so the first time it looks; this, at boot.
+        if site.csp.is_none() {
+            diag::log_error(CSP_HASHES_MISSING);
+        }
+        super::site::install(site)?;
     }
 
     let mut conn = crate::db::open_and_migrate(&layout.db_path)?;
@@ -141,15 +182,116 @@ pub async fn serve_with(
     // before the first request is served, as they do in Node.
     sync_runner::start_background(state.clone(), stop.clone());
 
-    let served = tokio::spawn(
-        axum::serve(
-            listener,
-            app(state).into_make_service_with_connect_info::<SocketAddr>(),
-        )
-        .with_graceful_shutdown(stop.clone().cancelled_owned())
-        .into_future(),
-    );
+    let header_read_timeout = config.header_read_timeout.unwrap_or(HEADER_READ_TIMEOUT);
+    let served = tokio::spawn(accept_loop(
+        listener,
+        app(state),
+        stop.clone(),
+        header_read_timeout,
+    ));
     Ok(ServerHandle { addr, stop, served })
+}
+
+/// instrumentation.ts's condition: production only (localhost development
+/// does not need it), no admin token, and an instance declared
+/// network-exposed.
+fn posture_warning(
+    node_env: Option<&str>,
+    token_configured: bool,
+    network_exposed: bool,
+) -> Option<&'static str> {
+    (node_env == Some("production") && !token_configured && network_exposed)
+        .then_some(EXPOSED_WITHOUT_TOKEN)
+}
+
+/// `axum::serve(..).with_graceful_shutdown(..)`, with one difference: each
+/// connection gets hyper's header-read timeout, which needs a timer that
+/// axum's own loop never sets. The rest is axum 0.8's loop, step for step:
+/// the same accept-error handling, the peer address handed to handlers as
+/// `ConnectInfo`, and on stop no new connections, each open one finishing
+/// the request in flight, and a return once every one has closed.
+async fn accept_loop(
+    listener: tokio::net::TcpListener,
+    router: axum::Router,
+    stop: CancellationToken,
+    header_read_timeout: Duration,
+) -> std::io::Result<()> {
+    use axum::extract::ConnectInfo;
+    use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
+    use hyper_util::server::conn::auto::Builder;
+    use hyper_util::service::TowerToHyperService;
+    use tower::ServiceExt;
+
+    // Dropping `signal_rx` tells every connection to shut down gracefully;
+    // `close_tx.closed()` resolves once every connection has dropped its
+    // `close_rx`.
+    let (signal_tx, signal_rx) = tokio::sync::watch::channel(());
+    let (close_tx, close_rx) = tokio::sync::watch::channel(());
+    loop {
+        let (stream, remote) = tokio::select! {
+            accepted = listener.accept() => match accepted {
+                Ok(pair) => pair,
+                Err(e) => {
+                    accept_error(e).await;
+                    continue;
+                }
+            },
+            () = stop.cancelled() => break,
+        };
+        let service = TowerToHyperService::new(router.clone().map_request(
+            move |mut req: axum::http::Request<hyper::body::Incoming>| {
+                req.extensions_mut().insert(ConnectInfo(remote));
+                req.map(Body::new)
+            },
+        ));
+        let signal_tx = signal_tx.clone();
+        let close_rx = close_rx.clone();
+        tokio::spawn(async move {
+            let mut builder = Builder::new(TokioExecutor::new());
+            builder
+                .http1()
+                .timer(TokioTimer::new())
+                .header_read_timeout(header_read_timeout);
+            let mut conn = std::pin::pin!(
+                builder.serve_connection_with_upgrades(TokioIo::new(stream), service)
+            );
+            // Fused, so once it has fired the loop polls only the connection.
+            let mut signalled = std::pin::pin!(signal_tx.closed().fuse());
+            loop {
+                tokio::select! {
+                    result = conn.as_mut() => {
+                        if let Err(e) = result {
+                            log::debug!("connection from {remote} ended: {e}");
+                        }
+                        break;
+                    }
+                    () = &mut signalled => conn.as_mut().graceful_shutdown(),
+                }
+            }
+            drop(close_rx);
+        });
+    }
+    drop(listener);
+    drop(signal_rx);
+    drop(close_rx);
+    close_tx.closed().await;
+    Ok(())
+}
+
+/// What axum does with an accept error. A connection that failed before it
+/// was accepted is the client's problem; anything else (running out of
+/// file descriptors, typically) is logged, and the loop waits a second
+/// before trying again rather than spinning on it.
+async fn accept_error(e: std::io::Error) {
+    use std::io::ErrorKind::{ConnectionAborted, ConnectionRefused, ConnectionReset};
+    if matches!(
+        e.kind(),
+        ConnectionRefused | ConnectionAborted | ConnectionReset
+    ) {
+        return;
+    }
+    log::error!("accept error: {e}");
+    tokio::time::sleep(Duration::from_secs(1)).await;
 }
 
 /// The single connection, taken even when a panic poisoned its mutex.
@@ -235,6 +377,24 @@ mod tests {
     use super::*;
     use axum::{routing::get, Router};
     use tower::ServiceExt;
+
+    /// Every combination: only production, no token and network-exposed
+    /// together warn, as in instrumentation.ts.
+    #[test]
+    fn the_posture_warning_needs_production_no_token_and_exposure() {
+        for node_env in [Some("production"), Some("development"), None] {
+            for token in [false, true] {
+                for exposed in [false, true] {
+                    let expected = node_env == Some("production") && !token && exposed;
+                    assert_eq!(
+                        posture_warning(node_env, token, exposed).is_some(),
+                        expected,
+                        "NODE_ENV={node_env:?} token={token} exposed={exposed}"
+                    );
+                }
+            }
+        }
+    }
 
     fn memory_state() -> AppState {
         let conn = crate::db::open_and_migrate(std::path::Path::new(":memory:")).unwrap();

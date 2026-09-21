@@ -85,6 +85,18 @@
       "repository": "https://github.com/rust-lang/futures-rs"
     },
     {
+      "name": "hyper",
+      "version": "1.10.1",
+      "license": "MIT",
+      "repository": "https://github.com/hyperium/hyper"
+    },
+    {
+      "name": "hyper-util",
+      "version": "0.1.20",
+      "license": "MIT",
+      "repository": "https://github.com/hyperium/hyper-util"
+    },
+    {
       "name": "io-kit-sys",
       "version": "0.5.0",
       "license": "MIT OR Apache-2.0",
@@ -245,6 +257,12 @@
       "version": "0.7.18",
       "license": "MIT",
       "repository": "https://github.com/tokio-rs/tokio"
+    },
+    {
+      "name": "tower",
+      "version": "0.5.3",
+      "license": "MIT",
+      "repository": "https://github.com/tower-rs/tower"
     },
     {
       "name": "ureq",

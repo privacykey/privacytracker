@@ -74,13 +74,17 @@ ring = "0.17"
 # `pt-core` prints them. Already in the lockfile under reqwest and tracing,
 # so this adds no new crate to the build.
 log = "0.4"
-
-[dev-dependencies]
-# Router-level gate tests drive the axum `Router` as a plain tower service
-# (`ServiceExt::oneshot`), so the gate's step ORDER — host allowlist, then the
-# trailing-slash redirect, then auth, then CSRF — is pinned end to end rather
-# than one helper at a time. Already in the lockfile as an axum dependency, so
-# this adds no new crate to the build.
+# The accept loop (`lifecycle::accept_loop`) is axum's own, rebuilt so each
+# connection can have hyper's header-read timeout: axum never gives hyper
+# the timer that timeout needs. hyper and hyper-util are axum's own HTTP
+# stack, and tower is how it maps each request (the peer address, the body
+# type); the router-level gate tests also drive the `Router` as a plain
+# tower service (`ServiceExt::oneshot`). All three are already in the
+# lockfile under axum, so this adds no new crate to the build. The features
+# are axum's own: NOT hyper-util's `server-auto`, which would switch on
+# HTTP/2 and add the h2 crate, where the server speaks HTTP/1 as Node's does.
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["http1", "server", "service", "tokio"] }
 tower = { version = "0.5", features = ["util"] }
 
 [profile.release]
