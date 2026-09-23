@@ -31035,3 +31035,18 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   border: 1px solid var(--border);
   border-radius: 999px;
 }
+
+.method-switch-confirm {
+  margin-top: 16px;
+}
+
+.method-switch-confirm p {
+  margin: 0;
+}
+
+.method-switch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}

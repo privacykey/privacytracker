@@ -9,6 +9,7 @@
  */
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { COUNTRY_OPTIONS, countryLabel } from "@/lib/region";
 import type { OnboardWizardState } from "@/lib/use-onboard-wizard";
 import { rovingTabIndex } from "@/lib/use-roving-radiogroup";
@@ -30,6 +31,7 @@ export default function Step1ChooseMethod({
     countryLoaded,
     deviceClass,
     handleRestoreFileChosen,
+    importedApps,
     languageSuggestion,
     method,
     methodAvailability,
@@ -41,11 +43,13 @@ export default function Step1ChooseMethod({
     onboardStepAccessibilityToggleOn,
     onboardStepAppStoreRegionOn,
     onboardStepChooseMethodOn,
+    pendingAppText,
     restoreError,
     restoreFileRef,
     restoreStage,
     setImportInfo,
     setImportedApps,
+    setPendingAppText,
     setLanguageSuggestion,
     setLiveTextModalOpen,
     setMethod,
@@ -58,6 +62,28 @@ export default function Step1ChooseMethod({
     updateTrackAccessibility,
     userSelectedMethodRef,
   } = w;
+  const [pendingMethod, setPendingMethod] = useState<ImportMethod | null>(null);
+  const keepDraftButtonRef = useRef<HTMLButtonElement>(null);
+  const requestedMethodButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (pendingMethod) {
+      keepDraftButtonRef.current?.focus();
+    }
+  }, [pendingMethod]);
+
+  function changeMethod(value: ImportMethod) {
+    setMethod(value);
+    setPendingAppText("");
+    setImportedApps([]);
+    setImportInfo("");
+  }
+
+  function closeMethodPrompt() {
+    setPendingMethod(null);
+    const card = requestedMethodButtonRef.current;
+    requestAnimationFrame(() => card?.focus());
+  }
 
   return (
     <>
@@ -112,21 +138,20 @@ export default function Step1ChooseMethod({
                   className={`method-card ${selected ? "active" : ""} ${extraClass}`.trim()}
                   data-testid={`onboard-method-${value}`}
                   key={value}
-                  onClick={() => {
+                  onClick={(event) => {
                     userSelectedMethodRef.current = true;
-                    setMethod(value);
-                    // Swapping methods wipes input state so a stale developer
-                    // hint from a prior CSV drop can't accidentally rank
-                    // manual-entry results. Same goes for bundleId hints
-                    // captured from a prior cfgutil import — without this
-                    // wipe, switching from "configurator" to "manual" would
-                    // attempt a bundle-ID lookup against names the user
-                    // typed by hand, which is wrong.
-                    // Wipe the imported-apps list so a switch from
-                    // (say) Configurator to manual entry doesn't
-                    // leave the prior import's rows lingering.
-                    setImportedApps([]);
-                    setImportInfo("");
+                    if (selected) {
+                      return;
+                    }
+                    if (importedApps.length > 0 || pendingAppText.trim()) {
+                      requestedMethodButtonRef.current = event.currentTarget;
+                      setPendingMethod(value);
+                      return;
+                    }
+                    // Changing methods must drop source-specific developer and
+                    // bundle-ID hints, but only after the user can decide what
+                    // to do with the app names already entered.
+                    changeMethod(value);
                   }}
                   role="radio"
                   tabIndex={rovingTabIndex(
@@ -218,6 +243,44 @@ export default function Step1ChooseMethod({
               </>
             );
           })()}
+
+          {pendingMethod && (
+            <div
+              className="wizard-note wizard-note-amber method-switch-confirm"
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  closeMethodPrompt();
+                }
+              }}
+              role="alert"
+            >
+              <p>
+                {tStep1("switch_method_confirm", {
+                  method: methodMeta[pendingMethod].title,
+                })}
+              </p>
+              <div className="method-switch-actions">
+                <button
+                  className="btn btn-secondary"
+                  onClick={closeMethodPrompt}
+                  ref={keepDraftButtonRef}
+                  type="button"
+                >
+                  {tStep1("switch_method_keep")}
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={() => {
+                    changeMethod(pendingMethod);
+                    closeMethodPrompt();
+                  }}
+                  type="button"
+                >
+                  {tStep1("switch_method_discard")}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/*
               Store region — asked up-front because AU-only banking/transport
