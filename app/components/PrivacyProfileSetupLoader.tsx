@@ -8,6 +8,7 @@ import { type FocusWorkflow, isFocusWorkflow } from "@/lib/focus-workflow";
 import { recommendedPrivacyPresetForFocus } from "@/lib/onboarding-purpose";
 import type { PrivacyProfile, ProfilePresetKey } from "@/lib/privacy-profile";
 import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
+import LoaderRetry from "./LoaderRetry";
 import PrivacyProfileSetup from "./PrivacyProfileSetup";
 
 /**
@@ -48,6 +49,8 @@ export default function PrivacyProfileSetupLoader() {
   // step where the privacy profile gets created.
   const { failedToLoad } = useFlagBundleStatus();
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   // Tracked separately from `ready` so the flag-driven redirect can wait
   // for the audience answer (see the ordering note below).
   const [audienceOk, setAudienceOk] = useState<boolean | null>(null);
@@ -60,20 +63,28 @@ export default function PrivacyProfileSetupLoader() {
 
   useEffect(() => {
     let live = true;
+    setFailed(false);
     Promise.all([
       fetch("/api/focus").then((res) =>
         res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
       ),
-      fetch("/api/privacy-profile")
-        .then((res) => (res.ok ? res.json() : null))
-        .catch(() => null),
-      fetch("/api/accessibility-profile")
-        .then((res) => (res.ok ? res.json() : null))
-        .catch(() => null),
+      fetch("/api/privacy-profile").then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
+      ),
+      fetch("/api/accessibility-profile").then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
+      ),
     ])
       .then(([focus, privacyJson, a11yJson]) => {
         if (!live) {
           return;
+        }
+        if (
+          typeof focus?.audienceSet !== "boolean" ||
+          !(privacyJson && "profile" in privacyJson) ||
+          !(a11yJson && "profile" in a11yJson)
+        ) {
+          throw new Error("Invalid profile response");
         }
         if (focus.audienceSet) {
           setAudienceOk(true);
@@ -108,14 +119,13 @@ export default function PrivacyProfileSetupLoader() {
       .catch((error) => {
         console.warn("[onboard/profile] load failed:", error);
         if (live) {
-          setAudienceOk(false);
-          router.replace("/welcome");
+          setFailed(true);
         }
       });
     return () => {
       live = false;
     };
-  }, [router]);
+  }, [router, retry]);
 
   const showPrivacySetup =
     failedToLoad || flags?.["flag.onboarding.privacy_profile_setup"];
@@ -150,6 +160,9 @@ export default function PrivacyProfileSetupLoader() {
   // profile would be silently discarded, and Save would PUT the empty
   // payload over it. `recommendedPreset` matters here too: null selects a
   // different UI branch (no Activate button), not just different copy.
+  if (failed) {
+    return <LoaderRetry onRetry={() => setRetry((value) => value + 1)} />;
+  }
   if (!(ready && (flags || failedToLoad))) {
     return null;
   }

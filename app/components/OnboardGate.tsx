@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { type DeviceClass, detectDeviceFromUA } from "@/lib/device";
 import { useFlagBundle } from "@/lib/use-flag-bundle";
+import LoaderRetry from "./LoaderRetry";
 import OnboardWizard from "./OnboardWizard";
 
 /**
@@ -28,6 +29,8 @@ import OnboardWizard from "./OnboardWizard";
 export default function OnboardGate() {
   const router = useRouter();
   const [allowed, setAllowed] = useState<boolean | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [initialDevice, setInitialDevice] = useState<DeviceClass | null>(null);
   const flags = useFlagBundle(["flag.onboarding.method.configurator"]);
 
@@ -41,6 +44,7 @@ export default function OnboardGate() {
 
   useEffect(() => {
     let live = true;
+    setFailed(false);
     fetch("/api/focus")
       .then((res) =>
         res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
@@ -49,6 +53,9 @@ export default function OnboardGate() {
         if (!live) {
           return;
         }
+        if (typeof json.audienceSet !== "boolean") {
+          throw new Error("Invalid focus response");
+        }
         if (json.audienceSet) {
           setAllowed(true);
         } else {
@@ -56,19 +63,20 @@ export default function OnboardGate() {
           router.replace("/welcome");
         }
       })
-      .catch(() => {
-        // Unreadable focus means "not set yet" — the same bounce the
-        // server page performed for an empty setting.
+      .catch((error) => {
+        console.warn("[onboard] focus load failed:", error);
         if (live) {
-          setAllowed(false);
-          router.replace("/welcome");
+          setFailed(true);
         }
       });
     return () => {
       live = false;
     };
-  }, [router]);
+  }, [router, retry]);
 
+  if (failed) {
+    return <LoaderRetry onRetry={() => setRetry((value) => value + 1)} />;
+  }
   if (!(allowed && flags && initialDevice)) {
     return null;
   }

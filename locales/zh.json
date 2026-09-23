@@ -5350,6 +5350,8 @@
     "confirm": "确认",
     "close": "关闭",
     "loading": "加载中…",
+    "load_failed": "无法加载已保存的选择",
+    "load_failed_hint": "你的选择仍已保存。请检查连接后重试。",
     "retry": "重试",
     "yes": "是",
     "no": "否",

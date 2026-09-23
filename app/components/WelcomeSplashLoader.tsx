@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { type AgeBandKey, isValidAgeBand } from "@/lib/age-rating";
 import type { Audience } from "@/lib/feature-flag-rules";
 import { type FocusWorkflow, isFocusWorkflow } from "@/lib/focus-workflow";
+import LoaderRetry from "./LoaderRetry";
 import WelcomeSplash from "./WelcomeSplash";
 
 /**
@@ -32,11 +33,14 @@ interface InitialFocus {
 
 export default function WelcomeSplashLoader() {
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [initialFocus, setInitialFocus] = useState<InitialFocus | null>(null);
   const [childAgeBand, setChildAgeBand] = useState<AgeBandKey | null>(null);
 
   useEffect(() => {
     let live = true;
+    setFailed(false);
     fetch("/api/focus")
       .then((res) =>
         res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
@@ -54,6 +58,9 @@ export default function WelcomeSplashLoader() {
         }) => {
           if (!live) {
             return;
+          }
+          if (typeof json.audienceSet !== "boolean") {
+            throw new Error("Invalid focus response");
           }
           if (json.audienceSet) {
             setInitialFocus({
@@ -76,18 +83,19 @@ export default function WelcomeSplashLoader() {
         }
       )
       .catch((error) => {
-        // A failed read means "first-time visitor" — the same result the
-        // server page produced when its try/catch swallowed a DB error.
         console.warn("[welcome] focus load failed:", error);
         if (live) {
-          setReady(true);
+          setFailed(true);
         }
       });
     return () => {
       live = false;
     };
-  }, []);
+  }, [retry]);
 
+  if (failed) {
+    return <LoaderRetry onRetry={() => setRetry((value) => value + 1)} />;
+  }
   if (!ready) {
     return null;
   }

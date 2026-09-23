@@ -12,6 +12,7 @@ import HomeView, {
   type DashboardFlagState,
   type FocusSummary,
 } from "./HomeView";
+import LoaderRetry from "./LoaderRetry";
 import Nav from "./Nav";
 import ReviewCtaBanner from "./ReviewCtaBanner";
 import SampleModeView from "./SampleModeView";
@@ -33,8 +34,8 @@ import TaskList from "./TaskList";
  *
  * TWO-WAY EMPTY REDIRECT. No apps + no focus → /welcome (the splash sets
  * the focus the dashboard keys off); no apps + focus → /onboard. A
- * failed triage fetch takes the same branch as "no apps", as the page's
- * catch did. RequireAppsGate is single-target, so it is not used here.
+ * failed triage or focus reads show a retry state, preserving the saved
+ * onboarding choices. RequireAppsGate is single-target, so it is not used here.
  *
  * FLAGS FAIL OPEN. The page's resolver catch produced `undefined`, and
  * HomeView / Nav apply their own `?? true` / `?? false` defaults to an
@@ -131,6 +132,13 @@ interface Loaded {
   triage: HomeProps["triage"];
 }
 
+const requiredJson = (url: string) =>
+  fetch(url).then((res) =>
+    res.ok
+      ? res.json()
+      : Promise.reject(new Error(`HTTP ${res.status}: ${url}`))
+  );
+
 const json = (url: string) =>
   fetch(url)
     .then((res) => (res.ok ? res.json() : null))
@@ -143,6 +151,8 @@ export default function HomeLoader() {
   const editLayoutRequested = searchParams.get("edit") === "layout";
 
   const [data, setData] = useState<Loaded | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   // `undefined` = not decided yet; `null` = callout off / no band / error.
   const [ageRating, setAgeRating] = useState<
     HomeProps["ageRatingFlagged"] | undefined
@@ -166,13 +176,14 @@ export default function HomeLoader() {
       return;
     }
     let live = true;
+    setFailed(false);
     Promise.all([
       // Three of these describe "your apps" and so follow the device
       // scope: the triage blob (every dashboard count), the off-profile
       // list, and the review CTA's number. The other six are install-wide
       // settings and are deliberately left unscoped.
-      json(withScopeParam("/api/triage", scopeParam)),
-      json("/api/focus"),
+      requiredJson(withScopeParam("/api/triage", scopeParam)),
+      requiredJson("/api/focus"),
       json("/api/manual-apps"),
       json("/api/preferences"),
       json("/api/dashboard/layout"),
@@ -180,79 +191,91 @@ export default function HomeLoader() {
       json(withScopeParam("/api/privacy-profile/mismatches", scopeParam)),
       json("/api/import/audit-bundle/recent"),
       json(withScopeParam("/api/review-queue?count=1", scopeParam)),
-    ]).then(
-      async ([
-        triage,
-        focus,
-        manual,
-        prefs,
-        layoutJson,
-        settings,
-        mismatches,
-        recent,
-        review,
-      ]) => {
-        if (!live) {
-          return;
-        }
-        // A failed triage read and a genuinely empty install are the
-        // SAME branch, as on the server.
-        const totalApps: number = triage?.totalApps ?? 0;
-        // `!scopeParam`: scoped to a device with nothing on it,
-        // totalApps is legitimately 0. Bouncing there would eject a user
-        // with a full library out to /onboard for picking a quiet phone
-        // in the nav. Only an unscoped zero means an empty install.
-        if (totalApps === 0 && !scopeParam) {
-          router.replace(focus?.audienceSet ? "/onboard" : "/welcome");
-          return;
-        }
-
-        // Lazy welcomed_at — first-write-wins, so this can fire on every
-        // mount without re-stamping the completion time.
-        fetch("/api/welcomed-at", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ifUnset: true }),
-        }).catch(() => {
-          /* the page swallowed this too */
-        });
-
-        // One-shot migration marker — only now that apps are confirmed.
-        const migrate = await fetch("/api/migration-flow/consume", {
-          method: "POST",
-        })
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null);
-        if (!live) {
-          return;
-        }
-        if (typeof migrate?.targetPath === "string") {
-          router.replace(migrate.targetPath);
-          return;
-        }
-
-        setData({
+    ])
+      .then(
+        async ([
           triage,
-          focus: focus ?? null,
-          manualAppsCount: manual?.apps?.length ?? 0,
-          manualAppsBannerDismissed: prefs?.manualAppsBannerDismissed === true,
-          layout: layoutJson?.layout ?? DEFAULT_LAYOUT,
-          backgroundCalloutVisible: settings
-            ? !(
-                settings.background_wizard_completed_at ||
-                settings.background_wizard_dismissed_at
-              )
-            : false,
-          mismatchedApps: mismatches?.apps ?? [],
-          recentImport: recent?.recent ?? null,
-          reviewableCount: review?.reviewableCount ?? 0,
-        });
-      }
-    );
+          focus,
+          manual,
+          prefs,
+          layoutJson,
+          settings,
+          mismatches,
+          recent,
+          review,
+        ]) => {
+          if (!live) {
+            return;
+          }
+          if (
+            typeof triage?.totalApps !== "number" ||
+            typeof focus?.audienceSet !== "boolean"
+          ) {
+            throw new Error("Invalid dashboard state");
+          }
+          const totalApps: number = triage.totalApps;
+          // `!scopeParam`: scoped to a device with nothing on it,
+          // totalApps is legitimately 0. Bouncing there would eject a user
+          // with a full library out to /onboard for picking a quiet phone
+          // in the nav. Only an unscoped zero means an empty install.
+          if (totalApps === 0 && !scopeParam) {
+            router.replace(focus?.audienceSet ? "/onboard" : "/welcome");
+            return;
+          }
+
+          // Lazy welcomed_at — first-write-wins, so this can fire on every
+          // mount without re-stamping the completion time.
+          fetch("/api/welcomed-at", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ifUnset: true }),
+          }).catch(() => {
+            /* the page swallowed this too */
+          });
+
+          // One-shot migration marker — only now that apps are confirmed.
+          const migrate = await fetch("/api/migration-flow/consume", {
+            method: "POST",
+          })
+            .then((res) => (res.ok ? res.json() : null))
+            .catch(() => null);
+          if (!live) {
+            return;
+          }
+          if (typeof migrate?.targetPath === "string") {
+            router.replace(migrate.targetPath);
+            return;
+          }
+
+          setData({
+            triage,
+            focus: focus ?? null,
+            manualAppsCount: manual?.apps?.length ?? 0,
+            manualAppsBannerDismissed:
+              prefs?.manualAppsBannerDismissed === true,
+            layout: layoutJson?.layout ?? DEFAULT_LAYOUT,
+            backgroundCalloutVisible: settings
+              ? !(
+                  settings.background_wizard_completed_at ||
+                  settings.background_wizard_dismissed_at
+                )
+              : false,
+            mismatchedApps: mismatches?.apps ?? [],
+            recentImport: recent?.recent ?? null,
+            reviewableCount: review?.reviewableCount ?? 0,
+          });
+        }
+      )
+      .catch((error) => {
+        console.warn("[dashboard] essential state load failed:", error);
+        if (live) {
+          setFailed(true);
+        }
+      });
     return () => {
       live = false;
     };
-  }, [sampleMode, router, scopeReady, scopeParam]);
+  }, [sampleMode, router, scopeReady, scopeParam, retry]);
 
   const ageRatingCalloutOn =
     !failedToLoad && bundle?.["flag.dashboard.callout.age_rating"] === true;
@@ -285,6 +308,15 @@ export default function HomeLoader() {
       <>
         <Nav />
         <SampleModeView />
+      </>
+    );
+  }
+
+  if (failed) {
+    return (
+      <>
+        <Nav />
+        <LoaderRetry onRetry={() => setRetry((value) => value + 1)} />
       </>
     );
   }

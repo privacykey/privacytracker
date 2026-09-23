@@ -5,6 +5,7 @@ import { type AgeBandKey, isValidAgeBand } from "@/lib/age-rating";
 import type { Audience } from "@/lib/feature-flag-rules";
 import { type FocusWorkflow, isFocusWorkflow } from "@/lib/focus-workflow";
 import FocusEditForm from "./FocusEditForm";
+import LoaderRetry from "./LoaderRetry";
 
 /**
  * Client loader for the focus editor (Rust-core Phase 0).
@@ -49,9 +50,12 @@ const VALID_AUDIENCES: readonly string[] = ["self", "loved_one", "guardian"];
 
 export default function FocusEditLoader() {
   const [focus, setFocus] = useState<FocusState | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let live = true;
+    setFailed(false);
     fetch("/api/focus")
       .then((res) =>
         res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
@@ -81,12 +85,18 @@ export default function FocusEditLoader() {
       })
       .catch((error) => {
         console.warn("[focus-edit] load failed:", error);
+        if (live) {
+          setFailed(true);
+        }
       });
     return () => {
       live = false;
     };
-  }, []);
+  }, [retry]);
 
+  if (failed) {
+    return <LoaderRetry onRetry={() => setRetry((value) => value + 1)} />;
+  }
   if (!focus) {
     return null;
   }
