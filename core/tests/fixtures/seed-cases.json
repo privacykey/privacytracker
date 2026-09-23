@@ -26027,7 +26027,7 @@
       }
     },
     {
-      "name": "the thirty-first seed in ten minutes is refused",
+      "name": "the sixty-first seed in ten minutes is refused",
       "route": "/api/dev/seed-sample-data",
       "method": "POST",
       "param": null,
@@ -26045,7 +26045,7 @@
       },
       "body": null,
       "adminToken": "seed-oracle-token",
-      "repeat": 31,
+      "repeat": 61,
       "setup": [
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
@@ -27209,9 +27209,1059 @@
           ]
         },
         {
-          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           "params": [
             "00000000-0000-4000-8000-000000000061",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000062",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000063",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000064",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000065",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000066",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000067",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000068",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000069",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000070",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000071",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000072",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000073",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000074",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000075",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000076",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000077",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000078",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000079",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000080",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000081",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000082",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000083",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000084",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000085",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000086",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000087",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000088",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000089",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000090",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000091",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000092",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000093",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000094",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000095",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000096",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000097",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000098",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000099",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000100",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000101",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000102",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000103",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000104",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000105",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000106",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000107",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000108",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000109",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000110",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000111",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000112",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000113",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000114",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000115",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000116",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000117",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000118",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000119",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Dev seed (canned) — inserted 0, skipped 10",
+            "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            1789475696789,
+            1789475696789,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000120",
+            1789475696789,
+            "dev.seed_sample_data.success",
+            "10.0.14.5",
+            "seed-oracle/1.0",
+            "mode=canned country=au inserted=0 skipped=10 errored=0",
+            1
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000121",
             1789475696789,
             "dev.seed_sample_data.rate_limited",
             "10.0.14.5",
@@ -27852,6 +28902,366 @@
             "started_at": 1789475696789,
             "ended_at": 1789475696789,
             "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000061",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000063",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000065",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000067",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000069",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000071",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000073",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000075",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000077",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000079",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000081",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000083",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000085",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000087",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000089",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000091",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000093",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000095",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000097",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000099",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000101",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000103",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000105",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000107",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000109",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000111",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000113",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000115",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000117",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000119",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Dev seed (canned) — inserted 0, skipped 10",
+            "detail": "{\"mode\":\"dev-seed-canned\",\"country\":\"au\",\"regionSource\":\"default\",\"results\":[{\"id\":\"94961186\",\"name\":\"Instagram\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"96650412\",\"name\":\"TikTok\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"98970682\",\"name\":\"Spotify\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94778184\",\"name\":\"WhatsApp\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97459374\",\"name\":\"Gmail\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97318971\",\"name\":\"Apple Music\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95679444\",\"name\":\"Apple Maps\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"97324291\",\"name\":\"Notes\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"95427241\",\"name\":\"Calendar\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0},{\"id\":\"94639140\",\"name\":\"Weather\",\"status\":\"skipped\",\"source\":\"canned\",\"snapshotsWritten\":0}]}",
+            "started_at": 1789475696789,
+            "ended_at": 1789475696789,
+            "duration_ms": 0
           }
         ],
         "audit_log": [
@@ -28126,7 +29536,277 @@
             "success": 1
           },
           {
-            "id": "00000000-0000-4000-8000-000000000061",
+            "id": "00000000-0000-4000-8000-000000000062",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000064",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000066",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000068",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000070",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000072",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000074",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000076",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000078",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000080",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000082",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000084",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000086",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000088",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000090",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000092",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000094",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000096",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000098",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000100",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000102",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000104",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000106",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000108",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000110",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000112",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000114",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000116",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000118",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000120",
+            "created_at": 1789475696789,
+            "action": "dev.seed_sample_data.success",
+            "actor_ip": "10.0.14.5",
+            "user_agent": "seed-oracle/1.0",
+            "detail": "mode=canned country=au inserted=0 skipped=10 errored=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000121",
             "created_at": 1789475696789,
             "action": "dev.seed_sample_data.rate_limited",
             "actor_ip": "10.0.14.5",

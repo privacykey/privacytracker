@@ -44,9 +44,10 @@ import TaskList from "./TaskList";
  * an empty dashboard and a link-less nav.
  *
  * HELD MOUNT. `layout` seeds useDashboardLayoutSaver's useState and never
- * re-syncs — mounting HomeView with DEFAULT_LAYOUT while the saved layout
- * is in flight would make ?edit=layout's first debounced PUT overwrite
- * the user's custom layout (and log a dashboard_layout_applied row).
+ * re-syncs — mounting HomeView in edit mode with DEFAULT_LAYOUT after a
+ * failed read would let the first PUT overwrite the user's custom layout.
+ * Layout reads are required in edit mode, and a previously unverified
+ * fallback cannot become editable while the required read is in flight.
  * `manualAppsBannerDismissed` seeds state the same way. Nothing renders
  * until every wave-1 read, the flag bundle, and the (flag-gated) age
  * rating read have all settled.
@@ -124,6 +125,7 @@ interface Loaded {
   backgroundCalloutVisible: boolean;
   focus: FocusPayload | null;
   layout: DashboardLayout;
+  layoutVerified: boolean;
   manualAppsBannerDismissed: boolean;
   manualAppsCount: number;
   mismatchedApps: NonNullable<HomeProps["mismatchedApps"]>;
@@ -186,7 +188,7 @@ export default function HomeLoader() {
       requiredJson("/api/focus"),
       json("/api/manual-apps"),
       json("/api/preferences"),
-      json("/api/dashboard/layout"),
+      (editLayoutRequested ? requiredJson : json)("/api/dashboard/layout"),
       json("/api/settings"),
       json(withScopeParam("/api/privacy-profile/mismatches", scopeParam)),
       json("/api/import/audit-bundle/recent"),
@@ -212,6 +214,9 @@ export default function HomeLoader() {
             typeof focus?.audienceSet !== "boolean"
           ) {
             throw new Error("Invalid dashboard state");
+          }
+          if (editLayoutRequested && !layoutJson?.layout) {
+            throw new Error("Could not load saved dashboard layout");
           }
           const totalApps: number = triage.totalApps;
           // `!scopeParam`: scoped to a device with nothing on it,
@@ -254,6 +259,7 @@ export default function HomeLoader() {
             manualAppsBannerDismissed:
               prefs?.manualAppsBannerDismissed === true,
             layout: layoutJson?.layout ?? DEFAULT_LAYOUT,
+            layoutVerified: Boolean(layoutJson?.layout),
             backgroundCalloutVisible: settings
               ? !(
                   settings.background_wizard_completed_at ||
@@ -275,7 +281,7 @@ export default function HomeLoader() {
     return () => {
       live = false;
     };
-  }, [sampleMode, router, scopeReady, scopeParam, retry]);
+  }, [sampleMode, router, scopeReady, scopeParam, editLayoutRequested, retry]);
 
   const ageRatingCalloutOn =
     !failedToLoad && bundle?.["flag.dashboard.callout.age_rating"] === true;
@@ -321,7 +327,10 @@ export default function HomeLoader() {
     );
   }
 
-  if (!(data && flagsSettled && ageRating !== undefined)) {
+  if (
+    !(data && flagsSettled && ageRating !== undefined) ||
+    (editLayoutRequested && !data.layoutVerified)
+  ) {
     return null;
   }
 

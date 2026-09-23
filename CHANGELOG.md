@@ -85,6 +85,11 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Dashboard layout editing now waits for the saved layout to load. If the
+  layout read fails, both the simple editor and edit-in-place dashboard show
+  a retry state instead of letting a change overwrite the saved layout with
+  the default preset.
+
 - The Notifications type switches now filter what their labels say. The
   bell mapped each change to one of the four `flag.notifications.types.*`
   switches, and got two of them backwards from the first commit onward. A

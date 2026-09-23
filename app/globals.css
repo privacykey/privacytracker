@@ -30395,6 +30395,18 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   gap: 18px;
 }
 
+.layout-editor-load-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 18px;
+  color: var(--text-2);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
 /* Reuses the same DOM shape as PrivacyProfileEditor's preset row so the
    visual treatment matches without copying every rule. */
 .layout-editor-presets {

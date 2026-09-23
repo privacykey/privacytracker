@@ -22,8 +22,8 @@ export default function DashboardLayoutSettingsContent() {
   // than mysteriously 404ing a feature whose default is on.
   //
   // Rust-core Phase 0: the saved layout now loads inside
-  // DashboardLayoutEditor from GET /api/dashboard/layout, falling back
-  // to DEFAULT_LAYOUT — the same tolerance the server read had.
+  // DashboardLayoutEditor from GET /api/dashboard/layout. A failed read
+  // keeps the editor closed until retry succeeds.
   const t = useTranslations("dashboard.layout_editor");
   return (
     <>
