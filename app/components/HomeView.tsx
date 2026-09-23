@@ -363,7 +363,6 @@ export default function HomeView({
     }
     setSyncingAll(true);
     const total = triage.stale.length || triage.totalApps;
-    const controller = new AbortController();
     const handle = taskCenter.startTask({
       title:
         total === triage.totalApps
@@ -372,10 +371,9 @@ export default function HomeView({
       subtitle: tSyncAll("subtitle_count", { count: total }),
       kind: "sync",
       href: "/dashboard",
-      onCancel: () => controller.abort(),
     });
     try {
-      const res = await fetch("/api/apps", { signal: controller.signal });
+      const res = await fetch("/api/apps");
       if (!res.ok) {
         throw new Error(`Could not load apps (${res.status})`);
       }
@@ -392,7 +390,7 @@ export default function HomeView({
         staleIds.size > 0 ? all.filter((app) => staleIds.has(app.id)) : all;
       const summary = await requestBulkScrape(
         pool.map((app) => app.url),
-        controller.signal,
+        undefined,
         (current, count) => handle.setProgress(current, count)
       );
       if (summary.failed > 0 || summary.stopped) {
@@ -413,14 +411,12 @@ export default function HomeView({
       }
       router.refresh();
     } catch (err) {
-      if ((err as Error)?.name !== "AbortError") {
-        console.error("[home] Sync-all failed:", err);
-        showToast(tSyncAll("toast_failed"));
-        handle.complete(
-          "error",
-          (err as Error)?.message ?? tSyncAll("toast_failed").replace("❌ ", "")
-        );
-      }
+      console.error("[home] Sync-all failed:", err);
+      showToast(tSyncAll("toast_failed"));
+      handle.complete(
+        "error",
+        (err as Error)?.message ?? tSyncAll("toast_failed").replace("❌ ", "")
+      );
     } finally {
       setSyncingAll(false);
     }

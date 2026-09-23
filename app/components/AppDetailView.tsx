@@ -679,21 +679,18 @@ export default function AppDetailView({
 
   const resync = async () => {
     setSyncing(true);
-    // Register the work with the Task Center so the user can navigate away
-    // and still see progress / cancel from the nav bar. AbortController lets
-    // the menu cancel fire mid-flight.
-    const controller = new AbortController();
+    // The server owns the scrape. Keep its task visible until the actual
+    // response arrives; a browser abort would not stop the server write.
     const handle = taskCenter.startTask({
       title: tDetail("task_titles.resync_running", { name: app.name }),
       subtitle: tDetail("task_titles.labels_subtitle"),
       kind: "scrape",
       href: `/apps/${app.id}`,
-      onCancel: () => controller.abort(),
     });
 
     try {
       // Policy summaries are managed separately on the AI Policy tab.
-      const result = await requestSingleScrape(app.url, controller.signal);
+      const result = await requestSingleScrape(app.url);
       if (result?.changesDetected) {
         showToast(
           tDetail("toasts.sync_changes_detected", { count: result.changeCount })
@@ -728,16 +725,12 @@ export default function AppDetailView({
       // view to the 'privacy' default tab.
       setTimeout(() => refresh(), 1500);
     } catch (err) {
-      if ((err as Error)?.name === "AbortError") {
-        showToast(tDetail("toasts.sync_cancelled"));
-      } else {
-        console.error(`[app-detail] Re-sync failed for ${app.name}:`, err);
-        showToast(tDetail("toasts.sync_failed"));
-        handle.complete(
-          "error",
-          (err as Error)?.message ?? tDetail("task_titles.sync_failed_fallback")
-        );
-      }
+      console.error(`[app-detail] Re-sync failed for ${app.name}:`, err);
+      showToast(tDetail("toasts.sync_failed"));
+      handle.complete(
+        "error",
+        (err as Error)?.message ?? tDetail("task_titles.sync_failed_fallback")
+      );
     }
     setSyncing(false);
   };

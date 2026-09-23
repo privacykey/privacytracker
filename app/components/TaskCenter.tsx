@@ -129,6 +129,7 @@ export interface TaskProgress {
 }
 
 export interface Task {
+  cancellable?: boolean;
   endedAt?: number;
   /** Optional link to the page that kicked the task off. */
   href?: string;
@@ -350,6 +351,7 @@ export function TaskCenterProvider({
       const id = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const task: Task = {
         id,
+        cancellable: Boolean(init.onCancel),
         title: init.title,
         subtitle: init.subtitle,
         kind: init.kind ?? "other",
@@ -392,7 +394,7 @@ export function TaskCenterProvider({
       const complete: TaskHandle["complete"] = (status, message) => {
         setTasks((prev) =>
           prev.map((t) =>
-            t.id === id
+            t.id === id && t.status !== "cancelled"
               ? {
                   ...t,
                   status,
@@ -422,9 +424,12 @@ export function TaskCenterProvider({
   const cancelTask = useCallback(
     (id: string) => {
       const handler = cancelHandlers.current.get(id);
+      if (!handler) {
+        return;
+      }
       cancelHandlers.current.delete(id);
       try {
-        handler?.();
+        handler();
       } catch (error) {
         /* Still mark cancelled below, but surface the handler's error in devtools. */
         console.warn(`[tasks] Cancel handler for ${id} threw:`, error);
@@ -1155,7 +1160,7 @@ function TaskRow({
             View
           </Link>
         )}
-        {task.status === "running" ? (
+        {task.status === "running" && task.cancellable ? (
           <button
             className="task-row-btn task-row-btn--cancel"
             onClick={onCancel}
@@ -1163,7 +1168,7 @@ function TaskRow({
           >
             Cancel
           </button>
-        ) : (
+        ) : task.status === "running" ? null : (
           <button
             aria-label={t("dismiss_aria")}
             className="task-row-btn task-row-btn--dismiss"
