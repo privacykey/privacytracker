@@ -85,6 +85,10 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Completing a dashboard bulk sync now re-reads triage, review counts, and
+  related dashboard data so the page reflects the just-finished sync without
+  requiring a manual reload.
+
 - Dashboard layout editing now waits for the saved layout to load. If the
   layout read fails, both the simple editor and edit-in-place dashboard show
   a retry state instead of letting a change overwrite the saved layout with

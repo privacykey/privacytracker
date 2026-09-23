@@ -204,6 +204,7 @@ export default function HomeView({
   layout = DEFAULT_LAYOUT,
   editMode = false,
   ageRatingFlagged = null,
+  onSyncComplete,
 }: {
   triage: TriageData;
   /**
@@ -279,9 +280,10 @@ export default function HomeView({
    * nothing is flagged — the callout drops out entirely.
    */
   ageRatingFlagged?: { band: AgeBandKey; count: number } | null;
+  /** Re-read the client-owned dashboard data after a bulk sync finishes. */
+  onSyncComplete: () => void;
 }) {
   const taskCenter = useTaskCenter();
-  const router = useRouter();
   const [syncingAll, setSyncingAll] = useState(false);
   const [toast, setToast] = useState("");
   // Local override so the banner disappears immediately on dismiss without
@@ -409,7 +411,7 @@ export default function HomeView({
           tSyncAll("complete_summary", { count: summary.succeeded })
         );
       }
-      router.refresh();
+      onSyncComplete();
     } catch (err) {
       console.error("[home] Sync-all failed:", err);
       showToast(tSyncAll("toast_failed"));
