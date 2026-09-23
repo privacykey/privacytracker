@@ -5350,6 +5350,8 @@
     "confirm": "Confirm",
     "close": "Close",
     "loading": "Loading…",
+    "load_failed": "Couldn’t load your saved choices",
+    "load_failed_hint": "Your choices are still saved. Check the connection and try again.",
     "retry": "Retry",
     "yes": "Yes",
     "no": "No",
