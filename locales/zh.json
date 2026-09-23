@@ -2933,7 +2933,8 @@
       "subtitle_count": "{count} 个应用",
       "toast_complete": "✓ 同步完成",
       "toast_failed": "❌ 同步失败",
-      "complete_summary": "已同步 {count} 个应用"
+      "complete_summary": "已同步 {count} 个应用",
+      "partial_summary": "已同步 {succeeded} 个；还有 {remaining} 个需要同步。请重试。"
     },
     "hero": {
       "nothing_new": "没有需要查看的新内容。",
@@ -3282,6 +3283,7 @@
     "task_done_no_changes": "标签未变化",
     "task_done_version_updated": "版本已更新到 v{version}；标签未变化",
     "task_done_synced": "已同步 {count} 个应用",
+    "task_partial_sync": "已同步 {succeeded} 个；还有 {remaining} 个需要同步。请重试。",
     "task_error_sync_failed": "同步失败",
     "toast_app_removed": "应用已移除",
     "toast_delete_failed": "❌ 删除失败",

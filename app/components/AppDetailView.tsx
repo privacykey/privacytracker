@@ -27,6 +27,7 @@ import { formatPriceLine, priceTooltip } from "../../lib/price-display";
 import { sortPrivacyTypesForDisplay } from "../../lib/privacy-meta";
 import type { PrivacyProfile } from "../../lib/privacy-profile";
 import { isSafeExternalHref } from "../../lib/safe-href";
+import { requestSingleScrape } from "../../lib/scrape-client";
 import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import type { AppVerdict } from "../../lib/verdict-types";
 import AppDevicesPanel from "./AppDevicesPanel";
@@ -691,22 +692,8 @@ export default function AppDetailView({
     });
 
     try {
-      const res = await fetch("/api/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // Label sync. The AI summary is scoped to the "AI Policy" tab so
-        // people don't re-summarise (and re-pay for LLM calls) every time
-        // they refresh App Store labels. A successful sync still queues the
-        // deferred, fetch-only policy run (schedulePostAppUpdatePolicyFetch).
-        body: JSON.stringify({
-          urls: [app.url],
-          resync: true,
-          summarizePolicies: false,
-        }),
-        signal: controller.signal,
-      });
-      const data = await res.json();
-      const result = data.results?.[0];
+      // Policy summaries are managed separately on the AI Policy tab.
+      const result = await requestSingleScrape(app.url, controller.signal);
       if (result?.changesDetected) {
         showToast(
           tDetail("toasts.sync_changes_detected", { count: result.changeCount })
