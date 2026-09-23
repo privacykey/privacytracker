@@ -2050,6 +2050,7 @@ export function useOnboardWizard({
         // accepted so existing in-flight drafts don't silently fail to
         // restore.
         importedApps?: ImportedAppEntry[];
+        pendingAppText?: string;
         namesText?: string;
         uploadedFileName?: string;
         importId?: string | null;
@@ -2101,6 +2102,9 @@ export function useOnboardWizard({
         setImportedApps(
           names.map((name) => makeImportedAppEntry({ name, source: "manual" }))
         );
+      }
+      if (typeof draft.pendingAppText === "string") {
+        setPendingAppText(draft.pendingAppText);
       }
       if (typeof draft.uploadedFileName === "string") {
         setUploadedFileName(draft.uploadedFileName);
@@ -2160,7 +2164,9 @@ export function useOnboardWizard({
     }
     try {
       const hasUsefulDraft =
-        importedApps.length > 0 || searchResults.length > 0;
+        importedApps.length > 0 ||
+        pendingAppText.trim().length > 0 ||
+        searchResults.length > 0;
       if (!hasUsefulDraft || step >= 4) {
         window.localStorage.removeItem(ONBOARDING_DRAFT_STORAGE_KEY);
         return;
@@ -2175,6 +2181,7 @@ export function useOnboardWizard({
           // developer hints survive a reload. Drop the runtime `id`
           // field — it's regenerated on restore.
           importedApps: importedApps.map(({ id: _id, ...rest }) => rest),
+          pendingAppText,
           uploadedFileName,
           importId,
           searchResults,
@@ -2197,6 +2204,7 @@ export function useOnboardWizard({
     isPreviewMode,
     manuallyChosenQueries,
     method,
+    pendingAppText,
     searchResults,
     selected,
     skippedQueries,
