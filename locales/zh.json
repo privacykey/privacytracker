@@ -2965,6 +2965,8 @@
       "review_sub": "Apple 更新了 {count} 个跟踪应用上的 {summary}。点击查看变化。",
       "stale_sub_elevated": "这些应用已超过一个月未重新同步。开发者会经常更新隐私声明 — 重新同步可显示自上次查看以来的所有变化。",
       "stale_sub_short": "超过一个月未重新同步 — 它们的隐私标签可能已经改变。",
+      "sync_stale": "同步 {count} 个过期应用",
+      "syncing_stale": "正在同步过期应用…",
       "watchlist_count": "{count} 个应用",
       "cleanup_kicker": "🧹 清理候选",
       "cleanup_sub": "这些应用会跨应用跟踪你，或收集大量与你身份相关联的数据。逐个打开决定保留还是删除。",
