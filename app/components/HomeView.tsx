@@ -52,6 +52,7 @@ import {
   formatRelativeTime,
   type RelativeTranslator,
 } from "../../lib/relative-time";
+import { requestBulkScrape } from "../../lib/scrape-client";
 import { scrollPulse } from "../../lib/scroll-pulse";
 import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import type {
@@ -280,6 +281,7 @@ export default function HomeView({
   ageRatingFlagged?: { band: AgeBandKey; count: number } | null;
 }) {
   const taskCenter = useTaskCenter();
+  const router = useRouter();
   const [syncingAll, setSyncingAll] = useState(false);
   const [toast, setToast] = useState("");
   // Local override so the banner disappears immediately on dismiss without
@@ -373,31 +375,43 @@ export default function HomeView({
       onCancel: () => controller.abort(),
     });
     try {
-      const res = await fetch("/api/apps");
+      const res = await fetch("/api/apps", { signal: controller.signal });
+      if (!res.ok) {
+        throw new Error(`Could not load apps (${res.status})`);
+      }
       const all = (await res.json()) as Array<{
         id: string;
         url: string;
         lastSynced: number;
       }>;
-      const pool =
-        triage.stale.length > 0
-          ? all.filter((a) => triage.stale.some((s) => s.id === a.id))
-          : all;
-      await fetch("/api/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ urls: pool.map((a) => a.url), resync: true }),
-        signal: controller.signal,
-      });
-      showToast(tSyncAll("toast_complete"));
-      handle.complete(
-        "done",
-        tSyncAll("complete_summary", { count: pool.length })
-      );
-      // Refresh the server-rendered view to pick up new triage data.
-      if (typeof window !== "undefined") {
-        window.location.reload();
+      if (!Array.isArray(all)) {
+        throw new Error("Could not load apps");
       }
+      const staleIds = new Set(triage.stale.map((app) => app.id));
+      const pool =
+        staleIds.size > 0 ? all.filter((app) => staleIds.has(app.id)) : all;
+      const summary = await requestBulkScrape(
+        pool.map((app) => app.url),
+        controller.signal,
+        (current, count) => handle.setProgress(current, count)
+      );
+      if (summary.failed > 0 || summary.stopped) {
+        showToast(tSyncAll("toast_failed"));
+        handle.complete(
+          "error",
+          tSyncAll("partial_summary", {
+            succeeded: summary.succeeded,
+            remaining: summary.total - summary.succeeded,
+          })
+        );
+      } else {
+        showToast(tSyncAll("toast_complete"));
+        handle.complete(
+          "done",
+          tSyncAll("complete_summary", { count: summary.succeeded })
+        );
+      }
+      router.refresh();
     } catch (err) {
       if ((err as Error)?.name !== "AbortError") {
         console.error("[home] Sync-all failed:", err);

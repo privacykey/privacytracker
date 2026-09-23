@@ -2933,7 +2933,8 @@
       "subtitle_count": "{count, plural, one {# app} other {# apps}}",
       "toast_complete": "✓ Sync complete",
       "toast_failed": "❌ Sync failed",
-      "complete_summary": "{count, plural, one {# app synced} other {# apps synced}}"
+      "complete_summary": "{count, plural, one {# app synced} other {# apps synced}}",
+      "partial_summary": "{succeeded} synced; {remaining} still need syncing. Retry to finish."
     },
     "hero": {
       "nothing_new": "Nothing new to review.",
@@ -3282,6 +3283,7 @@
     "task_done_no_changes": "No label changes",
     "task_done_version_updated": "Version updated to v{version}; no label changes",
     "task_done_synced": "{count, plural, one {# app} other {# apps}} synced",
+    "task_partial_sync": "{succeeded} synced; {remaining} still need syncing. Retry to finish.",
     "task_error_sync_failed": "Sync failed",
     "toast_app_removed": "App removed",
     "toast_delete_failed": "❌ Delete failed",

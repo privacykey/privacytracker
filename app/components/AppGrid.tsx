@@ -23,6 +23,10 @@ import type {
 } from "../../lib/manual-apps";
 import type { AppProfileBadge } from "../../lib/privacy-profile";
 import type { QueueAppInput } from "../../lib/review-queue";
+import {
+  requestBulkScrape,
+  requestSingleScrape,
+} from "../../lib/scrape-client";
 import { TOAST_HOLD_MS } from "../../lib/toast-timing";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
@@ -974,18 +978,7 @@ export default function AppGrid({
       onCancel: () => controller.abort(),
     });
     try {
-      const res = await fetch("/api/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          urls: [appUrl],
-          resync: true,
-          summarizePolicies: false,
-        }),
-        signal: controller.signal,
-      });
-      const data = await res.json();
-      const result = data.results?.[0];
+      const result = await requestSingleScrape(appUrl, controller.signal);
       if (result?.changesDetected) {
         showToast(tGrid("toast_changes_detected", { name: appName }));
         handle.complete(
@@ -1061,19 +1054,30 @@ export default function AppGrid({
       },
     });
     try {
-      await fetch("/api/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          urls: appList.map((a) => a.url),
-          resync: true,
-          summarizePolicies: false,
-        }),
-        signal: controller.signal,
-      });
+      const summary = await requestBulkScrape(
+        appList.map((app) => app.url),
+        controller.signal,
+        (current, count) =>
+          handle.setProgress(
+            current,
+            count,
+            tGrid("task_progress_label", { current, total: count })
+          )
+      );
       await refreshApps();
-      showToast(successMsg);
-      handle.complete("done", tGrid("task_done_synced", { count: total }));
+      if (summary.failed > 0 || summary.stopped) {
+        showToast(tGrid("toast_sync_failed"));
+        handle.complete(
+          "error",
+          tGrid("task_partial_sync", {
+            succeeded: summary.succeeded,
+            remaining: summary.total - summary.succeeded,
+          })
+        );
+      } else {
+        showToast(successMsg);
+        handle.complete("done", tGrid("task_done_synced", { count: total }));
+      }
     } catch (err) {
       if ((err as Error)?.name !== "AbortError") {
         console.error(`[apps] Sync-${scope} failed:`, err);
