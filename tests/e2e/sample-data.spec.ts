@@ -33,14 +33,48 @@ test.beforeEach(async ({ request }) => {
 
 browserFlow(
   "Try with sample data: welcome → /dashboard?sample=1 with canned apps rendered",
-  async ({ page }) => {
+  async ({ page, request }) => {
     await page.goto("/welcome");
 
-    // The "Try with sample data" button is gated by
-    // flag.onboarding.sample_data_button, which defaults 'on'. Click it
-    // and wait for the navigation it triggers.
+    // Preview carries the user's current form choices and only opens after
+    // the focus write succeeds. A failed first write leaves the form intact.
+    await page
+      .getByRole("button", { name: /Monitor my apps for changes/ })
+      .click();
+    await page.getByRole("button", { name: /Clean up my phone/ }).click();
+    await page.getByRole("radio", { name: /For a child or dependant/ }).click();
+    let writes = 0;
+    await page.route("**/api/focus", async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+      writes += 1;
+      if (writes === 1) {
+        await route.fulfill({
+          status: 503,
+          body: JSON.stringify({ error: "Please retry" }),
+        });
+      } else {
+        await route.continue();
+      }
+    });
+    await page.locator(".welcome-sample-data").click();
+    await expect(page.locator(".welcome-error")).toContainText("Please retry");
+    await expect(page).toHaveURL(/\/welcome$/);
+    expect(
+      await page.evaluate(() => sessionStorage.getItem("sample_apps"))
+    ).toBeNull();
     await page.locator(".welcome-sample-data").click();
     await page.waitForURL(/\/dashboard\?sample=1$/);
+    const savedFocus = await request.get("/api/focus");
+    await expect(savedFocus).toBeOK();
+    const focus = await savedFocus.json();
+    expect(focus).toMatchObject({
+      audience: "guardian",
+      monitor: false,
+      cleanup: true,
+    });
 
     // SampleModeView mounts and reads the seeded sessionStorage payload.
     // The grid container + at least one card should render — Instagram

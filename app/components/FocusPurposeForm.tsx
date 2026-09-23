@@ -26,7 +26,7 @@ interface FocusPurposeFormProps {
   error?: string;
   extraActions?: ReactNode;
   eyebrow?: string;
-  footer?: ReactNode;
+  footer?: ReactNode | ((selection: ResolvedPurposeFocus) => ReactNode);
   initial: PurposeFocusInput;
   /** Stored guardian child age band, when one is set. */
   initialChildAgeBand?: AgeBandKey | null;
@@ -188,15 +188,21 @@ export default function FocusPurposeForm({
     audience === "guardian" &&
     !(initial.audience === "guardian" && ageRatingFlag !== "on");
 
+  function currentSelection(): ResolvedPurposeFocus {
+    return {
+      ...resolvePurposeSelection({
+        audience,
+        monitor,
+        cleanup,
+        minimal,
+        accessibility,
+      }),
+      childAgeBand,
+    };
+  }
+
   async function handleSubmit() {
-    const resolved = resolvePurposeSelection({
-      audience,
-      monitor,
-      cleanup,
-      minimal,
-      accessibility,
-    });
-    await onSubmit({ ...resolved, childAgeBand });
+    await onSubmit(currentSelection());
   }
 
   return (
@@ -424,7 +430,7 @@ export default function FocusPurposeForm({
           {extraActions}
         </div>
 
-        {footer}
+        {typeof footer === "function" ? footer(currentSelection()) : footer}
       </div>
     </div>
   );

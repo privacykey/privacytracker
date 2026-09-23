@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import type { AgeBandKey } from "@/lib/age-rating";
-import type { PurposeFocusInput } from "@/lib/onboarding-purpose";
+import type {
+  PurposeFocusInput,
+  ResolvedPurposeFocus,
+} from "@/lib/onboarding-purpose";
 import { seedSampleApps } from "@/lib/sample-apps";
 import type { UserTaskId } from "@/lib/tasks";
 import { useFlagValuesWithDefaults } from "@/lib/use-flag-bundle";
@@ -64,6 +67,34 @@ export default function WelcomeSplash({
     }
   }
 
+  async function saveFocus(
+    focus: PurposeFocusInput & {
+      childAgeBand?: AgeBandKey | null;
+      taskOptIns?: UserTaskId[];
+    }
+  ) {
+    const res = await fetch("/api/focus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audience: focus.audience,
+        monitor: focus.monitor,
+        cleanup: focus.cleanup,
+        minimal: focus.minimal,
+        accessibility: focus.accessibility,
+        workflow: focus.workflow,
+        // Absent (skip / sample-data paths) = leave stored band unchanged.
+        ...(focus.childAgeBand === undefined
+          ? {}
+          : { childAgeBand: focus.childAgeBand }),
+      }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(data.error ?? t("save_failed"));
+    }
+  }
+
   async function commitAndContinue(
     focus: PurposeFocusInput & {
       childAgeBand?: AgeBandKey | null;
@@ -73,26 +104,7 @@ export default function WelcomeSplash({
     setSaving(true);
     setError("");
     try {
-      const res = await fetch("/api/focus", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          audience: focus.audience,
-          monitor: focus.monitor,
-          cleanup: focus.cleanup,
-          minimal: focus.minimal,
-          accessibility: focus.accessibility,
-          workflow: focus.workflow,
-          // Absent (skip / sample-data paths) = leave stored band unchanged.
-          ...(focus.childAgeBand === undefined
-            ? {}
-            : { childAgeBand: focus.childAgeBand }),
-        }),
-      });
-      if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error ?? t("save_failed"));
-      }
+      await saveFocus(focus);
       await optInTasks(focus.taskOptIns ?? []);
       router.push("/onboard/profile");
     } catch (err) {
@@ -106,25 +118,29 @@ export default function WelcomeSplash({
     void commitAndContinue({ ...DEFAULT_FOCUS, taskOptIns: [] });
   }
 
-  function handleSampleData() {
-    seedSampleApps();
-    void fetch("/api/focus", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(DEFAULT_FOCUS),
-    }).finally(() => {
+  async function handleSampleData(focus: ResolvedPurposeFocus) {
+    setSaving(true);
+    setError("");
+    try {
+      await saveFocus(focus);
+      await optInTasks(focus.taskOptIns);
+      seedSampleApps();
       router.push("/dashboard?sample=1");
-    });
+    } catch (err) {
+      console.error("[welcome] sample preview failed:", err);
+      setError(err instanceof Error ? err.message : t("save_failed"));
+      setSaving(false);
+    }
   }
 
-  const footer = (
+  const footer = (focus: ResolvedPurposeFocus) => (
     <>
       {sampleDataButtonOn && (
         <div className="welcome-tertiary">
           <button
             className="welcome-link welcome-sample-data"
             disabled={saving}
-            onClick={handleSampleData}
+            onClick={() => void handleSampleData(focus)}
             type="button"
           >
             {t("sample_data_button")} →
