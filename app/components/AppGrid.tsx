@@ -969,16 +969,14 @@ export default function AppGrid({
     setSyncingIds((prev) => new Set([...prev, appId]));
     const appName =
       apps.find((a) => a.id === appId)?.name ?? tGrid("fallback_app_name");
-    const controller = new AbortController();
     const handle = taskCenter.startTask({
       title: tGrid("task_resync_title", { name: appName }),
       subtitle: tGrid("task_resync_subtitle"),
       kind: "scrape",
       href: `/apps/${appId}`,
-      onCancel: () => controller.abort(),
     });
     try {
-      const result = await requestSingleScrape(appUrl, controller.signal);
+      const result = await requestSingleScrape(appUrl);
       if (result?.changesDetected) {
         showToast(tGrid("toast_changes_detected", { name: appName }));
         handle.complete(
@@ -1004,14 +1002,12 @@ export default function AppGrid({
       }
       await refreshApps();
     } catch (err) {
-      if ((err as Error)?.name !== "AbortError") {
-        console.error(`[apps] Re-sync failed for ${appName} (${appId}):`, err);
-        showToast(tGrid("toast_sync_failed"));
-        handle.complete(
-          "error",
-          (err as Error)?.message ?? tGrid("task_error_sync_failed")
-        );
-      }
+      console.error(`[apps] Re-sync failed for ${appName} (${appId}):`, err);
+      showToast(tGrid("toast_sync_failed"));
+      handle.complete(
+        "error",
+        (err as Error)?.message ?? tGrid("task_error_sync_failed")
+      );
     } finally {
       setSyncingIds((prev) => {
         const s = new Set(prev);
@@ -1030,7 +1026,6 @@ export default function AppGrid({
     }
     setSyncingAll(true);
     const total = appList.length;
-    const controller = new AbortController();
     const title =
       scope === "all"
         ? scopeLabel
@@ -1046,7 +1041,6 @@ export default function AppGrid({
       subtitle: tGrid("task_sync_subtitle_count", { count: total }),
       kind: "sync",
       href: "/dashboard",
-      onCancel: () => controller.abort(),
       progress: {
         current: 0,
         total,
@@ -1056,7 +1050,7 @@ export default function AppGrid({
     try {
       const summary = await requestBulkScrape(
         appList.map((app) => app.url),
-        controller.signal,
+        undefined,
         (current, count) =>
           handle.setProgress(
             current,
@@ -1079,14 +1073,12 @@ export default function AppGrid({
         handle.complete("done", tGrid("task_done_synced", { count: total }));
       }
     } catch (err) {
-      if ((err as Error)?.name !== "AbortError") {
-        console.error(`[apps] Sync-${scope} failed:`, err);
-        showToast(tGrid("toast_sync_failed"));
-        handle.complete(
-          "error",
-          (err as Error)?.message ?? tGrid("task_error_sync_failed")
-        );
-      }
+      console.error(`[apps] Sync-${scope} failed:`, err);
+      showToast(tGrid("toast_sync_failed"));
+      handle.complete(
+        "error",
+        (err as Error)?.message ?? tGrid("task_error_sync_failed")
+      );
     }
     setSyncingAll(false);
   };

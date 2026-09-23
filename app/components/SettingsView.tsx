@@ -1131,23 +1131,18 @@ export default function SettingsView({
 
   const triggerSync = async () => {
     setSyncing(true);
-    // The sync runs server-side regardless of page navigation, but we still
-    // register with the Task Center so the user can see "Syncing all apps"
-    // from any page and cancel the client-side wait (the server-side job is
-    // protected by its own sync_running mutex).
-    const controller = new AbortController();
+    // The server owns this run, so Task Center reports its actual outcome.
+    // Aborting the browser request would leave the server running.
     const handle = taskCenter.startTask({
       title: tSyncStatus("task_title"),
       subtitle: tSyncStatus("task_subtitle"),
       kind: "sync",
       href: "/dashboard/settings",
-      onCancel: () => controller.abort(),
     });
 
     try {
       const res = await fetch("/api/sync/trigger", {
         method: "POST",
-        signal: controller.signal,
       });
       const data = await res.json();
       if (data.skipped) {
@@ -1168,14 +1163,12 @@ export default function SettingsView({
       // TaskCenter context. Fire alongside the local loadStatus() refresh.
       await Promise.all([loadStatus(), taskCenter.refreshScheduler()]);
     } catch (err) {
-      if ((err as Error)?.name !== "AbortError") {
-        console.error("[settings] Manual sync trigger failed:", err);
-        showToast(tToast("sync_failed"));
-        handle.complete(
-          "error",
-          (err as Error)?.message ?? tSyncStatus("task_failed")
-        );
-      }
+      console.error("[settings] Manual sync trigger failed:", err);
+      showToast(tToast("sync_failed"));
+      handle.complete(
+        "error",
+        (err as Error)?.message ?? tSyncStatus("task_failed")
+      );
     }
     setSyncing(false);
   };
@@ -1195,7 +1188,6 @@ export default function SettingsView({
     setPolicyBulkRunning(phase);
     setPolicyBulkSummary(null);
 
-    const controller = new AbortController();
     const taskTitle =
       phase === "all"
         ? tPolicyCard("task_title_summarise")
@@ -1205,7 +1197,6 @@ export default function SettingsView({
       subtitle: tPolicyCard("task_preparing"),
       kind: "sync",
       href: "/dashboard/settings/policies#privacy-policies-bulk",
-      onCancel: () => controller.abort(),
     });
 
     let totals: {
@@ -1220,7 +1211,6 @@ export default function SettingsView({
       const res = await fetch("/api/policy/sync-all", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
         body: JSON.stringify({ phase, force: policyBulkForce, stream: true }),
       });
 
@@ -1343,15 +1333,11 @@ export default function SettingsView({
         handle.complete("done", tPolicyCard("task_finished"));
       }
     } catch (err) {
-      if ((err as Error)?.name === "AbortError") {
-        handle.complete("error", tPolicyCard("task_cancelled"));
-      } else {
-        console.error("[settings] Bulk policy sync failed:", err);
-        const message = (err as Error)?.message ?? tPolicyCard("bulk_failed");
-        showToast(tToast("save_failed_with_message", { message }));
-        handle.complete("error", message);
-        setPolicyBulkSummary(message);
-      }
+      console.error("[settings] Bulk policy sync failed:", err);
+      const message = (err as Error)?.message ?? tPolicyCard("bulk_failed");
+      showToast(tToast("save_failed_with_message", { message }));
+      handle.complete("error", message);
+      setPolicyBulkSummary(message);
     } finally {
       setPolicyBulkRunning(null);
     }

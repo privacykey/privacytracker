@@ -222,7 +222,6 @@ export default function PolicySummaryPanel({
     setRegenError("");
     setLiveLog([]);
 
-    const controller = new AbortController();
     const handle = taskCenter.startTask({
       title:
         phase === "fetch"
@@ -233,7 +232,6 @@ export default function PolicySummaryPanel({
       subtitle: app.name,
       kind: "policy",
       href: `/apps/${app.id}`,
-      onCancel: () => controller.abort(),
     });
 
     try {
@@ -249,7 +247,6 @@ export default function PolicySummaryPanel({
           stream: true,
           bypassThrottle: true,
         }),
-        signal: controller.signal,
       });
 
       if (!(res.ok && res.body)) {
@@ -351,18 +348,14 @@ export default function PolicySummaryPanel({
         handle.complete("error", msg);
       }
     } catch (error) {
-      if ((error as Error)?.name === "AbortError") {
-        // Task Center marks it cancelled — no additional handle.complete call.
-      } else {
-        console.error(
-          `[app-detail] Policy ${phase} failed for ${app.name}:`,
-          error
-        );
-        const msg =
-          error instanceof Error ? error.message : tPolicyRun("regen_failed");
-        setRegenError(msg);
-        handle.complete("error", msg);
-      }
+      console.error(
+        `[app-detail] Policy ${phase} failed for ${app.name}:`,
+        error
+      );
+      const msg =
+        error instanceof Error ? error.message : tPolicyRun("regen_failed");
+      setRegenError(msg);
+      handle.complete("error", msg);
     } finally {
       setRunningPhase("idle");
       // Every rescrape path — success, unusable source, or fetch error —
