@@ -83,3 +83,28 @@ test("typed but unadded names survive a reload", async ({ page }) => {
   await expect(page.getByTestId("onboard-app-names")).toHaveValue("Calendar");
   await expect(page.getByTestId("onboard-search")).toBeEnabled();
 });
+
+test("mobile Live Text help is a separate control from method selection", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/onboard");
+  const manual = page.getByTestId("onboard-method-manual");
+  const help = page.getByRole("button", {
+    name: /How to grab app names from a screenshot with Live Text/,
+  });
+  await expect(manual).toBeVisible();
+  await expect(help).toBeVisible();
+  expect(
+    await manual.evaluate((element) =>
+      element.contains(document.querySelector(".method-card-action button"))
+    )
+  ).toBe(false);
+  const selectedBefore = await manual.getAttribute("aria-checked");
+  await help.click();
+  await expect(page.locator(".live-text-modal")).toBeVisible();
+  await expect(manual).toHaveAttribute(
+    "aria-checked",
+    selectedBefore ?? "false"
+  );
+});

@@ -3902,14 +3902,20 @@ html[data-theme-override="high-contrast"] .nav {
   color: var(--text-3);
 }
 
-/* Inline action strip inside a method card — used for "How to use Live Text"
-   and the "How to export from Configurator" links. Sits below the hint with
-   its own top rule so it reads as a separate affordance, not body copy. */
+/* Keep method selection and its optional help action as separate buttons. */
+.method-card-choice {
+  display: flex;
+  flex-direction: column;
+}
+
+.method-card-choice > .method-card {
+  flex: 1;
+  width: 100%;
+}
+
 .method-card-action {
-  padding-top: 12px;
-  margin-top: 14px;
+  padding: 10px 4px 0;
   font-size: 13px;
-  border-top: 1px solid var(--border);
 }
 
 /* When there is only one card on the row (phone/tablet manual primary), let

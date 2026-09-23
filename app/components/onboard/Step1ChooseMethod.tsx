@@ -133,79 +133,69 @@ export default function Step1ChooseMethod({
                 ? primaryMethods
                 : advancedMethods;
               return (
-                <button
-                  aria-checked={selected}
-                  className={`method-card ${selected ? "active" : ""} ${extraClass}`.trim()}
-                  data-testid={`onboard-method-${value}`}
+                <div
+                  className={`method-card-choice ${extraClass}`.trim()}
                   key={value}
-                  onClick={(event) => {
-                    userSelectedMethodRef.current = true;
-                    if (selected) {
-                      return;
-                    }
-                    if (importedApps.length > 0 || pendingAppText.trim()) {
-                      requestedMethodButtonRef.current = event.currentTarget;
-                      setPendingMethod(value);
-                      return;
-                    }
-                    // Changing methods must drop source-specific developer and
-                    // bundle-ID hints, but only after the user can decide what
-                    // to do with the app names already entered.
-                    changeMethod(value);
-                  }}
-                  role="radio"
-                  tabIndex={rovingTabIndex(
-                    selected,
-                    grid.indexOf(value),
-                    grid.includes(method)
-                  )}
-                  type="button"
                 >
-                  <div className="method-card-top">
-                    <span className="method-card-badge">
-                      {methodMeta[value].eyebrow}
-                    </span>
-                    <span aria-hidden="true" className="method-card-radio">
-                      {selected ? "✓" : ""}
-                    </span>
-                  </div>
-                  <div className="method-card-title">
-                    {methodMeta[value].title}
-                  </div>
-                  <p className="method-card-copy">{methodMeta[value].blurb}</p>
-                  <div className="method-card-hint">
-                    {methodMeta[value].hint}
-                  </div>
-
-                  {/* Device-specific inline action rows. Rendered inside
-                        the card but outside the copy blocks so the CTA sits
-                        below the hint. Clicks bubble up to the card unless
-                        explicitly stopped. */}
+                  <button
+                    aria-checked={selected}
+                    className={`method-card ${selected ? "active" : ""}`}
+                    data-testid={`onboard-method-${value}`}
+                    onClick={(event) => {
+                      userSelectedMethodRef.current = true;
+                      if (selected) {
+                        return;
+                      }
+                      if (importedApps.length > 0 || pendingAppText.trim()) {
+                        requestedMethodButtonRef.current = event.currentTarget;
+                        setPendingMethod(value);
+                        return;
+                      }
+                      // Changing methods must drop source-specific developer and
+                      // bundle-ID hints, but only after the user can decide what
+                      // to do with the app names already entered.
+                      changeMethod(value);
+                    }}
+                    role="radio"
+                    tabIndex={rovingTabIndex(
+                      selected,
+                      grid.indexOf(value),
+                      grid.includes(method)
+                    )}
+                    type="button"
+                  >
+                    <div className="method-card-top">
+                      <span className="method-card-badge">
+                        {methodMeta[value].eyebrow}
+                      </span>
+                      <span aria-hidden="true" className="method-card-radio">
+                        {selected ? "✓" : ""}
+                      </span>
+                    </div>
+                    <div className="method-card-title">
+                      {methodMeta[value].title}
+                    </div>
+                    <p className="method-card-copy">
+                      {methodMeta[value].blurb}
+                    </p>
+                    <div className="method-card-hint">
+                      {methodMeta[value].hint}
+                    </div>
+                  </button>
                   {value === "manual" &&
                     onboardMethodLiveTextOn &&
                     (deviceClass === "phone" || deviceClass === "tablet") && (
                       <div className="method-card-action">
                         <button
                           className="link-button-inline"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setLiveTextModalOpen(true);
-                          }}
+                          onClick={() => setLiveTextModalOpen(true)}
                           type="button"
                         >
                           {tStep1("live_text_link")}
                         </button>
                       </div>
                     )}
-                  {/* The help link that used to live here pointed at
-                        /help/export-app-list, which is actually a guide for
-                        the Python backup helper — not Apple Configurator —
-                        so we've moved it to the "Upload a file" method
-                        (see the `method === 'file'` branch below), where
-                        it's contextually correct. The Configurator card
-                        now stays purely descriptive; its own step-2 UI
-                        carries any Configurator-specific guidance. */}
-                </button>
+                </div>
               );
             };
 
