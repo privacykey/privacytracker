@@ -487,6 +487,10 @@
         "title": "Help a friend",
         "body": "Looking through someone else's apps? We'll help you gather what you find so you can share it or talk it over."
       },
+      "guardian": {
+        "title": "Looking after a child",
+        "body": "Review apps for a child or dependant whose device you manage."
+      },
       "custom": {
         "title": "Custom setup",
         "body": "A mix that doesn't match a single tile — see your goals below."

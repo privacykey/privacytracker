@@ -168,7 +168,7 @@ settings editor is `FocusPurposeForm` (rendered via `WelcomeSplash` and
 
 The read-only `describePurpose` (`lib/onboarding-purpose.ts`) is the one-way
 bridge that collapses a stored focus back to a single tile label
-(`monitor` / `cleanup` / `help` / `custom`) for display surfaces
+(`monitor` / `cleanup` / `help` / `guardian` / `custom`) for display surfaces
 (`YourFocusCard`, the `HomeView` FocusStrip, `FocusPreviewBanner`).
 `resolvePurposeSelection` turns the form's multi-select state into the
 persisted focus + follow-up task opt-ins.

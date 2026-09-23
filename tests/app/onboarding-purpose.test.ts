@@ -210,7 +210,7 @@ test("describePurpose maps a stored focus back to its /welcome purpose", () => {
     { primary: "help", isCustom: false }
   );
 
-  // Help: a child (guardian audience).
+  // Guardian has its own label; the friend tile does not describe a child.
   assert.deepEqual(
     describePurpose({
       ...base,
@@ -218,7 +218,12 @@ test("describePurpose maps a stored focus back to its /welcome purpose", () => {
       monitor: true,
       cleanup: true,
     }),
-    { primary: "help", isCustom: false }
+    { primary: "guardian", isCustom: false }
+  );
+
+  assert.deepEqual(
+    describePurpose({ ...base, audience: "guardian", minimal: true }),
+    { primary: "guardian", isCustom: false }
   );
 
   // Custom: minimal has no single purpose tile.

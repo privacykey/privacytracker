@@ -150,10 +150,19 @@ browserFlow("persona: guardian for a child", async ({ page }) => {
 
   // "A child or dependant" is reachable only from the audience control
   // and is the only path that reveals the age-band picker.
-  await page
+  const guardian = page
     .locator('[role="radio"]')
-    .filter({ hasText: /child or dependant/i })
-    .click();
+    .filter({ hasText: /child or dependant/i });
+  const lovedOne = page
+    .locator('[role="radio"]')
+    .filter({ hasText: /someone i care about/i });
+  const help = goalTile(page, /help a friend/i);
+  await guardian.click();
+  await expect(help).toHaveAttribute("aria-pressed", "false");
+  await help.click();
+  await expect(lovedOne).toHaveAttribute("aria-checked", "true");
+  await guardian.click();
+  await expect(help).toHaveAttribute("aria-pressed", "false");
 
   const ageBands = page.locator('[role="radio"]').filter({ hasText: /\d/ });
   await expect(ageBands.first()).toBeVisible();
@@ -164,6 +173,18 @@ browserFlow("persona: guardian for a child", async ({ page }) => {
   const focus = await readFocus(page);
   expect(focus.audience).toBe("guardian");
   expect(focus.childAgeBand).toBeTruthy();
+
+  const seed = await page.request.post(
+    "/api/dev/seed-sample-data?source=canned",
+    {
+      headers: sameOriginHeaders,
+    }
+  );
+  await expect(seed).toBeOK();
+  await page.goto("/dashboard");
+  await expect(page.locator(".focus-strip-value")).toHaveText(
+    "Looking after a child"
+  );
 });
 
 // ---------------------------------------------------------------------------
