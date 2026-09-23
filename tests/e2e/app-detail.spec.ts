@@ -240,6 +240,30 @@ browserFlow(
       });
     }).toPass({ timeout: 10_000 });
 
+    // Keyboard navigation follows the visible tabs, wraps, and keeps
+    // selection in sync with focus.
+    const tablist = page.getByRole("tablist", { name: "App detail sections" });
+    const tabs = tablist.getByRole("tab");
+    await page.locator("#tab-changelog").focus();
+    await page.keyboard.press("Home");
+    await expect(page.locator("#tab-privacy")).toBeFocused();
+    await expect(page.locator("#tab-privacy")).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await page.keyboard.press("ArrowRight");
+    await expect(page.locator("#tab-accessibility")).toBeFocused();
+    await expect(page.locator("#tab-accessibility")).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await page.keyboard.press("End");
+    await expect(tabs.last()).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await expect(tabs.first()).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await expect(tabs.last()).toBeFocused();
+
     // ── Provenance footer ────────────────────────────────────────────
     // Renders on every detail page — without an import-history row it
     // degrades to the "imported on <firstSeen>" line with a link into
