@@ -85,6 +85,10 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Guardian focus now appears as "Looking after a child" in read-only focus
+  summaries. Selecting a child no longer marks the "Help a friend" tile as
+  selected, and choosing that tile explicitly switches to another adult.
+
 - Completing a dashboard bulk sync now re-reads triage, review counts, and
   related dashboard data so the page reflects the just-finished sync without
   requiring a manual reload.

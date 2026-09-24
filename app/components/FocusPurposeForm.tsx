@@ -126,7 +126,7 @@ export default function FocusPurposeForm({
     );
   }, []);
 
-  const isHelp = audience !== "self";
+  const isHelp = audience === "loved_one";
   const monitorChangeText = tAnimation("monitor.change", {
     app: monitorChange.appName,
     label: tAnimation(`labels.${monitorChange.labelKey}`),
@@ -155,7 +155,7 @@ export default function FocusPurposeForm({
   // axis. Toggling Help flips between self and loved_one; "A child"
   // (guardian) is reachable only through the audience control below.
   function toggleHelp() {
-    setAudience((prev) => (prev === "self" ? "loved_one" : "self"));
+    setAudience((prev) => (prev === "loved_one" ? "self" : "loved_one"));
   }
   // Turning "Keep it minimal" on clears the additive goal tiles.
   function toggleMinimal() {

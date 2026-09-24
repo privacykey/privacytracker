@@ -16,12 +16,18 @@ import type { UserTaskId } from "./tasks";
  * longer funnel through a single "primary purpose". `describePurpose` is the
  * one-way bridge back to this vocabulary for the read-only surfaces.
  */
-export type PrimaryPurpose = "monitor" | "cleanup" | "help" | "custom";
+export type PrimaryPurpose =
+  | "monitor"
+  | "cleanup"
+  | "help"
+  | "guardian"
+  | "custom";
 
 /**
  * The multi-select focus the /welcome + settings form collects directly.
  * Each goal tile maps to a boolean; the "Help a friend" tile is expressed
- * through `audience` (loved_one / guardian) rather than as its own goal.
+ * through `audience = loved_one` rather than as its own goal. Guardian is
+ * chosen through the audience control and has its own read-only label.
  * `minimal` ("Keep it minimal") is subtractive and mutually exclusive with
  * the additive goal tiles.
  */
@@ -117,7 +123,7 @@ export interface DescribedPurpose {
 
 /**
  * Map a stored focus to the primary "purpose" the /welcome form would lead
- * with for it (Monitor / Clean up / Help), so read-only display surfaces can
+ * with for it (Monitor / Clean up / Help / Guardian), so read-only display surfaces can
  * speak a single friendly label instead of the underlying goal booleans.
  *
  * The mapping is intentionally one-way and lossy — the editor is multi-select,
@@ -125,12 +131,16 @@ export interface DescribedPurpose {
  * goals, or an empty baseline) reports `isCustom`.
  */
 export function describePurpose(input: PurposeFocusInput): DescribedPurpose {
+  // Guardian is a distinct audience, including when its goals are minimal.
+  if (input.audience === "guardian") {
+    return { primary: "guardian", isCustom: false };
+  }
   // Minimal has no single tile — it's the subtractive switch.
   if (input.minimal) {
     return { primary: "custom", isCustom: true };
   }
-  // Any non-self audience is the "Help a friend" tile's territory.
-  if (input.audience !== "self") {
+  // Another adult is the "Help a friend" tile's territory.
+  if (input.audience === "loved_one") {
     return { primary: "help", isCustom: false };
   }
   if (input.monitor && !input.cleanup) {

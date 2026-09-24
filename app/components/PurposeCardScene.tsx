@@ -18,6 +18,7 @@ export const PURPOSE_ICONS: Record<PrimaryPurpose, string> = {
   monitor: "🔍",
   cleanup: "🧹",
   help: "🧭",
+  guardian: "👪",
   custom: "⚙️",
 };
 
