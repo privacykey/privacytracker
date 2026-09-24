@@ -278,8 +278,8 @@ export default function ActivityLogPanel({
                 className={
                   // Brief flash when a new row was just prepended — purely
                   // cosmetic, auto-cleared ~1.2s later by the flashing effect.
-                  `activity-log-live-toggle${livePaused ? "is-paused" : ""}${
-                    !livePaused && flashing ? "just-pulsed" : ""
+                  `activity-log-live-toggle${livePaused ? " is-paused" : ""}${
+                    !livePaused && flashing ? " just-pulsed" : ""
                   }`
                 }
                 onClick={() => setLivePaused((prev) => !prev)}

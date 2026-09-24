@@ -10,7 +10,6 @@
  * delete window pattern (`SOFT_DELETE_WINDOW_MS` = 30s in annotations).
  */
 
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useModalFocus } from "../../lib/use-modal-focus";
@@ -38,6 +37,13 @@ interface BulkSelectBarProps {
   onUndoRequest?: (
     previous: Array<{ appId: string; verdict: VerdictValue | null }>
   ) => Promise<void> | void;
+  /**
+   * Each app's verdict after a bulk apply or an Undo (null: none), so the
+   * grid can show it. The grid reads verdicts through its client loader,
+   * which a router refresh does not re-run: the cards kept their old marks
+   * until a reload.
+   */
+  onVerdictsChanged: (changes: Record<string, VerdictValue | null>) => void;
   selectedIds: string[];
   visibleIds: string[];
 }
@@ -51,11 +57,11 @@ export default function BulkSelectBar({
   onSelectAll,
   onClear,
   onExit,
+  onVerdictsChanged,
   currentVerdicts,
 }: BulkSelectBarProps) {
   const t = useTranslations("review_queue.select_mode");
   const tVerdict = useTranslations("verdict");
-  const router = useRouter();
   const [pendingConfirm, setPendingConfirm] = useState<VerdictValue | null>(
     null
   );
@@ -111,7 +117,9 @@ export default function BulkSelectBar({
           () => setUndo(null),
           UNDO_WINDOW_MS
         );
-        router.refresh();
+        onVerdictsChanged(
+          Object.fromEntries(selectedIds.map((id) => [id, verdict]))
+        );
         // Selection is preserved so the user can re-apply a different
         // verdict (or use Undo) without re-picking. Parent can call
         // `onClear()` to reset if desired.
@@ -124,7 +132,7 @@ export default function BulkSelectBar({
         setPendingConfirm(null);
       }
     },
-    [currentVerdicts, router, selectedIds, t]
+    [currentVerdicts, onVerdictsChanged, selectedIds, t]
   );
 
   const handleMark = useCallback(
@@ -147,21 +155,28 @@ export default function BulkSelectBar({
     }
     const { previous } = undo;
     try {
-      // Walk the previous list — per-app POST or DELETE to restore.
-      await Promise.all(
-        previous.map((p) =>
-          p.verdict
-            ? fetch("/api/verdicts", {
+      // Walk the previous list — per-app POST or DELETE to restore. Only
+      // a restore the server took is reported back to the grid.
+      const restored = await Promise.all(
+        previous.map(async (p) => {
+          const res = p.verdict
+            ? await fetch("/api/verdicts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ appId: p.appId, verdict: p.verdict }),
               })
-            : fetch(`/api/verdicts?appId=${encodeURIComponent(p.appId)}`, {
-                method: "DELETE",
-              })
+            : await fetch(
+                `/api/verdicts?appId=${encodeURIComponent(p.appId)}`,
+                { method: "DELETE" }
+              );
+          return res.ok ? p : null;
+        })
+      );
+      onVerdictsChanged(
+        Object.fromEntries(
+          restored.flatMap((p) => (p ? [[p.appId, p.verdict]] : []))
         )
       );
-      router.refresh();
     } catch (e) {
       console.warn("[BulkSelectBar] undo failed", e);
     } finally {
@@ -171,7 +186,7 @@ export default function BulkSelectBar({
         undoTimerRef.current = null;
       }
     }
-  }, [router, undo]);
+  }, [onVerdictsChanged, undo]);
 
   const hasSelection = selectedIds.length > 0;
 

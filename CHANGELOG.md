@@ -97,6 +97,22 @@ Going forward, changes are recorded here as they land.
   related dashboard data so the page reflects the just-finished sync without
   requiring a manual reload.
 
+- Marking several apps at once from the apps grid now shows the marks on
+  their cards straight away. The bulk bar saved the verdicts, but the cards
+  kept their old state until the page was reloaded, and Undo left the
+  undone marks in place; both now update the grid as they happen.
+
+- Seventeen conditional styles never applied, because the class was glued
+  onto the one before it (`btn-secondaryis-disabled`). They now do: the
+  import history's status filters show which one is active, the activity
+  log's Live toggle greys out when paused and pulses when a row arrives,
+  the settings auto-save toast fades out instead of vanishing, the
+  dashboard layout editor highlights the active preset, the accessibility
+  key shows a full match on app detail and in Compare, the restore button
+  dims while a restore or a sync is running, and the focus matrix marks
+  drifted and authored cells, as do three developer-menu controls. A test
+  now fails on any className template that repeats the mistake.
+
 - Dashboard layout editing now waits for the saved layout to load. If the
   layout read fails, both the simple editor and edit-in-place dashboard show
   a retry state instead of letting a change overwrite the saved layout with

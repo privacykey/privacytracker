@@ -160,7 +160,7 @@ export default function SettingsAutoSaveToast({
     <div
       aria-live="polite"
       className={`settings-autosave-toast settings-autosave-toast--${detail.kind}${
-        fading ? "is-fading" : ""
+        fading ? " is-fading" : ""
       }`}
       key={id}
       // Whole-pill click dismisses; the × button is the keyboard path.

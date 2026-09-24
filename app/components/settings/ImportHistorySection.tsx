@@ -602,7 +602,7 @@ export default function ImportHistorySection({
                           {hasQueued && (
                             <button
                               aria-pressed={itemStatusFilter === "queued"}
-                              className={`import-history-stat import-history-stat-warn${itemStatusFilter === "queued" ? "is-active" : ""}`}
+                              className={`import-history-stat import-history-stat-warn${itemStatusFilter === "queued" ? " is-active" : ""}`}
                               onClick={() => handleBadgeClick("queued")}
                               title={tImpHistory("stat_queued_title")}
                               type="button"
@@ -615,7 +615,7 @@ export default function ImportHistorySection({
                           {hasUnmatched && (
                             <button
                               aria-pressed={itemStatusFilter === "unmatched"}
-                              className={`import-history-stat import-history-stat-warn${itemStatusFilter === "unmatched" ? "is-active" : ""}`}
+                              className={`import-history-stat import-history-stat-warn${itemStatusFilter === "unmatched" ? " is-active" : ""}`}
                               onClick={() => handleBadgeClick("unmatched")}
                               title={tImpHistory("stat_unmatched_title")}
                               type="button"
@@ -628,7 +628,7 @@ export default function ImportHistorySection({
                           {hasErrored && (
                             <button
                               aria-pressed={itemStatusFilter === "error"}
-                              className={`import-history-stat import-history-stat-bad${itemStatusFilter === "error" ? "is-active" : ""}`}
+                              className={`import-history-stat import-history-stat-bad${itemStatusFilter === "error" ? " is-active" : ""}`}
                               onClick={() => handleBadgeClick("error")}
                               title={tImpHistory("stat_error_title")}
                               type="button"
@@ -641,7 +641,7 @@ export default function ImportHistorySection({
                           {hasRemoved && (
                             <button
                               aria-pressed={itemStatusFilter === "removed"}
-                              className={`import-history-stat import-history-stat-mute${itemStatusFilter === "removed" ? "is-active" : ""}`}
+                              className={`import-history-stat import-history-stat-mute${itemStatusFilter === "removed" ? " is-active" : ""}`}
                               onClick={() => handleBadgeClick("removed")}
                               title={tImpHistory("stat_removed_title")}
                               type="button"

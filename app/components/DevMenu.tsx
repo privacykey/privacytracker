@@ -1531,7 +1531,7 @@ export default function DevMenu() {
                     </span>
                     <span
                       className={`dev-menu-config-value${
-                        profiles.privacyEnabled ? "is-on" : ""
+                        profiles.privacyEnabled ? " is-on" : ""
                       }`}
                     >
                       {profiles.privacyEnabled === null
@@ -1579,7 +1579,7 @@ export default function DevMenu() {
                     </span>
                     <span
                       className={`dev-menu-config-value${
-                        profiles.accessibilityEnabled ? "is-on" : ""
+                        profiles.accessibilityEnabled ? " is-on" : ""
                       }`}
                     >
                       {profiles.accessibilityEnabled === null
@@ -1885,7 +1885,7 @@ function ConfirmButton({
   return (
     <button
       className={`dev-menu-action-btn dev-menu-action-btn-danger${
-        confirming ? "is-confirming" : ""
+        confirming ? " is-confirming" : ""
       }`}
       disabled={busy}
       onClick={confirming ? onConfirm : onArm}
