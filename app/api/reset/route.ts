@@ -28,12 +28,14 @@ export async function POST(request: Request) {
   // trivially looped" (a runaway loop trips it instantly regardless of
   // the threshold) — not "approximate a human's reset cadence". The
   // primary guardrails are same-origin + the optional admin token; the
-  // rate limit is defence-in-depth. 30/10min leaves headroom for the
-  // E2E suite (5+ specs reset between runs) without weakening either
-  // primary guardrail.
+  // rate limit is defence-in-depth. The limit is sized for the E2E
+  // suite, one server resetting before most specs: 30/10min was outgrown
+  // once the suite reached about 33 resets a run, so 60 leaves room for
+  // it to grow without weakening either primary guardrail. Keep
+  // core/src/server/writes.rs in step.
   const rate = checkRateLimit({
     key: rateLimitKeyForRequest(request, "reset"),
-    limit: 30,
+    limit: 60,
     windowMs: 10 * 60_000,
   });
   if (!rate.allowed) {

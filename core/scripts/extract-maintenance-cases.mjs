@@ -1321,7 +1321,8 @@ try {
       route,
       method,
       setup: [setting("sync_running", "true")],
-      repeat: 31,
+      // One past the route's limit (60 in ten minutes).
+      repeat: 61,
     });
   }
 
