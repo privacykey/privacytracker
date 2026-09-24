@@ -425,9 +425,9 @@ fn device_routes() -> Vec<RouteSpec> {
 
 /// Phase 4, batch 5d — see `seed_writes.rs`. No body is read. The guard is
 /// the strict one: an admin token has to be CONFIGURED for this route to
-/// run at all, loopback or not, because it rewrites the library. Thirty
-/// in ten minutes, not six: the e2e suite calls it from several specs a
-/// run, and same-origin plus the audit log are the real guardrails.
+/// run at all, loopback or not, because it rewrites the library. Sixty
+/// in ten minutes gives the full e2e suite headroom; keep this in sync
+/// with the Node route. Same-origin and the audit log remain guardrails.
 fn seed_routes() -> Vec<RouteSpec> {
     vec![RouteSpec {
         path: "/api/dev/seed-sample-data",
@@ -436,7 +436,7 @@ fn seed_routes() -> Vec<RouteSpec> {
         guard: Guard::Mutation(GuardOptions {
             action: "dev.seed_sample_data",
             key_prefix: "dev.seed_sample_data",
-            limit: 30,
+            limit: 60,
             window_ms: 10 * 60_000,
             message: Some("Rate limit exceeded for dev sample seeding. Try again later."),
             admin: AdminRule::Configured,

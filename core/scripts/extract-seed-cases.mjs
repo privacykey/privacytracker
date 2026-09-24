@@ -539,10 +539,10 @@ try {
     search: "?source=canned",
     presented: "not-the-token",
   });
-  await run("the thirty-first seed in ten minutes is refused", {
+  await run("the sixty-first seed in ten minutes is refused", {
     search: "?source=canned",
     setup: CANNED_IDS.map((id) => app(id)),
-    repeat: 31,
+    repeat: 61,
   });
 
   // ── the live walk: the chart request ─────────────────────────────

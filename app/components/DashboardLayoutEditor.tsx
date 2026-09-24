@@ -35,7 +35,6 @@ import {
   DASHBOARD_PRESET_META,
   type DashboardCardId,
   type DashboardLayout,
-  DEFAULT_LAYOUT,
 } from "../../lib/dashboard-layout";
 import { useDashboardLayoutSaver } from "../../lib/use-dashboard-layout-saver";
 import {
@@ -48,45 +47,67 @@ interface Props {
   /**
    * Seed layout. The page passes none — Rust-core Phase 0 made it a
    * shell — so it loads from `GET /api/dashboard/layout`, which already
-   * served `readDashboardLayoutWithMatch()`. DEFAULT_LAYOUT stands in
-   * until it lands (and if it fails), matching the server page's
-   * try/catch fallback.
+   * served `readDashboardLayoutWithMatch()`. Keep editing unavailable
+   * until this read succeeds so a failed read cannot overwrite a saved layout.
    */
   initialLayout?: DashboardLayout;
 }
 
 export default function DashboardLayoutEditor({ initialLayout }: Props) {
+  const t = useTranslations("dashboard.layout_editor");
   const [loaded, setLoaded] = useState<DashboardLayout | null>(
     initialLayout ?? null
   );
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     if (initialLayout) {
       return;
     }
     let live = true;
+    setLoadFailed(false);
     fetch("/api/dashboard/layout")
       .then((res) =>
         res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
       )
       .then((json: { layout?: DashboardLayout }) => {
-        if (live && json.layout) {
+        if (!json.layout) {
+          throw new Error("Missing saved layout");
+        }
+        if (live) {
           setLoaded(json.layout);
         }
       })
       .catch((error) => {
         console.warn("[layout-editor] load failed:", error);
         if (live) {
-          setLoaded(DEFAULT_LAYOUT);
+          setLoadFailed(true);
         }
       });
     return () => {
       live = false;
     };
-  }, [initialLayout]);
+  }, [initialLayout, retry]);
 
   if (!loaded) {
-    return null;
+    return (
+      <div
+        className="layout-editor-load-state"
+        role={loadFailed ? "alert" : "status"}
+      >
+        <p>{t(loadFailed ? "load_failed" : "loading_layout")}</p>
+        {loadFailed && (
+          <button
+            className="btn btn-secondary"
+            onClick={() => setRetry((value) => value + 1)}
+            type="button"
+          >
+            {t("load_retry")}
+          </button>
+        )}
+      </div>
+    );
   }
   return <DashboardLayoutEditorInner initialLayout={loaded} />;
 }

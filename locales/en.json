@@ -3035,6 +3035,9 @@
     "layout_editor": {
       "page_title": "Customise dashboard",
       "page_subtitle": "Pick a preset or drag rows to reorder. Hide first-class cards you don't need — auto-managed callouts stay rule-driven and only paint when relevant.",
+      "loading_layout": "Loading your saved layout…",
+      "load_failed": "Couldn't load your saved layout. Try again before making changes.",
+      "load_retry": "Retry loading layout",
       "back_to_dashboard": "← Back to dashboard",
       "preset_section_label": "Start from a preset",
       "preset_section_hint": "Pick a baseline, then fine-tune any row below.",
