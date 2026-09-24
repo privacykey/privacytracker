@@ -20,6 +20,7 @@ use super::{
     activity_log::record_activity,
     flags::{context_from_db, resolve_flag},
     guard::{record_audit, Actor},
+    live_runs::{self, Job},
     policy_store::{sync_policy_analysis_streamed, FollowUps, Phase, PolicyRequest, SyncOptions},
     stats::truthy,
     sync_runner::Clock,
@@ -321,6 +322,9 @@ pub(crate) async fn run_bulk_policy_sync(
     clock: &dyn Clock,
     options: RunOptions,
 ) -> Ran {
+    // Live on this server until the run ends, however it ends, so the boot
+    // check never mistakes it for a run a previous process left behind.
+    let _live = db.with(|w| live_runs::enter(w.conn, Job::Policy));
     let mut follow_ups = vec![];
     let mut state: Value = match options.resume_state.clone() {
         Some(mut state) => {
@@ -827,6 +831,9 @@ pub(crate) async fn resume_policy_sync(
 ) -> Vec<FollowUps> {
     let now = clock.now();
     let decided = db.with(|w| -> Result<Resume, String> {
+        if live_runs::is_live(w.conn, Job::Policy) {
+            return Ok(Resume::Nothing);
+        }
         let cx = &mut Cx { w, ids, now };
         let state = read_state(cx);
         let held = mutex_held(cx);

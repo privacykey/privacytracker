@@ -18,6 +18,7 @@
 import crypto from "node:crypto";
 import { recordActivity } from "./activity";
 import db from "./db";
+import { withLiveBulkRun } from "./live-bulk-runs";
 import {
   acquirePolicyBulkMutex,
   clearPolicyBulkState,
@@ -207,8 +208,17 @@ function bulkSummaryLine(
  *
  * Callers are responsible for HTTP concerns (rate limits, body parsing).
  * This function only talks to the DB + activity log.
+ *
+ * Live in this process until it settles, so the boot-time resume check
+ * never mistakes it for a run a previous process left behind.
  */
-export async function runBulkPolicySync(
+export function runBulkPolicySync(
+  options: RunPolicyBulkOptions
+): Promise<RunPolicyBulkResult> {
+  return withLiveBulkRun("policy", () => runBulkPolicySyncLoop(options));
+}
+
+async function runBulkPolicySyncLoop(
   options: RunPolicyBulkOptions
 ): Promise<RunPolicyBulkResult> {
   const writer: PolicyStreamWriter = options.streamWriter ?? (() => {});

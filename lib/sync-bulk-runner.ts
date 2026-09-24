@@ -29,6 +29,7 @@
 import crypto from "node:crypto";
 import { recordActivity } from "./activity";
 import db from "./db";
+import { withLiveBulkRun } from "./live-bulk-runs";
 import { schedulePostAppUpdatePolicyFetch } from "./post-app-update-policy-fetch";
 import {
   acquireSyncBulkMutex,
@@ -155,8 +156,17 @@ function activityTypeFor(
  *   - If `resumeState` is present, callers should have already acquired
  *     the mutex (or the runner will do so defensively).
  *   - If absent, the runner creates a fresh state blob.
+ *
+ * Live in this process until it settles, so the boot-time resume check
+ * never mistakes it for a run a previous process left behind.
  */
-export async function runBulkSync(
+export function runBulkSync(
+  options: RunSyncBulkOptions
+): Promise<RunSyncBulkResult> {
+  return withLiveBulkRun("sync", () => runBulkSyncLoop(options));
+}
+
+async function runBulkSyncLoop(
   options: RunSyncBulkOptions
 ): Promise<RunSyncBulkResult> {
   let state: SyncBulkState;

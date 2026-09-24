@@ -21,6 +21,7 @@ use super::{
     flags::{context_from_db, resolve_flag},
     guard::{record_audit, Actor},
     imports_writes::summary_line,
+    live_runs::{self, Job},
     sync_runner::Clock,
     writes::Cx,
 };
@@ -417,6 +418,9 @@ pub(crate) async fn run_bulk_wayback_import(
     clock: &dyn Clock,
     options: RunOptions,
 ) -> Result<RunResult, String> {
+    // Live on this server until the run ends, however it ends, so the boot
+    // check never mistakes it for a run a previous process left behind.
+    let _live = db.with(|w| live_runs::enter(w.conn, Job::Wayback));
     let writer = options.writer.clone();
     let token = CancellationToken::new();
     let tag = NEXT_TAG.fetch_add(1, Ordering::SeqCst);
@@ -1160,6 +1164,9 @@ pub(crate) async fn resume_wayback_import(
 ) -> Result<(), String> {
     let now = clock.now();
     let resume = db.with(|w| -> Result<Option<Value>, String> {
+        if live_runs::is_live(w.conn, Job::Wayback) {
+            return Ok(None);
+        }
         let cx = &mut Cx { w, ids, now };
         let state = read_bulk_state(cx);
         let held = mutex_held(cx);

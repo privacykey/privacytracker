@@ -85,6 +85,19 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- A bulk sync started in the first seconds after the server starts is no
+  longer "resumed" by that same server. Each start, the server looks for an
+  App Store sync, policy sync or Wayback import that a previous run left
+  unfinished and picks it up. A run started in that window looked the same,
+  whether from Settings' "Sync now" or from the policy refresh that syncing
+  a single app schedules, so it was picked up too: a second pass worked
+  through the same apps, every app still waiting was fetched twice, the
+  History tab showed each policy check twice, and the bell said the sync
+  had "resumed after server restart" when nothing had restarted. A run the
+  server started itself is now left to finish on its own, and a run left
+  behind by a crash is still resumed as before. Both the Node and the Rust
+  server had this.
+
 - The stale-apps section now offers one action to sync every stale app in
   the selected device scope. It reads the full paginated app list, so the
   action is not limited to the six apps previewed on the dashboard.

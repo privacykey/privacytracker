@@ -65,6 +65,9 @@ mod leftovers_tests;
 mod library_tests;
 mod library_writes;
 pub(crate) mod lifecycle;
+mod live_runs;
+#[cfg(test)]
+mod live_runs_tests;
 #[cfg(test)]
 mod maintenance_tests;
 mod maintenance_writes;
