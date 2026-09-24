@@ -255,8 +255,9 @@ async function runBulkPolicySyncLoop(
     };
   }
 
-  // Defensive mutex acquire — POST handler takes it already, resume path
-  // doesn't. A redundant set to 'true' is harmless.
+  // Take the mutex. The sync-all route only checks that it is free, so
+  // every run, fresh or resumed, acquires it here. A resumed run finds it
+  // still set by the process that died, and setting it again is harmless.
   acquirePolicyBulkMutex();
   writePolicyBulkState(state);
 

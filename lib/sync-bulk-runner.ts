@@ -198,8 +198,10 @@ async function runBulkSyncLoop(
     };
   }
 
-  // Defensive mutex acquire — the policy/wayback routes already hold it
-  // by this point, resume path doesn't. A redundant set is harmless.
+  // Take the mutex. Nothing takes it before the runner: the trigger route
+  // and the scheduler only check that it is free, so every run, fresh or
+  // resumed, acquires it here. A resumed run finds it still set by the
+  // process that died, and setting it again is harmless.
   acquireSyncBulkMutex();
   writeSyncBulkState(state);
 
