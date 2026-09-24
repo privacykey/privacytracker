@@ -102,6 +102,15 @@ Going forward, changes are recorded here as they land.
   a retry state instead of letting a change overwrite the saved layout with
   the default preset.
 
+- Saving onboarding's unmatched names as manual apps now says what it did.
+  The button counted rows set to Skip ("Save 2 as manual apps" saved one),
+  saving every row made its confirmation vanish, and the saved rows then
+  showed under Skipped as if nothing had been done with them. The button
+  now counts what it saves, the section stays to confirm it, and saved
+  rows leave the list; the Safari web-apps panel keeps its confirmation
+  the same way. In the developer preview, whose banner promises nothing
+  gets saved, neither button writes manual apps any more.
+
 - The Notifications type switches now filter what their labels say. The
   bell mapped each change to one of the four `flag.notifications.types.*`
   switches, and got two of them backwards from the first commit onward. A

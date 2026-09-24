@@ -742,6 +742,12 @@ export function useOnboardWizard({
   >("idle");
   const [unmatchedSavedCount, setUnmatchedSavedCount] = useState(0);
   const [unmatchedSaveError, setUnmatchedSaveError] = useState("");
+  // Unmatched rows saved as manual apps. They leave the import like a
+  // skipped row does, but they were handled, not skipped: the match step
+  // keeps them out of its Skipped section and its skipped count.
+  const [savedManualQueries, setSavedManualQueries] = useState<Set<string>>(
+    new Set()
+  );
   const [manuallyChosenQueries, setManuallyChosenQueries] = useState<
     Set<string>
   >(new Set());
@@ -5173,6 +5179,8 @@ export function useOnboardWizard({
     unmatchedSavedCount,
     setUnmatchedSavedCount,
     unmatchedSaveError,
+    savedManualQueries,
+    setSavedManualQueries,
     setUnmatchedSaveError,
     manuallyChosenQueries,
     setManuallyChosenQueries,
