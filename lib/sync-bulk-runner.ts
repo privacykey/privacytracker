@@ -168,10 +168,13 @@ export async function runBulkSync(
     // that kept 'manual' or 'scheduled' was never labelled as one.
     state.initiator = options.initiator;
     // Flip any `in_progress` entries back to `pending` — those were the
-    // app(s) mid-flight when the previous process died. We'll redo them.
+    // app(s) mid-flight when the previous process died. We'll redo them,
+    // and un-count the attempt the dead process counted: redoing one
+    // counts it again, and a 20-app run used to finish "20/21 synced".
     for (const entry of state.queue) {
       if (entry.status === "in_progress") {
         entry.status = "pending";
+        state.totals.attempted = Math.max(0, state.totals.attempted - 1);
       }
     }
   } else {

@@ -229,6 +229,20 @@ fn bump(obj: &mut Value, key: &str) {
     set(obj, key, next);
 }
 
+/// `obj.key = Math.max(0, obj.key - 1)`: a number goes down by one and
+/// never below zero; anything else is NaN, which the blob serialises as
+/// null, as in `bump`.
+fn unbump(obj: &mut Value, key: &str) {
+    let n = number(obj, key);
+    // `Math.max(0, NaN)` is NaN, where `f64::max` would drop the NaN.
+    let next = if n.is_nan() {
+        f64::NAN
+    } else {
+        (n - 1.0).max(0.0)
+    };
+    set(obj, key, crate::jsnum::js_number(next));
+}
+
 /// A numeric field as JavaScript reads it in a template or comparison.
 fn number(obj: &Value, key: &str) -> f64 {
     get(obj, key).and_then(Value::as_f64).unwrap_or(f64::NAN)
@@ -327,12 +341,19 @@ pub(crate) async fn run_bulk_policy_sync(
             // The blob still names whoever started the run; record who runs
             // it now, before the first write, so a resume reads as one.
             set(&mut state, "initiator", json!(options.initiator));
+            // An app in flight when the process died is redone, and its
+            // attempt, counted then, is counted again: un-count the first.
+            let mut redone = 0;
             if let Some(queue) = state["queue"].as_array_mut() {
                 for entry in queue {
                     if get(entry, "status") == Some(&json!("in_progress")) {
                         set(entry, "status", json!("pending"));
+                        redone += 1;
                     }
                 }
+            }
+            for _ in 0..redone {
+                unbump(&mut state["totals"], "attempted");
             }
             state
         }

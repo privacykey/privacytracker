@@ -89,6 +89,13 @@ Going forward, changes are recorded here as they land.
   the selected device scope. It reads the full paginated app list, so the
   action is not limited to the six apps previewed on the dashboard.
 
+- A bulk sync that resumes after a crash or a forced quit no longer counts
+  the app it was working on at the time twice. On a 20-app library the
+  Activity row read "20/21 synced", the Wayback import's summary said
+  "across 21 apps", and the privacy-policy sync kept the same extra attempt
+  in its totals. Each app is now counted once. Both the Node and the Rust
+  server had this.
+
 - Guardian focus now appears as "Looking after a child" in read-only focus
   summaries. Selecting a child no longer marks the "Help a friend" tile as
   selected, and choosing that tile explicitly switches to another adult.

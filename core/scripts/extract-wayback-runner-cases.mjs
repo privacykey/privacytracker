@@ -951,6 +951,31 @@ try {
     replies: emptyRun(F2),
     awaitRun: true,
   });
+  // The crashed-run case above starts from zero totals, so it cannot show
+  // this: the app in flight at the crash was counted as attempted then and
+  // is counted again when the resumed run redoes it, and the resume takes
+  // the first count back. Three apps, three attempts, not four.
+  await run("wayback resume un-counts the app in flight", {
+    kind: "callback",
+    delay: 8000,
+    setup: [
+      ...fleet,
+      app(F3, "Fixture Three"),
+      setting("wayback_import_running", "true"),
+      bulkState(
+        [
+          entry(F1, "Fixture One", "done", {
+            startedAt: now - 5000,
+            finishedAt: now - 4000,
+          }),
+          entry(F2, "Fixture Two", "in_progress", { startedAt: now - 1000 }),
+          entry(F3, "Fixture Three", "pending"),
+        ],
+        { currentAppId: F2, totals: { ...zero(), appsAttempted: 2 } }
+      ),
+    ],
+    replies: [...emptyRun(F2), ...archiveRun(F3, [LINKED])],
+  });
 } finally {
   db.close();
   rmSync(dir, { recursive: true, force: true });

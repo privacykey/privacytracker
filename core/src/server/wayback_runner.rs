@@ -429,12 +429,25 @@ pub(crate) async fn run_bulk_wayback_import(
             // it now ("resume" from the boot check, "manual" from Resume
             // queue), before the first write, so a resume reads as one.
             set(&mut state, "initiator", json!(options.initiator));
+            // An app in flight when the process died is redone, and its
+            // attempt, counted then, is counted again: un-count the first,
+            // as the throttled-retry path does.
+            let mut redone = 0;
             if let Some(queue) = state["queue"].as_array_mut() {
                 for entry in queue {
                     if str_of(entry, "status") == "in_progress" {
                         set(entry, "status", json!("pending"));
+                        redone += 1;
                     }
                 }
+            }
+            for _ in 0..redone {
+                let attempted = int_of(&state["totals"], "appsAttempted");
+                set(
+                    &mut state["totals"],
+                    "appsAttempted",
+                    json!((attempted - 1).max(0)),
+                );
             }
             state
         }

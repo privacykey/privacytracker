@@ -11681,14 +11681,14 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "sync_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"pending\",\"startedAt\":1789473599000},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":1,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"pending\",\"startedAt\":1789473599000},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"pending\"}],\"totals\":{\"attempted\":1,\"succeeded\":1,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "sync_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":1,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":1,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
           ]
         },
         {
@@ -11790,14 +11790,14 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "sync_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"pending\"}],\"totals\":{\"attempted\":3,\"succeeded\":2,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"pending\"}],\"totals\":{\"attempted\":2,\"succeeded\":2,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
           ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "sync_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000333\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"attempted\":4,\"succeeded\":2,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000333\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"attempted\":3,\"succeeded\":2,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
           ]
         },
         {
@@ -11916,7 +11916,7 @@
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "sync_bulk_state",
-            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"changed\",\"changesDetected\":true}],\"totals\":{\"attempted\":4,\"succeeded\":3,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+            "{\"version\":1,\"runId\":\"run-fixture-1\",\"startedAt\":1789470000000,\"initiator\":\"resume\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473597000,\"finishedAt\":1789473598000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"succeeded\",\"changesDetected\":false},{\"appId\":\"555000333\",\"appName\":\"Fixture Three\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000333\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"changed\",\"changesDetected\":true}],\"totals\":{\"attempted\":3,\"succeeded\":3,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
           ]
         },
         {
@@ -11934,8 +11934,8 @@
             "ok",
             null,
             null,
-            "3/4 synced, 1 change (resumed after restart)",
-            "{\"mode\":\"bulk-resumed\",\"totals\":{\"attempted\":4,\"succeeded\":3,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0},\"runId\":\"run-fixture-1\",\"rateLimited\":false}",
+            "3/3 synced, 1 change (resumed after restart)",
+            "{\"mode\":\"bulk-resumed\",\"totals\":{\"attempted\":3,\"succeeded\":3,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0},\"runId\":\"run-fixture-1\",\"rateLimited\":false}",
             1789470000000,
             1789473600000,
             3600000
@@ -12178,8 +12178,8 @@
             "status": "ok",
             "app_id": null,
             "app_name": null,
-            "summary": "3/4 synced, 1 change (resumed after restart)",
-            "detail": "{\"mode\":\"bulk-resumed\",\"totals\":{\"attempted\":4,\"succeeded\":3,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0},\"runId\":\"run-fixture-1\",\"rateLimited\":false}",
+            "summary": "3/3 synced, 1 change (resumed after restart)",
+            "detail": "{\"mode\":\"bulk-resumed\",\"totals\":{\"attempted\":3,\"succeeded\":3,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0},\"runId\":\"run-fixture-1\",\"rateLimited\":false}",
             "started_at": 1789470000000,
             "ended_at": 1789473600000,
             "duration_ms": 3600000
