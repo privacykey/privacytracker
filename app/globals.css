@@ -13518,6 +13518,12 @@ body.review-rec-print-active .review-rec-print a {
   color: var(--text-3);
 }
 
+.home-section-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .home-section-footer {
   margin-top: 4px;
 }

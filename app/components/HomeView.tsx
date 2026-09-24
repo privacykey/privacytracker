@@ -71,6 +71,7 @@ import {
   useRovingRadioGroup,
 } from "../../lib/use-roving-radiogroup";
 import BackgroundModeCallout from "./BackgroundModeCallout";
+import { withScopeParam } from "./DeviceScopeProvider";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { useTaskCenter } from "./TaskCenter";
 import Toast from "./Toast";
@@ -123,6 +124,53 @@ const RISK_CLS: Record<TriageApp["riskLevel"], string> = {
   low: "risk-pill-low",
   minimal: "risk-pill-minimal",
 };
+
+const SYNC_PAGE_SIZE = 500;
+const STALE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+
+interface SyncApp {
+  id: string;
+  lastSynced: number;
+  url: string;
+}
+
+/** Read the selected scope, not just the six rows previewed on the dashboard. */
+async function loadAppsForSync(scopeParam: string | null): Promise<SyncApp[]> {
+  const apps: SyncApp[] = [];
+  let offset = 0;
+  let total = Number.POSITIVE_INFINITY;
+  while (offset < total) {
+    const url = withScopeParam(
+      `/api/apps?limit=${SYNC_PAGE_SIZE}&offset=${offset}`,
+      scopeParam
+    );
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Could not load apps (${res.status})`);
+    }
+    const page = (await res.json()) as { apps?: SyncApp[]; total?: number };
+    if (
+      !Array.isArray(page.apps) ||
+      typeof page.total !== "number" ||
+      !Number.isInteger(page.total) ||
+      page.total < 0 ||
+      page.apps.some(
+        (app) =>
+          !app ||
+          typeof app.id !== "string" ||
+          typeof app.url !== "string" ||
+          typeof app.lastSynced !== "number"
+      ) ||
+      (page.apps.length === 0 && offset < page.total)
+    ) {
+      throw new Error("Could not load apps");
+    }
+    apps.push(...page.apps);
+    offset += page.apps.length;
+    total = page.total;
+  }
+  return apps;
+}
 
 // ─────────────────────────────────────────────
 // Main view
@@ -205,6 +253,7 @@ export default function HomeView({
   editMode = false,
   ageRatingFlagged = null,
   onSyncComplete,
+  scopeParam = null,
 }: {
   triage: TriageData;
   /**
@@ -282,6 +331,8 @@ export default function HomeView({
   ageRatingFlagged?: { band: AgeBandKey; count: number } | null;
   /** Re-read the client-owned dashboard data after a bulk sync finishes. */
   onSyncComplete: () => void;
+  /** The scope that produced `triage`, even during a device-picker transition. */
+  scopeParam?: string | null;
 }) {
   const taskCenter = useTaskCenter();
   const [syncingAll, setSyncingAll] = useState(false);
@@ -364,32 +415,20 @@ export default function HomeView({
       return;
     }
     setSyncingAll(true);
-    const total = triage.stale.length || triage.totalApps;
+    const staleOnly = triage.staleCount > 0;
+    const total = staleOnly ? triage.staleCount : triage.totalApps;
     const handle = taskCenter.startTask({
-      title:
-        total === triage.totalApps
-          ? tSyncAll("title_all_apps")
-          : tSyncAll("title_stale_apps"),
+      title: tSyncAll(staleOnly ? "title_stale_apps" : "title_all_apps"),
       subtitle: tSyncAll("subtitle_count", { count: total }),
       kind: "sync",
       href: "/dashboard",
     });
     try {
-      const res = await fetch("/api/apps");
-      if (!res.ok) {
-        throw new Error(`Could not load apps (${res.status})`);
-      }
-      const all = (await res.json()) as Array<{
-        id: string;
-        url: string;
-        lastSynced: number;
-      }>;
-      if (!Array.isArray(all)) {
-        throw new Error("Could not load apps");
-      }
-      const staleIds = new Set(triage.stale.map((app) => app.id));
-      const pool =
-        staleIds.size > 0 ? all.filter((app) => staleIds.has(app.id)) : all;
+      const all = await loadAppsForSync(scopeParam);
+      const now = Date.now();
+      const pool = staleOnly
+        ? all.filter((app) => now - app.lastSynced > STALE_AFTER_MS)
+        : all;
       const summary = await requestBulkScrape(
         pool.map((app) => app.url),
         undefined,
@@ -574,6 +613,9 @@ export default function HomeView({
           apps={triage.stale}
           elevated={elevateStale}
           id="stale-apps"
+          onSync={syncAllStale}
+          staleCount={triage.staleCount}
+          syncing={syncingAll}
         />
       ) : null,
     activity_section: () =>
@@ -1827,12 +1869,18 @@ function StaleSection({
   id,
   apps,
   elevated = false,
+  onSync,
+  staleCount,
+  syncing,
 }: {
   id: string;
   apps: TriageApp[];
   /** Hygiene mode elevates this with a distinct colour so stale-policy health
    *  gets the user's attention. */
   elevated?: boolean;
+  onSync: () => void;
+  staleCount: number;
+  syncing: boolean;
 }) {
   const tSections = useTranslations("dashboard.sections");
   const tRowMeta = useTranslations("dashboard.row_meta");
@@ -1853,6 +1901,20 @@ function StaleSection({
             ? tSections("stale_sub_elevated")
             : tSections("stale_sub_short")}
         </p>
+      </div>
+
+      <div className="home-section-actions">
+        <button
+          className="btn btn-secondary"
+          disabled={syncing}
+          onClick={onSync}
+          type="button"
+        >
+          {syncing && <span className="spinner" />}
+          {tSections(syncing ? "syncing_stale" : "sync_stale", {
+            count: staleCount,
+          })}
+        </button>
       </div>
 
       <div className="home-row-list">

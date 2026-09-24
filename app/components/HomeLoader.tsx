@@ -131,6 +131,7 @@ interface Loaded {
   mismatchedApps: NonNullable<HomeProps["mismatchedApps"]>;
   recentImport: RecentImport | null;
   reviewableCount: number;
+  scopeParam: string | null;
   triage: HomeProps["triage"];
 }
 
@@ -269,6 +270,7 @@ export default function HomeLoader() {
             mismatchedApps: mismatches?.apps ?? [],
             recentImport: recent?.recent ?? null,
             reviewableCount: review?.reviewableCount ?? 0,
+            scopeParam,
           });
         }
       )
@@ -441,6 +443,7 @@ export default function HomeLoader() {
             <ReviewCtaBanner count={data.reviewableCount} />
           ) : null
         }
+        scopeParam={data.scopeParam}
         taskListSlot={<TaskList variant={taskJourneyVariant} />}
         triage={data.triage}
       />

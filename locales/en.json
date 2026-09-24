@@ -2965,6 +2965,8 @@
       "review_sub": "Apple updated the {summary} on {count, plural, one {# tracked app} other {# tracked apps}}. Tap through to see what shifted.",
       "stale_sub_elevated": "These apps haven't been re-synced in over a month. Developers update their privacy disclosures often — re-sync to surface any changes since you last looked.",
       "stale_sub_short": "Haven't been re-synced in over a month — their privacy labels may have shifted.",
+      "sync_stale": "Sync {count, plural, one {# stale app} other {# stale apps}}",
+      "syncing_stale": "Syncing stale apps…",
       "watchlist_count": "{count, plural, one {# app} other {# apps}}",
       "cleanup_kicker": "🧹 Candidates for clean-up",
       "cleanup_sub": "These apps track you across other apps or collect a lot of data linked to your identity. Open each one to decide whether to keep or delete.",

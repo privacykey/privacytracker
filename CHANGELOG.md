@@ -85,6 +85,10 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- The stale-apps section now offers one action to sync every stale app in
+  the selected device scope. It reads the full paginated app list, so the
+  action is not limited to the six apps previewed on the dashboard.
+
 - Guardian focus now appears as "Looking after a child" in read-only focus
   summaries. Selecting a child no longer marks the "Help a friend" tile as
   selected, and choosing that tile explicitly switches to another adult.
