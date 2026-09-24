@@ -11,6 +11,7 @@
  */
 
 import {
+  type AIProvider,
   AI_PROVIDER_OPTIONS as ONBOARD_AI_OPTIONS,
   providerRequiresApiKey,
   providerSupportsApiKey,
@@ -19,6 +20,18 @@ import {
 } from "@/lib/ai-config";
 import type { OnboardWizardState } from "@/lib/use-onboard-wizard";
 import PolicyRunPanel from "./PolicyRunPanel";
+
+/**
+ * Each provider card's hint. A record rather than a chain of ternaries, so
+ * a new provider cannot silently borrow another card's hint: the Disabled
+ * card once showed the Own Model one, about Ollama endpoints.
+ */
+const PROVIDER_HINT_KEYS = {
+  disabled: "hint_disabled",
+  openai: "hint_openai",
+  anthropic: "hint_anthropic",
+  custom: "hint_custom",
+} as const satisfies Record<AIProvider, string>;
 
 export default function Step5AiSummaries({
   w,
@@ -145,11 +158,7 @@ export default function Step5AiSummaries({
                       {tAiOptions(option.descKey)}
                     </p>
                     <div className="method-card-hint">
-                      {option.value === "openai"
-                        ? tAiStep("hint_openai")
-                        : option.value === "anthropic"
-                          ? tAiStep("hint_anthropic")
-                          : tAiStep("hint_custom")}
+                      {tAiStep(PROVIDER_HINT_KEYS[option.value])}
                     </div>
                   </button>
                 );

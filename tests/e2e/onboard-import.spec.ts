@@ -642,3 +642,90 @@ browserFlow(
     await expect(page.getByTestId("onboard-confirm-import")).toBeEnabled();
   }
 );
+
+// ---------------------------------------------------------------------------
+// Spec: the match summary says what is in the list and what will be imported
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "match summary: chips count the names in the list and the rows the import takes",
+  async ({ page }) => {
+    await mockSearchFromFixtures(page);
+    await openWizardToTextEntry(page);
+
+    // Clock and Mail have one candidate each; Notes has two.
+    await page.getByTestId("onboard-app-names").fill("Clock\nNotes\nMail");
+    await page.getByTestId("imported-apps-add").click();
+    await page.getByTestId("onboard-search").click();
+    await expect(page.locator(".search-result-item")).toHaveCount(3);
+
+    // The first chip used to read "3 imported" before anything was, and
+    // the second counted ticked rows under "matched" beside visible
+    // matches that were not ticked.
+    const summary = page.locator(".onboard-match-summary");
+    await expect(summary).toContainText("3 in your list");
+    await expect(summary).not.toContainText("imported");
+
+    // "Selected" is what the Import button will import.
+    const importButton = page.getByTestId("onboard-confirm-import");
+    const count = async () =>
+      Number((await importButton.innerText()).match(/Import (\d+) app/)?.[1]);
+    const before = await count();
+    expect(before).toBeGreaterThan(0);
+    await expect(summary).toContainText(`${before} selected`);
+
+    // Skipping a ticked row lowers both together.
+    await page
+      .locator(".search-result-item")
+      .filter({ hasText: "Clock" })
+      .getByRole("button", { name: /skip this/i })
+      .click();
+    await expect(importButton).toContainText(`Import ${before - 1} app`);
+    await expect(summary).toContainText(`${before - 1} selected`);
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Spec: the AI step's provider cards each carry their own hint
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "AI step: every provider card has its own hint, and Disabled's is about Settings",
+  async ({ page }) => {
+    await mockSearchFromFixtures(page);
+    await openWizardToTextEntry(page);
+    await page.getByTestId("onboard-app-names").fill("Clock");
+    await page.getByTestId("imported-apps-add").click();
+    await page.getByTestId("onboard-search").click();
+    await page.getByTestId("onboard-confirm-import").click();
+    await expect(
+      page.getByRole("heading", { name: "Import complete" })
+    ).toBeVisible();
+    await page.getByTestId("onboard-next-ai").click();
+
+    const cards = page
+      .getByRole("radiogroup", { name: "AI provider" })
+      .getByRole("radio");
+    await expect(cards).toHaveCount(4);
+
+    // The Disabled card used to show the Own Model hint, about Ollama.
+    const disabled = cards.filter({ hasText: "Disabled" });
+    await expect(disabled.locator(".method-card-hint")).toHaveText(
+      "You can turn summaries on later in Settings."
+    );
+
+    // And no hint repeats its card's description, as the Anthropic one
+    // did word for word.
+    const words = (text: string) =>
+      text
+        .toLowerCase()
+        .replace(/[^a-z ]/g, "")
+        .trim();
+    for (const card of await cards.all()) {
+      const description = await card.locator(".method-card-copy").innerText();
+      const hint = await card.locator(".method-card-hint").innerText();
+      expect(words(hint)).not.toBe(words(description));
+      expect(words(hint)).not.toContain(words(description));
+    }
+  }
+);

@@ -1220,10 +1220,14 @@ function MemoryCard({
             />
           </>
         )}
+        {/* Address space reserved, not memory in use: hundreds of GB for
+            any process on macOS, which in MB read like a leak. */}
         <KV
           label={t("virtual")}
           value={
-            proc.virtualMb === null ? tPage("em_dash") : `${proc.virtualMb} MB`
+            proc.virtualMb === null
+              ? tPage("em_dash")
+              : formatBytes(proc.virtualMb * 1024 * 1024)
           }
         />
       </dl>
