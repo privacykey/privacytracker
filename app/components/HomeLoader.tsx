@@ -435,6 +435,7 @@ export default function HomeLoader() {
         manualAppsBannerDismissed={data.manualAppsBannerDismissed}
         manualAppsCount={data.manualAppsCount}
         mismatchedApps={data.mismatchedApps}
+        onSyncComplete={() => setRetry((value) => value + 1)}
         reviewCtaSlot={
           data.reviewableCount > 0 ? (
             <ReviewCtaBanner count={data.reviewableCount} />
