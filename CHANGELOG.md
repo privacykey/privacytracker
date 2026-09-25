@@ -108,6 +108,12 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- A page that throws while it renders now shows a "This page stopped
+  working" card with Try again, Home and a link to report the problem,
+  instead of Next's bare "Application error: a client-side exception has
+  occurred". An error in the app's outer frame gets a plain full-page
+  version (English only, as it cannot rely on the translation files). The
+  report link fills in the page's path, never the error text.
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of

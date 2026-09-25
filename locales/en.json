@@ -5926,5 +5926,14 @@
   "loader_error": {
     "title": "This page couldn't load its data.",
     "retry": "Try again"
+  },
+  "error_page": {
+    "eyebrow": "Something went wrong",
+    "title": "This page stopped working",
+    "body": "Something on this page failed while it was loading. Trying again usually fixes it. If it keeps happening, please report it so it can be fixed.",
+    "try_again": "Try again",
+    "home": "Home",
+    "report": "Report this problem on GitHub",
+    "report_note": "Opens a bug report form with this page's address filled in. You can check and change everything before you send it."
   }
 }
