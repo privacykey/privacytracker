@@ -59,6 +59,17 @@ authentication too. To listen on another interface, use for example
 `pnpm start --hostname 0.0.0.0` or `pt-core serve --host 0.0.0.0`, and configure
 the token and allowed hosts.
 
+The desktop app adds its own lock, because a loopback address keeps the network
+out but not other programs on the same Mac. Every launch mints a new random
+credential and its server refuses every `/api` request that does not carry it,
+as the `X-PrivacyTracker-Desktop-Token` header or as the session cookie the app
+window receives through a one-time sign-in link. The pages themselves stay
+public; they hold no data. A tool running as the same user reads the credential
+from `.desktop-token` in the app-data directory (`0600`, rewritten every launch
+and removed on quit; the port is in `.desktop-port`). The credential is not an
+admin token, and the desktop app shows no sign-in page. The Node rollback build
+of the desktop app does not have this lock.
+
 Both launchers pass the actual bind to the security checks. Custom launchers must
 keep `PRIVACYTRACKER_BIND_HOST` consistent with the real listener. An unknown or
 wildcard bind requires authentication. `HOSTNAME` alone is not a trusted bind

@@ -56,6 +56,18 @@ Boot handshake: `sidecar::boot()` binds `127.0.0.1:0` for a free port, spawns No
 and reveals the window (optionally behind a Touch ID unlock). Files:
 `src-tauri/src/main.rs`, `src-tauri/src/sidecar.rs`.
 
+Desktop trust boundary on the Rust backend: the loopback bind keeps the network
+out, and a per-launch credential keeps other local processes out. `embedded::start`
+mints 32 random bytes each launch and hands them to the core in its environment;
+every `/api/*` request must then carry them (`X-PrivacyTracker-Desktop-Token`
+header or the `pt_desktop_session` cookie), while the static page shells stay
+public. The webview gets the cookie from a one-time link (`/api/desktop/bootstrap`,
+single use, 60 s) that main.rs opens instead of the base URL; the shell's own
+requests send the header (`backend::get` / `backend::post`); same-user tools read
+`.desktop-token` (0600) in the data directory. The Node sidecar rollback has no
+equivalent. Files: `src-tauri/src/embedded.rs`, `src-tauri/src/backend.rs`,
+`core/src/server/desktop_auth.rs`, `core/src/server/gate.rs`.
+
 ---
 
 ## 1 · Add & track an app (the core loop)

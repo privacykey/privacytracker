@@ -1036,6 +1036,20 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- The desktop app's local server now answers only to the app. Each launch
+  creates a new random credential; the server refuses any API request
+  without it, whatever `Origin` the request claims, so other programs and
+  other user accounts on the Mac can no longer read, change, restore or
+  reset the library through it. The app window receives the credential as
+  a cookie page scripts cannot read, through a one-time link it opens at
+  start, and the pages look and behave as before, with no sign-in. Local
+  tools running as your user (such as the MCP companion) can read the
+  current credential from `.desktop-token` in the app-data directory
+  (readable by your account only, replaced every launch, removed on quit)
+  and send it in an `X-PrivacyTracker-Desktop-Token` header. Web and Docker
+  installs are unchanged, and the Node rollback build of the desktop app
+  does not have this protection.
+
 - Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
   failing the dependency audit on every pull request:
   **two critical unauthenticated remote-code-execution issues** in Next.js
