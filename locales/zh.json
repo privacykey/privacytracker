@@ -2283,6 +2283,8 @@
     "policy_link_review_pref": "通过阅读开发者隐私政策来确认",
     "policy_link_review_no_labels": "缺少 Apple 标签 — 隐私政策是权威来源",
     "header_a11y_feature": "无障碍功能",
+    "table_privacy_aria": "{a} 与 {b} 收集的数据类别",
+    "table_a11y_aria": "{a} 与 {b} 声明的无障碍功能",
     "a11y_filed_no_features_left": "开发者在 App Store 上填写了无障碍清单，但没有声明支持任何功能。左侧的所有行都会显示为缺失。",
     "a11y_filed_no_features_right": "开发者在 App Store 上填写了无障碍清单，但没有声明支持任何功能。右侧的所有行都会显示为缺失。",
     "a11y_shelf_absent_long": "Apple 的无障碍营养标签清单仅会出现在至少声明了一项支持功能的应用上。同步该应用（或从 App Store 选择预览）后即可看到 Apple 公布的列表。",

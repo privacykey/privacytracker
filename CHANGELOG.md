@@ -115,6 +115,10 @@ Going forward, changes are recorded here as they land.
   kind of use, the changes in each period, or each app's rating per policy
   topic. Before, each chart was an unlabelled drawing.
 
+- The Compare page's category and accessibility matrices are now tables to
+  a screen reader, with a column header for each app and a row header for
+  each category or feature, instead of one long run of text.
+
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of

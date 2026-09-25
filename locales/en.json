@@ -2283,6 +2283,8 @@
     "policy_link_review_pref": "Confirm by reading the developer's privacy policy",
     "policy_link_review_no_labels": "Apple labels are missing — the privacy policy is the authoritative source",
     "header_a11y_feature": "Accessibility feature",
+    "table_privacy_aria": "Data categories collected by {a} and {b}",
+    "table_a11y_aria": "Accessibility features declared by {a} and {b}",
     "a11y_filed_no_features_left": "The developer filed the accessibility shelf on the App Store listing but didn't claim support for any features. Rows on the left will all show as missing.",
     "a11y_filed_no_features_right": "The developer filed the accessibility shelf on the App Store listing but didn't claim support for any features. Rows on the right will all show as missing.",
     "a11y_shelf_absent_long": "Apple's accessibility nutrition-labels shelf is only present for apps that declare at least one supported feature. Sync the app (or pick a preview from the App Store) to see Apple's published list.",
