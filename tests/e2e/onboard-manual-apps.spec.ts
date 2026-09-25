@@ -12,6 +12,10 @@ import {
  * preview (`?preview=fresh`), whose banner promises nothing gets saved,
  * the same click writes nothing. App Store search is mocked in the
  * browser; the manual-app writes are real, on both servers.
+ *
+ * The last test pins when a typed session's device row appears: when the
+ * import is committed, not when the names are searched, so an abandoned
+ * session leaves no "Manual entry · <date>" device in the picker.
  */
 
 const sameOriginHeaders = {
@@ -138,5 +142,70 @@ browserFlow(
     await expect(page.getByText(/^Saved 1 as manual apps/)).toBeVisible();
     await expect(page.getByRole("heading", { name: "Skipped" })).toHaveCount(0);
     expect(await manualApps(request)).toEqual([]);
+  }
+);
+
+interface DeviceRow {
+  id: string;
+  isUnknownPlaceholder: boolean;
+  name: string;
+}
+
+async function devices(request: APIRequestContext): Promise<DeviceRow[]> {
+  const res = await request.get("/api/devices", { headers: sameOriginHeaders });
+  await expect(res).toBeOK();
+  return ((await res.json()) as { devices: DeviceRow[] }).devices;
+}
+
+async function imports(
+  request: APIRequestContext
+): Promise<Array<{ deviceId: string | null; id: string }>> {
+  const res = await request.get("/api/imports", { headers: sameOriginHeaders });
+  await expect(res).toBeOK();
+  return (await res.json()) as Array<{ deviceId: string | null; id: string }>;
+}
+
+browserFlow(
+  "a typed session creates its device only when the import is committed",
+  async ({ page, request }) => {
+    // The commit's own write goes through; the queue write that follows
+    // it (status "queued", which the server would scrape from the App
+    // Store) is refused here, so the test never reaches Apple.
+    await page.route("**/api/imports/items", async (route) => {
+      const body = route.request().postDataJSON() as {
+        items?: Array<{ status?: string }>;
+      } | null;
+      if (body?.items?.some((item) => item.status === "queued")) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "queue refused by the test" }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    // Searching records the import, but no device: a session abandoned
+    // here must not leave a "Manual entry · <date>" row behind.
+    await matchStep(page, "/onboard", ["Clock"]);
+    await expect(page.getByTestId("onboard-confirm-import")).toBeEnabled();
+    await expect.poll(async () => (await imports(request)).length).toBe(1);
+    expect(await devices(request)).toEqual([]);
+    expect((await imports(request))[0].deviceId).toBeNull();
+
+    // Committing creates the device and attaches it to the import.
+    const commit = page.waitForRequest(
+      (req) =>
+        req.url().endsWith("/api/imports/items") &&
+        req.method() === "POST" &&
+        (req.postData() ?? "").includes('"deviceId"')
+    );
+    await page.getByTestId("onboard-confirm-import").click();
+    await (await commit).response();
+    const created = await devices(request);
+    expect(created).toHaveLength(1);
+    expect(created[0].name).toMatch(/^Manual entry · /);
+    expect((await imports(request))[0].deviceId).toBe(created[0].id);
   }
 );

@@ -891,6 +891,12 @@ export function useOnboardWizard({
 
   // Import-history plumbing
   const [importId, setImportId] = useState<string | null>(null);
+  // The device row this session created when the user committed the
+  // import (handleConfirm). Created then, not at search time, so a session
+  // abandoned before Import leaves no "Manual entry · <date>" device behind
+  // (and so Step 3's "Whose device is this?" answer is the one it carries).
+  // Kept so a retried confirm reuses it instead of creating a second one.
+  const [importDeviceId, setImportDeviceId] = useState<string | null>(null);
   // Maps the current block-key (query-or-edited-query) to the server-side item id.
   const [itemIdByQuery, setItemIdByQuery] = useState<Map<string, string>>(
     new Map()
@@ -2082,6 +2088,7 @@ export function useOnboardWizard({
         namesText?: string;
         uploadedFileName?: string;
         importId?: string | null;
+        importDeviceId?: string | null;
         searchResults?: SearchResult[];
         selected?: [string, string][];
         skipped?: string[];
@@ -2139,6 +2146,9 @@ export function useOnboardWizard({
       }
       if (typeof draft.importId === "string") {
         setImportId(draft.importId);
+      }
+      if (typeof draft.importDeviceId === "string") {
+        setImportDeviceId(draft.importDeviceId);
       }
       const restoredResults = Array.isArray(draft.searchResults)
         ? draft.searchResults.filter(
@@ -2212,6 +2222,7 @@ export function useOnboardWizard({
           pendingAppText,
           uploadedFileName,
           importId,
+          importDeviceId,
           searchResults,
           selected: Array.from(selected.entries()).map(([query, candidate]) => [
             query,
@@ -2228,6 +2239,7 @@ export function useOnboardWizard({
     country,
     draftRestored,
     importId,
+    importDeviceId,
     importedApps,
     isPreviewMode,
     manuallyChosenQueries,
@@ -2648,9 +2660,11 @@ export function useOnboardWizard({
       const startedAt = performance.now();
       recordImportEvent("onboarding.import.create.start", { total, method });
       try {
-        // Best-effort device resolution. Imports without a device still
-        // work; they just don't participate in the re-sync diff flow.
-        const deviceId = await resolveDeviceIdForImport();
+        // Only a re-sync names its device up front: that row already
+        // exists. A new device is created when the user commits the import
+        // (ensureImportDevice in handleConfirm), not here at search time,
+        // so a session abandoned at Step 3 leaves no device row behind.
+        const deviceId = resyncDeviceId ?? null;
         const res = await fetch("/api/imports", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2685,8 +2699,26 @@ export function useOnboardWizard({
         return null;
       }
     },
-    [method, deriveImportLabel, resolveDeviceIdForImport]
+    [method, deriveImportLabel, resyncDeviceId]
   );
+
+  /** The device this import is for, created on first call and reused after
+   *  (a retried confirm must not create a second row). `null` for a
+   *  re-sync, whose import already carries its device, and whenever the
+   *  create fails: the import still works, just without a device. */
+  const ensureImportDevice = useCallback(async (): Promise<string | null> => {
+    if (resyncDeviceId) {
+      return null;
+    }
+    if (importDeviceId) {
+      return importDeviceId;
+    }
+    const created = await resolveDeviceIdForImport();
+    if (created) {
+      setImportDeviceId(created);
+    }
+    return created;
+  }, [importDeviceId, resolveDeviceIdForImport, resyncDeviceId]);
 
   const writeImportItems = useCallback(
     async (
@@ -4029,10 +4061,18 @@ export function useOnboardWizard({
         selected: entries.length,
       });
       try {
+        // The import is being committed: this is where its device row is
+        // created (with Step 3's owner answer) and attached, so the apps
+        // are linked to it when the import completes.
+        const deviceId = await ensureImportDevice();
         const res = await fetch("/api/imports/items", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ importId, items: statusPayload }),
+          body: JSON.stringify({
+            importId,
+            items: statusPayload,
+            ...(deviceId ? { deviceId } : {}),
+          }),
         });
         if (!res.ok) {
           recordImportEvent("onboarding.confirm.bulk_status.error", {
