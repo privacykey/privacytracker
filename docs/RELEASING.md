@@ -6,7 +6,12 @@ publishes it only after inspecting the candidate. Never replace assets on a
 published release. Fix a bad candidate before publication; use a new version for
 a bad public release.
 
-## v0.2 upgrade requirements
+## Upgrading from v0.1.2
+
+v0.1.2 is the last release, and the last on the Node backend. The next is
+v0.3.0, the first on the Rust backend. v0.2.0 was prepared on 2026-09-05
+but never tagged or released, so everything below applies to the first
+upgrade from v0.1.2.
 
 - **Docker:** set a strong, unique `AUDITOR_ADMIN_TOKEN` in `.env` before
   upgrading. For example, generate one with `openssl rand -hex 32` and keep it
@@ -14,21 +19,23 @@ a bad public release.
   is published only on localhost: other containers can reach the service.
   See [secure deployment](SECURE_DEPLOYMENT.md) for login and proxy setup.
   A missing token must fail closed, rather than expose private data.
-- **macOS:** v0.2 requires **13.5 or later** on Intel and Apple Silicon. That
+- **macOS:** releases after v0.1.2 require **13.5 or later** on Intel and
+  Apple Silicon. That
   floor came from the bundled Node 24 runtime; a build on the Rust backend
   carries no Node, and keeps 13.5 anyway, because that is the floor the app
   has shipped and been tested against. Lowering it is a deliberate decision
   with its own testing, not a side effect of dropping Node. v0.1.2 cannot negotiate an OS minimum through its
-  static updater. Upgrade once using the matching v0.2 DMG or Homebrew on a
-  supported Mac. v0.2 then uses `latest-v2.json` for normal in-app updates.
+  static updater. Upgrade once using the new release's DMG or Homebrew on a
+  supported Mac. From then on the app uses `latest-v2.json` for normal in-app
+  updates.
   Every release retains the original signed v0.1.2 `latest.json`; older clients
-  must never be offered v0.2 through that file. This does not make v0.1.2 a
+  must never be offered a later release through that file. This does not make v0.1.2 a
   supported security-maintenance branch.
 - **Recovery:** quit the desktop app or stop the container, then copy the whole
   data directory, including `privacy.db`, any WAL/SHM files, and
   `backup-signing.key`. Keep the old application/image and this untouched copy.
   v0.1.2 JSON backups omitted devices, app/device links, review history, activity
-  and related-app observations. v0.2 fixes those omissions, but cannot recreate
+  and related-app observations. Later releases fix those omissions, but cannot recreate
   data absent from an old JSON file. Use the stopped directory copy for rollback.
 - A backup from another installation requires explicit trust confirmation.
   API keys and webhook URLs are omitted from new exports; dangerous developer
@@ -53,13 +60,24 @@ that an ordinary branch cannot enter the signing environment.
 
 ## Prepare a candidate
 
-1. On a branch, run `pnpm release:prepare 0.2.0` (or the explicit next version).
-   This updates `package.json`, the Rust package and lockfile, and moves curated
-   Unreleased notes into a dated release section. Review the notes, especially
-   the compatibility and recovery requirements above. Open a PR and merge only
+1. On a branch, run `pnpm release:prepare 0.3.0` (or the explicit next version).
+   This updates `package.json`, the Rust package and lockfile, and moves the
+   Unreleased notes into a dated release section, with a compare link from the
+   last release tag. It names any section whose version was never tagged, as
+   `0.2.0` is: fold those entries into the new notes rather than leave a dated
+   section for a release nobody can download. Then write a short summary for
+   people upgrading at the top of the new section, and end it with a
+   `[//]: # (release-notes-end)` line after a blank line. It renders as
+   nothing, on GitHub and on the docs site (an HTML comment would drop text
+   from the docs site's changelog page). The draft release body is the text
+   above that line, so it stays readable and under GitHub's 125,000-character limit,
+   and the full list below it stays in `CHANGELOG.md`. The release check
+   refuses a body over the limit before anything is built; a section without
+   the line is used whole. Review the notes, especially the compatibility and
+   recovery requirements above. Open a PR and merge only
    after the required checks and review pass. If the version is already prepared
    in the PR, do not run the command a second time.
-2. Create a signed/annotated `v0.2.0` tag at the reviewed main commit and push it
+2. Create a signed/annotated `v0.3.0` tag at the reviewed main commit and push it
    using a maintainer identity. The **Prepare verified release draft** workflow
    also supports manual dispatch on that existing tag. It rejects branch refs,
    tags off main, version mismatches and already-published releases.
@@ -89,7 +107,7 @@ frontend is staged into `Contents/Resources/site` (about 9 MB against the
 Node tarball's ~200 MB), no Node is fetched or bundled, and the bundle is
 signed with `entitlements-rust.plist`, which grants none of the three
 entitlements V8 needed. `node` bundles the Next.js standalone tree and a
-verified Node binary, as every release up to v0.2.0 did. It stays buildable
+verified Node binary, as every release up to v0.1.2 did. It stays buildable
 as the rollback until 1.0.
 
 `Prepare verified release draft` passes `backend: rust`. To roll back,
@@ -105,7 +123,7 @@ and `backend=node` for the rollback build.
 Dockerfile as its `BACKEND` build argument, and `Prepare verified release
 draft` passes `backend: rust` to it as well. `rust` builds the Rust server on
 Alpine (about 56 MB, no Node); `node` builds the `next start` image every
-release up to v0.2.0 shipped. The two open the same volume as the same user,
+release up to v0.1.2 shipped. The two open the same volume as the same user,
 so a Docker rollback is the same one-line change in `release.yml` and a new
 patch version. A self-hoster who builds from the compose file rolls back with
 `PRIVACYTRACKER_BACKEND=node` in `.env`.
@@ -143,7 +161,7 @@ OS versions and results in the release review. A green PR alone is insufficient.
 - [ ] Upgrade a disposable v0.1.2 installation with representative data using
       the manual DMG path. Confirm apps, private notes, history, device links and
       preferences survive. Confirm an old client still sees version 0.1.2 on
-      `latest.json`; v0.2 sees the new feed. Exercise an actual in-app update
+      `latest.json`; the new release sees the new feed. Exercise an actual in-app update
       between signed candidate versions before relying on that path.
 - [ ] On a test device, exercise backup verification, cancellation and recovery.
       Test uninstall only with a deliberately disposable app/device and verify
@@ -153,8 +171,8 @@ OS versions and results in the release review. A green PR alone is insufficient.
       duplicate snapshots and cleared locks on completion. The automated suite
       covers runner behavior; inspect it on the packaged runtime too.
 - [ ] **First release on the Rust backend only.** Upgrade an installation of
-      the last Node release (v0.2.0) holding a copy of a real database, through
-      the in-app update where possible. Confirm the data survives, that
+      the last Node release (v0.1.2) holding a copy of a real database, through
+      the DMG: v0.1.2's frozen feed never offers a later release. Confirm the data survives, that
       `standalone/` is gone from the data directory after the first launch,
       and that the accessibility quick toggles survive a quit and relaunch
       (the port is stable now, so the page's storage is too). Compare the
@@ -163,7 +181,8 @@ OS versions and results in the release review. A green PR alone is insufficient.
       directory the Rust build wrote, and confirm it serves it.
 - [ ] Upgrade an existing Docker volume and the optional bind-mount deployment.
       On the first release on the Rust backend, the volume must be one the last
-      Node image (v0.2.0) wrote, and the rollback is rehearsed too: the same
+      Node image (v0.1.2) wrote (build it from the `v0.1.2` tag if the registry
+      has no image for it), and the rollback is rehearsed too: the same
       volume opened again by an image built with `BACKEND=node`.
       Confirm authenticated access, denied anonymous private reads, readiness,
       persistence across restart and successful backup restore.

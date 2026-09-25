@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import {
   readReleaseMetadata,
+  releaseNotes,
   validateReleaseTag,
 } from "./release-metadata.mjs";
 
@@ -17,10 +18,9 @@ if (tag) {
     throw new Error("Release tag does not identify the checked-out commit");
   }
   execFileSync("git", ["merge-base", "--is-ancestor", "HEAD", "origin/main"]);
-  const changelog = readFileSync("CHANGELOG.md", "utf8");
-  if (!changelog.includes(`## [${metadata.version}]`)) {
-    throw new Error("The tagged version needs a curated CHANGELOG.md section");
-  }
+  // The tagged version needs a curated CHANGELOG.md section that GitHub
+  // will accept as a release body; find out here, before any build.
+  releaseNotes(readFileSync("CHANGELOG.md", "utf8"), metadata.version);
 }
 console.log(JSON.stringify(metadata));
 if (process.env.GITHUB_OUTPUT) {
