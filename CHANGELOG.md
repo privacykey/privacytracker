@@ -1120,6 +1120,9 @@ Going forward, changes are recorded here as they land.
 
 ## [0.2.0] — 2026-09-05
 
+Prepared on this date but never tagged or released. These changes ship
+with v0.3.0, the next release after v0.1.2.
+
 ### Added
 
 - Canned sample data now populates every app-detail surface: each demo app
@@ -1325,8 +1328,7 @@ Next.js app.
 - Background sync with a notifications bell, and crash-safe resume across the
   live, Wayback, and privacy-policy jobs.
 
-[Unreleased]: https://github.com/privacykey/privacytracker/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/privacykey/privacytracker/compare/v0.1.2...v0.2.0
+[Unreleased]: https://github.com/privacykey/privacytracker/compare/v0.1.2...HEAD
 [0.1.2]: https://github.com/privacykey/privacytracker/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/privacykey/privacytracker/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/privacykey/privacytracker/releases/tag/v0.1.0
