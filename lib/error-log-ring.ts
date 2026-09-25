@@ -3,6 +3,13 @@
  * output, surfaced by the diagnostics page and support-bundle export.
  * Capped at 200 entries; messages clipped at 4 KB. Original console
  * output is preserved (chained through). Restart wipes the ring.
+ *
+ * Kept on `globalThis`, like the CSP report ring. `instrumentation.ts`
+ * installs the patches through its copy of this module and the
+ * diagnostics routes read theirs, and a production build gives the two
+ * separate module instances. With the ring in module state, the one the
+ * patches wrote to was never the one the routes read, so the Diagnostics
+ * error log stayed empty under `next start` whatever the server logged.
  */
 
 const MAX_ENTRIES = 200;
@@ -20,9 +27,16 @@ export interface ErrorLogEntry {
   truncated: boolean;
 }
 
-let ring: ErrorLogEntry[] = [];
-let installed = false;
-let installedPid: number | null = null;
+interface RingState {
+  entries: ErrorLogEntry[];
+  /** The process that installed the patches, or null before install. */
+  installedPid: number | null;
+}
+
+const state: RingState = ((globalThis as any).__pt_error_log_ring ??= {
+  entries: [],
+  installedPid: null,
+});
 
 function pushEntry(level: ErrorLogLevel, args: unknown[]): void {
   const raw = args
@@ -46,6 +60,7 @@ function pushEntry(level: ErrorLogLevel, args: unknown[]): void {
     ? `${raw.slice(0, MAX_MESSAGE_LEN)}… (truncated)`
     : raw;
 
+  const ring = state.entries;
   ring.push({ at: Date.now(), level, message, truncated });
   if (ring.length > MAX_ENTRIES) {
     ring.splice(0, ring.length - MAX_ENTRIES);
@@ -54,18 +69,18 @@ function pushEntry(level: ErrorLogLevel, args: unknown[]): void {
 
 /**
  * Install the console.error / console.warn interceptors. Idempotent —
- * calling twice (e.g. under hot-reload) is a no-op. Returns the patched
- * functions, or null if already installed in this process.
+ * calling twice (e.g. under hot-reload, or from another copy of this
+ * module) is a no-op. Returns the patched functions, or null if already
+ * installed in this process.
  */
 export function installErrorLogRing(): {
   error: typeof console.error;
   warn: typeof console.warn;
 } | null {
-  if (installed && installedPid === process.pid) {
+  if (state.installedPid === process.pid) {
     return null;
   }
-  installed = true;
-  installedPid = process.pid;
+  state.installedPid = process.pid;
 
   const originalError = console.error;
   const originalWarn = console.warn;
@@ -94,12 +109,12 @@ export function snapshotErrorLog(opts: { limit?: number } = {}): {
   capacity: number;
 } {
   const limit = Math.max(1, Math.min(MAX_ENTRIES, opts.limit ?? MAX_ENTRIES));
-  // .slice() copies, .reverse() mutates the copy — leaves `ring` intact.
-  const reversed = ring.slice().reverse();
+  // .slice() copies, .reverse() mutates the copy — leaves the ring intact.
+  const reversed = state.entries.slice().reverse();
   return { entries: reversed.slice(0, limit), capacity: MAX_ENTRIES };
 }
 
 /** Drop every entry. */
 export function clearErrorLog(): void {
-  ring = [];
+  state.entries = [];
 }

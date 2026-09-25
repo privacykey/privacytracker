@@ -1677,22 +1677,22 @@ async function probeRuntimeEnvelope(rustBase, nodeBase) {
  * clamp is measured against a ring that has something in it. On an empty
  * ring every `length <= n` assertion passes for the wrong reason.
  *
- * NODE'S RING IS ALWAYS EMPTY IN PRODUCTION, and that is a Node-side bug
- * this probe found rather than a porting gap. `instrumentation.ts` installs
- * the `console.warn` interceptor through `./lib/error-log-ring` while the
- * route reads `@/lib/error-log-ring`; Next gives those two specifiers
- * separate module instances, so the ring that is written to is never the
- * ring that is read. Measured: 109 warnings on stderr since boot — the
- * limiter's DENY among them — and `{"entries":[],"capacity":200}` from the
- * route. So the assertions below require the RUST ring to hold entries and
- * hold each side's clamp to ITS OWN ring length; requiring Node's to be
- * non-empty would fail the gate on a bug that predates this port.
+ * Both rings must hold entries. Node's used to be empty in production, a
+ * Node-side bug this probe found: `instrumentation.ts` installed the
+ * `console.warn` interceptor through its copy of `lib/error-log-ring.ts`
+ * and the route read its own, and Next gives the two separate module
+ * instances, so the ring written to was never the ring read (109 warnings
+ * on stderr since boot, the limiter's DENY among them, and
+ * `{"entries":[],"capacity":200}` from the route). The ring now lives on
+ * `globalThis`, and Node is held to what Rust is. Each side's clamp is
+ * still measured against its own ring length: the ring is per process and
+ * holds whatever that process has logged.
  *
- * That empty ring is also why the repeated `?limit=1&limit=200` case is
- * here rather than in repeated-key-probes.mjs with the other first-wins
- * checks: a Node-versus-Rust comparison on this route cannot see which
- * value was taken, because Node answers the same empty list either way.
- * The Rust side is held to the first value directly.
+ * The repeated `?limit=1&limit=200` case is here rather than in
+ * repeated-key-probes.mjs with the other first-wins checks because a
+ * Node-versus-Rust comparison of the bodies cannot see which value was
+ * taken: the two rings hold different warnings. Each side is held to the
+ * first value directly.
  */
 async function probeErrorRing(rustBase, nodeBase) {
   const get = async (base, route) => {
@@ -1746,17 +1746,16 @@ async function probeErrorRing(rustBase, nodeBase) {
     limit2.rust.j?.entries.length === Math.min(2, rustFull);
   // A repeated key must not 400 (Node takes one and answers 200) AND must
   // answer as the FIRST value does: `?limit=1&limit=200` is one entry, not
-  // the whole ring. Only the Rust side can be held to that here, because
-  // the answer is a slice of a per-process ring and Node's is empty — see
-  // the note above. The two values only disagree once the ring holds two
+  // the whole ring. The two values only disagree once a ring holds two
   // rows, so that is asserted rather than assumed; the limiter probe ran
   // first precisely to put them there.
   const repeatedOk =
     repeated.node.status === 200 &&
     repeated.rust.status === 200 &&
+    nodeFull >= 2 &&
     rustFull >= 2 &&
-    repeated.rust.j?.entries.length === 1 &&
-    repeated.node.j?.entries.length === Math.min(1, nodeFull);
+    repeated.node.j?.entries.length === 1 &&
+    repeated.rust.j?.entries.length === 1;
   const capacityOk = sides.every(
     (s) => s.node.j?.capacity === 200 && s.rust.j?.capacity === 200
   );
@@ -1765,11 +1764,12 @@ async function probeErrorRing(rustBase, nodeBase) {
     clampOk &&
     repeatedOk &&
     capacityOk &&
+    nodeFull > 0 &&
     rustFull > 0;
   console.log(
     ok
-      ? `  ✔ error log: the rust ring holds the limiter's denials (${rustFull}), both sides validate at capacity 200, ?limit=0 / abc / 2 clamp identically against each side's own length (node reads ${nodeFull} — see this probe's note), and ?limit=1&limit=200 answers as its FIRST value (one entry, not ${rustFull})`
-      : `  ✘ error log: node ${nodeFull} entries, rust ${rustFull}; clamp=${clampOk} repeated=${repeatedOk} (rust returned ${repeated.rust.j?.entries.length}) capacity=${capacityOk}; ${problems.slice(0, 5).join("; ")}`
+      ? `  ✔ error log: both rings hold the limiter's denials (node ${nodeFull}, rust ${rustFull}), both sides validate at capacity 200, ?limit=0 / abc / 2 clamp identically against each side's own length, and ?limit=1&limit=200 answers as its FIRST value on both (one entry, not the whole ring)`
+      : `  ✘ error log: node ${nodeFull} entries, rust ${rustFull}; clamp=${clampOk} repeated=${repeatedOk} (node returned ${repeated.node.j?.entries.length}, rust ${repeated.rust.j?.entries.length}) capacity=${capacityOk}; ${problems.slice(0, 5).join("; ")}`
   );
   return ok;
 }

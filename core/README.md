@@ -4459,10 +4459,12 @@ the gate, not passing it.
   BOTH servers, and passes only when the two agree on all three, the
   repeated answer is the first value's, and the last value's differs.
 - `/api/diagnostics/errors` cannot be held that way: its answer is a
-  slice of a per-process ring and Node's is empty in production, for the
-  reason the error-ring probe's own note gives. Its first-wins assertion
-  went there instead, against the Rust ring's own length, replacing a
-  repeated case that asserted only HTTP 200 on both sides.
+  slice of a per-process ring, and Node's was empty in production at the
+  time, for the reason the error-ring probe's own note gives. Its
+  first-wins assertion went there instead, against the Rust ring's own
+  length, replacing a repeated case that asserted only HTTP 200 on both
+  sides. Node's ring has since been fixed (it lives on `globalThis` now),
+  and that probe holds both servers to the first value.
 
 **Negative controls, predicted before running.** Reverting all five
 handlers to the last value of a repeated key — the reads, not the
