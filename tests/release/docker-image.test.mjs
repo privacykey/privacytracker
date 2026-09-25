@@ -14,6 +14,8 @@ import test from "node:test";
 import { dockerPublishTarget } from "../../scripts/docker-image.mjs";
 import { readReleaseMetadata } from "../../scripts/release-metadata.mjs";
 
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const root = path.resolve(import.meta.dirname, "../..");
 const repository = "privacykey/privacytracker";
 const sha = "0123456789abcdef0123456789abcdef01234567";
@@ -148,7 +150,7 @@ test("the workflow step writes the image and metadata-action tag rules, and chec
   assert.match(written, /^image=ghcr\.io\/privacykey\/privacytracker$/m);
   assert.match(
     written,
-    new RegExp(`^type=raw,value=${version.replace(/\./g, "\\.")}$`, "m")
+    new RegExp(`^type=raw,value=${escapeRegExp(version)}$`, "m")
   );
 
   // A tag the checked-out version does not declare never reaches the

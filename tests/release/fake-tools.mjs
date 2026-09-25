@@ -18,16 +18,20 @@ import {
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+// Every shim has the same fixed body: it finds this module through
+// FAKE_TOOLS_MODULE and names the tool after its own file, so no value is
+// ever spliced into generated code. Merge the returned object into the
+// environment of every process that should see the fakes.
+const SHIM =
+  "#!/usr/bin/env node\n" +
+  'import(process.env.FAKE_TOOLS_MODULE).then((fake) => fake.main(process.argv[1].split("/").pop()));\n';
+
 export function installFakeTools(bin) {
   mkdirSync(bin, { recursive: true });
-  const module = JSON.stringify(pathToFileURL(import.meta.filename).href);
   for (const tool of ["gh", "codesign", "xcrun"]) {
-    writeFileSync(
-      path.join(bin, tool),
-      `#!/usr/bin/env node\nimport(${module}).then((fake) => fake.main(${JSON.stringify(tool)}));\n`,
-      { mode: 0o755 }
-    );
+    writeFileSync(path.join(bin, tool), SHIM, { mode: 0o755 });
   }
+  return { FAKE_TOOLS_MODULE: pathToFileURL(import.meta.filename).href };
 }
 
 export function readState(file) {

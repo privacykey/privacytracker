@@ -158,7 +158,7 @@ function releaseFixture(t) {
     path.join(verifierDir, "verify-privacytracker-updater")
   );
   const bin = path.join(dir, "bin");
-  installFakeTools(bin);
+  const fakeToolsEnv = installFakeTools(bin);
   const metadata = readReleaseMetadata(dir);
   const { tag, version } = metadata;
   for (const { triple } of PLATFORMS) {
@@ -196,6 +196,7 @@ function releaseFixture(t) {
   const log = path.join(dir, "calls.jsonl");
   const env = {
     ...process.env,
+    ...fakeToolsEnv,
     PATH: `${bin}${path.delimiter}${process.env.PATH}`,
     CALL_LOG: log,
     FAKE_GH_STATE: state,
