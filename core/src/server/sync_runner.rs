@@ -25,7 +25,7 @@ use super::{
     activity_log::record_activity,
     flags::{context_from_db, resolve_flag},
     live_runs::{self, Job},
-    routes_status::{compute_is_due, interval_ms},
+    routes_status::{compute_is_due, interval_ms, schedule_since, MONITOR_DEFAULT_AT_KEY},
     writes::Cx,
     AppState,
 };
@@ -752,7 +752,10 @@ pub(crate) async fn scheduled_check(
         let cx = &Cx { w, ids, now };
         let schedule = cx.get("sync_schedule", "manual");
         let last_run = js_parse_int(&cx.get("last_auto_sync", "0")).unwrap_or(0);
-        compute_is_due(interval_ms(&schedule), last_run, now)
+        // `getSchedulerStatus`: the Monitor default counts from when it
+        // turned daily sync on until the first sync.
+        let since = schedule_since(last_run, &cx.get(MONITOR_DEFAULT_AT_KEY, "0"));
+        compute_is_due(interval_ms(&schedule), since, now)
     });
     if !due {
         return;

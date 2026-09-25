@@ -1472,6 +1472,55 @@ for (const [route, field] of [
   });
 }
 
+// ── Appended last (each case's forwarded address comes from a counter, so
+// a case inserted above would shift every later case's headers). A focus
+// with the Monitor goal sets the sync schedule to daily only when none was
+// chosen (lib/scheduler.ts applyMonitorSyncDefault), and nothing reverts
+// it. The unchosen case is "focus manifest body" above. ──
+{
+  const route = "/api/focus";
+  const method = "POST";
+  const monitorFocus = {
+    audience: "self",
+    monitor: true,
+    cleanup: false,
+    minimal: false,
+    accessibility: false,
+  };
+  await run("focus monitor keeps an explicit manual schedule", {
+    route,
+    method,
+    setup: [setting("sync_schedule", "manual")],
+    json: monitorFocus,
+  });
+  await run("focus monitor keeps an explicit weekly schedule", {
+    route,
+    method,
+    setup: [setting("sync_schedule", "weekly")],
+    json: monitorFocus,
+  });
+  await run("focus monitor fills an empty schedule", {
+    route,
+    method,
+    setup: [setting("sync_schedule", "")],
+    json: monitorFocus,
+  });
+  await run("focus monitor off keeps the daily default", {
+    route,
+    method,
+    setup: [
+      setting("sync_schedule", "daily"),
+      setting("flag.focus.goal.monitor", "true"),
+    ],
+    json: { ...monitorFocus, monitor: false, cleanup: true },
+  });
+  await run("focus without monitor sets no schedule", {
+    route,
+    method,
+    json: { audience: "loved_one", cleanup: true },
+  });
+}
+
 writeFileSync(
   path.join(
     path.dirname(new URL(import.meta.url).pathname),
