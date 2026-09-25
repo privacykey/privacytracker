@@ -14,15 +14,6 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
-- Only releases are published to the Docker image
-  `ghcr.io/privacykey/privacytracker`. A release gets its version tag, and a
-  final release also `<major>.<minor>` and `latest`, so `latest` now means
-  the newest release; a prerelease such as `0.3.0-rc.1` gets its version tag
-  only. Builds of `main` (`edge`, `sha-<commit>`) and pull request previews
-  (`pr-<n>`) go to a separate, private package,
-  `ghcr.io/privacykey/privacytracker-edge`. The Caddy and Traefik examples
-  still default to `latest`, which no longer follows `main`.
-
 - The Docker image runs the Rust server (Rust core Phase 6, the Docker
   cutover). `docker compose up --build -d` and the published image now run
   `pt-core` on Alpine: the image is about 56 MB where the Node one was
@@ -1044,16 +1035,6 @@ Going forward, changes are recorded here as they land.
   `stage-standalone.mjs` already reads when choosing which binary to wrap.
 
 ### Security
-
-- The desktop update archive is signed only as the release build verified
-  it. Each macOS build job now packs the archive from the app bundle it has
-  just checked (signature, notarisation, contents), signs it there and
-  records its SHA-256; the release refuses a draft whose archive differs from
-  that record, and the draft may carry only the assets the release checks.
-  The release no longer signs a file downloaded back from the draft release.
-  The archive is packed without macOS metadata entries and checked to hold
-  only the signed app, and the updater signing key is no longer present
-  while the app is built.
 
 - Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
   failing the dependency audit on every pull request:
