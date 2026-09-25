@@ -73,6 +73,12 @@ import {
 } from "@/lib/desktop";
 import { type DeviceClass, refineDeviceOnClient } from "@/lib/device";
 import {
+  awaitOcrStart,
+  describeOcrError,
+  OCR_START_TIMEOUT_MS,
+  OCR_WORKER_OPTIONS,
+} from "@/lib/ocr-assets";
+import {
   DEFAULT_COUNTRY,
   inferCountryFromLocale,
   normalizeCountry,
@@ -2324,31 +2330,52 @@ export function useOnboardWizard({
         // is in the WASM download, the traineddata fetch, or the recognize
         // loop itself — the three places this most often stalls on flaky
         // networks / strict CSPs / iOS WebKit.
-        const worker = await createWorker("eng", 1, {
-          logger: (msg: {
-            status?: string;
-            progress?: number;
-            [k: string]: unknown;
-          }) => {
-            if (!ocrDebug) {
-              return;
-            }
-            const pct =
-              typeof msg.progress === "number"
-                ? `${Math.round(msg.progress * 100)}%`
-                : "—";
-            console.log(
-              `[ocr] tesseract.logger status="${msg.status ?? "?"}" progress=${pct}`,
-              msg
-            );
-          },
-          errorHandler: (err: unknown) => {
-            // Errors still surface unconditionally — silent failure is
-            // exactly the diagnostic problem the rest of this gating was
-            // introduced to *not* reintroduce.
-            console.error("[ocr] tesseract.errorHandler", err);
-          },
-        });
+        //
+        // OCR_WORKER_OPTIONS points the worker, the engine and the English
+        // model at the copies served from this origin under /ocr/, and
+        // starts the worker from that URL rather than a blob: wrapper. The
+        // defaults fetch all three from public CDNs, which the CSP refuses.
+        //
+        // awaitOcrStart turns a start that tesseract.js would leave pending
+        // for ever (a model that fails to download, an engine that fails to
+        // compile) into a failure the catch below reports.
+        const worker = await awaitOcrStart(
+          (failStart) =>
+            createWorker("eng", 1, {
+              ...OCR_WORKER_OPTIONS,
+              logger: (msg: {
+                status?: string;
+                progress?: number;
+                [k: string]: unknown;
+              }) => {
+                if (!ocrDebug) {
+                  return;
+                }
+                const pct =
+                  typeof msg.progress === "number"
+                    ? `${Math.round(msg.progress * 100)}%`
+                    : "—";
+                console.log(
+                  `[ocr] tesseract.logger status="${msg.status ?? "?"}" progress=${pct}`,
+                  msg
+                );
+              },
+              errorHandler: (err: unknown) => {
+                // Errors still surface unconditionally — silent failure is
+                // exactly the diagnostic problem the rest of this gating was
+                // introduced to *not* reintroduce.
+                console.error("[ocr] tesseract.errorHandler", err);
+                // Ends the start if it is still pending; once the worker is
+                // up, a failed recognize also rejects its own promise and
+                // this is a no-op.
+                failStart(err);
+              },
+            }),
+          OCR_START_TIMEOUT_MS,
+          (late) => {
+            void late.terminate();
+          }
+        );
         mark("createWorker(eng): resolved");
 
         try {
@@ -2366,10 +2393,12 @@ export function useOnboardWizard({
               type: file.type,
               bytes: file.size,
             });
-            const objectUrl = URL.createObjectURL(file);
 
             try {
-              const result = await worker.recognize(objectUrl);
+              // The File itself, not a blob: URL: tesseract.js reads a File
+              // with FileReader, while a URL string is fetched, and the
+              // page's connect-src does not allow blob: URLs.
+              const result = await worker.recognize(file);
               const textLen = (result.data.text ?? "").length;
               mark(`recognize[${index + 1}/${files.length}]: resolved`, {
                 textChars: textLen,
@@ -2385,8 +2414,6 @@ export function useOnboardWizard({
                 `[ocr] recognize[${index + 1}/${files.length}] threw`,
                 perImageError
               );
-            } finally {
-              URL.revokeObjectURL(objectUrl);
             }
           }
           mark("recognize loop: done", { blocks: extractedBlocks.length });
@@ -2426,20 +2453,11 @@ export function useOnboardWizard({
         // Expose the real error to the UI under a collapsed `<details>` so the
         // user (or us, when triaging a support report) can see the underlying
         // tesseract.js / WASM / network failure instead of just "it failed".
-        const detail = (() => {
-          if (error instanceof Error) {
-            return error.message || error.name || String(error);
-          }
-          if (typeof error === "string") {
-            return error;
-          }
-          try {
-            return JSON.stringify(error);
-          } catch {
-            return String(error);
-          }
-        })();
-        setOcrErrorDetail(detail.slice(0, 500));
+        // describeOcrError never throws: a worker that fails to start
+        // rejects with `undefined`, and the inline version of this read
+        // `.slice` off `JSON.stringify(undefined)`, threw inside this catch
+        // and left the wizard on "Preparing screenshot scan…" for good.
+        setOcrErrorDetail(describeOcrError(error));
         if (isIosSafari) {
           // iOS WebKit almost always falls through here — give the user a clear
           // recommendation to switch paths rather than retrying fruitlessly.
