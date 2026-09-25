@@ -43,7 +43,7 @@ import PolicyScrapeThrottleSection from "./settings/PolicyScrapeThrottleSection"
 import PrivacyPoliciesBulkSection from "./settings/PrivacyPoliciesBulkSection";
 import RegionSection from "./settings/RegionSection";
 import RemoveItemModal from "./settings/RemoveItemModal";
-import ResetAppModal from "./settings/ResetAppModal";
+import ResetAppModal, { resetConfirmMatches } from "./settings/ResetAppModal";
 import ResetSection from "./settings/ResetSection";
 import RestoreBackupModal from "./settings/RestoreBackupModal";
 import ReviewQueuePrefsSection from "./settings/ReviewQueuePrefsSection";
@@ -425,7 +425,8 @@ export default function SettingsView({
     useState(true);
   // The "is this toggle saving" flag now lives on `trackAccessibilityAutoSave.saving`.
   const [toast, setToast] = useState("");
-  const [resetStep, setResetStep] = useState<0 | 1 | 2>(0);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState("");
   const [resetting, setResetting] = useState(false);
 
   // The legacy `userIntent` state used to drive a duplicate Your-Focus
@@ -478,6 +479,7 @@ export default function SettingsView({
     setRestoreError,
     restoreConfirmText,
     setRestoreConfirmText,
+    restoreUntrusted,
     backupSnapshotSettings,
     setBackupSnapshotSettings,
     backupSnapshotDirectory,
@@ -1390,14 +1392,23 @@ export default function SettingsView({
     if (resetting) {
       return;
     }
-    setResetStep(0);
+    setResetOpen(false);
+    setResetConfirmText("");
   };
 
+  // "Delete all data": the one full wipe (lib/wipe-all-data.ts). Calls the
+  // start-over route, which runs the same wipe as /api/reset, and lands on
+  // the welcome screen, where a wiped install starts.
   const resetAllData = async () => {
+    if (!resetConfirmMatches(resetConfirmText)) {
+      return;
+    }
     setResetting(true);
     try {
-      const res = await fetch("/api/reset", { method: "POST" });
-      const data = await res.json();
+      const res = await fetch("/api/admin/start-over", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+      };
 
       if (!res.ok) {
         showToast(
@@ -1409,7 +1420,7 @@ export default function SettingsView({
         return;
       }
 
-      router.push("/onboard");
+      router.push("/welcome");
       router.refresh();
     } catch (error) {
       console.error("[settings] Reset failed:", error);
@@ -1435,7 +1446,7 @@ export default function SettingsView({
     },
   });
   const resetModalRef = useModalFocus<HTMLDivElement>({
-    open: resetStep > 0,
+    open: resetOpen,
     onClose: closeResetModal,
   });
 
@@ -2055,11 +2066,7 @@ export default function SettingsView({
           sections in sidebar order and assumes it matches document order. */}
               {(settingsAdminResetOn || settingsAdminStartOverOn) && (
                 <ResetSection
-                  exportingBackup={exportingBackup}
-                  handleExportBackup={handleExportBackup}
-                  setResetStep={setResetStep}
-                  settingsAdminResetOn={settingsAdminResetOn}
-                  settingsAdminStartOverOn={settingsAdminStartOverOn}
+                  openResetModal={() => setResetOpen(true)}
                   status={status}
                 />
               )}
@@ -2082,6 +2089,7 @@ export default function SettingsView({
         restoreModalRef={restoreModalRef}
         restorePreview={restorePreview}
         restoreStage={restoreStage}
+        restoreUntrusted={restoreUntrusted}
         setRestoreConfirmText={setRestoreConfirmText}
         setRestoreError={setRestoreError}
       />
@@ -2113,22 +2121,15 @@ export default function SettingsView({
 
       <ResetAppModal
         closeResetModal={closeResetModal}
+        confirmText={resetConfirmText}
         exportingBackup={exportingBackup}
         handleExportBackup={handleExportBackup}
+        open={resetOpen}
         resetAllData={resetAllData}
         resetModalRef={resetModalRef}
-        resetStep={resetStep}
         resetting={resetting}
-        setResetStep={setResetStep}
+        setConfirmText={setResetConfirmText}
       />
     </div>
   );
 }
-
-// ── Start Over button ─────────────────────────────────────────────────────
-//
-// Round 3 PR 5: lives in the Reset section's button row. Differs from
-// "Reset all data" by preserving the DB schema + migration version — same
-// scope of data wipe, but the next page load can render onboarding cleanly
-// without re-running migrations on a freshly-blank DB. Calls
-// /api/admin/start-over and routes to /welcome on success.

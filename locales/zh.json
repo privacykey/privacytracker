@@ -1042,11 +1042,13 @@
         "no_filename": "{count, plural, one {# 行，分布在 {tables} 张表中。} other {# 行，分布在 {tables} 张表中。}}",
         "rows_per_table_aria": "每张表的行数",
         "warning": "恢复将替换当前安装中的所有数据。继续后，恢复完成时你会被带到仪表板。",
+        "untrusted": "此备份不是由此安装创建的。如果文件来自另一台电脑，或是在你删除所有数据之前保存的，这属于正常情况。只有在备份是你自己创建的，或你信任其来源时才恢复。",
         "confirm_label": "请输入 <code>RESTORE</code> 以确认：",
         "confirm_placeholder": "RESTORE",
         "cancel": "取消",
         "restoring": "正在恢复…",
-        "confirm": "恢复备份"
+        "confirm": "恢复备份",
+        "confirm_untrusted": "仍然恢复"
       },
       "cancel_summaries": {
         "title": "停止生成摘要？",
@@ -4344,7 +4346,7 @@
       "deployment_diagnostics": "检查此安装是否能正常响应请求、写入 SQLite 数据库，并看到局域网部署中代理应发送的转发头。",
       "backup_restore": "把整个数据库快照导出为可携带的 JSON 文件，或从之前的备份恢复。你的数据始终保留在本机。",
       "export_data": "下载所有已追踪的隐私数据，用于备份、分析或分享。",
-      "reset_app": "删除所有已追踪的应用、隐私快照、通知、同步历史以及保存的设置，并返回引导流程。",
+      "reset_app": "删除此安装上的所有应用、设备、笔记、设置和本地备份，然后从欢迎页面重新开始。",
       "developer_options": "捕获应用发送给 AI 服务的完整提示词与响应，仅用于排查问题。仅在服务端保留一个小型滚动窗口 — 不会发往任何其他地方。"
     },
     "region": {
@@ -4488,7 +4490,7 @@
       "wait_for_sync": "请等待当前同步完成后再还原。",
       "download_before_destructive": "先下载备份",
       "download_current_before_restore": "在替换此数据库之前，先下载一份当前状态的新备份。",
-      "download_before_reset": "在删除此数据库之前，先下载一份当前状态的新备份。",
+      "download_before_reset": "如果你之后可能还需要这些数据，请先下载一份备份。",
       "destructive_hint": "还原是破坏性操作 — 会在事务中清空当前数据库，然后回放备份中的行。请妥善保存导出的文件。",
       "snapshots_title": "自动本地快照",
       "snapshots_copy": "在运行 privacytracker 的机器上保留滚动 JSON 备份。这些文件会留在应用数据目录下，并按保留数量自动清理。",
@@ -4829,28 +4831,22 @@
       "bulk_failed": "Wayback 导入失败"
     },
     "reset_app_card": {
-      "reset_button": "重置所有数据",
-      "wait_for_sync": "请等待当前同步完成后再重置应用。",
+      "reset_button": "删除所有数据",
+      "wait_for_sync": "请等待当前同步完成后再删除数据。",
       "modal_badge": "破坏性操作",
-      "modal_title_step_1": "重置此安装？",
-      "modal_title_step_2": "此操作无法撤销",
-      "modal_body_step_1": "这会移除你正在追踪的所有应用并清除已保存的历史。完成后你会回到引导流程。",
-      "modal_body_step_2": "完整重置将永久删除此安装上的已追踪应用、隐私快照、通知和设置。",
+      "modal_title": "删除此安装上的所有内容？",
+      "modal_intro": "这将永久删除：",
+      "modal_scope_apps": "所有已追踪的应用和手动添加的应用，以及它们的隐私标签、历史记录、政策摘要、笔记、结论和候选清单条目",
+      "modal_scope_devices": "你的设备，包括设备归属，以及你为他人设备记录的任何许可",
+      "modal_scope_settings": "你的关注重点、隐私和辅助功能偏好、功能选项、AI 设置和同步计划",
+      "modal_scope_history": "导入历史、通知以及应用的活动日志",
+      "modal_scope_backups": "保存在这台电脑上的自动备份快照，以及用于标记备份出自本机的密钥",
+      "modal_after": "之后你将从欢迎页面重新开始。此操作无法撤销。",
+      "modal_downloaded_backups": "你已下载的备份文件不会被删除，仍然可以恢复。由于密钥也会被删除，此安装将不再认得这些文件，因此会将它们标记为不受信任，并在恢复前请你确认。",
+      "confirm_label": "请输入 <code>DELETE</code> 以确认：",
       "cancel": "取消",
-      "continue": "继续",
-      "resetting": "正在重置…",
-      "delete_and_restart": "删除全部并重启"
-    },
-    "start_over": {
-      "trigger": "重新开始",
-      "step_1_prompt": "这会清除所有应用、笔记和设置。数据库结构保留。要继续吗？",
-      "step_2_prompt": "确定吗？此操作无法撤销。",
-      "step_1_confirm": "是的，重新开始",
-      "step_2_confirm": "确认 — 清除全部",
-      "backup_hint": "请先创建一份新的备份，这样如果你改变主意，还可以恢复此安装。",
-      "wiping": "正在清除…",
-      "cancel": "取消",
-      "default_error": "「重新开始」失败"
+      "deleting": "正在删除…",
+      "confirm_button": "删除全部"
     },
     "toasts": {
       "debug_log_load_failed": "❌ 无法加载调试日志",
@@ -5251,10 +5247,13 @@
         "no_filename": "{count, plural, one {# 行，分布在 {tables} 张表中。} other {# 行，分布在 {tables} 张表中。}}",
         "warning_lead": "此操作无法撤销。",
         "warning_body": " 所有跟踪的应用、隐私快照、政策摘要、导入记录和设置都将被删除并从备份中重建。",
+        "untrusted_lead": "此备份不是由此安装创建的。",
+        "untrusted_body": " 如果文件来自另一台电脑，或是在你删除所有数据之前保存的，这属于正常情况。只有在备份是你自己创建的，或你信任其来源时才恢复。",
         "confirm_label": "请输入 <code>RESTORE</code> 以确认：",
         "cancel": "取消",
         "restoring": "正在恢复…",
-        "confirm": "恢复备份"
+        "confirm": "恢复备份",
+        "confirm_untrusted": "仍然恢复"
       },
       "delete_import": {
         "badge": "删除导入",

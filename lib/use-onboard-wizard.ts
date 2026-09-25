@@ -982,6 +982,11 @@ export function useOnboardWizard({
   >(null);
   const [restoreError, setRestoreError] = useState("");
   const [restoreConfirmText, setRestoreConfirmText] = useState("");
+  // Set when the server refuses the file as not made by this install (409
+  // `untrusted_backup`), for example one exported before "Delete all data"
+  // deleted the signing key. The dialog says so, and the next confirm sends
+  // the explicit opt-in. Same flow as lib/use-backup.ts.
+  const [restoreUntrusted, setRestoreUntrusted] = useState(false);
 
   const resetRestoreFlow = () => {
     setRestoreStage("idle");
@@ -990,6 +995,7 @@ export function useOnboardWizard({
     setPendingRestoreFilename(null);
     setRestoreError("");
     setRestoreConfirmText("");
+    setRestoreUntrusted(false);
   };
 
   // ── Modal focus management (WCAG 2.4.3 / 2.1.2) ────────────────────────
@@ -1020,6 +1026,7 @@ export function useOnboardWizard({
     setRestoreStage("previewing");
     setPendingRestoreFilename(file.name);
     setRestoreConfirmText("");
+    setRestoreUntrusted(false);
     try {
       const text = await file.text();
       let previewBody: unknown;
@@ -1069,16 +1076,31 @@ export function useOnboardWizard({
     try {
       const res = await fetch("/api/backup/restore", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(restoreUntrusted ? { "x-allow-untrusted-backup": "1" } : {}),
+        },
         body: pendingRestorePayload,
       });
       if (!res.ok) {
         let msg = tStatus("restore_failed");
+        let code: unknown = null;
         try {
           const body = await res.json();
           msg = body?.error || msg;
+          code = body?.code;
         } catch {
           /* no-op */
+        }
+        if (
+          res.status === 409 &&
+          code === "untrusted_backup" &&
+          !restoreUntrusted
+        ) {
+          // Nothing was written; ask again with the reason on screen.
+          setRestoreUntrusted(true);
+          setRestoreStage("confirm");
+          return;
         }
         setRestoreError(msg);
         setRestoreStage("confirm");
@@ -5257,6 +5279,7 @@ export function useOnboardWizard({
     setRestoreError,
     restoreConfirmText,
     setRestoreConfirmText,
+    restoreUntrusted,
     resetRestoreFlow,
     restoreModalCardRef,
     cancelModalCardRef,

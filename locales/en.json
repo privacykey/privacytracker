@@ -1042,11 +1042,13 @@
         "no_filename": "{count, plural, one {# row across {tables} tables.} other {# rows across {tables} tables.}}",
         "rows_per_table_aria": "Rows per table",
         "warning": "Restoring replaces any current data on this installation. If you continue, you'll land on the dashboard once the restore completes.",
+        "untrusted": "This install did not make this backup. That is expected for a file from another computer, or one saved before you deleted all data. Restore it only if you made it yourself or trust where it came from.",
         "confirm_label": "Type <code>RESTORE</code> to confirm:",
         "confirm_placeholder": "RESTORE",
         "cancel": "Cancel",
         "restoring": "Restoring…",
-        "confirm": "Restore backup"
+        "confirm": "Restore backup",
+        "confirm_untrusted": "Restore anyway"
       },
       "cancel_summaries": {
         "title": "Stop generating summaries?",
@@ -4344,7 +4346,7 @@
       "deployment_diagnostics": "Check whether this install can serve requests, write to its SQLite database, and see the proxy headers a LAN deployment should send.",
       "backup_restore": "Snapshot your entire database to a portable JSON file, or restore a previous backup. Your data stays on your machine.",
       "export_data": "Download all tracked privacy data for backup, analysis, or sharing.",
-      "reset_app": "Delete all tracked apps, privacy snapshots, notifications, sync history, and saved settings, then return to onboarding.",
+      "reset_app": "Delete every app, device, note, setting and local backup on this install, then start again from the welcome screen.",
       "developer_options": "Capture the exact prompts and responses the app sends to your AI provider, for troubleshooting only. Kept on the server in a small rolling window — never sent anywhere else."
     },
     "region": {
@@ -4488,7 +4490,7 @@
       "wait_for_sync": "Wait for the current sync to finish before restoring.",
       "download_before_destructive": "Download backup first",
       "download_current_before_restore": "Before replacing this database, download a fresh backup of the current state.",
-      "download_before_reset": "Before deleting this database, download a fresh backup of the current state.",
+      "download_before_reset": "Download a backup first if you might want any of this back.",
       "destructive_hint": "Restore is destructive — it wipes the current database inside a transaction, then replays the rows from the backup. Keep the exported file somewhere safe.",
       "snapshots_title": "Automatic local snapshots",
       "snapshots_copy": "Keep rolling JSON backups on the machine running privacytracker. These stay under the app data folder and are pruned automatically.",
@@ -4829,28 +4831,22 @@
       "bulk_failed": "Wayback import failed"
     },
     "reset_app_card": {
-      "reset_button": "Reset all data",
-      "wait_for_sync": "Wait for the current sync to finish before resetting the app.",
+      "reset_button": "Delete all data",
+      "wait_for_sync": "Wait for the current sync to finish before deleting your data.",
       "modal_badge": "Destructive action",
-      "modal_title_step_1": "Reset this installation?",
-      "modal_title_step_2": "This cannot be undone",
-      "modal_body_step_1": "This will remove all apps you are tracking and clear your saved history. You will go back to the onboarding flow afterward.",
-      "modal_body_step_2": "A full reset permanently deletes tracked apps, privacy snapshots, notifications, and settings from this installation.",
+      "modal_title": "Delete everything on this install?",
+      "modal_intro": "This permanently deletes:",
+      "modal_scope_apps": "Every tracked and manual app, with its privacy labels, history, policy summaries, notes, verdicts and shortlist entries",
+      "modal_scope_devices": "Your devices, including who owns them and any permission you recorded for someone else's device",
+      "modal_scope_settings": "Your focus, privacy and accessibility profiles, feature choices, AI settings and sync schedule",
+      "modal_scope_history": "Import history, notifications and the app's activity logs",
+      "modal_scope_backups": "The automatic backup snapshots saved on this computer, and the key that marks backups as made here",
+      "modal_after": "You will start again from the welcome screen. This cannot be undone.",
+      "modal_downloaded_backups": "Backup files you downloaded are not deleted and will still restore. Because the key is deleted too, this install will no longer recognise them, so it will label them untrusted and ask you to confirm before restoring.",
+      "confirm_label": "Type <code>DELETE</code> to confirm:",
       "cancel": "Cancel",
-      "continue": "Continue",
-      "resetting": "Resetting…",
-      "delete_and_restart": "Delete everything and restart"
-    },
-    "start_over": {
-      "trigger": "Start over",
-      "step_1_prompt": "This wipes every app, note, and setting. The schema stays. Continue?",
-      "step_2_prompt": "Are you sure? This cannot be undone.",
-      "step_1_confirm": "Yes, start over",
-      "step_2_confirm": "Confirm — wipe everything",
-      "backup_hint": "Take a fresh backup first so this install can be recovered if you change your mind.",
-      "wiping": "Wiping…",
-      "cancel": "Cancel",
-      "default_error": "Start Over failed"
+      "deleting": "Deleting…",
+      "confirm_button": "Delete everything"
     },
     "toasts": {
       "debug_log_load_failed": "❌ Could not load debug log",
@@ -5251,10 +5247,13 @@
         "no_filename": "{count, plural, one {# row across {tables} tables.} other {# rows across {tables} tables.}}",
         "warning_lead": "This cannot be undone.",
         "warning_body": " Every tracked app, privacy snapshot, policy summary, import record, and setting will be deleted and rebuilt from the backup.",
+        "untrusted_lead": "This install did not make this backup.",
+        "untrusted_body": " That is expected for a file from another computer, or one saved before you deleted all data. Restore it only if you made it yourself or trust where it came from.",
         "confirm_label": "Type <code>RESTORE</code> to confirm:",
         "cancel": "Cancel",
         "restoring": "Restoring…",
-        "confirm": "Restore backup"
+        "confirm": "Restore backup",
+        "confirm_untrusted": "Restore anyway"
       },
       "delete_import": {
         "badge": "Delete import",
