@@ -93,9 +93,11 @@ button-styled radio groups use the shared
 handling.
 
 **Copy changes go through i18n.** `locales/en.json` is the source of
-truth; every other locale is round-tripped through Crowdin. Add your key
-to `en.json`, mirror it in the other locale files (a machine translation
-is fine — translators fix it later), and run `pnpm lint:i18n`. Don't
+truth; every other locale is round-tripped through Crowdin once the
+Crowdin sync is configured (see the setup notes at the top of
+`.github/workflows/crowdin.yml`). Add your key to `en.json`, mirror it
+in the other locale files (a machine translation is fine — translators
+fix it later), and run `pnpm lint:i18n`. Don't
 rename or strip ICU placeholders (`{count, plural, ...}`) without
 checking both bundles.
 
