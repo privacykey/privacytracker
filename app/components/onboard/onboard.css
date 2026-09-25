@@ -520,3 +520,16 @@
   font-size: 12px;
   color: var(--text-2);
 }
+
+/* Step 2: a search that could not check the list. The message and its
+   Retry sit together so the way forward is next to the problem. */
+.onboard-search-error {
+  margin-top: 12px;
+}
+
+.onboard-search-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}

@@ -31,7 +31,13 @@
 process.env.TZ = "UTC";
 
 import nodeCrypto from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -180,6 +186,9 @@ for (const route of ROUTES) {
   handlers[`/api/${route}`] = await import(`../../app/api/${route}/route.ts`);
 }
 const { _resetLoginBruteForce } = await import("../../lib/security.ts");
+const { _resetAdminTokenGuard } = await import(
+  "../../lib/admin-token-guard.ts"
+);
 const { clearErrorLog } = await import("../../lib/error-log-ring.ts");
 const { resetEventLoopMonitor } = await import(
   "../../lib/runtime-diagnostics.ts"
@@ -540,6 +549,40 @@ const corpus = [
   aiDebugRow(1),
   flagOverride("flag.dashboard.stats", "off"),
 ];
+// A device someone else owns, linked to A1, and the on-disk backup state:
+// what "Delete everything" (the reset and the start-over) now removes on
+// top of the tables above. Only those cases seed them.
+const deviceRows = [
+  stmt(
+    "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "dev-1",
+    "Mum's iPad",
+    "0xABC123",
+    null,
+    null,
+    "iPad",
+    now - DAY,
+    now - DAY,
+    0,
+    "Mum",
+    "loved_one",
+    now - DAY
+  ),
+  stmt(
+    "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+    A1,
+    "dev-1",
+    now - DAY,
+    now - DAY
+  ),
+];
+const DEVICE_TABLES = ["devices", "app_devices"];
+const BACKUP_FILES = {
+  "backups/privacytracker-snapshot-2026-09-14T12-00-00-000Z.json": "{}",
+  "backups/privacytracker-snapshot-2026-09-15T00-00-00-000Z.json.tmp-1-ab": "{",
+  "backups/notes.txt": "not a snapshot",
+  "backup-signing.key": "c2lnbmluZy1rZXktZm9yLXRoZS1vcmFjbGUtb25seQ==\n",
+};
 const SAME_ORIGIN = {
   origin: "http://127.0.0.1:3000",
   host: "127.0.0.1:3000",
@@ -588,6 +631,45 @@ function blank(value) {
   return value;
 }
 
+// ── Files in the data directory ──────────────────────────────────────
+// "Delete everything" also removes the automatic backup snapshots and the
+// backup signing key from the data directory. A case that passes `files`
+// seeds them before it runs and records which remain after; the replay
+// seeds the same files into a directory of its own and compares.
+const DB_FILES = new Set(["privacy.db", "privacy.db-wal", "privacy.db-shm"]);
+
+function seedFiles(files) {
+  for (const [relative, contents] of Object.entries(files)) {
+    const full = path.join(dir, relative);
+    mkdirSync(path.dirname(full), { recursive: true });
+    writeFileSync(full, contents);
+  }
+}
+
+/** Every file under the data directory but the database, relative, sorted. */
+function listSeededFiles() {
+  const out = [];
+  const walk = (relative) => {
+    for (const entry of readdirSync(path.join(dir, relative), {
+      withFileTypes: true,
+    })) {
+      const child = relative ? `${relative}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        walk(child);
+      } else if (!DB_FILES.has(child)) {
+        out.push(child);
+      }
+    }
+  };
+  walk("");
+  return out.sort();
+}
+
+function clearSeededFiles() {
+  rmSync(path.join(dir, "backups"), { recursive: true, force: true });
+  rmSync(path.join(dir, "backup-signing.key"), { force: true });
+}
+
 // ── The runner ───────────────────────────────────────────────────────
 const cases = [];
 let ipCounter = 0;
@@ -612,6 +694,11 @@ async function run(name, spec) {
     contentLength,
     compare = "exact",
     seedErrors = 0,
+    // Files seeded into the data directory before the case (path relative
+    // to it → contents), and tables dumped beyond TABLES. Both only for the
+    // cases that need them, so every other case's record is unchanged.
+    files = null,
+    extraTables = [],
   } = spec;
   const setup = [...BASE, ...extraSetup];
   ipCounter += 1;
@@ -633,11 +720,15 @@ async function run(name, spec) {
   }
   // Process state the routes read or write, reset so each case stands alone.
   _resetLoginBruteForce();
+  _resetAdminTokenGuard();
   clearErrorLog();
   cspRing().length = 0;
   resetEventLoopMonitor();
   for (let i = 0; i < seedErrors; i++) {
     console.error(`seeded error ${i + 1}`);
+  }
+  if (files) {
+    seedFiles(files);
   }
   db.exec("SAVEPOINT maintenance_case");
   try {
@@ -688,7 +779,7 @@ async function run(name, spec) {
     }
     recording = null;
     const rows = {};
-    for (const table of TABLES) {
+    for (const table of [...TABLES, ...extraTables]) {
       const all = db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all();
       rows[table] =
         all.length > 100
@@ -715,6 +806,10 @@ async function run(name, spec) {
       csp: [...cspRing()],
       expected,
     };
+    if (files) {
+      record.files = files;
+      record.filesAfter = listSeededFiles();
+    }
     if (compare === "health" || compare === "database") {
       record.stream = blank(stream);
       record.rows = blank(rows);
@@ -728,6 +823,7 @@ async function run(name, spec) {
   } finally {
     recording = null;
     db.exec("ROLLBACK TO maintenance_case; RELEASE maintenance_case");
+    clearSeededFiles();
   }
 }
 
@@ -1299,12 +1395,16 @@ try {
     await run("reset", {
       route,
       method,
-      setup: [...corpus, setting("sync_schedule", "daily")],
+      setup: [...corpus, ...deviceRows, setting("sync_schedule", "daily")],
+      files: BACKUP_FILES,
+      extraTables: DEVICE_TABLES,
     });
     await run("reset while a sync runs", {
       route,
       method,
-      setup: [...corpus, setting("sync_running", "true")],
+      setup: [...corpus, ...deviceRows, setting("sync_running", "true")],
+      files: BACKUP_FILES,
+      extraTables: DEVICE_TABLES,
     });
     await run("reset admin token required", {
       route,
@@ -1333,7 +1433,9 @@ try {
     await run("start over", {
       route,
       method,
-      setup: [...corpus, setting("sync_schedule", "daily")],
+      setup: [...corpus, ...deviceRows, setting("sync_schedule", "daily")],
+      files: BACKUP_FILES,
+      extraTables: DEVICE_TABLES,
       ...admin,
     });
     await run("start over when empty", { route, method, ...admin });
@@ -1362,6 +1464,26 @@ try {
     kind: "callback",
     delay: 60_000,
     setup: [...corpus, setting("health_check_enabled", "false")],
+  });
+
+  // ── Appended last (the forwarded address comes from a counter, so a case
+  // inserted above would shift every later case's headers). "Delete
+  // everything": the start-over refuses during a sync as the reset does,
+  // and a wipe over an install with nothing on disk deletes no file. ──
+  await run("start over while a sync runs", {
+    route: "/api/admin/start-over",
+    method: "POST",
+    setup: [...corpus, ...deviceRows, setting("sync_running", "true")],
+    files: BACKUP_FILES,
+    extraTables: DEVICE_TABLES,
+    ...admin,
+  });
+  await run("reset with no backup files on disk", {
+    route: "/api/reset",
+    method: "POST",
+    setup: [...corpus, ...deviceRows],
+    files: {},
+    extraTables: DEVICE_TABLES,
   });
 } finally {
   db.close();

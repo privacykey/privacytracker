@@ -20,6 +20,7 @@ import {
   type ChangeEvent,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -130,6 +131,10 @@ export default function DevOptionsFeatureFlagPanel() {
   // FLAG_REGISTRY remain English in v1; tracked separately because
   // the registry has 200+ entries and warrants its own pass.
   const tDev = useTranslations("dev_options.feature_flags");
+  // Name + description for the floating dev-menu switch: its visible
+  // caption is a sibling, so the switch points at it (WCAG 4.1.2).
+  const devMenuSwitchLabelId = useId();
+  const devMenuSwitchHintId = useId();
   const tDevReset = useTranslations(
     "dev_options.feature_flags.reset_all_modal"
   );
@@ -899,8 +904,13 @@ export default function DevOptionsFeatureFlagPanel() {
           settings. */}
       <div className="dev-options-flag-panel__floating-toggle">
         <div className="dev-options-flag-panel__floating-toggle-text">
-          <strong>{tDev("dev_menu_trigger.title")}</strong>
-          <span className="dev-options-flag-panel__floating-toggle-hint">
+          <strong id={devMenuSwitchLabelId}>
+            {tDev("dev_menu_trigger.title")}
+          </strong>
+          <span
+            className="dev-options-flag-panel__floating-toggle-hint"
+            id={devMenuSwitchHintId}
+          >
             {tDev.rich("dev_menu_trigger.hint", {
               kbd: (chunks) => <kbd className="kbd">{chunks}</kbd>,
             })}
@@ -908,6 +918,8 @@ export default function DevOptionsFeatureFlagPanel() {
         </div>
         <button
           aria-checked={floatingOverlayOn}
+          aria-describedby={devMenuSwitchHintId}
+          aria-labelledby={devMenuSwitchLabelId}
           className={`switch-toggle${floatingOverlayOn ? " is-on" : ""}`}
           onClick={toggleFloatingOverlay}
           role="switch"

@@ -13,6 +13,10 @@ test.afterEach(() => {
 });
 
 test("AI model discovery resolves the saved masked OpenAI key and filters non-text models", async () => {
+  // Saved for OpenAI at its default base URL, which the request targets:
+  // the masked key only resolves for the endpoint it was saved for.
+  setSetting("ai_provider", "openai");
+  setSetting("ai_base_url", "");
   setSetting("ai_api_key", "saved-openai-key");
 
   global.fetch = (async (

@@ -1098,6 +1098,42 @@ try {
       replies: Array.from({ length: 30 }, () => storePage(TYPES)),
     });
   }
+
+  // ── Hostile app names in chat payloads ───────────────────────────
+  // Appended last: each case's forwarded address comes from a global
+  // counter. An App Store app name is the developer's choice, so each
+  // chat format escapes its own markup and Discord turns mentions off;
+  // generic carries the text unchanged.
+  const HOSTILE =
+    "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>";
+  const hostileSeed = {
+    appId: "1001",
+    appName: HOSTILE,
+    changes: [
+      {
+        category: "privacy-label",
+        type: "added",
+        description: "Now collects <Location> & [Contacts](https://y.test)",
+      },
+    ],
+  };
+  for (const format of ["slack", "discord", "teams", "generic"]) {
+    await seed(`seed notification escapes a hostile app name for ${format}`, {
+      setup: webhook(HOOK, format, "immediate"),
+      replies: [reply(200, "ok")],
+      json: hostileSeed,
+    });
+  }
+  for (const format of ["slack", "discord", "teams"]) {
+    await summary(`summary tick escapes hostile app names for ${format}`, {
+      setup: [
+        ...webhook(HOOK, format, "daily_summary"),
+        notification("h-1", HOSTILE, "@here <b>bold</b>", now - HOUR),
+        notification("h-2", "", "[x](https://z.test)", now - 2 * HOUR),
+      ],
+      replies: [reply(200, "ok")],
+    });
+  }
 } finally {
   db.close();
   rmSync(dir, { recursive: true, force: true });

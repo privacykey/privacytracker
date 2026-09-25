@@ -13,8 +13,20 @@ import type * as ECharts from "echarts";
  *     parents without callers wiring a window listener per instance.
  *
  * Callers pass an ECharts `option` object; this component owns only the chrome.
+ *
+ * Text alternative (WCAG 1.1.1): a canvas is a picture to assistive
+ * technology, so every chart needs `ariaLabel`, and passes the data in
+ * words as `ariaDescription` where it fits. The root is `role="img"`
+ * named by the label; the description is visually hidden text beside it,
+ * linked with aria-describedby (children of role="img" are not read, so
+ * it cannot live inside). ECharts' own `aria` option is always enabled
+ * with the same label as its description, so its auto-generated summary
+ * (English or Chinese only, and never our copy) never replaces ours.
+ * Callers that use `aria.decal` for shapes mode keep it: the caller's
+ * `aria` object is merged, not replaced.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
+import { withAriaLabel } from "../../../lib/chart-text-alternatives";
 import { useChartTheme } from "../../../lib/use-chart-colors";
 
 let themesRegistered = false;
@@ -56,6 +68,17 @@ function registerThemesOnce(echarts: typeof ECharts) {
 }
 
 interface EChartProps {
+  /**
+   * Optional longer text alternative: the chart's data restated in words.
+   * Rendered visually hidden next to the chart and linked with
+   * aria-describedby.
+   */
+  ariaDescription?: string;
+  /**
+   * Accessible name: what the chart shows, in one localised sentence.
+   * Required so no chart ships as an unlabelled canvas.
+   */
+  ariaLabel: string;
   /** Extra className appended to the root div. */
   className?: string;
   /** Height in px or any valid CSS length. Width is always 100% of parent. */
@@ -74,11 +97,14 @@ interface EChartProps {
 
 export default function EChart({
   option,
+  ariaLabel,
+  ariaDescription,
   height = 360,
   className,
   onClick,
   onReady,
 }: EChartProps) {
+  const descriptionId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const instanceRef = useRef<ECharts.ECharts | null>(null);
   const theme = useChartTheme();
@@ -88,10 +114,12 @@ export default function EChart({
   // only a theme flip does. Option *updates* still flow through the
   // setOption effect further down.
   const optionRef = useRef(option);
+  const ariaLabelRef = useRef(ariaLabel);
   const onClickRef = useRef(onClick);
   const onReadyRef = useRef(onReady);
   useEffect(() => {
     optionRef.current = option;
+    ariaLabelRef.current = ariaLabel;
     onClickRef.current = onClick;
     onReadyRef.current = onReady;
   });
@@ -111,7 +139,7 @@ export default function EChart({
         renderer: "canvas",
       });
       instanceRef.current = inst;
-      inst.setOption(optionRef.current);
+      inst.setOption(withAriaLabel(optionRef.current, ariaLabelRef.current));
       inst.on("click", (params: unknown) => onClickRef.current?.(params));
       // Re-fires after a theme re-init so imperative callers always hold
       // the live instance, never a disposed one.
@@ -130,12 +158,15 @@ export default function EChart({
     // next effect so we don't rebuild the canvas every render.
   }, [theme]);
 
-  // Push new option when it changes, preserving the existing canvas.
+  // Push new option (or label) when it changes, preserving the existing
+  // canvas.
   useEffect(() => {
     if (instanceRef.current) {
-      instanceRef.current.setOption(option, { notMerge: true });
+      instanceRef.current.setOption(withAriaLabel(option, ariaLabel), {
+        notMerge: true,
+      });
     }
-  }, [option]);
+  }, [option, ariaLabel]);
 
   // ResizeObserver — safer than window resize because the chart can live
   // inside a flex parent that changes independently of the viewport.
@@ -149,13 +180,23 @@ export default function EChart({
   }, []);
 
   return (
-    <div
-      className={className}
-      ref={rootRef}
-      style={{
-        width: "100%",
-        height: typeof height === "number" ? `${height}px` : height,
-      }}
-    />
+    <>
+      <div
+        aria-describedby={ariaDescription ? descriptionId : undefined}
+        aria-label={ariaLabel}
+        className={className}
+        ref={rootRef}
+        role="img"
+        style={{
+          width: "100%",
+          height: typeof height === "number" ? `${height}px` : height,
+        }}
+      />
+      {ariaDescription ? (
+        <p className="sr-only" id={descriptionId}>
+          {ariaDescription}
+        </p>
+      ) : null}
+    </>
   );
 }

@@ -79,6 +79,12 @@
       "repository": "https://github.com/soc/dirs-rs"
     },
     {
+      "name": "flate2",
+      "version": "1.1.9",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/rust-lang/flate2-rs"
+    },
+    {
       "name": "futures-util",
       "version": "0.3.32",
       "license": "MIT OR Apache-2.0",
@@ -139,6 +145,12 @@
       "repository": "https://github.com/matklad/once_cell"
     },
     {
+      "name": "plist",
+      "version": "1.10.0",
+      "license": "MIT",
+      "repository": "https://github.com/ebarnard/rust-plist/"
+    },
+    {
       "name": "regex",
       "version": "1.13.0",
       "license": "MIT OR Apache-2.0",
@@ -167,6 +179,12 @@
       "version": "0.32.1",
       "license": "MIT",
       "repository": "https://github.com/rusqlite/rusqlite"
+    },
+    {
+      "name": "semver",
+      "version": "1.0.28",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/dtolnay/semver"
     },
     {
       "name": "serde",

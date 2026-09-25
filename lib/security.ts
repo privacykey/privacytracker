@@ -721,13 +721,12 @@ export function rateLimitKeyForRequest(
 // ─────────────────────────────────────────────
 
 /**
- * The per-IP login limiter (5/min) collapses to a single shared bucket when no
- * trusted proxy is configured (X-Forwarded-For is untrusted), so a spoofed-IP
- * attacker cannot multiply buckets — but a shared bucket the attacker can also
- * fill could starve the operator. This absolute, IP-independent counter is the
- * backstop: a temporary cooldown trips after LOGIN_GLOBAL_FAILURE_LIMIT FAILED
- * attempts inside the window, bounding total brute-force tries regardless of
- * how the IP key is spoofed.
+ * The login limiter (5/min) and the guess budget (lib/admin-token-guard.ts)
+ * are per client: the socket peer, or the last forwarded hop behind a trusted
+ * proxy. This absolute, client-independent counter is the backstop for
+ * guessing spread across many clients: a temporary cooldown trips after
+ * LOGIN_GLOBAL_FAILURE_LIMIT FAILED attempts inside the window, bounding
+ * total brute-force tries however many addresses they come from.
  *
  * Lockout-DoS safety: only FAILED attempts are counted, and the login route
  * lets a request already carrying a valid cookie through before consulting

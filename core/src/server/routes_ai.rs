@@ -59,6 +59,8 @@ const MODELS: &str = "/api/ai/models";
 const AI_RESPONSE_MAX_BYTES: usize = 1024 * 1024;
 const LIST_TIMEOUT_MS: u64 = 10_000;
 const MASKED_SECRET: &str = "__SET__";
+/// `STORED_KEY_REFUSED` (lib/ai-submitted-key.ts).
+const STORED_KEY_REFUSED: &str = "The saved API key is only sent to the saved provider and base URL. Enter the key again to use a different one.";
 const BLOCKED_HOST: &str =
     "The base URL points at a blocked host (cloud metadata endpoints are always blocked).";
 const SCRAPE_DISABLED: &str = "Policy scraping is disabled in Settings. Re-enable to fetch, or use the Summarise-only action.";
@@ -222,20 +224,67 @@ fn provider_of(body: &Value) -> &'static str {
     }
 }
 
-/// `resolveSubmittedApiKey`: the key as typed, or — for the mask Settings
-/// shows in place of a stored key — the stored one.
-fn submitted_api_key(db: &mut dyn DbAccess, raw: Option<&Value>) -> String {
+/// A URL's serialised form (`new URL(value).href`), or the text itself
+/// when it does not parse.
+fn canonical_url(value: &str) -> String {
+    url::Url::parse(value).map_or_else(|_| value.to_string(), |u| u.as_str().to_string())
+}
+
+/// `resolveSubmittedApiKey` (lib/ai-submitted-key.ts): the key as typed,
+/// or, for the mask Settings shows in place of a stored key, the stored
+/// one, but only when the request targets the endpoint it was saved for:
+/// the stored `ai_provider`, and the stored `ai_base_url` (that provider's
+/// default when none is saved) normalised as the call is. Anything else
+/// is `Err`, which the route answers 400 with `STORED_KEY_REFUSED`. With
+/// nothing stored the mask stands for no key, as it always has.
+fn submitted_api_key(
+    db: &mut dyn DbAccess,
+    raw: Option<&Value>,
+    provider: &str,
+    base_url: &str,
+) -> Result<String, ()> {
     let submitted = raw
         .and_then(Value::as_str)
         .map(|s| js_trim(s).to_string())
         .unwrap_or_default();
-    if submitted == MASKED_SECRET {
-        let stored = db
-            .with(|w| get_setting_with(w.conn, "ai_api_key", ""))
-            .unwrap_or_default();
-        return js_trim(&stored).to_string();
+    if submitted != MASKED_SECRET {
+        return Ok(submitted);
     }
-    submitted
+    let default_base = resolve_default_base_url(provider);
+    let (stored, stored_provider, stored_base) = db
+        .with(|w| -> rusqlite::Result<(String, String, String)> {
+            Ok((
+                get_setting_with(w.conn, "ai_api_key", "")?,
+                get_setting_with(w.conn, "ai_provider", "disabled")?,
+                get_setting_with(w.conn, "ai_base_url", default_base)?,
+            ))
+        })
+        .unwrap_or_default();
+    let stored = js_trim(&stored).to_string();
+    if stored.is_empty() {
+        return Ok(String::new());
+    }
+    if normalize_ai_provider(&stored_provider) != provider {
+        return Err(());
+    }
+    let stored_base = if stored_base.is_empty() {
+        default_base
+    } else {
+        &stored_base
+    };
+    if canonical_url(&normalize_base_url(stored_base, provider)) != canonical_url(base_url) {
+        return Err(());
+    }
+    Ok(stored)
+}
+
+/// The route's 400 when the stored key is asked for elsewhere, under the
+/// body key the route reports failures with.
+fn stored_key_refused(field: &str) -> Response {
+    let mut body = Map::new();
+    body.insert("ok".into(), json!(false));
+    body.insert(field.into(), json!(STORED_KEY_REFUSED));
+    json_response(StatusCode::BAD_REQUEST, &Value::Object(body))
 }
 
 /// The base URL the route normalises, from the one submitted or the
@@ -376,20 +425,23 @@ async fn test_connection(
         Err(response) => return response,
     };
     let provider = provider_of(&body);
-    let api_key = submitted_api_key(db, prop(&body, "apiKey"));
     if provider == "disabled" {
         return json_ok(&json!({
             "ok": false,
             "message": "Pick an AI provider before testing the connection.",
         }));
     }
+    let base_url = base_url_of(&body, provider);
+    // The stored key only ever goes to the endpoint it was saved for.
+    let Ok(api_key) = submitted_api_key(db, prop(&body, "apiKey"), provider, &base_url) else {
+        return stored_key_refused("message");
+    };
     if provider_requires_api_key(provider) && api_key.is_empty() {
         return json_ok(&json!({
             "ok": false,
             "message": "An API key is required to test this provider.",
         }));
     }
-    let base_url = base_url_of(&body, provider);
     if let Err(message) = check_base_url(&base_url) {
         return json_ok(&json!({
             "ok": false,
@@ -644,17 +696,20 @@ async fn list_models(db: &mut dyn DbAccess, fetcher: &dyn Fetcher, body: BodyOut
         Err(response) => return response,
     };
     let provider = provider_of(&body);
-    let api_key = submitted_api_key(db, prop(&body, "apiKey"));
     if provider == "disabled" {
         return json_ok(&json!({ "ok": false, "message": "Pick an AI provider first." }));
     }
+    let base_url = base_url_of(&body, provider);
+    // The stored key only ever goes to the endpoint it was saved for.
+    let Ok(api_key) = submitted_api_key(db, prop(&body, "apiKey"), provider, &base_url) else {
+        return stored_key_refused("message");
+    };
     if provider_requires_api_key(provider) && api_key.is_empty() {
         return json_ok(&json!({
             "ok": false,
             "message": "API key required for this provider.",
         }));
     }
-    let base_url = base_url_of(&body, provider);
     if base_url.is_empty() {
         return json_ok(&json!({ "ok": false, "message": "Base URL is empty." }));
     }
@@ -735,11 +790,14 @@ async fn policy_sample(
     if js_length(&model) > 200 {
         return refuse("Model ID is too long.");
     }
-    let api_key = submitted_api_key(db, prop(&body, "apiKey"));
+    let base_url = base_url_of(&body, provider);
+    // The stored key only ever goes to the endpoint it was saved for.
+    let Ok(api_key) = submitted_api_key(db, prop(&body, "apiKey"), provider, &base_url) else {
+        return stored_key_refused("error");
+    };
     if provider_requires_api_key(provider) && api_key.is_empty() {
         return refuse("An API key is required to test this provider.");
     }
-    let base_url = base_url_of(&body, provider);
     if let Err(message) = check_base_url(&base_url) {
         return refuse(&message);
     }
@@ -1169,5 +1227,115 @@ impl Detached {
             fetcher: fetcher.shared()?,
             clock: clock.clone(),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{canonical_url, submitted_api_key};
+    use crate::scrape::persist::{DbAccess, Locked};
+    use rusqlite::Connection;
+    use serde_json::json;
+    use std::sync::Mutex;
+
+    fn install(settings: &[(&str, &str)]) -> Mutex<Connection> {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("CREATE TABLE app_settings (key TEXT PRIMARY KEY, value TEXT)")
+            .unwrap();
+        for (k, v) in settings {
+            conn.execute(
+                "INSERT INTO app_settings (key, value) VALUES (?, ?)",
+                [k, v],
+            )
+            .unwrap();
+        }
+        Mutex::new(conn)
+    }
+
+    fn key(conn: &Mutex<Connection>, raw: &str, provider: &str, base: &str) -> Result<String, ()> {
+        let mut db = Locked {
+            conn,
+            log: None,
+            on_wait: None,
+        };
+        submitted_api_key(
+            &mut db as &mut dyn DbAccess,
+            Some(&json!(raw)),
+            provider,
+            base,
+        )
+    }
+
+    #[test]
+    fn urls_compare_in_their_serialised_form() {
+        assert_eq!(
+            canonical_url("HTTP://Example.COM:80/v1"),
+            "http://example.com/v1"
+        );
+        assert_eq!(
+            canonical_url("https://api.openai.com:443/v1"),
+            "https://api.openai.com/v1"
+        );
+        assert_eq!(canonical_url("not a url"), "not a url");
+    }
+
+    #[test]
+    fn the_masked_key_only_goes_where_it_was_saved_for() {
+        let openai = install(&[("ai_provider", "openai"), ("ai_api_key", " sk-stored ")]);
+        let default = "https://api.openai.com/v1";
+        assert_eq!(
+            key(&openai, "__SET__", "openai", default),
+            Ok("sk-stored".into())
+        );
+        assert_eq!(
+            key(
+                &openai,
+                " __SET__ ",
+                "openai",
+                "HTTPS://API.OPENAI.COM:443/v1"
+            ),
+            Ok("sk-stored".into())
+        );
+        assert_eq!(
+            key(&openai, "__SET__", "openai", "https://collector.example/v1"),
+            Err(())
+        );
+        assert_eq!(
+            key(&openai, "__SET__", "anthropic", "https://api.anthropic.com"),
+            Err(())
+        );
+        // A typed key is the caller's own, wherever it goes.
+        assert_eq!(
+            key(
+                &openai,
+                " sk-typed ",
+                "openai",
+                "https://collector.example/v1"
+            ),
+            Ok("sk-typed".into())
+        );
+
+        let local = install(&[
+            ("ai_provider", "ollama"),
+            ("ai_base_url", "http://127.0.0.1:11434/"),
+            ("ai_api_key", "sk-local"),
+        ]);
+        assert_eq!(
+            key(&local, "__SET__", "custom", "http://127.0.0.1:11434/v1"),
+            Ok("sk-local".into())
+        );
+        assert_eq!(
+            key(&local, "__SET__", "custom", "http://127.0.0.1:11435/v1"),
+            Err(())
+        );
+
+        // Nothing saved: the mask stands for no key, as it always has.
+        let empty = install(&[("ai_provider", "openai")]);
+        assert_eq!(
+            key(&empty, "__SET__", "anthropic", "https://x.example"),
+            Ok(String::new())
+        );
+        let disabled = install(&[("ai_provider", "disabled"), ("ai_api_key", "sk")]);
+        assert_eq!(key(&disabled, "__SET__", "openai", default), Err(()));
     }
 }

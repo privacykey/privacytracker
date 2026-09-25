@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import { useFlagBundleStatus, useFlagValues } from "@/lib/use-flag-bundle";
 import AppDetailView, { type DetailFlagState } from "./AppDetailView";
+import { PageSkeleton } from "./LoadingShell";
 import Nav from "./Nav";
 import RecordTaskVisit from "./RecordTaskVisit";
 
@@ -247,7 +248,12 @@ export default function AppDetailLoader() {
   }
 
   if (!(data && flagValues)) {
-    return <Nav />;
+    return (
+      <>
+        <Nav />
+        <PageSkeleton />
+      </>
+    );
   }
 
   const v = flagValues;

@@ -101,10 +101,10 @@ test.beforeAll(async ({ request }) => {
   );
   await expect(seed).toBeOK();
 
-  // `/api/reset` clears `apps` (cascading `app_devices`) but NOT the
-  // `devices` table, so devices from earlier specs — the import flows
-  // create one per run — are still here and would show up as extra rows
-  // in the picker. Clear them explicitly.
+  // `/api/reset` deletes every device too ("Delete everything"), so this
+  // loop normally finds nothing. It stays as a guard: a device left by
+  // anything that runs between the reset and here would show up as an
+  // extra row in the picker.
   const existing = await (
     await request.get("/api/devices", { headers: sameOriginHeaders })
   ).json();

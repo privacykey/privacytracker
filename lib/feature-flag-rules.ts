@@ -415,7 +415,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.dashboard.stale_section": "on", // stale apps list
   "flag.dashboard.activity_section": "on", // 'this week's activity'
   "flag.dashboard.risk_tier_legend": "collapsed", // reference details, expandable
-  "flag.dashboard.sample_data_banner": "off", // only on while sample apps present
+  "flag.dashboard.sample_data_banner": "off", // "Clear samples" in the sample-mode bar (the bar and its exits always show)
   "flag.dashboard.background_mode_wizard": "on", // Tauri-only callout — runtime-gated on isDesktop()
   "flag.dashboard.task_list": "on", // audience-aware tasks panel at the top of HomeView
   "flag.dashboard.task_journey": "on", // journey-strip rendering of the tasks panel (off = legacy flat list)

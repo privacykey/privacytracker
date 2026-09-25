@@ -13,6 +13,17 @@
  */
 
 /* ── Slot card ─────────────────────────────── */
+/* Positioning context for the Change / Clear actions, which sit over the
+   card as its siblings (a button may not contain buttons). The card fills
+   the wrapper so both slots still stretch to the taller one's height. */
+.compare-slot-card-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.compare-slot-card-wrap > .compare-slot-card {
+  flex: 1;
+}
 .compare-slot-card {
   position: relative;
   display: flex;
@@ -149,17 +160,29 @@
   margin-top: 6px;
 }
 
-/* Inline actions inside the picked card — small text-style affordances
-   that sit unobtrusively in the top-right corner. Stop click bubbling so
-   they don't reopen the modal when the user hits Clear/Change. */
+/* Inline actions over the picked card — small text-style affordances in
+   its top-right corner. They are siblings of the card, so they lift with
+   it on hover here rather than by inheritance. */
 .compare-slot-card-actions {
   position: absolute;
   top: 10px;
   right: 10px;
   display: flex;
   gap: 4px;
+  transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.compare-slot-card-wrap:has(> .compare-slot-card:hover)
+  .compare-slot-card-actions {
+  transform: translateY(-2px);
+}
+/* 24px minimum each way: WCAG 2.2 target size (2.5.8). They sit 4px
+   apart, too close for the spacing exception at their old ~20px size. */
 .compare-slot-card-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
   padding: 3px 9px;
   font: inherit;
   font-size: 11px;

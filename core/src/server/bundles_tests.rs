@@ -13,7 +13,11 @@
 //! binds every JavaScript number, so its stream is normalised to JSON's
 //! one number type before it is compared. The oracle ran under TZ=UTC; the
 //! export's filename and the duplicate message are in the process zone.
+//! `<APP_VERSION>` in the fixture is `package.json`'s version, which a
+//! bundle carries and the import quotes back; it is substituted before the
+//! parse, so a release bump needs no re-recording.
 use super::{
+    audit_bundle::app_version,
     body::{read_json, read_raw, BodyOutcome},
     bundle_writes,
     ratelimit::RateLimiter,
@@ -94,8 +98,9 @@ fn bundle_paths_match_node_wire_stream_and_rows() {
         std::env::remove_var(var);
     }
 
-    let fixture: Value =
-        serde_json::from_str(include_str!("../../tests/fixtures/bundles-cases.json")).unwrap();
+    let text = include_str!("../../tests/fixtures/bundles-cases.json")
+        .replace("<APP_VERSION>", &app_version());
+    let fixture: Value = serde_json::from_str(&text).unwrap();
     let now = fixture["now"].as_i64().unwrap();
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()

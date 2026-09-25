@@ -22,15 +22,23 @@ tauri-plugin-shell = "2"
 # Updater is wired up so we don't have to add it later. The release CI signs
 # update manifests with an ed25519 key whose public half ships in tauri.conf.json.
 tauri-plugin-updater = "2"
+# update_guard.rs reads the version out of a downloaded update before it is
+# installed: flate2 + tar unpack the signed .app.tar.gz, plist reads the
+# bundle's Info.plist, semver compares it with the running version. All
+# four are already in the tree through the updater and tauri-utils.
+flate2 = "1"
+plist = "1"
+semver = "1"
 # Backs relaunch() from @tauri-apps/plugin-process, which lib/tauri-updater.ts
 # calls once the updater has installed a new version. Without it the relaunch
 # is rejected and a finished install reads as a failure. The capability grants
 # restart only (process:allow-restart). Keep it on the npm package's major and
 # minor: the tauri CLI refuses to build when the two drift apart.
 tauri-plugin-process = "2"
-# "Start at login" + "launch hidden in tray" both live behind this plugin. It
-# writes a LaunchAgent plist on macOS and a Run registry key on Windows. We
-# pass CLI args ("--hidden") that main.rs honours to know which boot path it's on.
+# "Start at login" lives behind this plugin. main.rs picks its LaunchAgent
+# launcher, which writes ~/Library/LaunchAgents/privacytracker.plist on macOS
+# (a Run registry key on Windows) and needs no permission. The plist passes
+# "--hidden", which main.rs honours so a login launch starts in the menu bar.
 tauri-plugin-autostart = "2"
 # Native macOS Notification Center / Windows toast bridge. Only used when
 # desktop_native_notifications is on; otherwise we stay with the in-app bell.

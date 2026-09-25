@@ -13,14 +13,13 @@ use serde::Deserialize;
 
 /// Mirror of the JSON shape returned by `GET /api/settings/desktop`.
 ///
-/// Several fields here are deserialized eagerly even though the Rust shell
-/// doesn't act on them yet — `autostart`, `auto_lock_idle_minutes`, and
-/// `theme_override` are read by other call sites (the autostart plugin, the
-/// idle-lock timer, the webview appearance picker) but those pipes haven't
-/// been wired up in this binary. We keep the fields populated so the struct
-/// stays a faithful round-trip with the API; dead-code analysis is silenced
-/// at the struct level rather than per-field so the file stays compact.
-/// Drop the attribute (and individual fields) when each feature lands.
+/// `theme_override` is deserialized even though the Rust shell doesn't act
+/// on it: the webview applies it itself. We keep the field populated so the
+/// struct stays a faithful round-trip with the API; dead-code analysis is
+/// silenced at the struct level rather than per-field so the file stays
+/// compact. `require_unlock` and `auto_lock_idle_minutes` drive
+/// window_lock, and `autostart` the one-time LaunchAgent migration
+/// (autostart.rs).
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct DesktopSettings {
@@ -92,7 +91,7 @@ pub fn fetch(base_url: &str) -> Result<DesktopSettings, Box<dyn std::error::Erro
     // (desktop_hide_dock, desktop_launch_hidden, …) onto this camel-cased
     // bundle. Keeping the snake_case → camelCase conversion server-side
     // means Rust has exactly one shape to parse.
-    let resp: DesktopSettings = ureq::get(&format!("{base_url}/api/settings/desktop"))
+    let resp: DesktopSettings = crate::backend::get(base_url, "/api/settings/desktop")
         // Production sidecars also get PRIVACYTRACKER_RUNTIME=desktop, but
         // `tauri dev` can point at an already-running Next server via
         // PRIVACYTRACKER_DEV_URL. This header lets that server persist the
