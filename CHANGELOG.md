@@ -112,6 +112,13 @@ Going forward, changes are recorded here as they land.
   and the apps list also start more of their reads at the same time, so
   with each request taking 3 seconds the dashboard now appears in about 9
   seconds instead of 13, and the apps list in about 6 instead of 10.
+- On phones the accessibility options button no longer covers the page's
+  own buttons. It floated over the bottom-right corner at every width and
+  sat on the end of the welcome page's Next button, onboarding's "Search
+  App Store" and "Other import options", and the delete button of the
+  first app card. On screens narrower than 480 pixels it now sits at the
+  end of the page, below the content. Wider screens keep the floating
+  button, and "g then u" still opens the panel.
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of

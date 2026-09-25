@@ -25834,6 +25834,36 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
    rationale (hardware keyboards are unusual on phones) is sound for a
    shortcut hint but not for the a11y controls themselves. */
 
+/* Visible at every width, but not FLOATING at every width. On a phone
+   (and on a desktop zoomed past ~260%) a button fixed to the bottom-right
+   corner always lands on something: at 375px it covered the right end of
+   the welcome page's sticky Next button, onboarding's "Search App Store"
+   and "Other import options", and the first app card's delete button.
+   Below 480px the trigger drops into the footer landmark, in the page's
+   flow after the content, where nothing can sit under it. It is still one
+   tap away at the end of every page, and "g then u" still opens the
+   panel. `relative`, not `static`: the active-state dot is absolutely
+   positioned against the trigger. The popover stays fixed where it was;
+   with the page scrolled to its end, the trigger sits below it.
+
+   Placed after the base trigger and footer rules on purpose: an override
+   in the early 640px block loses to later base rules of the same
+   specificity. tests/e2e/a11y-trigger-phone.spec.ts measures the boxes. */
+@media (max-width: 480px) {
+  .app-footer-landmark {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 16px max(16px, env(safe-area-inset-bottom));
+    line-height: normal;
+  }
+
+  .a11y-quick-trigger {
+    position: relative;
+    right: auto;
+    bottom: auto;
+  }
+}
+
 /* ─────────────────────────────────────────────────────
    Quick-toggles popover
 */
