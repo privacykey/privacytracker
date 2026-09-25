@@ -72,14 +72,15 @@ into an already-merged feature branch.
 4. *(on main, inert)* Writers, schedulers, the crash-safe runners, health
    check.
 5. *(on main, inert)* The AI policy pipeline.
-6. *(done)* The desktop cutover (embed axum, drop the Node sidecar), then
-   the Docker cutover straight after, with no release between them. The
-   first phase that was not inert; see "Status — Phase 6" below. Its
+6. **(in progress)** The desktop cutover (embed axum, drop the Node
+   sidecar), then the Docker cutover straight after, with no release
+   between them; both have landed. What remains is the first release on the
+   Rust backend, v0.3.0, and later batch 7, which deletes the Node paths:
+   the desktop sidecar, the Node Docker stage, and the inert test with them.
+   The first phase that was not inert; see "Status — Phase 6" below. Its
    binaries ship the third-party notice in `core/V8-LICENSE` (the
    `Date.parse` port in `jsdate` and the `JSON.parse` error port in
    `jsjson`) alongside `NOTICE`.
-7. *(after 1.0)* Delete the Node paths: the desktop sidecar, the Node
-   Docker stage, and the inert test with them.
 
 ## The gates (how the two implementations are compared)
 
@@ -5022,4 +5023,5 @@ the `pt-core` binary, the core's build output and its `COPY` of `core/`
 path); and a row deleted from the image's crate list fails the notices
 gate on that file alone.
 
-**Next:** the UX tests and the cleanup, then 1.0, which the user cuts.
+**Next:** the UX tests and the cleanup (done: #328 to #336), then the
+first release on the Rust backend, v0.3.0, which the user cuts.

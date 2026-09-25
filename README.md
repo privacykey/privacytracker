@@ -72,7 +72,7 @@ bundle, and webhook notifications.
 
 ### macOS — Homebrew
 
-v0.2 requires macOS **13.5 or later**. Upgrading from v0.1.2 requires one
+Releases after v0.1.2 require macOS **13.5 or later**. Upgrading from v0.1.2 requires one
 manual DMG or Homebrew upgrade; later in-app updates use the new update feed.
 See [upgrade and recovery guidance](docs/RELEASING.md).
 

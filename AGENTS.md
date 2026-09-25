@@ -8,8 +8,11 @@ See [docs/RELEASING.md](docs/RELEASING.md). Use `pnpm release:prepare <version>`
 on a reviewed PR branch; keep package.json, Cargo.toml and Cargo.lock aligned.
 The release workflow consumes an existing tag on main and leaves desktop
 assets in a draft. macOS requires 13.5+; v0.1.2 uses the frozen legacy feed,
-while v0.2+ uses latest-v2.json. Do not auto-publish releases or bypass the
-macos-signing reviewer gate. `pnpm test:release` requires first building the
+while later releases use latest-v2.json. v0.2.0 was prepared but never
+released: v0.1.2 is the last release, and the next is v0.3.0, the first on
+the Rust backend. The draft's body is the CHANGELOG.md section above its
+`[//]: # (release-notes-end)` line, under GitHub's 125,000 characters. Do
+not auto-publish releases or bypass the macos-signing reviewer gate. `pnpm test:release` requires first building the
 small locked verifier in scripts/verify-updater.
 
 ## Commands

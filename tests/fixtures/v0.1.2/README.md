@@ -9,7 +9,7 @@ public test key; never use it in an installation.
 `database.sql` captures that version's migrated SQLite schema and seeded
 records. `backup.json` is the actual signed export from that old code. Its
 omission of devices, device links, review history and activity is intentional:
-those omissions are a v0.1.2 export bug, repaired in v0.2. The upgrade test
+those omissions are a v0.1.2 export bug, repaired after v0.1.2. The upgrade test
 preserves those rows through a database upgrade; a v0.1.2 JSON export cannot
 recover data it never contained. Keep a complete stopped data-directory copy
 for upgrades and rollback.
