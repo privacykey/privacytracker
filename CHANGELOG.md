@@ -14,6 +14,14 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- The Legal page lists every runtime npm dependency (17, up from 6),
+  among them `dompurify` under MPL-2.0 or Apache-2.0 and the Tauri packages
+  under MIT or Apache-2.0. The list is built from `package.json`, so a new
+  dependency without an entry fails the build, and
+  `tests/app/legal-dependencies.test.ts` checks each licence against the
+  package's own `package.json`. The `@tauri-apps/cli` entry now shows its
+  dual licence.
+
 - The Docker image runs the Rust server (Rust core Phase 6, the Docker
   cutover). `docker compose up --build -d` and the published image now run
   `pt-core` on Alpine: the image is about 56 MB where the Node one was

@@ -4,363 +4,30 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import FlagGated from "@/app/components/FlagGated";
 import RequireFlagGate from "@/app/components/RequireFlagGate";
+import {
+  type DependencyEntry,
+  LICENSE_META,
+  LICENSE_ORDER,
+  legalDependencies,
+  type SpdxLicense,
+} from "@/lib/legal-dependencies";
 import rustCrates from "@/lib/rust-crates.json";
-import pkg from "@/package.json";
 
 /**
- * Pull a dep's version straight from package.json at build time.
- *
- *   pkgVersion('next')             // -> "16.2.4"
- *   pkgVersion('echarts')          // -> "5.5.1"  (strips leading ^)
- *   pkgVersion('@types/react')     // -> "19.2.3"
- *
- * When the maintainer bumps a package with `npm install foo@latest`,
- * package.json changes, Next re-compiles /legal on the next build, and
- * this page shows the new version automatically — no second edit needed.
- * Anything that is NOT in package.json (Inter, which ships as a binary
- * woff2, or anything else bundled outside npm) still uses a hard-coded
- * string on the entry.
- *
- * Throws at build time if an entry points at a missing dep — we'd rather
- * fail the build than render "undefined" on a legal disclosure.
- */
-function pkgVersion(name: string): string {
-  const deps = {
-    ...(pkg.dependencies ?? {}),
-    ...(pkg.devDependencies ?? {}),
-  } as Record<string, string>;
-  const raw = deps[name];
-  if (!raw) {
-    throw new Error(
-      `pkgVersion: "${name}" is not listed in package.json (dependencies or devDependencies).`
-    );
-  }
-  // Strip the standard semver range prefixes (^, ~, >=, etc.) so the
-  // page shows a concrete version string rather than a dep-spec range.
-  return raw.replace(/^[\^~>=<\s]+/, "");
-}
-
-/**
- * /legal — attribution + licence disclosure page. Lists every third-party
+ * /legal: attribution and licence disclosure page. Lists every third-party
  * library bundled with the app, grouped by SPDX licence identifier.
  *
- * Server component by default so it works without JavaScript. The sticky
- * sidebar is pure CSS / anchor links — no JS required to navigate.
+ * The data lives in lib/legal-dependencies.ts. Runtime dependencies are
+ * derived from package.json `dependencies` there, so a new dependency
+ * without an entry fails the build (and its unit test) instead of being
+ * left off this page. Versions are read from package.json at build time.
  *
- * Versions are read straight from package.json so they can drift without
- * this page going stale. If a dep is added or removed upstream, update
- * the `DEPENDENCIES` constant below — we deliberately don't auto-generate
- * from node_modules because the disclosures (what it does, how we use
- * it, links out) are curated per-library.
+ * The sticky sidebar is plain anchor links.
  */
 
-interface DependencyEntry {
-  /** One-liner explaining what the library actually is. */
-  about: string;
-  /** `true` when the dep only ships with a local dev build, not production. */
-  devOnly?: boolean;
-  license: SpdxLicense;
-  /** Links out. Omit any that don't apply. */
-  links: {
-    website?: string;
-    repo?: string;
-    npm?: string;
-    docs?: string;
-    /** If the upstream publishes their own privacy policy. */
-    privacy?: string;
-  };
-  name: string;
-  /** How privacytracker uses it — concrete, not marketing. */
-  usage: string;
-  version: string;
-}
-
-type SpdxLicense =
-  | "MIT"
-  | "Apache-2.0"
-  | "BSD-3-Clause"
-  | "ISC"
-  | "OFL-1.1"
-  // OpenDyslexic v1 carries this licence (it's a Bitstream Vera
-  // derivative). Not a standard SPDX ID — Bitstream's permission text
-  // pre-dates SPDX — so we tag it 'Bitstream-Vera' and render it
-  // explicitly like the other groups.
-  | "Bitstream-Vera";
-
-interface LicenseMeta {
-  blurb: string;
-  id: SpdxLicense;
-  name: string;
-  url: string;
-}
-
-const LICENSE_META: Record<SpdxLicense, LicenseMeta> = {
-  MIT: {
-    id: "MIT",
-    name: "MIT License",
-    blurb:
-      "Permissive licence — use, modify, distribute, and sublicense freely, provided the original copyright + licence notice is preserved. No warranty.",
-    url: "https://opensource.org/license/mit",
-  },
-  "Apache-2.0": {
-    id: "Apache-2.0",
-    name: "Apache License 2.0",
-    blurb:
-      "Permissive licence with an explicit patent grant and trademark notice. Preserve the licence text and attribution; mark any modified files as changed.",
-    url: "https://www.apache.org/licenses/LICENSE-2.0",
-  },
-  "BSD-3-Clause": {
-    id: "BSD-3-Clause",
-    name: "BSD 3-Clause License",
-    blurb:
-      'Permissive licence with a "no endorsement" clause — cannot use the original author\u2019s name to promote derivatives without permission. Preserve the copyright notice and disclaimer.',
-    url: "https://opensource.org/license/bsd-3-clause",
-  },
-  ISC: {
-    id: "ISC",
-    name: "ISC License",
-    blurb:
-      "Functionally equivalent to MIT but shorter. Permissive, attribution required, no warranty.",
-    url: "https://opensource.org/license/isc-license-txt",
-  },
-  "OFL-1.1": {
-    id: "OFL-1.1",
-    name: "SIL Open Font License 1.1",
-    blurb:
-      "Permissive font licence. You may use, study, modify, and redistribute the font — including bundled in commercial products — provided the font itself is not sold on its own and the licence + reserved-font-name notice travel with it.",
-    url: "https://openfontlicense.org/open-font-license-official-text/",
-  },
-  "Bitstream-Vera": {
-    id: "Bitstream-Vera",
-    name: "Bitstream Vera Fonts License",
-    blurb:
-      'Permissive font licence. You may copy, merge, distribute, and modify the font — including bundling it in commercial software — provided the licence notice travels with every copy, the font is not sold on its own, and any modifications drop the "Bitstream" / "Vera" reserved names. Used here for OpenDyslexic v1, which is derived from Bitstream Vera Sans.',
-    url: "https://spdx.org/licenses/Bitstream-Vera.html",
-  },
-};
-
-// Version strings are resolved at build time from package.json via
-// pkgVersion() above, so this list doesn't go stale when dependencies
-// are bumped — bump package.json and the page updates on the next build.
-// The only exception is the "Inter typeface" entry, which isn't a runtime
-// npm dep (it ships as woff2 files in /public/fonts/) so its version is
-// still hard-coded.
-const DEPENDENCIES: DependencyEntry[] = [
-  // ── Runtime (production) ─────────────────────────────────────────────
-  {
-    name: "next",
-    version: pkgVersion("next"),
-    license: "MIT",
-    about:
-      "React framework from Vercel — file-system routing, server components, API routes, dev server, production build pipeline.",
-    usage:
-      "The entire app is a Next.js App Router project. Every page, every /api/ route, the background scheduler bootstrap (instrumentation.ts), and the build/serve toolchain come from Next.",
-    links: {
-      website: "https://nextjs.org",
-      repo: "https://github.com/vercel/next.js",
-      npm: "https://www.npmjs.com/package/next",
-      docs: "https://nextjs.org/docs",
-      privacy: "https://vercel.com/legal/privacy-policy",
-    },
-  },
-  {
-    name: "react",
-    version: pkgVersion("react"),
-    license: "MIT",
-    about:
-      "Core React library — component model, hooks, reconciler primitives.",
-    usage:
-      "Powers every interactive surface — the onboarding wizard, SettingsView, AppDetailView, the bell, the task centre. Provides the hooks (useState, useEffect, useMemo, useRef) the UI relies on.",
-    links: {
-      website: "https://react.dev",
-      repo: "https://github.com/facebook/react",
-      npm: "https://www.npmjs.com/package/react",
-    },
-  },
-  {
-    name: "react-dom",
-    version: pkgVersion("react-dom"),
-    license: "MIT",
-    about: "React\u2019s DOM renderer + hydration entry points.",
-    usage:
-      "Pairs with react to actually mount components into the browser DOM and server-render pages for the initial HTML response.",
-    links: {
-      repo: "https://github.com/facebook/react",
-      npm: "https://www.npmjs.com/package/react-dom",
-    },
-  },
-  {
-    name: "better-sqlite3",
-    version: pkgVersion("better-sqlite3"),
-    license: "MIT",
-    about:
-      "Synchronous, zero-config SQLite binding for Node — binary wheel built against N-API.",
-    usage:
-      "The entire persistence layer. The singleton DB in lib/db.ts runs on this — apps, privacy_types, privacy_categories, privacy_snapshots, notifications, app_settings, all of it. We set journal_mode=WAL, busy_timeout=5000, foreign_keys=ON on open.",
-    links: {
-      repo: "https://github.com/WiseLibs/better-sqlite3",
-      npm: "https://www.npmjs.com/package/better-sqlite3",
-      docs: "https://github.com/WiseLibs/better-sqlite3/blob/master/docs/api.md",
-    },
-  },
-  {
-    name: "echarts",
-    version: pkgVersion("echarts"),
-    license: "Apache-2.0",
-    about:
-      "Apache ECharts — interactive charting library originally from Baidu, now an Apache top-level project.",
-    usage:
-      "Powers the data-viz panels: privacy heatmap, category frequency bars, stacked area timeline, per-app severity strips, the small multiples on /dashboard/stats.",
-    links: {
-      website: "https://echarts.apache.org",
-      repo: "https://github.com/apache/echarts",
-      npm: "https://www.npmjs.com/package/echarts",
-      docs: "https://echarts.apache.org/en/option.html",
-    },
-  },
-  {
-    name: "tesseract.js",
-    version: pkgVersion("tesseract.js"),
-    license: "Apache-2.0",
-    about:
-      "WebAssembly port of the Tesseract OCR engine. Runs entirely in the browser or in Node.",
-    usage:
-      "Optional, local-only OCR. Used in onboarding when the user imports iOS app screenshots — Tesseract extracts the visible app names so we can look them up on the App Store. No image leaves your device.",
-    links: {
-      website: "https://tesseract.projectnaptha.com",
-      repo: "https://github.com/naptha/tesseract.js",
-      npm: "https://www.npmjs.com/package/tesseract.js",
-    },
-  },
-
-  // ── Typeface ─────────────────────────────────────────────────────────
-  {
-    name: "Inter typeface",
-    version: "4.1",
-    license: "OFL-1.1",
-    about:
-      "Sans-serif typeface designed for UI by Rasmus Andersson. Variable-font release shipping upright + italic axes across weights 100\u2013900.",
-    usage:
-      "Primary UI typeface. Shipped as two woff2 files in /public/fonts/ (InterVariable.woff2 + InterVariable-Italic.woff2) with the project\u2019s LICENSE.txt alongside them, and declared via @font-face in app/globals.css. Served from the same origin as the app \u2014 no Google Fonts round-trip.",
-    links: {
-      website: "https://rsms.me/inter/",
-      repo: "https://github.com/rsms/inter",
-      npm: "https://www.npmjs.com/package/inter-ui",
-    },
-  },
-  {
-    name: "OpenDyslexic typeface",
-    version: "1.0.3",
-    license: "Bitstream-Vera",
-    about:
-      "Typeface with weighted letterforms designed to improve readability for some readers with dyslexia. Originally designed by Abelardo Gonzalez, derived from Bitstream Vera Sans.",
-    usage:
-      'Optional accessibility font. Activated via the footer accessibility quick-toggles (Dyslexia-friendly font) which sets data-a11y-font="dyslexic" on <html>. Shipped as two woff files in /public/fonts/ (OpenDyslexic-Regular.woff + OpenDyslexic-Bold.woff) with the full Bitstream Vera licence alongside them (OpenDyslexic-LICENSE.txt), and declared via @font-face in app/globals.css. Served from the same origin as the app \u2014 no third-party CDN round-trip, so the feature works offline and in the Tauri desktop build.',
-    links: {
-      website: "https://opendyslexic.org",
-      repo: "https://github.com/antijingoist/opendyslexic",
-      npm: "https://www.npmjs.com/package/open-dyslexic",
-    },
-  },
-
-  // ── Dev dependencies ─────────────────────────────────────────────────
-  {
-    name: "typescript",
-    version: pkgVersion("typescript"),
-    license: "Apache-2.0",
-    devOnly: true,
-    about: "Typed superset of JavaScript from Microsoft; compiles to JS.",
-    usage:
-      "Every source file under app/ and lib/ is TypeScript. The compiler runs at build time only — it isn\u2019t shipped to users.",
-    links: {
-      website: "https://www.typescriptlang.org",
-      repo: "https://github.com/microsoft/TypeScript",
-      npm: "https://www.npmjs.com/package/typescript",
-    },
-  },
-  {
-    name: "@tauri-apps/cli",
-    version: pkgVersion("@tauri-apps/cli"),
-    license: "Apache-2.0",
-    devOnly: true,
-    about:
-      "Command-line tool for building Tauri desktop apps (Rust-backed webview wrappers).",
-    usage:
-      "Optional desktop-build path. Used by npm run tauri:build to package the app as a native desktop binary. Not shipped to end-users of the web build.",
-    links: {
-      website: "https://tauri.app",
-      repo: "https://github.com/tauri-apps/tauri",
-      npm: "https://www.npmjs.com/package/@tauri-apps/cli",
-    },
-  },
-  {
-    name: "@types/better-sqlite3",
-    version: pkgVersion("@types/better-sqlite3"),
-    license: "MIT",
-    devOnly: true,
-    about:
-      "TypeScript type definitions for better-sqlite3, maintained by the DefinitelyTyped community.",
-    usage:
-      "Dev-time only — provides autocomplete and type checking for the DB binding. Not shipped.",
-    links: {
-      repo: "https://github.com/DefinitelyTyped/DefinitelyTyped",
-      npm: "https://www.npmjs.com/package/@types/better-sqlite3",
-    },
-  },
-  {
-    name: "@types/node",
-    version: pkgVersion("@types/node"),
-    license: "MIT",
-    devOnly: true,
-    about: "TypeScript type definitions for the Node.js standard library.",
-    usage:
-      "Dev-time only — provides types for built-in modules (fs, path, crypto, etc.). Not shipped.",
-    links: {
-      repo: "https://github.com/DefinitelyTyped/DefinitelyTyped",
-      npm: "https://www.npmjs.com/package/@types/node",
-    },
-  },
-  {
-    name: "@types/react",
-    version: pkgVersion("@types/react"),
-    license: "MIT",
-    devOnly: true,
-    about: "TypeScript type definitions for React.",
-    usage:
-      "Dev-time only — provides types for the React component API. Not shipped.",
-    links: {
-      repo: "https://github.com/DefinitelyTyped/DefinitelyTyped",
-      npm: "https://www.npmjs.com/package/@types/react",
-    },
-  },
-  {
-    name: "@types/react-dom",
-    version: pkgVersion("@types/react-dom"),
-    license: "MIT",
-    devOnly: true,
-    about: "TypeScript type definitions for react-dom.",
-    usage:
-      "Dev-time only — provides types for the DOM renderer API. Not shipped.",
-    links: {
-      repo: "https://github.com/DefinitelyTyped/DefinitelyTyped",
-      npm: "https://www.npmjs.com/package/@types/react-dom",
-    },
-  },
-  {
-    name: "cross-env",
-    version: pkgVersion("cross-env"),
-    license: "MIT",
-    devOnly: true,
-    about:
-      "Tiny shim that sets environment variables the same way across Unix and Windows shells.",
-    usage:
-      "Used in the build:standalone npm script to set BUILD_STANDALONE=1 before running next build, so the same command works on macOS, Linux, and Windows.",
-    links: {
-      repo: "https://github.com/kentcdodds/cross-env",
-      npm: "https://www.npmjs.com/package/cross-env",
-    },
-  },
-];
+// Resolved once per build (module scope runs at prerender). Throws when a
+// runtime dependency has no entry, which fails the build on purpose.
+const DEPENDENCIES: DependencyEntry[] = legalDependencies();
 
 // Build-time group-by-licence. The output is deterministic across renders
 // because the source array has a stable order, so the sticky sidebar
@@ -374,18 +41,6 @@ function groupByLicense(
   }
   return out;
 }
-
-// Order in which licence groups appear top-to-bottom. We put MIT first
-// because it's by far the biggest bucket; the others follow in a stable
-// order so navigation lands in the same place every time.
-const LICENSE_ORDER: SpdxLicense[] = [
-  "MIT",
-  "Apache-2.0",
-  "BSD-3-Clause",
-  "ISC",
-  "OFL-1.1",
-  "Bitstream-Vera",
-];
 
 function licenseSlug(id: SpdxLicense): string {
   return `license-${id.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
@@ -639,13 +294,30 @@ export default function LegalContent() {
                     </h2>
                     <p className="legal-license-blurb">
                       {meta.blurb}{" "}
-                      <a
-                        href={meta.url}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        Full licence text ↗
-                      </a>
+                      {meta.anyOf ? (
+                        // A dual licence links each licence's own text,
+                        // named, rather than one ambiguous link.
+                        meta.anyOf.map((choice, i) => (
+                          <span key={choice}>
+                            {i > 0 && " · "}
+                            <a
+                              href={LICENSE_META[choice].url}
+                              rel="noopener noreferrer"
+                              target="_blank"
+                            >
+                              {LICENSE_META[choice].name} ↗
+                            </a>
+                          </span>
+                        ))
+                      ) : (
+                        <a
+                          href={meta.url}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                        >
+                          Full licence text ↗
+                        </a>
+                      )}
                     </p>
                   </header>
                   <div className="legal-dep-list">
