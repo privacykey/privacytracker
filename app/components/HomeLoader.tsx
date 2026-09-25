@@ -13,6 +13,7 @@ import HomeView, {
   type FocusSummary,
 } from "./HomeView";
 import LoaderRetry from "./LoaderRetry";
+import { NavSkeleton, PageSkeleton } from "./LoadingShell";
 import Nav from "./Nav";
 import ReviewCtaBanner from "./ReviewCtaBanner";
 import SampleModeView from "./SampleModeView";
@@ -48,13 +49,16 @@ import TaskList from "./TaskList";
  * failed read would let the first PUT overwrite the user's custom layout.
  * Layout reads are required in edit mode, and a previously unverified
  * fallback cannot become editable while the required read is in flight.
- * `manualAppsBannerDismissed` seeds state the same way. Nothing renders
- * until every wave-1 read, the flag bundle, and the (flag-gated) age
- * rating read have all settled.
+ * `manualAppsBannerDismissed` seeds state the same way. HomeView does not
+ * mount until every wave-1 read, the flag bundle, and the (flag-gated)
+ * age rating read have all settled; until then the loader paints the
+ * neutral nav and page skeletons (LoadingShell.tsx), never the real Nav,
+ * whose links are flag-gated here.
  *
  * AGE RATING IS GATED. countAppsAboveAgeBand() scans every rated app; the
  * page only ran it when the callout flag resolved on, so the fetch waits
- * for the bundle and is skipped when the flag is off.
+ * for the bundle and is skipped when the flag is off. It runs alongside
+ * wave 1 rather than after it.
  *
  * SLOTS. TaskList (now a client component over UserTasksProvider) and
  * ReviewCtaBanner are passed as ReactNodes as before. reviewCtaSlot is
@@ -289,9 +293,12 @@ export default function HomeLoader() {
     !failedToLoad && bundle?.["flag.dashboard.callout.age_rating"] === true;
 
   // Wave 2 — gated on the resolved flag, exactly as the page gated the
-  // full-table scan behind it.
+  // full-table scan behind it. It no longer waits for wave 1 as well:
+  // the flag is the gate, and running the two one after the other added
+  // a whole round trip before the dashboard could paint. `retry` re-runs
+  // it with wave 1 (after a sync, or a Try again), as `data` used to.
   useEffect(() => {
-    if (sampleMode || !(data && flagsSettled)) {
+    if (sampleMode || !flagsSettled) {
       return;
     }
     if (!ageRatingCalloutOn) {
@@ -309,7 +316,7 @@ export default function HomeLoader() {
     return () => {
       live = false;
     };
-  }, [sampleMode, data, flagsSettled, ageRatingCalloutOn]);
+  }, [sampleMode, flagsSettled, ageRatingCalloutOn, retry]);
 
   if (sampleMode) {
     return (
@@ -333,7 +340,15 @@ export default function HomeLoader() {
     !(data && flagsSettled && ageRating !== undefined) ||
     (editLayoutRequested && !data.layoutVerified)
   ) {
-    return null;
+    // Held (see HELD MOUNT above), but not blank: the nav skeleton holds
+    // the bar's place without any flag-gated link, and the page skeleton
+    // tells assistive tech the page is loading.
+    return (
+      <>
+        <NavSkeleton />
+        <PageSkeleton />
+      </>
+    );
   }
 
   const v = failedToLoad ? null : bundle;

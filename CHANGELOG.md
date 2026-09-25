@@ -105,6 +105,13 @@ Going forward, changes are recorded here as they land.
   count cannot be read now goes to the dashboard instead of the welcome
   page, and the review queue no longer sends you to onboarding when you
   pick a device with nothing on it.
+- A slow server no longer leaves a blank page. Every page now shows its
+  outline straight away (a skip link, a placeholder navigation bar on pages
+  that have one, and grey placeholder blocks announced as loading to screen
+  readers) and swaps in the real page when its data arrives. The dashboard
+  and the apps list also start more of their reads at the same time, so
+  with each request taking 3 seconds the dashboard now appears in about 9
+  seconds instead of 13, and the apps list in about 6 instead of 10.
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of

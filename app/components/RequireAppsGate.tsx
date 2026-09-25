@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import LoaderError from "./LoaderError";
+import { PageSkeleton } from "./LoadingShell";
 
 /**
  * Client-side replacement for the server-side empty-install bounce
@@ -71,5 +72,6 @@ export default function RequireAppsGate({
   if (state === "failed") {
     return <LoaderError onRetry={() => setRetry((value) => value + 1)} />;
   }
-  return state === "ready" ? children : null;
+  // While checking: a neutral skeleton, not the gated surface.
+  return state === "ready" ? children : <PageSkeleton />;
 }

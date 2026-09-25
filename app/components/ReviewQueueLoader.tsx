@@ -6,6 +6,7 @@ import type { Audience } from "@/lib/feature-flag-rules";
 import { useFlagBundle } from "@/lib/use-flag-bundle";
 import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import LoaderError from "./LoaderError";
+import { PageSkeleton } from "./LoadingShell";
 import Nav from "./Nav";
 import ReviewRecommendationsView from "./ReviewRecommendationsView";
 
@@ -116,7 +117,9 @@ export default function ReviewQueueLoader() {
           rows={data.rows}
           sourceDeviceEcids={data.sourceDeviceEcids}
         />
-      ) : null}
+      ) : (
+        <PageSkeleton />
+      )}
     </>
   );
 }

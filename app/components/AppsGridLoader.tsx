@@ -8,6 +8,7 @@ import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
 import AppGrid, { type AppGridFlagState } from "./AppGrid";
 import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import LoaderError from "./LoaderError";
+import { PageSkeleton } from "./LoadingShell";
 import Nav from "./Nav";
 
 /**
@@ -305,7 +306,9 @@ export default function AppsGridLoader() {
           showQueueProgressBar={state.showQueueProgressBar}
           userVerdicts={state.userVerdicts}
         />
-      ) : null}
+      ) : (
+        <PageSkeleton />
+      )}
     </>
   );
 }

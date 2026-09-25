@@ -15,6 +15,7 @@ import FocusPreviewBanner from "./FocusPreviewBanner";
 import { ImportQueueProvider } from "./ImportQueueProvider";
 import KeyboardHint from "./KeyboardHint";
 import KeyboardShortcuts from "./KeyboardShortcuts";
+import { NavSkeleton, PageSkeleton, routeHasNav } from "./LoadingShell";
 import LocaleProvider from "./LocaleProvider";
 import MenuActionsBridge from "./MenuActionsBridge";
 import NavigationHistoryTracker from "./NavigationHistoryTracker";
@@ -47,7 +48,10 @@ import { UserTasksProvider } from "./UserTasksProvider";
  * Flags fail OPEN and the tree is held until they settle: the layout
  * defaulted every global flag to "on" when the resolver failed, and the
  * TaskCenterProvider seeds its polling from these props at mount, so it
- * must not mount with placeholders.
+ * must not mount with placeholders. While it is held, a neutral shell
+ * paints instead of nothing (skip link, a nav skeleton on routes that
+ * have a nav, and an `aria-busy` page skeleton; see LoadingShell.tsx),
+ * and the device-scope read starts alongside the flag read.
  */
 
 const CHROME_FLAG_KEYS = [
@@ -73,11 +77,10 @@ export default function AppChrome({ children }: { children: ReactNode }) {
 function ChromeTree({ children }: { children: ReactNode }) {
   const tFooter = useTranslations("footer");
   const tRegions = useTranslations("layout_regions");
+  const pathname = usePathname();
   const bundle = useFlagBundle(CHROME_FLAG_KEYS);
   const { failedToLoad } = useFlagBundleStatus();
-  if (!(bundle || failedToLoad)) {
-    return null;
-  }
+  const settled = Boolean(bundle || failedToLoad);
   const on = (key: (typeof CHROME_FLAG_KEYS)[number]) =>
     failedToLoad || !bundle ? true : bundle[key];
 
@@ -95,76 +98,111 @@ function ChromeTree({ children }: { children: ReactNode }) {
         surface it scopes read one shared value. It is mounted
         unconditionally rather than behind flag.nav.device_scope: the
         flag hides the *control*, and a hidden control must not also
-        silently drop a scope the user already chose. */}
+        silently drop a scope the user already chose.
+
+        It is also mounted ABOVE the flag hold, so its scope read runs
+        alongside the flag bundle instead of after it. Every page loader
+        waits for the scope before its own reads, so starting it late
+        added a whole round trip to every page. */}
       <DeviceScopeProvider>
-        <TaskCenterProvider
-          autoDismissEnabled={on("flag.taskcenter.auto_dismiss")}
-          pollingEnabled={on("flag.taskcenter.polling")}
-          resumeCardsEnabled={on("flag.taskcenter.resume_cards")}
-        >
-          <UserTasksProvider>
-            <QueuedSearchProvider>
-              <ImportQueueProvider>
-                {/* Boots the client diagnostics module (long-task observer,
-              fetch wrapper, import-event ring). Renders nothing —
-              surface is read from the Diagnostics page. */}
-                <ClientDiagnosticsBoot />
-                {/* Path tracker. Writes pathname+search to sessionStorage on
-              every navigation so downstream pages can render a "← Back
-              to X" link (document.referrer alone is unreliable —
-              Next's soft navigations don't update it). */}
-                <NavigationHistoryTracker />
-                <AdminTokenBridge />
-                {/* Listens for menu-bar-driven events (Cmd+F search focus,
-              Help → Copy Diagnostics). The actual menu items live
-              in src-tauri/src/app_menu.rs; this component is the
-              webview-side counterpart. */}
-                <MenuActionsBridge />
-                {/* Read-only notice — only renders when served from a
-              non-local host without the admin-token cookie, i.e. when
-              proxy.ts will 401 every write. */}
-                <NonLocalReadOnlyBanner />
-                {/* Focus preview banner — only renders when a preview is staged. */}
-                <FocusPreviewBanner />
-                {/* Update banner — polls /api/update-status; self-gated on
-              cache state + user-dismissed flag. */}
-                <UpdateBanner />
-                {/* Cross-page flag-highlight handler — reads
-              `?flag-highlight=<key>` and rings the gated element. */}
-                <FlagHighlightHandler />
-                <main className="app-main" id="main-content" tabIndex={-1}>
-                  {children}
-                </main>
-                {/* Footer landmark (role="contentinfo") groups the bottom-
-              right cluster (About, shortcuts, a11y) under one region.
-              Widgets are flag-gated; the landmark always renders. */}
-                <footer className="app-footer-landmark">
-                  {/* Dev menu — gated on flag.devopts.visible + the
-                `dev-menu-on` localStorage opt-in. Renders null when
-                either gate is off. */}
-                  <DevMenu />
-                  {/* Reposition the Next.js dev indicator above our cluster.
-                Renders null in production. */}
-                  <NextDevIndicatorRepositioner />
-                  {on("flag.global.accessibility_toggles") && (
-                    <AccessibilityQuickToggles />
-                  )}
-                  {on("flag.global.keyboard_shortcuts") && <KeyboardHint />}
-                  {/* Bottom-LEFT pill — Privacy policy / Legal links. */}
-                  {on("flag.global.site_info_hint") && <SiteInfoHint />}
-                </footer>
-              </ImportQueueProvider>
-            </QueuedSearchProvider>
-          </UserTasksProvider>
-        </TaskCenterProvider>
+        {settled ? (
+          <ChromeBody on={on}>{children}</ChromeBody>
+        ) : (
+          /* The bundle has not settled yet. Paint a neutral shell rather
+             than nothing: the flag-gated chrome (and the page, whose
+             providers seed from these flags at mount) still waits, but
+             the user sees the page taking shape. The skeleton carries
+             no flag-gated item, so nothing paints and then retracts. */
+          <main className="app-main" id="main-content" tabIndex={-1}>
+            {routeHasNav(pathname) && <NavSkeleton />}
+            <PageSkeleton />
+          </main>
+        )}
       </DeviceScopeProvider>
       {/* Global overlay portals — dialogs that render outside the main
         landmark when open. The region wrapper keeps axe happy even
         when both overlays are flag-off. */}
-      <section aria-label={tRegions("global_overlays")}>
-        {on("flag.global.keyboard_shortcuts") && <KeyboardShortcuts />}
-        {on("flag.global.about_modal") && <AboutModal />}
-      </section>
+      {settled && (
+        <section aria-label={tRegions("global_overlays")}>
+          {on("flag.global.keyboard_shortcuts") && <KeyboardShortcuts />}
+          {on("flag.global.about_modal") && <AboutModal />}
+        </section>
+      )}
     </>
+  );
+}
+
+/**
+ * The providers, banners, page and footer widgets: everything that reads
+ * the chrome flags at mount. Only rendered once the bundle has settled.
+ */
+function ChromeBody({
+  children,
+  on,
+}: {
+  children: ReactNode;
+  on: (key: (typeof CHROME_FLAG_KEYS)[number]) => boolean;
+}) {
+  return (
+    <TaskCenterProvider
+      autoDismissEnabled={on("flag.taskcenter.auto_dismiss")}
+      pollingEnabled={on("flag.taskcenter.polling")}
+      resumeCardsEnabled={on("flag.taskcenter.resume_cards")}
+    >
+      <UserTasksProvider>
+        <QueuedSearchProvider>
+          <ImportQueueProvider>
+            {/* Boots the client diagnostics module (long-task observer,
+              fetch wrapper, import-event ring). Renders nothing —
+              surface is read from the Diagnostics page. */}
+            <ClientDiagnosticsBoot />
+            {/* Path tracker. Writes pathname+search to sessionStorage on
+              every navigation so downstream pages can render a "← Back
+              to X" link (document.referrer alone is unreliable —
+              Next's soft navigations don't update it). */}
+            <NavigationHistoryTracker />
+            <AdminTokenBridge />
+            {/* Listens for menu-bar-driven events (Cmd+F search focus,
+              Help → Copy Diagnostics). The actual menu items live
+              in src-tauri/src/app_menu.rs; this component is the
+              webview-side counterpart. */}
+            <MenuActionsBridge />
+            {/* Read-only notice — only renders when served from a
+              non-local host without the admin-token cookie, i.e. when
+              proxy.ts will 401 every write. */}
+            <NonLocalReadOnlyBanner />
+            {/* Focus preview banner — only renders when a preview is staged. */}
+            <FocusPreviewBanner />
+            {/* Update banner — polls /api/update-status; self-gated on
+              cache state + user-dismissed flag. */}
+            <UpdateBanner />
+            {/* Cross-page flag-highlight handler — reads
+              `?flag-highlight=<key>` and rings the gated element. */}
+            <FlagHighlightHandler />
+            <main className="app-main" id="main-content" tabIndex={-1}>
+              {children}
+            </main>
+            {/* Footer landmark (role="contentinfo") groups the bottom-
+              right cluster (About, shortcuts, a11y) under one region.
+              Widgets are flag-gated; the landmark always renders. */}
+            <footer className="app-footer-landmark">
+              {/* Dev menu — gated on flag.devopts.visible + the
+                `dev-menu-on` localStorage opt-in. Renders null when
+                either gate is off. */}
+              <DevMenu />
+              {/* Reposition the Next.js dev indicator above our cluster.
+                Renders null in production. */}
+              <NextDevIndicatorRepositioner />
+              {on("flag.global.accessibility_toggles") && (
+                <AccessibilityQuickToggles />
+              )}
+              {on("flag.global.keyboard_shortcuts") && <KeyboardHint />}
+              {/* Bottom-LEFT pill — Privacy policy / Legal links. */}
+              {on("flag.global.site_info_hint") && <SiteInfoHint />}
+            </footer>
+          </ImportQueueProvider>
+        </QueuedSearchProvider>
+      </UserTasksProvider>
+    </TaskCenterProvider>
   );
 }
