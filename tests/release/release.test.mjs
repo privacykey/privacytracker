@@ -13,6 +13,7 @@ import path from "node:path";
 import test from "node:test";
 import { minimumMacOSVersions } from "../../scripts/macos-binary-checks.mjs";
 import {
+  RELEASE_NOTES_END,
   readReleaseMetadata,
   validateReleaseTag,
   validateVersion,
@@ -258,6 +259,155 @@ test("draft preparation refuses an already published release before any mutation
         .map((line) => JSON.parse(line)),
       [["release", "view", tag, "--json", "isDraft"]]
     );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a new draft's body is the curated summary above the notes marker", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "release-notes-draft-test-"));
+  try {
+    mkdirSync(path.join(dir, "src-tauri"));
+    for (const file of [
+      "package.json",
+      "src-tauri/Cargo.toml",
+      "src-tauri/Cargo.lock",
+      "src-tauri/tauri.conf.json",
+    ]) {
+      cpSync(path.join(root, file), path.join(dir, file));
+    }
+    const { version, tag } = readReleaseMetadata(dir);
+    writeFileSync(
+      path.join(dir, "CHANGELOG.md"),
+      [
+        "# Changelog",
+        "",
+        "## [Unreleased]",
+        "",
+        `## [${version}] — 2026-10-01`,
+        "",
+        "The summary.",
+        "",
+        RELEASE_NOTES_END,
+        "",
+        "### Added",
+        "",
+        "- Every entry.",
+        "",
+        "## [0.1.2] — 2026-06-12",
+        "",
+        "- Older.",
+        "",
+      ].join("\n")
+    );
+    const bin = path.join(dir, "bin");
+    mkdirSync(bin);
+    const log = path.join(dir, "calls.jsonl");
+    // No release exists yet, so `release view` fails; `release create`
+    // records the notes file it was handed.
+    writeFileSync(
+      path.join(bin, "gh"),
+      [
+        "#!/usr/bin/env node",
+        'const fs = require("node:fs");',
+        "const args = process.argv.slice(2);",
+        'const at = args.indexOf("--notes-file");',
+        "const notes = at < 0 ? null : fs.readFileSync(args[at + 1], 'utf8');",
+        "fs.appendFileSync(process.env.CALL_LOG, JSON.stringify({ args: args.slice(0, 2), notes }) + '\\n');",
+        'if (args[1] === "view") process.exit(1);',
+        "",
+      ].join("\n"),
+      { mode: 0o755 }
+    );
+    const result = spawnSync(
+      process.execPath,
+      [path.join(root, "scripts/ensure-draft-release.mjs"), tag],
+      {
+        cwd: dir,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${bin}:${process.env.PATH}`,
+          CALL_LOG: log,
+        },
+      }
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const calls = readFileSync(log, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(
+      calls.map((call) => call.args),
+      [
+        ["release", "view"],
+        ["release", "create"],
+      ]
+    );
+    assert.equal(calls[1].notes, "The summary.");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("release preparation compares against the last tag, not an untagged version", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "release-tag-test-"));
+  try {
+    mkdirSync(path.join(dir, "src-tauri"));
+    for (const file of [
+      "package.json",
+      "src-tauri/Cargo.toml",
+      "src-tauri/Cargo.lock",
+      "src-tauri/tauri.conf.json",
+      "CHANGELOG.md",
+    ]) {
+      cpSync(path.join(root, file), path.join(dir, file));
+    }
+    const git = (...args) =>
+      execFileSync(
+        "git",
+        [
+          "-c",
+          "user.name=Release test",
+          "-c",
+          "user.email=release-test@example.invalid",
+          "-c",
+          "commit.gpgsign=false",
+          "-c",
+          "tag.gpgsign=false",
+          ...args,
+        ],
+        { cwd: dir, stdio: "pipe" }
+      );
+    git("init", "-q");
+    git("add", "-A");
+    git("commit", "-q", "-m", "fixture");
+    // The last release. The version the files carry may never have been
+    // tagged, as 0.2.0 was prepared and not released.
+    git("tag", "v0.1.2");
+    const before = readReleaseMetadata(dir).version;
+    const next = "9.8.7";
+    const result = spawnSync(
+      process.execPath,
+      [path.join(root, "scripts/prepare-release.mjs"), next],
+      { cwd: dir, encoding: "utf8" }
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const changelog = readFileSync(path.join(dir, "CHANGELOG.md"), "utf8");
+    assert.ok(
+      changelog.includes(
+        `[${next}]: https://github.com/privacykey/privacytracker/compare/v0.1.2...v${next}`
+      ),
+      "the new section compares with the last tag"
+    );
+    if (before !== "0.1.2") {
+      assert.ok(!changelog.includes(`v${before}...v${next}`));
+    }
+    // Sections for versions that were never tagged are named, so the notes
+    // can say what became of them. [0.1.1] has no tag in this repository.
+    assert.match(result.stderr, /never tagged/);
+    assert.match(result.stderr, /\b0\.1\.1\b/);
+    assert.doesNotMatch(result.stderr, /9\.8\.7/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

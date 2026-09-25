@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   readReleaseMetadata,
+  releaseNotes,
   validateReleaseTag,
 } from "./release-metadata.mjs";
 
@@ -21,15 +22,11 @@ if (result.status === 0) {
   // A transport/permission error also makes creation fail; never alter an existing release.
   const dir = mkdtempSync(path.join(tmpdir(), "privacytracker-release-notes-"));
   try {
-    const changelog = readFileSync("CHANGELOG.md", "utf8");
-    const section = changelog
-      .split(`## [${metadata.version}]`)[1]
-      ?.split("\n## [")[0];
-    if (!section) {
-      throw new Error("Missing curated release notes");
-    }
     const notes = path.join(dir, "notes.md");
-    writeFileSync(notes, section.replace(/^[^\n]*\n/, "").trim());
+    writeFileSync(
+      notes,
+      releaseNotes(readFileSync("CHANGELOG.md", "utf8"), metadata.version)
+    );
     execFileSync(
       "gh",
       [
