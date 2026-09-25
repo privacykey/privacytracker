@@ -119,6 +119,12 @@ Going forward, changes are recorded here as they land.
   a screen reader, with a column header for each app and a row header for
   each category or feature, instead of one long run of text.
 
+- On the Compare page, a picked app's Change and Clear buttons are no
+  longer inside the card's own button, where screen readers could not
+  reach them, and are at least 24 pixels square. The "Tracked" and
+  "Preview" labels, the accessibility count chip and the "over limit"
+  profile pill meet the contrast minimum in light and dark mode.
+
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of

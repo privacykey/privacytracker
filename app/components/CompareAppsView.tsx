@@ -1068,7 +1068,10 @@ function SlotCard(props: {
   };
 
   return (
-    <>
+    // The wrapper exists so the Change / Clear actions can sit over the
+    // card without being inside it: a button inside a button is invalid,
+    // and assistive technology hears only the outer one (WCAG 4.1.2).
+    <div className="compare-slot-card-wrap">
       <button
         aria-label={
           isPicked
@@ -1129,37 +1132,32 @@ function SlotCard(props: {
             </span>
           </span>
         )}
-        {isPicked && (
-          // Inline actions live above the card click target — stopPropagation
-          // so each acts on its own intent (Change reopens, Clear empties).
-          // Rendering them inside the parent <button> would nest interactive
-          // elements; instead they're absolutely positioned siblings of the
-          // card body. The parent <button> still handles "click anywhere
-          // else" to reopen the modal.
-          <span
-            className="compare-slot-card-actions"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="compare-slot-card-action"
-              onClick={() => setModalOpen(true)}
-              title={tCompare("slot_card_change_title")}
-              type="button"
-            >
-              {tCompare("slot_card_change_label")}
-            </button>
-            <button
-              aria-label={tCompare("slot_clear_aria", { label: props.label })}
-              className="compare-slot-card-action is-clear"
-              onClick={() => props.onChange(null)}
-              title={tCompare("slot_clear_title")}
-              type="button"
-            >
-              ✕
-            </button>
-          </span>
-        )}
       </button>
+      {isPicked && (
+        // Inline actions over the card's top-right corner. They are
+        // absolutely positioned siblings of the card <button>, not its
+        // children, so the controls never nest; the card itself still
+        // handles "click anywhere else" to reopen the modal.
+        <span className="compare-slot-card-actions">
+          <button
+            className="compare-slot-card-action"
+            onClick={() => setModalOpen(true)}
+            title={tCompare("slot_card_change_title")}
+            type="button"
+          >
+            {tCompare("slot_card_change_label")}
+          </button>
+          <button
+            aria-label={tCompare("slot_clear_aria", { label: props.label })}
+            className="compare-slot-card-action is-clear"
+            onClick={() => props.onChange(null)}
+            title={tCompare("slot_clear_title")}
+            type="button"
+          >
+            ✕
+          </button>
+        </span>
+      )}
 
       {modalOpen && (
         <div
@@ -1205,7 +1203,7 @@ function SlotCard(props: {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -3000,11 +2998,16 @@ function SlotHeader({
             fontSize: 10,
             padding: "2px 8px",
             borderRadius: 999,
+            // Theme tokens, the label pulled toward --text: the old
+            // dark-only literals were 1.9:1 in light mode.
             background:
               slot.source === "library"
-                ? "rgba(10,132,255,0.18)"
-                : "rgba(191,90,242,0.18)",
-            color: slot.source === "library" ? "#5ea9ff" : "#d28bff",
+                ? "color-mix(in srgb, var(--blue) 18%, transparent)"
+                : "color-mix(in srgb, var(--purple) 18%, transparent)",
+            color:
+              slot.source === "library"
+                ? "color-mix(in srgb, var(--blue) 75%, var(--text))"
+                : "color-mix(in srgb, var(--purple) 60%, var(--text))",
           }}
         >
           {slot.source === "library"
@@ -3873,11 +3876,16 @@ function AccessibilitySlotHeader({
             fontSize: 10,
             padding: "2px 8px",
             borderRadius: 999,
+            // Theme tokens, the label pulled toward --text: the old
+            // dark-only literals were 1.9:1 in light mode.
             background:
               slot.source === "library"
-                ? "rgba(10,132,255,0.18)"
-                : "rgba(191,90,242,0.18)",
-            color: slot.source === "library" ? "#5ea9ff" : "#d28bff",
+                ? "color-mix(in srgb, var(--blue) 18%, transparent)"
+                : "color-mix(in srgb, var(--purple) 18%, transparent)",
+            color:
+              slot.source === "library"
+                ? "color-mix(in srgb, var(--blue) 75%, var(--text))"
+                : "color-mix(in srgb, var(--purple) 60%, var(--text))",
           }}
         >
           {slot.source === "library"

@@ -21119,7 +21119,8 @@ html[data-theme-override="light"]
    on the same tier as the other "reason" chips in the footer row (e.g.
    "No accessibility features declared"). */
 .compare-slot-chip-a11y {
-  color: var(--blue, #0a84ff);
+  /* Pulled toward --text: plain --blue on this tint is 4.4:1. */
+  color: color-mix(in srgb, var(--blue) 75%, var(--text));
   white-space: nowrap;
   background: color-mix(in srgb, var(--blue, #0a84ff) 14%, transparent);
   border: 1px solid color-mix(in srgb, var(--blue, #0a84ff) 38%, transparent);
@@ -21267,7 +21268,8 @@ html[data-theme-override="light"]
 }
 
 .compare-profile-pill.match-bad {
-  color: var(--red, #dc5050);
+  /* Pulled toward --text: light --red on this tint is 4.3:1. */
+  color: color-mix(in srgb, var(--red) 80%, var(--text));
   background: color-mix(in srgb, var(--red, #dc5050) 15%, transparent);
 }
 
