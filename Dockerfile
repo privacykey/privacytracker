@@ -123,7 +123,8 @@ COPY --from=builder --chown=audit:audit /app/lib/request-limits.cjs ./lib/reques
 COPY --from=builder --chown=audit:audit /app/lib/admin-auth.cjs ./lib/admin-auth.cjs
 COPY --from=builder --chown=audit:audit /app/lib/request-origin.cjs ./lib/request-origin.cjs
 # Static assets served straight from disk by a non-standalone `next start`:
-# self-hosted Inter + OpenDyslexic fonts and brand-icon.png. These live under
+# self-hosted Inter + OpenDyslexic fonts, brand-icon.png, and the OCR
+# worker, engine and model `pnpm build` stages into public/ocr/. These live under
 # <cwd>/public at runtime and are NOT baked into .next, so without this copy
 # every container 404s on /fonts/* and /brand-icon.png (breaking the
 # "fonts are self-hosted" contract and the dyslexia-font a11y toggle).
@@ -195,8 +196,10 @@ COPY --from=core-builder /usr/local/bin/pt-core /usr/local/bin/pt-core
 COPY --from=builder /app/site ./site
 # What the image is built from, beside it: the app's own licence and notice,
 # the V8 notice for the core's ports of V8's date parser and JSON messages,
-# and every Rust crate in the binary (generated; see core/THIRD-PARTY-RUST.md).
-COPY NOTICE LICENSE core/V8-LICENSE core/THIRD-PARTY-RUST.md ./third-party/
+# every Rust crate in the binary (generated; see core/THIRD-PARTY-RUST.md),
+# and the OCR worker, engine and model the site serves from
+# site/public/ocr/ (scripts/stage-ocr-assets.mjs, run by `pnpm build`).
+COPY NOTICE LICENSE core/V8-LICENSE core/THIRD-PARTY-RUST.md THIRD-PARTY-OCR.md ./third-party/
 
 RUN mkdir -p /app/data && chown audit:audit /app/data
 

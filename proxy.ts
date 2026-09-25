@@ -15,6 +15,7 @@ import {
   isSameOriginRequest,
   requestOrigin,
 } from "@/lib/deployment-trust";
+import { OCR_WORKER_CSP_DIRECTIVES, OCR_WORKER_PATH } from "@/lib/ocr-assets";
 
 /**
  * Global proxy — runs before every matched route. Runs on the Node runtime.
@@ -165,6 +166,16 @@ function scriptSrc(pathname: string): string {
 }
 
 function buildCsp(pathname: string): string {
+  // Screenshot import's OCR worker. A dedicated worker started from a
+  // same-origin URL runs under the policy delivered with its own script,
+  // not the page's, and this worker compiles the Tesseract engine to
+  // WebAssembly, which needs `'wasm-unsafe-eval'`. Giving that keyword to
+  // this one response keeps it off every page. Starting the worker needs
+  // nothing new from the page: its `script-src 'self'` covers a
+  // same-origin worker. See lib/ocr-assets.ts.
+  if (pathname === OCR_WORKER_PATH) {
+    return OCR_WORKER_CSP_DIRECTIVES.join("; ");
+  }
   return [
     "default-src 'self'",
     "base-uri 'self'",

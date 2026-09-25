@@ -102,6 +102,11 @@ if (backend === "rust") {
     ".next/server/app/index.html",
     ".next/server/app/_not-found.html",
     ".next/csp-hashes.json",
+    // Screenshot import's OCR worker, engine and model
+    // (scripts/stage-ocr-assets.mjs): without them that method cannot run.
+    "public/ocr/worker.min.js",
+    "public/ocr/tesseract-core-simd-lstm.wasm.js",
+    "public/ocr/eng.traineddata.gz",
   ]) {
     assert.ok(
       existsSync(path.join(site, required)),
@@ -132,6 +137,7 @@ if (backend === "rust") {
     "LICENSE",
     "V8-LICENSE",
     "THIRD-PARTY-RUST.md",
+    "THIRD-PARTY-OCR.md",
   ]) {
     const file = path.join(resources, "third-party", notice);
     assert.ok(existsSync(file), `the bundle is missing ${notice}`);

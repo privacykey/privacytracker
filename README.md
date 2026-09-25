@@ -40,8 +40,9 @@ until you configure a provider yourself.
 ## What it does
 
 **Get your apps in.** Four ways, because there is no good API for "what is
-installed on my phone": screenshots of your App Library (read with on-device
-OCR), a text or CSV file, an Apple Configurator export, or typing names in.
+installed on my phone": screenshots of your App Library (read by OCR that
+runs in your browser, so the images are never uploaded), a text or CSV file,
+an Apple Configurator export, or typing names in.
 There is also a stdlib-only [Python helper](scripts/ios-app-import) that reads
 an iTunes backup or a connected device.
 
