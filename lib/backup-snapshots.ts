@@ -205,6 +205,40 @@ export function runScheduledBackupSnapshotIfDue(
   return createBackupSnapshot("scheduled");
 }
 
+/**
+ * Delete every automatic snapshot on disk, for "Delete everything". Takes
+ * each file whose name starts with the snapshot prefix, so an interrupted
+ * write's `.tmp-*` file goes too; anything else a user put in the folder is
+ * left alone. Returns how many files were deleted. Best-effort per file: the
+ * wipe it belongs to has already committed, so a failure is logged, not
+ * thrown.
+ */
+export function deleteAllBackupSnapshots(): number {
+  let names: string[];
+  try {
+    names = fs.readdirSync(SNAPSHOT_DIR);
+  } catch {
+    return 0;
+  }
+  let deleted = 0;
+  for (const name of names.sort()) {
+    if (!name.startsWith(SNAPSHOT_PREFIX)) {
+      continue;
+    }
+    const full = path.join(SNAPSHOT_DIR, name);
+    try {
+      if (!fs.lstatSync(full).isFile()) {
+        continue;
+      }
+      fs.unlinkSync(full);
+      deleted += 1;
+    } catch (err) {
+      console.warn(`[backup] failed to delete snapshot ${name}:`, err);
+    }
+  }
+  return deleted;
+}
+
 export function pruneBackupSnapshots(
   retentionCount: number
 ): BackupSnapshotRow[] {

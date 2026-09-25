@@ -2389,6 +2389,16 @@ nineteen tables and the CSP ring. `core/src/server/maintenance_tests.rs`
 replays each under the oracle's timezone through a shared recording, a
 process state built for the case, and the volatile-key blanking above.
 
+Since v0.3.0's pre-launch fixes the reset and the start-over are one wipe,
+"Delete everything" (`lib/wipe-all-data.ts`, `wipe_everything` here): the
+devices and their app links go too, `app_settings` keeps only the
+flag-migration and runtime markers, and after the transaction commits the
+automatic backup snapshots and the signing key are deleted from the data
+directory. Their cases seed a device and those files (`files`,
+`extraTables`), record which files remain (`filesAfter`), and the replay
+runs every case against a data directory of its own through
+`backup::set_test_env`, so a replayed wipe can never reach a real one.
+
 Live: `read-parity.mjs --mutate` now covers the seed, the CSP report,
 the four diagnostics writes, the AI-log clear, the login, the logout and
 the changelog reset; the wipe, the start-over and the reset are teardown

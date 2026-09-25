@@ -223,6 +223,20 @@ fn get_or_create_signing_key(env: &Env) -> Result<Vec<u8>, String> {
     Ok(fresh.to_vec())
 }
 
+/// `deleteBackupSigningKey`, for "Delete everything": whether a key file
+/// was there to delete. Missing is not an error; any other failure is
+/// logged and reported as `false`, the wipe having already committed.
+pub(super) fn delete_signing_key(env: &Env) -> bool {
+    match std::fs::remove_file(env.data_dir.join(BACKUP_KEY_FILENAME)) {
+        Ok(()) => true,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => false,
+        Err(e) => {
+            super::diag::log_warn(format!("[backup] failed to delete signing key: {e}"));
+            false
+        }
+    }
+}
+
 // ── The envelope ─────────────────────────────────────────────────────
 
 pub(super) struct Table {

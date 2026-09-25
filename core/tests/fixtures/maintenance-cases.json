@@ -24968,6 +24968,32 @@
           ]
         },
         {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "dev-1",
+            "Mum's iPad",
+            "0xABC123",
+            null,
+            null,
+            "iPad",
+            1789387200000,
+            1789387200000,
+            0,
+            "Mum",
+            "loved_one",
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "dev-1",
+            1789387200000,
+            1789387200000
+          ]
+        },
+        {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "sync_schedule",
@@ -24981,19 +25007,11 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM notifications",
+          "sql": "DELETE FROM annotations",
           "params": []
         },
         {
-          "sql": "DELETE FROM import_items",
-          "params": []
-        },
-        {
-          "sql": "DELETE FROM imports",
-          "params": []
-        },
-        {
-          "sql": "DELETE FROM manual_apps",
+          "sql": "DELETE FROM app_verdicts",
           "params": []
         },
         {
@@ -25009,11 +25027,43 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM privacy_types",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM privacy_snapshots",
           "params": []
         },
         {
-          "sql": "DELETE FROM privacy_types",
+          "sql": "DELETE FROM privacy_policy_versions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_policy_analyses",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM change_review_actions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM accessibility_features",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_app_events",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_app_policy_versions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_apps",
           "params": []
         },
         {
@@ -25021,17 +25071,79 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM app_settings",
+          "sql": "DELETE FROM import_items",
           "params": []
+        },
+        {
+          "sql": "DELETE FROM imports",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM audit_bundle_imports",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM notifications",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM activity_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM shortlist_entries",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM feature_flag_overrides",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM audit_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM ai_debug_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "runtime_environment"
+          ]
         },
         {
           "sql": "COMMIT",
           "params": []
         },
         {
-          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           "params": [
             "00000000-0000-4000-8000-000000000001",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Deleted all data on this install",
+            "{\"mode\":\"reset\",\"backupSnapshotsDeleted\":2,\"signingKeyDeleted\":true}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
             1789473600000,
             "reset.success",
             "10.0.95.6",
@@ -25051,48 +25163,30 @@
         "app_verdicts": [],
         "shortlist_entries": [],
         "manual_apps": [],
-        "manual_app_events": [
-          {
-            "id": "me-1",
-            "manual_app_id": "m-1",
-            "event_type": "field_change",
-            "occurred_at": 1789387200000,
-            "detail": "{\"kind\":\"field_change\",\"field\":\"name\",\"from\":\"a\",\"to\":\"b\"}"
-          }
-        ],
+        "manual_app_events": [],
         "imports": [],
         "import_items": [],
         "privacy_policy_analyses": [],
-        "feature_flag_overrides": [
-          {
-            "flag_key": "flag.dashboard.stats",
-            "override_value": "off",
-            "set_at": 1789387200000,
-            "set_by": "user",
-            "previous_focus": null,
-            "quarantined": 0
-          }
-        ],
-        "ai_debug_log": [
-          {
-            "id": "ai-001",
-            "created_at": 1789473599000,
-            "app_id": "1001",
-            "app_name": "App 1001",
-            "provider": "openai",
-            "model": "gpt",
-            "phase": "direct",
-            "prompt": "prompt",
-            "response": "response",
-            "duration_ms": 12,
-            "error": null
-          }
-        ],
+        "feature_flag_overrides": [],
+        "ai_debug_log": [],
         "notifications": [],
-        "activity_log": [],
-        "audit_log": [
+        "activity_log": [
           {
             "id": "00000000-0000-4000-8000-000000000001",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Deleted all data on this install",
+            "detail": "{\"mode\":\"reset\",\"backupSnapshotsDeleted\":2,\"signingKeyDeleted\":true}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
             "created_at": 1789473600000,
             "action": "reset.success",
             "actor_ip": "10.0.95.6",
@@ -25101,7 +25195,18 @@
             "success": 1
           }
         ],
-        "app_settings": []
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          }
+        ],
+        "devices": [],
+        "app_devices": []
       },
       "csp": [],
       "expected": {
@@ -25110,7 +25215,16 @@
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
-      }
+      },
+      "files": {
+        "backups/privacytracker-snapshot-2026-09-14T12-00-00-000Z.json": "{}",
+        "backups/privacytracker-snapshot-2026-09-15T00-00-00-000Z.json.tmp-1-ab": "{",
+        "backups/notes.txt": "not a snapshot",
+        "backup-signing.key": "c2lnbmluZy1rZXktZm9yLXRoZS1vcmFjbGUtb25seQ==\n"
+      },
+      "filesAfter": [
+        "backups/notes.txt"
+      ]
     },
     {
       "name": "reset while a sync runs",
@@ -25359,6 +25473,32 @@
             "off",
             1789387200000,
             null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "dev-1",
+            "Mum's iPad",
+            "0xABC123",
+            null,
+            null,
+            "iPad",
+            1789387200000,
+            1789387200000,
+            0,
+            "Mum",
+            "loved_one",
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "dev-1",
+            1789387200000,
+            1789387200000
           ]
         },
         {
@@ -25632,6 +25772,30 @@
             "key": "sync_running",
             "value": "true"
           }
+        ],
+        "devices": [
+          {
+            "id": "dev-1",
+            "name": "Mum's iPad",
+            "ecid": "0xABC123",
+            "model": null,
+            "ios_version": null,
+            "device_class": "iPad",
+            "created_at": 1789387200000,
+            "last_synced_at": 1789387200000,
+            "is_unknown_placeholder": 0,
+            "owner_label": "Mum",
+            "owner_audience": "loved_one",
+            "permission_acknowledged_at": 1789387200000
+          }
+        ],
+        "app_devices": [
+          {
+            "app_id": "1001",
+            "device_id": "dev-1",
+            "first_seen_at": 1789387200000,
+            "last_seen_at": 1789387200000
+          }
         ]
       },
       "csp": [],
@@ -25641,7 +25805,19 @@
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
-      }
+      },
+      "files": {
+        "backups/privacytracker-snapshot-2026-09-14T12-00-00-000Z.json": "{}",
+        "backups/privacytracker-snapshot-2026-09-15T00-00-00-000Z.json.tmp-1-ab": "{",
+        "backups/notes.txt": "not a snapshot",
+        "backup-signing.key": "c2lnbmluZy1rZXktZm9yLXRoZS1vcmFjbGUtb25seQ==\n"
+      },
+      "filesAfter": [
+        "backup-signing.key",
+        "backups/notes.txt",
+        "backups/privacytracker-snapshot-2026-09-14T12-00-00-000Z.json",
+        "backups/privacytracker-snapshot-2026-09-15T00-00-00-000Z.json.tmp-1-ab"
+      ]
     },
     {
       "name": "reset admin token required",
@@ -25996,19 +26172,11 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM notifications",
+          "sql": "DELETE FROM annotations",
           "params": []
         },
         {
-          "sql": "DELETE FROM import_items",
-          "params": []
-        },
-        {
-          "sql": "DELETE FROM imports",
-          "params": []
-        },
-        {
-          "sql": "DELETE FROM manual_apps",
+          "sql": "DELETE FROM app_verdicts",
           "params": []
         },
         {
@@ -26024,11 +26192,43 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM privacy_types",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM privacy_snapshots",
           "params": []
         },
         {
-          "sql": "DELETE FROM privacy_types",
+          "sql": "DELETE FROM privacy_policy_versions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_policy_analyses",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM change_review_actions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM accessibility_features",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_app_events",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_app_policy_versions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_apps",
           "params": []
         },
         {
@@ -26036,17 +26236,79 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM app_settings",
+          "sql": "DELETE FROM import_items",
           "params": []
+        },
+        {
+          "sql": "DELETE FROM imports",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM audit_bundle_imports",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM notifications",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM activity_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM shortlist_entries",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM feature_flag_overrides",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM audit_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM ai_debug_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "runtime_environment"
+          ]
         },
         {
           "sql": "COMMIT",
           "params": []
         },
         {
-          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           "params": [
             "00000000-0000-4000-8000-000000000001",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Deleted all data on this install",
+            "{\"mode\":\"reset\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
             1789473600000,
             "reset.success",
             "10.0.98.6",
@@ -26066,48 +26328,30 @@
         "app_verdicts": [],
         "shortlist_entries": [],
         "manual_apps": [],
-        "manual_app_events": [
-          {
-            "id": "me-1",
-            "manual_app_id": "m-1",
-            "event_type": "field_change",
-            "occurred_at": 1789387200000,
-            "detail": "{\"kind\":\"field_change\",\"field\":\"name\",\"from\":\"a\",\"to\":\"b\"}"
-          }
-        ],
+        "manual_app_events": [],
         "imports": [],
         "import_items": [],
         "privacy_policy_analyses": [],
-        "feature_flag_overrides": [
-          {
-            "flag_key": "flag.dashboard.stats",
-            "override_value": "off",
-            "set_at": 1789387200000,
-            "set_by": "user",
-            "previous_focus": null,
-            "quarantined": 0
-          }
-        ],
-        "ai_debug_log": [
-          {
-            "id": "ai-001",
-            "created_at": 1789473599000,
-            "app_id": "1001",
-            "app_name": "App 1001",
-            "provider": "openai",
-            "model": "gpt",
-            "phase": "direct",
-            "prompt": "prompt",
-            "response": "response",
-            "duration_ms": 12,
-            "error": null
-          }
-        ],
+        "feature_flag_overrides": [],
+        "ai_debug_log": [],
         "notifications": [],
-        "activity_log": [],
-        "audit_log": [
+        "activity_log": [
           {
             "id": "00000000-0000-4000-8000-000000000001",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Deleted all data on this install",
+            "detail": "{\"mode\":\"reset\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
             "created_at": 1789473600000,
             "action": "reset.success",
             "actor_ip": "10.0.98.6",
@@ -26116,7 +26360,16 @@
             "success": 1
           }
         ],
-        "app_settings": []
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          }
+        ]
       },
       "csp": [],
       "expected": {
@@ -26485,6 +26738,32 @@
           ]
         },
         {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "dev-1",
+            "Mum's iPad",
+            "0xABC123",
+            null,
+            null,
+            "iPad",
+            1789387200000,
+            1789387200000,
+            0,
+            "Mum",
+            "loved_one",
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "dev-1",
+            1789387200000,
+            1789387200000
+          ]
+        },
+        {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
             "sync_schedule",
@@ -26586,6 +26865,14 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM feature_flag_overrides",
           "params": []
         },
@@ -26598,8 +26885,11 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM app_settings",
-          "params": []
+          "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "runtime_environment"
+          ]
         },
         {
           "sql": "COMMIT",
@@ -26613,8 +26903,8 @@
             "ok",
             null,
             null,
-            "Started over — all user data wiped, schema preserved",
-            "{\"mode\":\"start-over\"}",
+            "Deleted all data on this install",
+            "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":2,\"signingKeyDeleted\":true}",
             1789473600000,
             1789473600000,
             0
@@ -26657,8 +26947,8 @@
             "status": "ok",
             "app_id": null,
             "app_name": null,
-            "summary": "Started over — all user data wiped, schema preserved",
-            "detail": "{\"mode\":\"start-over\"}",
+            "summary": "Deleted all data on this install",
+            "detail": "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":2,\"signingKeyDeleted\":true}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -26675,7 +26965,18 @@
             "success": 1
           }
         ],
-        "app_settings": []
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          }
+        ],
+        "devices": [],
+        "app_devices": []
       },
       "csp": [],
       "expected": {
@@ -26684,7 +26985,16 @@
         "type": "application/json",
         "retryAfter": null,
         "setCookie": null
-      }
+      },
+      "files": {
+        "backups/privacytracker-snapshot-2026-09-14T12-00-00-000Z.json": "{}",
+        "backups/privacytracker-snapshot-2026-09-15T00-00-00-000Z.json.tmp-1-ab": "{",
+        "backups/notes.txt": "not a snapshot",
+        "backup-signing.key": "c2lnbmluZy1rZXktZm9yLXRoZS1vcmFjbGUtb25seQ==\n"
+      },
+      "filesAfter": [
+        "backups/notes.txt"
+      ]
     },
     {
       "name": "start over when empty",
@@ -26814,6 +27124,14 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM feature_flag_overrides",
           "params": []
         },
@@ -26826,8 +27144,11 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM app_settings",
-          "params": []
+          "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "runtime_environment"
+          ]
         },
         {
           "sql": "COMMIT",
@@ -26841,8 +27162,8 @@
             "ok",
             null,
             null,
-            "Started over — all user data wiped, schema preserved",
-            "{\"mode\":\"start-over\"}",
+            "Deleted all data on this install",
+            "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
             1789473600000,
             1789473600000,
             0
@@ -26885,8 +27206,8 @@
             "status": "ok",
             "app_id": null,
             "app_name": null,
-            "summary": "Started over — all user data wiped, schema preserved",
-            "detail": "{\"mode\":\"start-over\"}",
+            "summary": "Deleted all data on this install",
+            "detail": "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -26903,7 +27224,16 @@
             "success": 1
           }
         ],
-        "app_settings": []
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          }
+        ]
       },
       "csp": [],
       "expected": {
@@ -27137,6 +27467,14 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM feature_flag_overrides",
           "params": []
         },
@@ -27149,8 +27487,11 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM app_settings",
-          "params": []
+          "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "runtime_environment"
+          ]
         },
         {
           "sql": "COMMIT",
@@ -27164,8 +27505,8 @@
             "ok",
             null,
             null,
-            "Started over — all user data wiped, schema preserved",
-            "{\"mode\":\"start-over\"}",
+            "Deleted all data on this install",
+            "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
             1789473600000,
             1789473600000,
             0
@@ -27208,8 +27549,8 @@
             "status": "ok",
             "app_id": null,
             "app_name": null,
-            "summary": "Started over — all user data wiped, schema preserved",
-            "detail": "{\"mode\":\"start-over\"}",
+            "summary": "Deleted all data on this install",
+            "detail": "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -27226,7 +27567,16 @@
             "success": 1
           }
         ],
-        "app_settings": []
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          }
+        ]
       },
       "csp": [],
       "expected": {
@@ -27365,6 +27715,14 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM feature_flag_overrides",
           "params": []
         },
@@ -27377,8 +27735,11 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM app_settings",
-          "params": []
+          "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "runtime_environment"
+          ]
         },
         {
           "sql": "COMMIT",
@@ -27392,8 +27753,8 @@
             "ok",
             null,
             null,
-            "Started over — all user data wiped, schema preserved",
-            "{\"mode\":\"start-over\"}",
+            "Deleted all data on this install",
+            "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
             1789473600000,
             1789473600000,
             0
@@ -27504,6 +27865,14 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM feature_flag_overrides",
           "params": []
         },
@@ -27516,8 +27885,11 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM app_settings",
-          "params": []
+          "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "runtime_environment"
+          ]
         },
         {
           "sql": "COMMIT",
@@ -27531,8 +27903,8 @@
             "ok",
             null,
             null,
-            "Started over — all user data wiped, schema preserved",
-            "{\"mode\":\"start-over\"}",
+            "Deleted all data on this install",
+            "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
             1789473600000,
             1789473600000,
             0
@@ -27643,6 +28015,14 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM feature_flag_overrides",
           "params": []
         },
@@ -27655,8 +28035,11 @@
           "params": []
         },
         {
-          "sql": "DELETE FROM app_settings",
-          "params": []
+          "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "runtime_environment"
+          ]
         },
         {
           "sql": "COMMIT",
@@ -27670,8 +28053,8 @@
             "ok",
             null,
             null,
-            "Started over — all user data wiped, schema preserved",
-            "{\"mode\":\"start-over\"}",
+            "Deleted all data on this install",
+            "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
             1789473600000,
             1789473600000,
             0
@@ -27726,8 +28109,8 @@
             "status": "ok",
             "app_id": null,
             "app_name": null,
-            "summary": "Started over — all user data wiped, schema preserved",
-            "detail": "{\"mode\":\"start-over\"}",
+            "summary": "Deleted all data on this install",
+            "detail": "{\"mode\":\"start-over\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
             "started_at": 1789473600000,
             "ended_at": 1789473600000,
             "duration_ms": 0
@@ -27753,7 +28136,16 @@
             "success": 0
           }
         ],
-        "app_settings": []
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          }
+        ]
       },
       "csp": [],
       "expected": {
@@ -28888,6 +29280,1094 @@
       },
       "csp": [],
       "expected": null
+    },
+    {
+      "name": "start over while a sync runs",
+      "kind": "route",
+      "delay": null,
+      "route": "/api/admin/start-over",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.107.6",
+        "user-agent": "maintenance-oracle/1.0",
+        "x-auditor-admin-token": "secret-token"
+      },
+      "body": null,
+      "adminToken": "secret-token",
+      "repeat": 1,
+      "compare": "exact",
+      "seedErrors": 0,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "runtime_environment",
+            ""
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "Instagram",
+            "https://apps.apple.com/us/app/fixture/id1001",
+            1789041600000,
+            1789041600000,
+            2,
+            5,
+            7
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "Signal",
+            "https://apps.apple.com/us/app/fixture/id1002",
+            1789041600000,
+            1789041600000,
+            2,
+            5,
+            7
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_types (id, app_id, identifier, title) VALUES (?, ?, ?, ?)",
+          "params": [
+            "pt-1",
+            "1001",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_categories (id, type_id, identifier, title) VALUES (?, ?, ?, ?)",
+          "params": [
+            "pc-1",
+            "pt-1",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, triggered_by) VALUES (?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "s-1",
+            "1001",
+            1789387200000,
+            "[]",
+            "[]",
+            "live",
+            "manual"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, triggered_by) VALUES (?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "s-2",
+            "1002",
+            1789387200000,
+            "[]",
+            "[]",
+            "live",
+            "manual"
+          ]
+        },
+        {
+          "sql": "INSERT INTO change_review_actions (id, app_id, action, acted_at, covered_count) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "ra-1",
+            "1001",
+            "reviewed",
+            1789387200000,
+            2
+          ]
+        },
+        {
+          "sql": "INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read) VALUES (?, ?, ?, ?, ?, ?)",
+          "params": [
+            "n-1",
+            "1001",
+            "App",
+            "[]",
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO annotations (id, app_id, content, source, source_name, visibility, tag, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "an-1",
+            "1001",
+            "a note",
+            "user",
+            null,
+            "export",
+            null,
+            1789387200000,
+            1789387200000,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_verdicts (id, app_id, verdict, rationale, source, source_name, set_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "v-1",
+            "1002",
+            "safe",
+            null,
+            "user",
+            null,
+            1789387200000,
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT INTO manual_apps (id, name, source, developer, privacy_policy_url, source_url, notes, first_seen, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "m-1",
+            "Sideloaded",
+            "sideloaded",
+            null,
+            null,
+            null,
+            null,
+            1789387200000,
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT INTO manual_app_events (id, manual_app_id, event_type, occurred_at, detail) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "me-1",
+            "m-1",
+            "field_change",
+            1789387200000,
+            "{\"kind\":\"field_change\",\"field\":\"name\",\"from\":\"a\",\"to\":\"b\"}"
+          ]
+        },
+        {
+          "sql": "INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "imp-1",
+            1789387200000,
+            null,
+            "manual",
+            null,
+            1,
+            1,
+            0,
+            1,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO import_items (id, import_id, query, edited_query, status, app_id, app_name, developer, url, icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti-1",
+            "imp-1",
+            "One",
+            null,
+            "imported",
+            "1001",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO shortlist_entries (id, source_app_id, candidate_apple_id, candidate_name, candidate_developer, candidate_icon_url, candidate_store_url, candidate_bundle_id, note, added_at, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "sl-1",
+            "1001",
+            "1002",
+            "Candidate",
+            null,
+            null,
+            "https://apps.apple.com/us/app/fixture/id1002",
+            null,
+            null,
+            1789387200000,
+            "privacy"
+          ]
+        },
+        {
+          "sql": "INSERT INTO ai_debug_log (id, created_at, app_id, app_name, provider, model, phase, prompt, response, duration_ms, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "ai-001",
+            1789473599000,
+            "1001",
+            "App 1001",
+            "openai",
+            "gpt",
+            "direct",
+            "prompt",
+            "response",
+            12,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, 'user', ?, 0)",
+          "params": [
+            "flag.dashboard.stats",
+            "off",
+            1789387200000,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "dev-1",
+            "Mum's iPad",
+            "0xABC123",
+            null,
+            null,
+            "iPad",
+            1789387200000,
+            1789387200000,
+            0,
+            "Mum",
+            "loved_one",
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "dev-1",
+            1789387200000,
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_running",
+            "true"
+          ]
+        }
+      ],
+      "stream": [],
+      "rows": {
+        "apps": [
+          {
+            "id": "1001",
+            "name": "Instagram",
+            "url": "https://apps.apple.com/us/app/fixture/id1001",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 2,
+            "changes_acknowledged_at": 5,
+            "changes_snoozed_until": 7,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "1002",
+            "name": "Signal",
+            "url": "https://apps.apple.com/us/app/fixture/id1002",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 2,
+            "changes_acknowledged_at": 5,
+            "changes_snoozed_until": 7,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_types": [
+          {
+            "id": "pt-1",
+            "app_id": "1001",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": null
+          }
+        ],
+        "privacy_categories": [
+          {
+            "id": "pc-1",
+            "purpose_id": null,
+            "type_id": "pt-1",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          }
+        ],
+        "privacy_snapshots": [
+          {
+            "id": "s-1",
+            "app_id": "1001",
+            "scraped_at": 1789387200000,
+            "snapshot_json": "[]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "manual",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "s-2",
+            "app_id": "1002",
+            "scraped_at": 1789387200000,
+            "snapshot_json": "[]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "manual",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "change_review_actions": [
+          {
+            "id": "ra-1",
+            "app_id": "1001",
+            "action": "reviewed",
+            "acted_at": 1789387200000,
+            "covered_count": 2,
+            "covered_snapshot_ids": null,
+            "snooze_until": null,
+            "note": null
+          }
+        ],
+        "annotations": [
+          {
+            "id": "an-1",
+            "app_id": "1001",
+            "content": "a note",
+            "source": "user",
+            "source_name": null,
+            "visibility": "export",
+            "tag": null,
+            "created_at": 1789387200000,
+            "updated_at": 1789387200000,
+            "deleted_at": null
+          }
+        ],
+        "app_verdicts": [
+          {
+            "id": "v-1",
+            "app_id": "1002",
+            "verdict": "safe",
+            "rationale": null,
+            "source": "user",
+            "source_name": null,
+            "set_at": 1789387200000,
+            "updated_at": 1789387200000
+          }
+        ],
+        "shortlist_entries": [
+          {
+            "id": "sl-1",
+            "source_app_id": "1001",
+            "candidate_apple_id": "1002",
+            "candidate_name": "Candidate",
+            "candidate_developer": null,
+            "candidate_icon_url": null,
+            "candidate_store_url": "https://apps.apple.com/us/app/fixture/id1002",
+            "candidate_bundle_id": null,
+            "note": null,
+            "added_at": 1789387200000,
+            "mode": "privacy"
+          }
+        ],
+        "manual_apps": [
+          {
+            "id": "m-1",
+            "name": "Sideloaded",
+            "source": "sideloaded",
+            "developer": null,
+            "privacy_policy_url": null,
+            "source_url": null,
+            "notes": null,
+            "first_seen": 1789387200000,
+            "updated_at": 1789387200000
+          }
+        ],
+        "manual_app_events": [
+          {
+            "id": "me-1",
+            "manual_app_id": "m-1",
+            "event_type": "field_change",
+            "occurred_at": 1789387200000,
+            "detail": "{\"kind\":\"field_change\",\"field\":\"name\",\"from\":\"a\",\"to\":\"b\"}"
+          }
+        ],
+        "imports": [
+          {
+            "id": "imp-1",
+            "created_at": 1789387200000,
+            "completed_at": null,
+            "source": "manual",
+            "source_label": null,
+            "total": 1,
+            "matched": 1,
+            "unmatched": 0,
+            "imported": 1,
+            "device_id": null
+          }
+        ],
+        "import_items": [
+          {
+            "id": "iti-1",
+            "import_id": "imp-1",
+            "query": "One",
+            "edited_query": null,
+            "status": "imported",
+            "app_id": "1001",
+            "app_name": null,
+            "developer": null,
+            "url": null,
+            "icon_url": null,
+            "country": null,
+            "scrape_error": null,
+            "next_attempt_at": null,
+            "attempt_count": 0,
+            "removed_app_id": null
+          }
+        ],
+        "privacy_policy_analyses": [],
+        "feature_flag_overrides": [
+          {
+            "flag_key": "flag.dashboard.stats",
+            "override_value": "off",
+            "set_at": 1789387200000,
+            "set_by": "user",
+            "previous_focus": null,
+            "quarantined": 0
+          }
+        ],
+        "ai_debug_log": [
+          {
+            "id": "ai-001",
+            "created_at": 1789473599000,
+            "app_id": "1001",
+            "app_name": "App 1001",
+            "provider": "openai",
+            "model": "gpt",
+            "phase": "direct",
+            "prompt": "prompt",
+            "response": "response",
+            "duration_ms": 12,
+            "error": null
+          }
+        ],
+        "notifications": [
+          {
+            "id": "n-1",
+            "app_id": "1001",
+            "app_name": "App",
+            "change_summary": "[]",
+            "created_at": 1789387200000,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          },
+          {
+            "key": "sync_running",
+            "value": "true"
+          }
+        ],
+        "devices": [
+          {
+            "id": "dev-1",
+            "name": "Mum's iPad",
+            "ecid": "0xABC123",
+            "model": null,
+            "ios_version": null,
+            "device_class": "iPad",
+            "created_at": 1789387200000,
+            "last_synced_at": 1789387200000,
+            "is_unknown_placeholder": 0,
+            "owner_label": "Mum",
+            "owner_audience": "loved_one",
+            "permission_acknowledged_at": 1789387200000
+          }
+        ],
+        "app_devices": [
+          {
+            "app_id": "1001",
+            "device_id": "dev-1",
+            "first_seen_at": 1789387200000,
+            "last_seen_at": 1789387200000
+          }
+        ]
+      },
+      "csp": [],
+      "expected": {
+        "status": 409,
+        "body": "{\"error\":\"A sync is currently running. Please wait until it finishes.\"}",
+        "type": "application/json",
+        "retryAfter": null,
+        "setCookie": null
+      },
+      "files": {
+        "backups/privacytracker-snapshot-2026-09-14T12-00-00-000Z.json": "{}",
+        "backups/privacytracker-snapshot-2026-09-15T00-00-00-000Z.json.tmp-1-ab": "{",
+        "backups/notes.txt": "not a snapshot",
+        "backup-signing.key": "c2lnbmluZy1rZXktZm9yLXRoZS1vcmFjbGUtb25seQ==\n"
+      },
+      "filesAfter": [
+        "backup-signing.key",
+        "backups/notes.txt",
+        "backups/privacytracker-snapshot-2026-09-14T12-00-00-000Z.json",
+        "backups/privacytracker-snapshot-2026-09-15T00-00-00-000Z.json.tmp-1-ab"
+      ]
+    },
+    {
+      "name": "reset with no backup files on disk",
+      "kind": "route",
+      "delay": null,
+      "route": "/api/reset",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.108.6",
+        "user-agent": "maintenance-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "repeat": 1,
+      "compare": "exact",
+      "seedErrors": 0,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "runtime_environment",
+            ""
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "Instagram",
+            "https://apps.apple.com/us/app/fixture/id1001",
+            1789041600000,
+            1789041600000,
+            2,
+            5,
+            7
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "1002",
+            "Signal",
+            "https://apps.apple.com/us/app/fixture/id1002",
+            1789041600000,
+            1789041600000,
+            2,
+            5,
+            7
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_types (id, app_id, identifier, title) VALUES (?, ?, ?, ?)",
+          "params": [
+            "pt-1",
+            "1001",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_categories (id, type_id, identifier, title) VALUES (?, ?, ?, ?)",
+          "params": [
+            "pc-1",
+            "pt-1",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, triggered_by) VALUES (?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "s-1",
+            "1001",
+            1789387200000,
+            "[]",
+            "[]",
+            "live",
+            "manual"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, triggered_by) VALUES (?, ?, ?, ?, 0, ?, ?, ?)",
+          "params": [
+            "s-2",
+            "1002",
+            1789387200000,
+            "[]",
+            "[]",
+            "live",
+            "manual"
+          ]
+        },
+        {
+          "sql": "INSERT INTO change_review_actions (id, app_id, action, acted_at, covered_count) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "ra-1",
+            "1001",
+            "reviewed",
+            1789387200000,
+            2
+          ]
+        },
+        {
+          "sql": "INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read) VALUES (?, ?, ?, ?, ?, ?)",
+          "params": [
+            "n-1",
+            "1001",
+            "App",
+            "[]",
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO annotations (id, app_id, content, source, source_name, visibility, tag, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "an-1",
+            "1001",
+            "a note",
+            "user",
+            null,
+            "export",
+            null,
+            1789387200000,
+            1789387200000,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_verdicts (id, app_id, verdict, rationale, source, source_name, set_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "v-1",
+            "1002",
+            "safe",
+            null,
+            "user",
+            null,
+            1789387200000,
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT INTO manual_apps (id, name, source, developer, privacy_policy_url, source_url, notes, first_seen, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "m-1",
+            "Sideloaded",
+            "sideloaded",
+            null,
+            null,
+            null,
+            null,
+            1789387200000,
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT INTO manual_app_events (id, manual_app_id, event_type, occurred_at, detail) VALUES (?, ?, ?, ?, ?)",
+          "params": [
+            "me-1",
+            "m-1",
+            "field_change",
+            1789387200000,
+            "{\"kind\":\"field_change\",\"field\":\"name\",\"from\":\"a\",\"to\":\"b\"}"
+          ]
+        },
+        {
+          "sql": "INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "imp-1",
+            1789387200000,
+            null,
+            "manual",
+            null,
+            1,
+            1,
+            0,
+            1,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO import_items (id, import_id, query, edited_query, status, app_id, app_name, developer, url, icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti-1",
+            "imp-1",
+            "One",
+            null,
+            "imported",
+            "1001",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT INTO shortlist_entries (id, source_app_id, candidate_apple_id, candidate_name, candidate_developer, candidate_icon_url, candidate_store_url, candidate_bundle_id, note, added_at, mode) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "sl-1",
+            "1001",
+            "1002",
+            "Candidate",
+            null,
+            null,
+            "https://apps.apple.com/us/app/fixture/id1002",
+            null,
+            null,
+            1789387200000,
+            "privacy"
+          ]
+        },
+        {
+          "sql": "INSERT INTO ai_debug_log (id, created_at, app_id, app_name, provider, model, phase, prompt, response, duration_ms, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "ai-001",
+            1789473599000,
+            "1001",
+            "App 1001",
+            "openai",
+            "gpt",
+            "direct",
+            "prompt",
+            "response",
+            12,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined) VALUES (?, ?, ?, 'user', ?, 0)",
+          "params": [
+            "flag.dashboard.stats",
+            "off",
+            1789387200000,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "dev-1",
+            "Mum's iPad",
+            "0xABC123",
+            null,
+            null,
+            "iPad",
+            1789387200000,
+            1789387200000,
+            0,
+            "Mum",
+            "loved_one",
+            1789387200000
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+          "params": [
+            "1001",
+            "dev-1",
+            1789387200000,
+            1789387200000
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM annotations",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_verdicts",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_data_types",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_categories",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_purposes",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_snapshots",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_policy_versions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_policy_analyses",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM change_review_actions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM accessibility_features",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_app_events",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_app_policy_versions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_apps",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM apps",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM import_items",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM imports",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM audit_bundle_imports",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM notifications",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM activity_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM shortlist_entries",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM feature_flag_overrides",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM audit_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM ai_debug_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "runtime_environment"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "reset",
+            "ok",
+            null,
+            null,
+            "Deleted all data on this install",
+            "{\"mode\":\"reset\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            1789473600000,
+            "reset.success",
+            "10.0.108.6",
+            "maintenance-oracle/1.0",
+            "",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "privacy_snapshots": [],
+        "change_review_actions": [],
+        "annotations": [],
+        "app_verdicts": [],
+        "shortlist_entries": [],
+        "manual_apps": [],
+        "manual_app_events": [],
+        "imports": [],
+        "import_items": [],
+        "privacy_policy_analyses": [],
+        "feature_flag_overrides": [],
+        "ai_debug_log": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "type": "reset",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Deleted all data on this install",
+            "detail": "{\"mode\":\"reset\",\"backupSnapshotsDeleted\":0,\"signingKeyDeleted\":false}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "created_at": 1789473600000,
+            "action": "reset.success",
+            "actor_ip": "10.0.108.6",
+            "user_agent": "maintenance-oracle/1.0",
+            "detail": "",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          }
+        ],
+        "devices": [],
+        "app_devices": []
+      },
+      "csp": [],
+      "expected": {
+        "status": 200,
+        "body": "{\"success\":true}",
+        "type": "application/json",
+        "retryAfter": null,
+        "setCookie": null
+      },
+      "files": {},
+      "filesAfter": []
     }
   ]
 }

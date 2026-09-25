@@ -6,6 +6,7 @@ import { requireMutationGuard } from "../../../../lib/api-guards";
 import { withApiTiming } from "../../../../lib/api-timing";
 import {
   addImportItemsAsync,
+  attachDeviceToImport,
   IMPORT_ITEM_STATUSES,
   type ImportItemStatus,
 } from "../../../../lib/imports";
@@ -147,6 +148,15 @@ async function addImportItemsRoute(request: Request) {
         { error: "items must be a non-empty array" },
         { status: 400 }
       );
+    }
+
+    // Optional: the device this import is for, sent by the onboarding
+    // wizard when the user commits the import. Attached only if the import
+    // has no device yet and the device exists (lib/imports.ts).
+    const deviceId =
+      typeof body?.deviceId === "string" ? body.deviceId.trim() : "";
+    if (deviceId) {
+      attachDeviceToImport(importId, deviceId);
     }
 
     // Route through the worker-backed async variant so a 200-row

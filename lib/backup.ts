@@ -33,12 +33,15 @@ export const CURRENT_BACKUP_VERSION = 1;
 /**
  * Per-install HMAC key. Generated once on first export and stored as a
  * single base64 line in `<data-dir>/backup-signing.key` with 0600
- * permissions. Lives **outside** the SQLite DB on purpose: `/api/reset`
- * and `restoreBackup` both wipe `app_settings`, so storing the key
- * there would silently invalidate every existing backup the moment the
- * user did a reset. The key file persists across DB wipes, so the
- * normal same-install "reset, then restore from backup" flow stays a
- * trusted operation.
+ * permissions. Lives **outside** the SQLite DB on purpose: `restoreBackup`
+ * wipes `app_settings`, so storing the key there would invalidate every
+ * existing backup the moment the user restored one.
+ *
+ * "Delete everything" (`/api/reset`, `/api/admin/start-over`) deletes the
+ * key file as well, because it deletes everything that identifies this
+ * install. The next export mints a new key; a backup exported before the
+ * wipe then verifies as "untrusted" and restores only after the user
+ * confirms that (the restore dialogs ask).
  *
  * Independent of {@link AUDITOR_ADMIN_TOKEN}: that gate is about who
  * can call the route, this is about whether the envelope is authentic.
@@ -55,6 +58,24 @@ function backupKeyPath(): string {
   const dataDir =
     process.env.PRIVACYTRACKER_DATA_DIR || path.join(process.cwd(), "data");
   return path.join(dataDir, BACKUP_KEY_FILENAME);
+}
+
+/**
+ * Delete this install's backup signing key, for "Delete everything".
+ * Returns whether a key file was there to delete. A missing file is not an
+ * error; any other failure is logged and reported as `false`, because the
+ * wipe it belongs to has already committed.
+ */
+export function deleteBackupSigningKey(): boolean {
+  try {
+    fs.unlinkSync(backupKeyPath());
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") {
+      console.warn("[backup] failed to delete signing key:", err);
+    }
+    return false;
+  }
 }
 
 function getOrCreateSigningKey(): Buffer {
