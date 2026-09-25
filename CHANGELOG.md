@@ -12,6 +12,75 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-25
+
+The first release since v0.1.2, and the first on the Rust server: neither
+the desktop app nor the Docker image runs Node any more. It also brings
+a device picker that knows whose device is whose, privacy-label history
+back to 2021, sign-in for Docker and a long list of fixes. v0.2.0 was
+prepared but never released; its changes are part of this release and
+listed below.
+
+### Before you upgrade
+
+- **Back up first.** Quit the app or stop the container, then copy the
+  whole data directory: `~/Library/Application Support/privacytracker/`
+  for the desktop app, or the `privacytracker-data` volume for Docker
+  (`docker compose cp web:/app/data ./privacytracker-backup`).
+- **macOS 13.5 or later.** v0.1.2 cannot update itself to this release.
+  Install the new DMG, or run `brew upgrade --cask privacytracker`, once;
+  in-app updates carry on from there.
+- **Docker needs an access token.** Set `AUDITOR_ADMIN_TOKEN` in `.env`
+  before you start it (for example `openssl rand -hex 32`). Compose will
+  not start without it, even with the port published on localhost only,
+  and it is what you sign in with.
+- **Older backups.** Backups made by v0.1.2 restore, but they never
+  included devices, review history or activity, so those cannot come back
+  from one. Keep the directory copy for a rollback.
+
+### Highlights
+
+- **No more Node.** The desktop app serves itself from its own process:
+  about 9 MB of frontend inside the app, where the Node build unpacked a
+  ~200 MB server into your data folder, and a fraction of the memory. The
+  Docker image is about 56 MB, down from 1.36 GB. Your data is untouched,
+  and settings kept in the page, such as the accessibility quick toggles,
+  now survive a relaunch.
+- **Whose device is this?** Choose whose apps you are looking at from the
+  navigation bar, and record who each device belongs to; importing from a
+  new device asks. On the desktop app, removing apps from a device that
+  belongs to someone you help is now possible, once you have recorded that
+  it is theirs, confirmed you have their permission and switched into the
+  matching mode.
+- **Label history back to 2021.** The Wayback import now reaches captures
+  from early 2021, each app's History tab can check the archive for that
+  app alone, and the History tab pages back through older entries.
+- **Safer by default.** Docker and network installs require sign-in for
+  everything private, the database is readable only by you, request sizes
+  are limited, CSV exports are safe to open in a spreadsheet, pages run
+  under a strict Content Security Policy, and outbound requests check the
+  addresses they connect to.
+- **Settings in four pages and a simpler first run.** Privacy-policy
+  changes no longer notify you by default; the History tab still records
+  them.
+- **Accessibility.** Colour contrast meets WCAG AA across the app, and
+  keyboard access works in the phone-width menu and the import steps.
+- **Fixes** to AI policy summaries, background tasks and recovery after a
+  crash, the dashboard, onboarding, and the desktop app's menu bar actions
+  and update banner.
+
+### Going back
+
+Both servers open the same data. For this release the Node builds are
+still available: Docker Compose builds the Node image with
+`PRIVACYTRACKER_BACKEND=node` in `.env`, and a desktop rollback would come
+as a new patch release. The next release removes them.
+
+Every change since v0.1.2 is listed in
+[CHANGELOG.md](https://github.com/privacykey/privacytracker/blob/main/CHANGELOG.md).
+
+[//]: # (release-notes-end)
+
 ### Changed
 
 - The Docker image runs the Rust server (Rust core Phase 6, the Docker
@@ -1118,12 +1187,9 @@ Going forward, changes are recorded here as they land.
 - A fresh install no longer probes its own install date (which equals
   "today" and is already covered by the first live scrape).
 
-## [0.2.0] — 2026-09-05
+### Prepared as 0.2.0 on 2026-09-05, never released
 
-Prepared on this date but never tagged or released. These changes ship
-with v0.3.0, the next release after v0.1.2.
-
-### Added
+#### Added
 
 - Canned sample data now populates every app-detail surface: each demo app
   gets its hand-written AI policy summary stored as a real, ready analysis
@@ -1153,7 +1219,7 @@ with v0.3.0, the next release after v0.1.2.
   machine. The policy itself is now hash-based rather than nonce-based,
   which is what lets every page be served as a fixed, prebuilt file.
 
-### Changed
+#### Changed
 
 - **v0.2 upgrade requirements:** Docker deployments require
   `AUDITOR_ADMIN_TOKEN`, including containers published only on localhost.
@@ -1200,7 +1266,7 @@ with v0.3.0, the next release after v0.1.2.
   first paint waits for the language bundle (a brief blank rather than an
   English flash), and the no-JavaScript fallback message is English only.
 
-### Fixed
+#### Fixed
 
 - Outbound requests now validate the DNS addresses used by the actual connection,
   including streaming AI calls and redirects. IPv4-mapped IPv6 can no longer
@@ -1269,7 +1335,7 @@ with v0.3.0, the next release after v0.1.2.
   `.claude` exclusion at the repo root so `pnpm lint` stops reporting
   "Checked 0 files" there.
 
-### Security
+#### Security
 
 - Refresh the Docker and desktop Node runtime to 24.20.0, require patched Alpine TLS libraries, remove unused package managers from the runtime image, and apply compatible JavaScript/Rust dependency patches. Scan the final image in CI and track desktop runtime/scanner pins with Renovate.
 - Documented in the README that a configured AI provider key is stored in
@@ -1328,7 +1394,8 @@ Next.js app.
 - Background sync with a notifications bell, and crash-safe resume across the
   live, Wayback, and privacy-policy jobs.
 
-[Unreleased]: https://github.com/privacykey/privacytracker/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/privacykey/privacytracker/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/privacykey/privacytracker/compare/v0.1.2...v0.3.0
 [0.1.2]: https://github.com/privacykey/privacytracker/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/privacykey/privacytracker/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/privacykey/privacytracker/releases/tag/v0.1.0
