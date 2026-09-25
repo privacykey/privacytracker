@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 
 import { validateSigningEnvironment } from "./signing-environment.mjs";
 
-const expectedChecks = ["quality", "rust-check", "container-smoke"];
+const expectedChecks = ["quality", "rust-check", "container-smoke", "e2e-rust"];
 
 function fail(message) {
   console.error(message);
