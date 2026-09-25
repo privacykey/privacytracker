@@ -2824,6 +2824,7 @@
     "menu_open_aria": "打开导航菜单",
     "menu_close_aria": "关闭导航菜单",
     "drawer_aria": "主导航",
+    "accessibility_entry": "无障碍",
     "tasks_icon_aria": "{count, plural, =0 {任务（无待办）} one {任务（{count} 项待办）} other {任务（{count} 项待办）}}"
   },
   "a11y_quick": {

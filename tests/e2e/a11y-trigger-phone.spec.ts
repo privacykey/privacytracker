@@ -1,4 +1,9 @@
-import { expect, type Page, test } from "@playwright/test";
+import {
+  type APIRequestContext,
+  expect,
+  type Page,
+  test,
+} from "@playwright/test";
 
 /**
  * On a phone the accessibility quick-toggles button must not sit on top of
@@ -8,7 +13,8 @@ import { expect, type Page, test } from "@playwright/test";
  * 375 px it covered the right end of the welcome page's sticky Next button,
  * "Other import options" and "Search App Store" in onboarding, and the
  * first app card's delete button. Below 480 px it now sits in the page's
- * footer, after the content, where nothing can be under it.
+ * footer, after the content, where nothing can be under it, and a second
+ * entry near the top of the page opens the same panel (see below).
  *
  * The check is geometric on purpose: every visible control's box must stay
  * clear of the trigger's box, at the top of the page and after scrolling to
@@ -92,12 +98,32 @@ async function expectTriggerClear(page: Page) {
   await page.waitForTimeout(300);
   expect(await controlsUnderTrigger(page)).toEqual([]);
 
-  // Still reachable and still opens the panel.
+  // Still reachable, still opens the panel, and Escape hands focus back.
   await trigger.scrollIntoViewIfNeeded();
   await expect(trigger).toBeInViewport();
   await trigger.click();
   await expect(page.locator(".a11y-quick-popover")).toBeVisible();
   await page.keyboard.press("Escape");
+  await expect(page.locator(".a11y-quick-popover")).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+}
+
+async function seedFocusAndApps(request: APIRequestContext) {
+  const focus = await request.post("/api/focus", {
+    headers: sameOriginHeaders,
+    data: {
+      audience: "self",
+      monitor: true,
+      cleanup: false,
+      minimal: false,
+      accessibility: false,
+    },
+  });
+  await expect(focus).toBeOK();
+  const seed = await request.post("/api/dev/seed-sample-data?source=canned", {
+    headers: sameOriginHeaders,
+  });
+  await expect(seed).toBeOK();
 }
 
 test.beforeEach(async ({ page, request }) => {
@@ -178,6 +204,107 @@ browserFlow(
   }
 );
 
+// ---------------------------------------------------------------------------
+// ...and it is still reachable from the top of every phone page
+// ---------------------------------------------------------------------------
+//
+// Moving the button to the page end keeps it off the controls, but text
+// size, the dyslexia-friendly font and contrast are for exactly the people
+// who should not have to scroll a whole page to find them. So a phone also
+// gets an entry near the top that opens the same panel: an "Accessibility"
+// item in the nav drawer, an icon in the sample-mode nav, and a button
+// above the content on pages without a nav. Escape and ✕ return focus to
+// whichever one opened it.
+
+browserFlow(
+  "nav drawer: Accessibility opens the panel and focus comes back to it",
+  async ({ page, request }) => {
+    await seedFocusAndApps(request);
+    await page.goto("/dashboard/apps");
+    await expect(page.locator(".app-card").first()).toBeVisible();
+
+    const menu = page.locator(".nav-menu-trigger");
+    const drawer = page.locator("#nav-drawer");
+    const popover = page.locator(".a11y-quick-popover");
+    await menu.click();
+    await expect(drawer).toHaveClass(/nav-drawer-open/);
+
+    const entry = drawer.getByRole("menuitem", { name: "Accessibility" });
+    await expect(entry).toBeVisible();
+    await expect(entry).toHaveAttribute("aria-haspopup", "dialog");
+    await expect(entry).toHaveAttribute("aria-expanded", "false");
+
+    // Keyboard: Enter opens the panel with focus inside it...
+    await entry.focus();
+    await page.keyboard.press("Enter");
+    await expect(popover).toBeVisible();
+    await expect(entry).toHaveAttribute("aria-expanded", "true");
+    await expect(popover.locator(".a11y-quick-popover-close")).toBeFocused();
+
+    // ...and Escape closes only the panel, handing focus back to the
+    // drawer item in the still-open drawer.
+    await page.keyboard.press("Escape");
+    await expect(popover).toHaveCount(0);
+    await expect(entry).toBeFocused();
+    await expect(drawer).toHaveClass(/nav-drawer-open/);
+    await expect(entry).toHaveAttribute("aria-expanded", "false");
+
+    // Working in the panel (a tap inside it) keeps the drawer open, and
+    // the ✕ button returns focus to the drawer item too.
+    await entry.click();
+    await expect(popover).toBeVisible();
+    await popover.locator(".a11y-quick-popover-title").click();
+    await expect(drawer).toHaveClass(/nav-drawer-open/);
+    await popover.locator(".a11y-quick-popover-close").click();
+    await expect(popover).toHaveCount(0);
+    await expect(entry).toBeFocused();
+
+    // The next Escape closes the drawer and focus goes to its button.
+    await page.keyboard.press("Escape");
+    await expect(drawer).not.toHaveClass(/nav-drawer-open/);
+    await expect(menu).toBeFocused();
+  }
+);
+
+browserFlow(
+  "pages without a nav: an Accessibility button above the content opens the panel",
+  async ({ page }) => {
+    await page.goto("/welcome");
+    const entry = page.getByTestId("a11y-top-entry");
+    await expect(entry).toBeVisible();
+    await expect(entry).toHaveAccessibleName("Accessibility");
+    // Near the top, not at the end of the page.
+    const box = await entry.boundingBox();
+    expect(box?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(80);
+
+    await entry.click();
+    const popover = page.locator(".a11y-quick-popover");
+    await expect(popover).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(popover).toHaveCount(0);
+    await expect(entry).toBeFocused();
+  }
+);
+
+browserFlow(
+  "sample mode: the nav's Accessibility button opens the panel",
+  async ({ page }) => {
+    await page.goto("/welcome");
+    await page.locator(".welcome-sample-data").click();
+    await page.waitForURL(/\/dashboard\?sample=1$/);
+
+    const entry = page.getByTestId("sample-nav-a11y");
+    await expect(entry).toBeVisible();
+    await expect(entry).toHaveAccessibleName("Accessibility");
+    await entry.click();
+    const popover = page.locator(".a11y-quick-popover");
+    await expect(popover).toBeVisible();
+    await popover.locator(".a11y-quick-popover-close").click();
+    await expect(popover).toHaveCount(0);
+    await expect(entry).toBeFocused();
+  }
+);
+
 browserFlow(
   "wide screens keep the floating trigger in the corner",
   async ({ page }) => {
@@ -188,5 +315,7 @@ browserFlow(
     expect(await trigger.evaluate((el) => getComputedStyle(el).position)).toBe(
       "fixed"
     );
+    // The phone-only top entry stays out of the way here.
+    await expect(page.getByTestId("a11y-top-entry")).toBeHidden();
   }
 );

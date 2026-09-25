@@ -2824,6 +2824,7 @@
     "menu_open_aria": "Open navigation menu",
     "menu_close_aria": "Close navigation menu",
     "drawer_aria": "Main navigation",
+    "accessibility_entry": "Accessibility",
     "tasks_icon_aria": "{count, plural, =0 {Tasks (none pending)} one {Tasks ({count} pending)} other {Tasks ({count} pending)}}"
   },
   "a11y_quick": {

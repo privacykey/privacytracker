@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import type { ReactNode } from "react";
 import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
 import AboutModal from "./AboutModal";
+import AccessibilityEntryButton from "./AccessibilityEntryButton";
 import AccessibilityQuickToggles from "./AccessibilityQuickToggles";
 import AdminTokenBridge from "./AdminTokenBridge";
 import ClientDiagnosticsBoot from "./ClientDiagnosticsBoot";
@@ -143,6 +144,7 @@ function ChromeBody({
   children: ReactNode;
   on: (key: (typeof CHROME_FLAG_KEYS)[number]) => boolean;
 }) {
+  const pathname = usePathname();
   return (
     <TaskCenterProvider
       autoDismissEnabled={on("flag.taskcenter.auto_dismiss")}
@@ -180,6 +182,19 @@ function ChromeBody({
               `?flag-highlight=<key>` and rings the gated element. */}
             <FlagHighlightHandler />
             <main className="app-main" id="main-content" tabIndex={-1}>
+              {/* Pages without a nav (welcome, onboarding, help) have no
+                drawer to hold the phone entry to the accessibility panel,
+                so it sits above the content instead. CSS shows it only
+                below 480px, where the panel's own button moves to the end
+                of the page; the nav routes carry it in their drawer. */}
+              {pathname !== "/" && !routeHasNav(pathname) && (
+                <div className="a11y-top-entry">
+                  <AccessibilityEntryButton
+                    className="btn btn-secondary btn-sm a11y-top-entry-button"
+                    testId="a11y-top-entry"
+                  />
+                </div>
+              )}
               {children}
             </main>
             {/* Footer landmark (role="contentinfo") groups the bottom-

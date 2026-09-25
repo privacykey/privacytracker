@@ -117,8 +117,12 @@ Going forward, changes are recorded here as they land.
   sat on the end of the welcome page's Next button, onboarding's "Search
   App Store" and "Other import options", and the delete button of the
   first app card. On screens narrower than 480 pixels it now sits at the
-  end of the page, below the content. Wider screens keep the floating
-  button, and "g then u" still opens the panel.
+  end of the page, below the content, and the same panel also opens from
+  the top of every page: an "Accessibility" item in the navigation menu,
+  a button in the sample-data navigation bar, and a button above the
+  content on pages without a navigation bar (welcome, onboarding, help).
+  Closing the panel returns focus to whichever control opened it. Wider
+  screens keep the floating button, and "g then u" still opens the panel.
 - "Try with sample data" now has a way out. The demo showed no exit, and
   every link in the navigation bar led to a page that sent a new user to
   onboarding without saying why. The demo now shows a sample-data bar with

@@ -46,6 +46,34 @@
   white-space: nowrap;
 }
 
+/* Phone-only entry to the accessibility panel (its floating button moves
+   to the end of the page below 480px). Sized like the nav's other icon
+   buttons. */
+.sample-mode-a11y {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-full);
+}
+
+.sample-mode-a11y:hover {
+  background: var(--surface-hover);
+}
+
+@media (max-width: 480px) {
+  .sample-mode-a11y {
+    display: inline-flex;
+  }
+}
+
 /* The chip is the first thing to give way on a narrow phone: the exit
    button beside it is what the bar is for. */
 @media (max-width: 400px) {

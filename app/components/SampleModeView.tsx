@@ -32,6 +32,7 @@ import {
   type SampleApp,
 } from "@/lib/sample-apps";
 import { useFlagValuesWithDefaults } from "../../lib/use-flag-bundle";
+import AccessibilityEntryButton from "./AccessibilityEntryButton";
 import BrandWordmark from "./BrandWordmark";
 import "./sample-mode.css";
 
@@ -71,6 +72,15 @@ export function SampleModeNav() {
       </Link>
       <span className="sample-mode-nav-chip">{tSample("nav_chip")}</span>
       <div className="nav-right">
+        {/* This nav has no drawer, so on a phone the accessibility panel
+            gets its own entry here (the panel's button sits at the end of
+            the page below 480px). Hidden on wider screens, where the
+            floating button is in the corner. */}
+        <AccessibilityEntryButton
+          className="sample-mode-a11y"
+          iconOnly
+          testId="sample-nav-a11y"
+        />
         <Link
           className="btn btn-sm btn-primary sample-mode-exit"
           href="/onboard"

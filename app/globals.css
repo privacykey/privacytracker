@@ -25864,6 +25864,48 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   }
 }
 
+/* ...and a way in from the top of the page (AccessibilityEntryButton):
+   the "Accessibility" item in the nav drawer, and on pages without a
+   nav a small button above the content, shown only below 480px where
+   the floating button has moved to the page end. Both open the same
+   panel. The drawer item is a <button> styled like the drawer's links. */
+.nav-drawer-a11y {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  margin-top: 4px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+}
+
+.a11y-entry-glyph {
+  flex-shrink: 0;
+}
+
+.a11y-top-entry {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .a11y-top-entry:not(:empty) {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 16px 0;
+  }
+
+  .a11y-top-entry-button {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+}
+
 /* ─────────────────────────────────────────────────────
    Quick-toggles popover
 */
