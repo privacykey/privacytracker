@@ -11,15 +11,21 @@ import { expectNoBlockingViolations } from "./helpers/axe";
  *
  * Axe-core scans of the highest-traffic surfaces: /welcome, the
  * onboarding import-matching step, /dashboard, the app detail page,
- * the mobile navigation drawer, and the Stats and Privacy Map pages.
+ * the mobile navigation drawer, the Stats and Privacy Map pages, the
+ * apps grid (including Select mode with a card picked), Compare with
+ * two apps, Settings → Admin and the dev menu, and the prose pages
+ * (privacy policy, Legal, AI disclosure, 404).
  * Serious/critical WCAG 2.2 A/AA violations, target size included,
  * fail CI (this file runs inside the `quality` job's Playwright step
  * like every other spec here).
  *
- * Most scans run in light mode only. Stats and Privacy Map are also
- * scanned in dark and high-contrast mode, because their failures were
- * theme-specific: text on chart fills and severity tints that passed
- * in one palette and not another.
+ * The onboarding, detail and mobile-nav scans run in light mode only.
+ * Everything else is also scanned in dark and high-contrast mode,
+ * because the failures there were theme-specific: text on chart fills,
+ * severity tints and nested panels that passed in one palette and not
+ * another. The grid, dashboard and Compare scans run with a partial
+ * privacy profile, which is what renders the profile badges, the
+ * "N mismatches" chips and the Compare profile column.
  *
  * The known-issue allowlist (see `helpers/axe.ts`) is EMPTY: every
  * defect it tracked has been fixed. If a new violation must ship
@@ -157,6 +163,39 @@ async function gotoInTheme(page: Page, path: string, theme: Theme) {
     await expect(html).toHaveAttribute("data-theme-override", "high-contrast");
   } else {
     await expect(html).not.toHaveAttribute("data-theme-override");
+  }
+}
+
+/**
+ * Save a partial privacy profile for the length of `run`, then clear it.
+ * Partial on purpose: the pages render both "preference set" and "no
+ * preference" markup, and Instagram and TikTok exceed it, so mismatch
+ * chips, profile badges and the Compare profile column appear. The
+ * suite shares one DB, so the profile never outlives the test.
+ */
+async function withPartialProfile(
+  request: APIRequestContext,
+  run: () => Promise<void>
+) {
+  const profile = await request.put("/api/privacy-profile", {
+    headers: sameOriginHeaders,
+    data: {
+      profile: {
+        CONTACT_INFO: "not_linked",
+        LOCATION: "not_collected",
+        IDENTIFIERS: "linked",
+        USAGE_DATA: "tracking",
+      },
+    },
+  });
+  await expect(profile).toBeOK();
+  try {
+    await run();
+  } finally {
+    await request.put("/api/privacy-profile", {
+      headers: sameOriginHeaders,
+      data: { profile: null },
+    });
   }
 }
 
@@ -550,6 +589,147 @@ browserFlow(
           await toggle.click();
           await expect(toggle).toHaveAttribute("aria-checked", "false");
         }
+      }
+    }
+  }
+);
+
+// ---------------------------------------------------------------------------
+// 9. /dashboard/apps — every theme, then Select mode with a card picked
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "a11y: the apps grid has no blocking violations in any theme, in Select mode too",
+  async ({ page, request }) => {
+    await setDefaultFocus(request);
+    await seedCannedApps(request);
+
+    await withPartialProfile(request, async () => {
+      for (const theme of THEMES) {
+        await gotoInTheme(page, "/dashboard/apps", theme);
+        // Custom (user-authored) cards have no Select behaviour; skip any
+        // another spec may have left in the shared DB.
+        const cards = page
+          .locator(".app-card")
+          .filter({ hasNot: page.locator(".app-card-custom") });
+        await expect(cards.first()).toBeVisible();
+        // The profile badges and the Low risk pill are the tints whose
+        // labels failed contrast; make sure the scan sees them.
+        await expect(
+          page.locator(".app-card-profile-badge.match-bad").first()
+        ).toBeVisible();
+        await expect(page.locator(".risk-pill-low").first()).toBeVisible();
+        await page.waitForTimeout(600);
+        await expectNoBlockingViolations(page, `apps-grid-${theme}`);
+
+        // Select mode, one card picked: the bulk bar in its active
+        // state (links, count) and a selected card's highlight.
+        const select = page.getByRole("button", {
+          name: "Select",
+          exact: true,
+        });
+        await expect(select).toBeEnabled();
+        await select.click();
+        const bar = page.getByRole("region", { name: "Bulk actions" });
+        await expect(bar).toBeVisible();
+        await cards.first().locator(".app-card-link").click();
+        await expect(bar.getByRole("status")).toContainText("1 app selected");
+        await page.waitForTimeout(600);
+        await expectNoBlockingViolations(page, `apps-select-${theme}`);
+      }
+    });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// 10. /dashboard with a privacy profile — every theme
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "a11y: /dashboard with a privacy profile has no blocking violations in any theme",
+  async ({ page, request }) => {
+    await setDefaultFocus(request);
+    await seedCannedApps(request);
+
+    await withPartialProfile(request, async () => {
+      for (const theme of THEMES) {
+        await gotoInTheme(page, "/dashboard", theme);
+        await expect(page.locator(".home-page").first()).toBeVisible();
+        // The "Consider replacing" rows carry the "N mismatches" chip,
+        // which was 3.8:1 in dark mode.
+        await expect(
+          page.locator(".profile-replace-row-count").first()
+        ).toBeVisible();
+        await page.waitForTimeout(600);
+        await expectNoBlockingViolations(page, `dashboard-${theme}`);
+      }
+    });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// 11. /dashboard/compare with two apps — every theme
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "a11y: /dashboard/compare with two apps has no blocking violations in any theme",
+  async ({ page, request }) => {
+    await setDefaultFocus(request);
+    await seedCannedApps(request);
+    const appsRes = await request.get("/api/apps");
+    await expect(appsRes).toBeOK();
+    const apps = (await appsRes.json()) as Array<{ id: string; name: string }>;
+    const a = apps.find((app) => app.name === "Instagram");
+    const b = apps.find((app) => app.name === "TikTok");
+    expect(a && b, "expected the canned Instagram and TikTok").toBeTruthy();
+
+    await withPartialProfile(request, async () => {
+      for (const theme of THEMES) {
+        await gotoInTheme(
+          page,
+          `/dashboard/compare?a=id:${a?.id}&b=id:${b?.id}`,
+          theme
+        );
+        // Picked slot cards (with their Change / Clear actions), the
+        // matrix table and its profile column are all on screen.
+        await expect(page.getByRole("table").first()).toBeVisible();
+        await expect(
+          page.getByRole("button", { name: "Clear App A" })
+        ).toBeVisible();
+        await page.waitForTimeout(600);
+        await expectNoBlockingViolations(page, `compare-${theme}`);
+      }
+    });
+  }
+);
+
+// ---------------------------------------------------------------------------
+// 12. Prose pages — privacy policy, Legal, AI disclosure, 404
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "a11y: the prose pages have no blocking violations in any theme",
+  async ({ page, request }) => {
+    await setDefaultFocus(request);
+    await seedCannedApps(request);
+
+    // Each page's running text holds links; they must be underlined, not
+    // told apart by colour alone (axe link-in-text-block).
+    const pages: Array<{ path: string; ready: string }> = [
+      { path: "/privacy-policy", ready: ".priv-inline-link" },
+      { path: "/legal", ready: ".legal-license-blurb a" },
+      {
+        path: "/dashboard/about/ai-disclosure",
+        ready: ".ai-disclosure-inline-link",
+      },
+      { path: "/this-page-does-not-exist", ready: ".notfound-hint a" },
+    ];
+    for (const { path, ready } of pages) {
+      for (const theme of THEMES) {
+        await gotoInTheme(page, path, theme);
+        await expect(page.locator(ready).first()).toBeVisible();
+        await page.waitForTimeout(300);
+        await expectNoBlockingViolations(page, `${path}-${theme}`);
       }
     }
   }
