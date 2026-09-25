@@ -47,6 +47,7 @@ mod zoom;
 #[cfg(target_os = "macos")]
 mod touch_id;
 mod window_lock;
+mod update_guard;
 
 use std::sync::Mutex;
 
@@ -192,6 +193,7 @@ fn main() {
             commands::set_dock_badge,
             commands::set_tray_visible,
             commands::reveal_main_window,
+            update_guard::install_verified_update,
             cfgutil::check_cfgutil,
             cfgutil::run_cfgutil_export,
             cfgutil::list_connected_devices,
