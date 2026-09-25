@@ -82,13 +82,15 @@
   /* Text
      - --text   : primary (AAA vs. --bg)
      - --text-2 : secondary / supporting copy, still ≥4.5:1 on --bg and --bg-2
-     - --text-3 : de-emphasised (timestamps, chips, placeholders). Bumped to
-                  #8e8e93 so it clears WCAG 2.2 AA 4.5:1 against --bg and
-                  ~4.4:1 vs. the slightly lighter --bg-2/--bg-3 surfaces it
-                  commonly sits on. The old #58586a was ~2.9:1 and failed. */
+     - --text-3 : de-emphasised (timestamps, chips, placeholders). #9a9aa0
+                  clears WCAG 2.2 AA 4.5:1 not just on --bg but on the
+                  lightest nested panel it sits on: --surface-3 over --bg-3
+                  composites to #2d2d33, where it is 4.89:1. The previous
+                  #8e8e93 was 4.2 to 4.4:1 on those nested settings panels
+                  (and the old #58586a ~2.9:1 on --bg). */
   --text: #f0f0f5;
   --text-2: #a0a0b0;
-  --text-3: #8e8e93;
+  --text-3: #9a9aa0;
 
   /* Accent */
   --blue: #0a84ff;
@@ -105,6 +107,12 @@
      every theme block below. */
   --blue-fill: #0a6cd6;
   --blue-fill-hover: #0071e3;
+
+  /* Label on a solid severity fill (--red / --orange / --green used as a
+     background). The dark-theme severity colours are bright, so the
+     label is near-black (5.5:1 on --red, 9:1 on --orange / --green);
+     light and high-contrast blocks re-pin it. */
+  --on-severity-fill: #111118;
 
   /* Privacy severity */
   --red: #ff453a;
@@ -213,7 +221,11 @@
     --border: rgba(0, 0, 0, 0.07);
     --border-strong: rgba(0, 0, 0, 0.13);
     --text: #1c1c1e;
-    --text-2: #6c6c80;
+    /* #5e5e72, not #6c6c80: secondary copy also sits on tinted panels
+       (the active schedule option's --blue-dim, diagnostics' red hint
+       box, pills on --bg-3), where #6c6c80 fell to 3.96 to 4.14:1. This
+       same-hue step is 4.9:1 or better on each of them. */
+    --text-2: #5e5e72;
     /* Light-mode tertiary bumped from #aeaeb2 (~2.0:1) to #636368 so it
        meets WCAG 2.2 AA 4.5:1 not just on --bg / --bg-2 but also on the
        --bg-3 surfaces it sits on (icon placeholders, kbd chips, and the
@@ -232,6 +244,8 @@
        --blue-hover, which is 4.3:1 under white; #0071e3 is 4.7:1. */
     --blue-fill: #0066cc;
     --blue-fill-hover: #0071e3;
+    /* The light severity colours are dark, so a white label. */
+    --on-severity-fill: #ffffff;
     /* #735e38, not #7a643b: the "not linked" severity badge paints cream
        text on its own -dim tint, and over the #f2f2f7 page that was
        4.34:1. This same-hue step is 4.73:1 there (the bar the palette
@@ -291,7 +305,7 @@ html[data-theme-override="light"] {
   --border: rgba(0, 0, 0, 0.07);
   --border-strong: rgba(0, 0, 0, 0.13);
   --text: #1c1c1e;
-  --text-2: #6c6c80;
+  --text-2: #5e5e72;
   --text-3: #636368;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
@@ -303,6 +317,7 @@ html[data-theme-override="light"] {
   --blue-soft: #dbeafe;
   --blue-fill: #0066cc;
   --blue-fill-hover: #0071e3;
+  --on-severity-fill: #ffffff;
   /* Light cream — see the @media light block above. */
   --cream: #735e38;
   --cream-dim: rgba(115, 94, 56, 0.12);
@@ -342,7 +357,7 @@ html[data-theme-override="dark"] {
   --border-strong: rgba(255, 255, 255, 0.13);
   --text: #f0f0f5;
   --text-2: #a0a0b0;
-  --text-3: #8e8e93;
+  --text-3: #9a9aa0;
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
@@ -351,6 +366,7 @@ html[data-theme-override="dark"] {
   --blue-soft: rgba(10, 132, 255, 0.22);
   --blue-fill: #0a6cd6;
   --blue-fill-hover: #0071e3;
+  --on-severity-fill: #111118;
   /* Re-pin the severity / accent palette to the dark defaults. Without
      these, a light-OS user who pins the app to Dark inherits the light
      palette from the @media block above — dark golds and greens painted
@@ -1279,9 +1295,10 @@ html[data-theme-override="high-contrast"] .nav {
     background 0.15s;
 }
 
+/* --blue-fill, not --blue: white on the dark --blue is 3.6:1. */
 .sort-tab.active {
   color: #fff;
-  background: var(--blue);
+  background: var(--blue-fill);
 }
 .sort-tab:not(.active):hover {
   color: var(--text);
@@ -11094,13 +11111,15 @@ body.review-rec-print-active .review-rec-print a {
   opacity: 0.55;
 }
 
+/* Label pulled toward --text: dark --red on --surface-active over a
+   settings panel is 3.1:1. */
 .pill-button-danger {
-  color: var(--red);
+  color: color-mix(in srgb, var(--red) 55%, var(--text));
   border-color: rgba(255, 69, 58, 0.35);
 }
 
 .pill-button-danger:hover {
-  color: var(--red);
+  color: color-mix(in srgb, var(--red) 55%, var(--text));
   background: var(--red-dim);
   border-color: var(--red);
 }
@@ -12545,8 +12564,11 @@ body.review-rec-print-active .review-rec-print a {
   opacity: 0.85;
 }
 
+/* High and Low labels are pulled toward --text: dark --red and --blue
+   on their own tints were 4.4 to 4.5:1 at 11px (and lower once a
+   selected card's highlight sits behind them). */
 .risk-pill-high {
-  color: var(--red);
+  color: color-mix(in srgb, var(--red) 85%, var(--text));
   background: color-mix(in srgb, var(--red) 14%, transparent);
   border-color: color-mix(in srgb, var(--red) 30%, transparent);
 }
@@ -12556,7 +12578,7 @@ body.review-rec-print-active .review-rec-print a {
   border-color: color-mix(in srgb, var(--orange) 30%, transparent);
 }
 .risk-pill-low {
-  color: var(--blue);
+  color: color-mix(in srgb, var(--blue) 80%, var(--text));
   background: color-mix(in srgb, var(--blue) 12%, transparent);
   border-color: color-mix(in srgb, var(--blue) 28%, transparent);
 }
@@ -16300,7 +16322,8 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
   font-weight: 600;
   color: #fff;
   text-decoration: none;
-  background: var(--blue);
+  /* --blue-fill: the white label is 3.6:1 on the dark --blue. */
+  background: var(--blue-fill);
   border-radius: 10px;
   transition:
     filter 120ms ease,
@@ -19067,7 +19090,7 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
    attribute still reads as active. Tier-specific selectors below override
    this for each of the four known tiers. */
 .privacy-profile-pill.is-selected {
-  color: #fff;
+  color: var(--on-severity-fill);
   background: var(--red);
   border-color: var(--red);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 50%, transparent);
@@ -19075,10 +19098,12 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
 
 /* Tier-matched selected colours. Green (not_collected) through red
    (tracking) — the same palette used in the stats heatmap (SEV_COLOR in
-   charts/PrivacyHeatmap.tsx) and the severity badges. Cream gets dark
-   text because filled cream is bright; the orange/red tiers carry #fff. */
+   charts/PrivacyHeatmap.tsx) and the severity badges. The label reads
+   --on-severity-fill: near-black on the bright dark-mode fills (white on
+   them was 2.0 to 3.4:1), white on the dark light-mode fills, black in
+   high contrast. Cream keeps its own rules below. */
 .privacy-profile-pill[data-tier="not_collected"].is-selected {
-  color: #fff;
+  color: var(--on-severity-fill);
   background: var(--green);
   border-color: var(--green);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--green) 50%, transparent);
@@ -19105,13 +19130,13 @@ html[data-theme-override="light"]
   color: #fff;
 }
 .privacy-profile-pill[data-tier="linked"].is-selected {
-  color: #fff;
+  color: var(--on-severity-fill);
   background: var(--orange);
   border-color: var(--orange);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--orange) 50%, transparent);
 }
 .privacy-profile-pill[data-tier="tracking"].is-selected {
-  color: #fff;
+  color: var(--on-severity-fill);
   background: var(--red);
   border-color: var(--red);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 50%, transparent);
@@ -19148,8 +19173,10 @@ html[data-theme-override="light"]
   background: color-mix(in srgb, var(--orange) 18%, var(--surface-active));
   border-color: var(--orange);
 }
+/* The red bulk pills pull their label toward --text: dark --red on its
+   10% tint over --surface-active is 3.2:1. */
 .privacy-profile-bulk-pill[data-tier="tracking"] {
-  color: var(--red);
+  color: color-mix(in srgb, var(--red) 60%, var(--text));
   background: color-mix(in srgb, var(--red) 10%, var(--surface-active));
   border-color: color-mix(in srgb, var(--red) 45%, var(--border));
 }
@@ -19167,19 +19194,19 @@ html[data-theme-override="light"]
    reads as the same family as the privacy editor without inventing a new
    colour system. */
 .privacy-profile-pill[data-a11y-pref="required"].is-selected {
-  color: #fff;
+  color: var(--on-severity-fill);
   background: var(--red);
   border-color: var(--red);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--red) 50%, transparent);
 }
 .privacy-profile-pill[data-a11y-pref="nice"].is-selected {
-  color: #fff;
+  color: var(--on-severity-fill);
   background: var(--orange);
   border-color: var(--orange);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--orange) 50%, transparent);
 }
 .privacy-profile-bulk-pill[data-a11y-pref="required"] {
-  color: var(--red);
+  color: color-mix(in srgb, var(--red) 60%, var(--text));
   background: color-mix(in srgb, var(--red) 10%, var(--surface-active));
   border-color: color-mix(in srgb, var(--red) 45%, var(--border));
 }
@@ -19359,13 +19386,16 @@ html[data-theme-override="light"]
    needed to tell "1 mismatch" apart from "8 mismatches". Bad just gets
    a slightly stronger background + border so it still reads as the
    heavier state when both exist on the same screen. */
+/* The label is pulled toward --text (as .review-rec-profile-badge does):
+   plain --rose on these rose tints is 4.0 to 4.4:1 at 10px, in dark and
+   light. 75% keeps it reading rose at 5:1 or better on both tints. */
 .app-card-profile-badge.match-warn {
-  color: var(--rose);
+  color: color-mix(in srgb, var(--rose) 75%, var(--text));
   background: var(--rose-dim);
 }
 
 .app-card-profile-badge.match-bad {
-  color: var(--rose);
+  color: color-mix(in srgb, var(--rose) 75%, var(--text));
   background: color-mix(in srgb, var(--rose) 22%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--rose) 40%, transparent);
 }
@@ -19451,7 +19481,9 @@ html[data-theme-override="light"]
   padding: 3px 8px;
   font-size: 11px;
   font-weight: 700;
-  color: var(--red, #dc5050);
+  /* Pulled toward --text, as .review-rec-profile-badge does: plain --red
+     on its own tint is 3.8:1 in dark mode at this 11px size. */
+  color: color-mix(in srgb, var(--red) 70%, var(--text));
   text-transform: uppercase;
   letter-spacing: 0.02em;
   background: var(--red-dim, rgba(220, 80, 80, 0.15));
@@ -25414,6 +25446,7 @@ html[data-theme-override="high-contrast"] {
      .btn-primary override below). */
   --blue-fill: #ffff00;
   --blue-fill-hover: #ffff66;
+  --on-severity-fill: #000000;
   --red: #ff5a4d;
   --red-dim: rgba(255, 90, 77, 0.12);
   --orange: #ffb84d;
@@ -25483,7 +25516,9 @@ html[data-theme-override="high-contrast"] .btn-primary,
 html[data-theme-override="high-contrast"] .btn-primary:hover,
 html[data-theme-override="high-contrast"] .btn-primary svg,
 html[data-theme-override="high-contrast"] .sort-tab.active,
-html[data-theme-override="high-contrast"] .sort-tab.active:hover {
+html[data-theme-override="high-contrast"] .sort-tab.active:hover,
+html[data-theme-override="high-contrast"] .priv-cta-button,
+html[data-theme-override="high-contrast"] .coachmark-next {
   color: #000000 !important;
 }
 
@@ -29298,7 +29333,9 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 
 .locale-switcher__option.is-active {
   font-weight: 600;
-  color: color-mix(in srgb, var(--blue, #3b82f6) 90%, var(--text));
+  /* 70%, not 90%: at 90% the label was 4.0:1 (dark) and 4.47:1
+     (light) on this 22% tint. */
+  color: color-mix(in srgb, var(--blue, #3b82f6) 70%, var(--text));
   background: color-mix(in srgb, var(--blue, #3b82f6) 22%, transparent);
   border-radius: 8px;
 }
@@ -29518,13 +29555,14 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   border-color: var(--border);
 }
 .coachmark-next {
+  /* --blue-fill: the white label is 3.6:1 on the dark --blue. */
   color: #fff;
-  background: var(--blue, #3b82f6);
-  border-color: var(--blue, #3b82f6);
+  background: var(--blue-fill);
+  border-color: var(--blue-fill);
 }
 .coachmark-next:hover {
-  background: color-mix(in srgb, var(--blue, #3b82f6) 88%, white);
-  border-color: color-mix(in srgb, var(--blue, #3b82f6) 88%, white);
+  background: var(--blue-fill-hover);
+  border-color: var(--blue-fill-hover);
 }
 .coachmark-skip:focus-visible,
 .coachmark-back:focus-visible,
@@ -29827,10 +29865,11 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   background: rgba(99, 102, 241, 0.06);
 }
 
+/* No opacity: --text-3 is already the de-emphasised step, and fading it
+   further took the label under 4.5:1 in both themes. */
 .focus-matrix-cell-current {
   display: block;
   color: var(--text-3);
-  opacity: 0.7;
 }
 
 .focus-matrix-cell-desired {
@@ -30161,16 +30200,16 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   border-radius: 10px;
 }
 .diagnostics-status--ok {
-  background: color-mix(in srgb, var(--success, #16a34a) 8%, transparent);
-  border-color: color-mix(in srgb, var(--success, #16a34a) 30%, transparent);
+  background: color-mix(in srgb, var(--green) 8%, transparent);
+  border-color: color-mix(in srgb, var(--green) 30%, transparent);
 }
 .diagnostics-status--warn {
-  background: color-mix(in srgb, var(--warning, #d97706) 10%, transparent);
-  border-color: color-mix(in srgb, var(--warning, #d97706) 35%, transparent);
+  background: color-mix(in srgb, var(--orange) 10%, transparent);
+  border-color: color-mix(in srgb, var(--orange) 35%, transparent);
 }
 .diagnostics-status--danger {
-  background: color-mix(in srgb, var(--danger, #dc2626) 10%, transparent);
-  border-color: color-mix(in srgb, var(--danger, #dc2626) 35%, transparent);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
+  border-color: color-mix(in srgb, var(--red) 35%, transparent);
 }
 .diagnostics-status-head {
   display: flex;
@@ -30182,21 +30221,18 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 .diagnostics-status-dot {
   width: 10px;
   height: 10px;
-  background: var(--success, #16a34a);
+  background: var(--green);
   border-radius: 50%;
-  box-shadow: 0 0 0 4px
-    color-mix(in srgb, var(--success, #16a34a) 18%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--green) 18%, transparent);
 }
 .diagnostics-status--warn .diagnostics-status-dot {
-  background: var(--warning, #d97706);
-  box-shadow: 0 0 0 4px
-    color-mix(in srgb, var(--warning, #d97706) 18%, transparent);
+  background: var(--orange);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--orange) 18%, transparent);
 }
 .diagnostics-status--danger .diagnostics-status-dot {
   position: relative;
-  background: var(--danger, #dc2626);
-  box-shadow: 0 0 0 4px
-    color-mix(in srgb, var(--danger, #dc2626) 18%, transparent);
+  background: var(--red);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--red) 18%, transparent);
 }
 /* The static 4px ring above stays as a box-shadow (painted once);
    only the breathing glow loops, on the compositor. 10px dot: the
@@ -30207,7 +30243,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   inset: 0;
   z-index: -1;
   content: "";
-  background: color-mix(in srgb, var(--danger, #dc2626) 12%, transparent);
+  background: color-mix(in srgb, var(--red) 12%, transparent);
   border-radius: 50%;
   animation: halo-breathe 1.6s ease-in-out infinite;
 }
@@ -30221,7 +30257,7 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   margin: 8px 0 0 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--text-2, #6b7280);
+  color: var(--text-2);
 }
 .diagnostics-status-notes li + li {
   margin-top: 2px;

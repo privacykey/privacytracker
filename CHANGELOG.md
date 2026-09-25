@@ -96,6 +96,17 @@ Going forward, changes are recorded here as they land.
   "page not found" pages, and the source policy link under an AI summary.
   Navigation, buttons and cards are unchanged.
 
+- Text that fell short of the WCAG AA contrast minimum, mostly in dark
+  mode, now meets it: the dashboard's "N mismatches" chips, the grid's
+  profile badges and Low and High risk pills, the selected sort tab, the
+  bulk bar's links, settings help text and labels on nested panels, the
+  selected privacy profile pills, the Import history pills, the focus
+  matrix's current values and the active language option. Light mode's
+  secondary text is a step darker, dark mode's tertiary text a step
+  lighter, and the "page not found" page and the Diagnostics status banner
+  now follow the light, dark and high contrast themes instead of fixed
+  colours.
+
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
