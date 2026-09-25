@@ -77,6 +77,34 @@ fn blank(v: &mut Value) {
     }
 }
 
+/// Every file under `dir`, relative and `/`-joined, sorted: the oracle's
+/// `listSeededFiles` (its database files never appear here, the replay's
+/// database being in memory).
+fn list_files(dir: &Path) -> Vec<String> {
+    fn walk(base: &Path, relative: &str, out: &mut Vec<String>) {
+        let Ok(entries) = std::fs::read_dir(base.join(relative)) else {
+            return;
+        };
+        for entry in entries.filter_map(Result::ok) {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let child = if relative.is_empty() {
+                name
+            } else {
+                format!("{relative}/{name}")
+            };
+            if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                walk(base, &child, out);
+            } else {
+                out.push(child);
+            }
+        }
+    }
+    let mut out = vec![];
+    walk(dir, "", &mut out);
+    out.sort();
+    out
+}
+
 #[test]
 fn maintenance_paths_match_node_wire_stream_rows_and_ring() {
     let _env = crate::server::trust::env_lock();
@@ -106,13 +134,28 @@ fn maintenance_paths_match_node_wire_stream_rows_and_ring() {
         .enable_all()
         .build()
         .unwrap();
+    // Every case runs against a data directory of its own, so "Delete
+    // everything" (the reset and the start-over) can never reach the real
+    // one; a case that recorded `files` seeds them there first.
+    let root = std::env::temp_dir().join(format!("pt-maintenance-replay-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
     let mut failures = vec![];
-    for case in fixture["cases"].as_array().unwrap() {
+    for (index, case) in fixture["cases"].as_array().unwrap().iter().enumerate() {
         let name = case["name"].as_str().unwrap();
         match case["adminToken"].as_str() {
             Some(token) => std::env::set_var("AUDITOR_ADMIN_TOKEN", token),
             None => std::env::remove_var("AUDITOR_ADMIN_TOKEN"),
         }
+        let data_dir = root.join(format!("case-{index:03}"));
+        std::fs::create_dir_all(&data_dir).unwrap();
+        if let Some(files) = case["files"].as_object() {
+            for (relative, contents) in files {
+                let full = data_dir.join(relative);
+                std::fs::create_dir_all(full.parent().unwrap()).unwrap();
+                std::fs::write(&full, contents.as_str().unwrap()).unwrap();
+            }
+        }
+        super::backup::set_test_env(Some((data_dir.clone(), [7u8; 32])));
         let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
         let tables: Vec<String> = conn
             .prepare(
@@ -340,10 +383,21 @@ fn maintenance_paths_match_node_wire_stream_rows_and_ring() {
                 case["csp"]
             ));
         }
+        if !case["filesAfter"].is_null() {
+            let files_after = json!(list_files(&data_dir));
+            if files_after != case["filesAfter"] {
+                diffs.push(format!(
+                    "files left\n  expected {}\n  actual   {files_after}",
+                    case["filesAfter"]
+                ));
+            }
+        }
         if !diffs.is_empty() {
             failures.push(format!("{name}\n{}", diffs.join("\n")));
         }
     }
+    super::backup::set_test_env(None);
+    let _ = std::fs::remove_dir_all(&root);
     std::env::remove_var("AUDITOR_ADMIN_TOKEN");
     std::env::remove_var("PRIVACYTRACKER_TRUST_PROXY");
     std::env::remove_var("PRIVACYTRACKER_BIND_HOST");
