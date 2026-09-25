@@ -319,9 +319,12 @@ pub(crate) async fn run_bulk_sync(
             // The blob still names whoever started the run; record who runs
             // it now, before the first write, so a resume reads as one.
             state.initiator = initiator.to_string();
+            // An app in flight when the process died is redone, and its
+            // attempt, counted then, is counted again: un-count the first.
             for entry in &mut state.queue {
                 if entry.status == "in_progress" {
                     entry.status = "pending".to_string();
+                    state.totals.attempted = (state.totals.attempted - 1).max(0);
                 }
             }
             Some(state)

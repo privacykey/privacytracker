@@ -292,6 +292,8 @@ test("an App Store sync resumed after a restart reports initiator resume", async
   );
   assert.ok(row, "the resumed run's summary row");
   assert.match(row.summary ?? "", / \(resumed after restart\)$/);
+  // Alpha was in flight at the crash: one attempt, not one per process.
+  assert.match(row.summary ?? "", /^0\/2 synced/);
   assert.equal(readSyncBulkState(), null);
 });
 
@@ -319,7 +321,9 @@ test("a Wayback import resumed after a restart reports initiator resume", async 
   assert.equal(await waybackPillInitiator(), "resume");
   assertSameBlobShape("wayback_bulk_state", crashedRaw);
   hold.release();
-  await run;
+  const { totals } = await run;
+  // Alpha was in flight at the crash: one attempt, not one per process.
+  assert.equal(totals.appsAttempted, 2);
 
   const rows = getRecentActivity({ type: "wayback_import" });
   const [summary] = rows.filter((r) => mode(r) === "bulk-resumed");
@@ -371,7 +375,9 @@ test("a policy sync resumed after a restart reports initiator resume", async () 
   assert.equal(policy.currentAppName, "Alpha");
   assertSameBlobShape("policy_bulk_state", crashedRaw);
   hold.release();
-  await run;
+  const { totals } = await run;
+  // Alpha was in flight at the crash: one attempt, not one per process.
+  assert.equal(totals.attempted, 2);
 
   const [row] = getRecentActivity({ type: "policy_summary" }).filter(
     (r) => mode(r) === "bulk-resumed"

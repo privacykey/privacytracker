@@ -223,10 +223,16 @@ async function runBulkWaybackImportLoop(
     // resume summary and audit action, and TaskCenter's card all read it.
     state.initiator = options.initiator;
     // Mark every `in_progress` back to `pending` — those are apps that
-    // were mid-flight when the process died. We'll redo them from scratch.
+    // were mid-flight when the process died. We'll redo them from scratch,
+    // and un-count the attempt, as the throttled-retry path below does:
+    // redoing one counts it again.
     for (const entry of state.queue) {
       if (entry.status === "in_progress") {
         entry.status = "pending";
+        state.totals.appsAttempted = Math.max(
+          0,
+          state.totals.appsAttempted - 1
+        );
       }
     }
   } else {
