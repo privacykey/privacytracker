@@ -29,8 +29,10 @@ fn handle(app: &AppHandle, base_url: &str, url: &Url) {
     log::info!("Deep link received: {url}");
 
     // Always reveal — users who pasted a URL want the app to come forward,
-    // even if they pasted a malformed one.
-    let _ = crate::commands::reveal_main_window(app.clone());
+    // even if they pasted a malformed one. A locked window asks for
+    // Touch ID / password first (window_lock); the navigation below still
+    // happens, behind the hidden window, so the page is ready once it opens.
+    crate::window_lock::reveal(app);
 
     // Figure out the in-app path to navigate to.
     let host = url.host_str().unwrap_or("").to_ascii_lowercase();
