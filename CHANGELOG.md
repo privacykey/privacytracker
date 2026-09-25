@@ -119,6 +119,14 @@ Going forward, changes are recorded here as they land.
   first app card. On screens narrower than 480 pixels it now sits at the
   end of the page, below the content. Wider screens keep the floating
   button, and "g then u" still opens the panel.
+- "Try with sample data" now has a way out. The demo showed no exit, and
+  every link in the navigation bar led to a page that sent a new user to
+  onboarding without saying why. The demo now shows a sample-data bar with
+  "Start with your own apps" (clears the demo and opens onboarding) and
+  "Back to welcome", and its navigation bar only links back into the demo
+  or to "Start with your own apps", which stays on screen while you
+  scroll. The `flag.dashboard.sample_data_banner` flag, which hid the only
+  exit by default, now controls just the extra "Clear samples" button.
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of

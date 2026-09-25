@@ -16,7 +16,7 @@ import LoaderRetry from "./LoaderRetry";
 import { NavSkeleton, PageSkeleton } from "./LoadingShell";
 import Nav from "./Nav";
 import ReviewCtaBanner from "./ReviewCtaBanner";
-import SampleModeView from "./SampleModeView";
+import SampleModeView, { SampleModeNav } from "./SampleModeView";
 import TaskList from "./TaskList";
 
 /**
@@ -319,9 +319,11 @@ export default function HomeLoader() {
   }, [sampleMode, flagsSettled, ageRatingCalloutOn, retry]);
 
   if (sampleMode) {
+    // The demo gets its own nav: the full one links to pages that send an
+    // install with no apps to onboarding without a word (SampleModeView).
     return (
       <>
-        <Nav />
+        <SampleModeNav />
         <SampleModeView />
       </>
     );

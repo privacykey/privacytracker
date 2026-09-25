@@ -12,6 +12,15 @@
  * Strictly a preview surface — the demo apps don't appear in the real app
  * grid. This component is the dashboard's whole render when sample mode is
  * active and no real apps exist.
+ *
+ * THE DEMO ALWAYS HAS A WAY OUT. It used to have none: the only banner
+ * with an exit sat behind a flag that defaults off, and every nav link
+ * led to a real page that bounces an empty install to /onboard without a
+ * word. So the page carries a sample-data bar that is never gated
+ * ("Start with your own apps", which clears the demo and opens
+ * onboarding, and "Back to welcome"), and HomeLoader renders
+ * SampleModeNav instead of the full Nav: its links stay in the demo or
+ * leave through that same named exit.
  */
 
 import Link from "next/link";
@@ -23,24 +32,70 @@ import {
   type SampleApp,
 } from "@/lib/sample-apps";
 import { useFlagValuesWithDefaults } from "../../lib/use-flag-bundle";
+import BrandWordmark from "./BrandWordmark";
+import "./sample-mode.css";
+
+/** The dashboard's href in sample mode: the brand link stays in the demo. */
+const SAMPLE_HOME = "/dashboard?sample=1";
+
+/**
+ * The nav bar for sample mode. The full Nav's links (Apps, Stats,
+ * Settings…) all lead to pages that send an install with no apps to
+ * onboarding, which read as the demo breaking. This one says it is a
+ * demo, keeps the brand link inside it, and puts the exit on screen
+ * while the user scrolls.
+ */
+export function SampleModeNav() {
+  const tNav = useTranslations("nav");
+  const tSample = useTranslations("sample_mode");
+  return (
+    <nav className="nav sample-mode-nav">
+      <Link
+        aria-label={tSample("nav_home_aria")}
+        className="nav-brand"
+        href={SAMPLE_HOME}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          alt=""
+          className="nav-brand-icon"
+          height={28}
+          src="/brand-icon.png"
+          width={28}
+        />
+        <BrandWordmark
+          ariaLabel={tNav("brand")}
+          className="nav-brand-wordmark"
+          height={20}
+        />
+      </Link>
+      <span className="sample-mode-nav-chip">{tSample("nav_chip")}</span>
+      <div className="nav-right">
+        <Link
+          className="btn btn-sm btn-primary sample-mode-exit"
+          href="/onboard"
+          onClick={clearSampleApps}
+        >
+          {tSample("start_own_apps")}
+        </Link>
+      </div>
+    </nav>
+  );
+}
 
 export default function SampleModeView() {
   const tSample = useTranslations("sample_mode");
-  // Wave I: yellow "Showing sample data" banner is the surface gated by
-  // `flag.dashboard.sample_data_banner`. The banner default is off — only
-  // the welcome → ?sample=1 path resolves it on for the duration of the
-  // session — but we still expose the flag so users running sample mode
-  // can dismiss the banner without leaving sample mode.
-  // Resolved through the shared `GET /api/feature-flags` bundle. The old
-  // `useFlag` hook read a resolver context that is never primed in the
-  // browser, so every one of these silently answered with its hard
-  // default — focus rules and user overrides alike were ignored. The
-  // bundle hook seeds the same hard defaults for the first paint and
-  // then corrects, so nothing shifts for a default-focus user.
+  // `flag.dashboard.sample_data_banner` (default off) gates the extra
+  // "Clear samples" action in the bar, which empties the demo without
+  // leaving it. It used to gate the whole banner, which, with the flag
+  // off by default and nothing to turn it on, meant the demo had no exit.
+  // The bar and its two exits are never gated.
+  // Resolved through the shared `GET /api/feature-flags` bundle; the
+  // hook seeds the hard defaults for the first paint and then corrects.
   const flags = useFlagValuesWithDefaults([
     "flag.dashboard.sample_data_banner",
   ]);
-  const sampleBannerOn = flags["flag.dashboard.sample_data_banner"] === "on";
+  const clearSamplesOn = flags["flag.dashboard.sample_data_banner"] === "on";
 
   const [apps, setApps] = useState<SampleApp[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -82,31 +137,23 @@ export default function SampleModeView() {
       className="page-container home-page sample-mode-view"
       style={{ padding: 32 }}
     >
-      {sampleBannerOn && (
-        <div
-          className="sample-data-banner"
-          role="status"
-          style={{
-            background: "var(--surface-warning, #fff7e6)",
-            border: "1px solid var(--border-warning, #f0c060)",
-            borderRadius: 8,
-            padding: "12px 16px",
-            marginBottom: 24,
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 12,
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div>
-            <strong>{tSample("banner_lead")}</strong>{" "}
-            {tSample("banner_body", { count: apps.length })}
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Link className="btn btn-primary btn-sm" href="/onboard">
-              {tSample("add_real_apps")}
-            </Link>
+      <section aria-label={tSample("bar_aria")} className="sample-data-banner">
+        <p className="sample-data-banner-text">
+          <strong>{tSample("banner_lead")}</strong>{" "}
+          {tSample("bar_body", { count: apps.length })}
+        </p>
+        <div className="sample-data-banner-actions">
+          <Link
+            className="btn btn-primary btn-sm"
+            href="/onboard"
+            onClick={clearSampleApps}
+          >
+            {tSample("start_own_apps")}
+          </Link>
+          <Link className="btn btn-secondary btn-sm" href="/welcome">
+            {tSample("back_to_welcome")}
+          </Link>
+          {clearSamplesOn && (
             <button
               className="btn btn-ghost btn-sm"
               onClick={handleClear}
@@ -114,9 +161,9 @@ export default function SampleModeView() {
             >
               {tSample("clear_samples")}
             </button>
-          </div>
+          )}
         </div>
-      )}
+      </section>
 
       <h1 className="page-title">{tSample("page_title")}</h1>
       <p style={{ color: "var(--text-3)", maxWidth: 640, marginBottom: 24 }}>
