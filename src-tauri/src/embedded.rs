@@ -3,7 +3,7 @@
 //!
 //! Compiled only with `--features rust-backend`. The desktop release and
 //! `just tauri-dev` pass it; a build without it spawns the Node sidecar
-//! (`sidecar.rs`) instead, which stays buildable for rollback until 1.0.
+//! (`sidecar.rs`) instead, which stays buildable for rollback until v0.3.0 has shipped.
 //! Everything above this module is unchanged either way: the shell talks
 //! to a base URL, and this one is its own.
 //!

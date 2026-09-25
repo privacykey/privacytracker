@@ -21,7 +21,7 @@ non-trivial change; it will save you an afternoon.
   desktop app on the Rust backend, which serves itself and needs
   nothing else.
 - **The bundled Node sidecar** — only for the Node desktop build, which
-  is the rollback until 1.0. Run `just fetch-node-sidecar` (or
+  is the rollback until v0.3.0 has shipped. Run `just fetch-node-sidecar` (or
   `bash scripts/fetch-node-sidecar.sh`) once per clone before
   `just tauri-dev-node` / `just tauri-build-node`; the binary is
   ~139MB, gitignored, and GPG-verified on download. Without it the

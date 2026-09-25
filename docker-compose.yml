@@ -7,7 +7,7 @@ services:
       args:
         # The server the image runs: rust (the default) or node, which is
         # `next start` as every image before the Docker cutover ran, kept
-        # as the rollback until 1.0. To roll back, set
+        # as the rollback until v0.3.0 has shipped. To roll back, set
         # PRIVACYTRACKER_BACKEND=node in .env and `docker compose up --build -d`;
         # both open the same volume.
         BACKEND: ${PRIVACYTRACKER_BACKEND:-rust}

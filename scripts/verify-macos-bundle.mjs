@@ -14,7 +14,7 @@ import { readReleaseMetadata } from "./release-metadata.mjs";
 
 // Which backend this bundle ships (Phase 6). `rust`, what releases ship
 // since the desktop cutover, serves the app from the binary itself and
-// bundles only the frontend; `node`, the rollback until 1.0, bundles the
+// bundles only the frontend; `node`, the rollback until v0.3.0 has shipped, bundles the
 // standalone tree and a Node binary. Everything above the backend split --
 // the version, the deployment target, the signature, the notarisation -- is
 // checked the same way for both.

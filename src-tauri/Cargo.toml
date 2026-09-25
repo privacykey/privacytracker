@@ -83,7 +83,7 @@ tar = "0.4"
 # the Node sidecar (see src/backend.rs). Release builds and
 # `pnpm tauri:build` pass it since the cutover. Optional, so a build
 # without it neither compiles nor links the crate: that build is the Node
-# rollback, kept until 1.0.
+# rollback, kept until v0.3.0 has shipped.
 privacytracker-core = { path = "../core", optional = true }
 # Only the embedded backend needs an async runtime of its own: the server
 # is started on Tauri's, and the shutdown waits on it.
@@ -145,7 +145,7 @@ core-foundation-sys = "0.8"
 # Serve the app from this process with the Rust core instead of spawning
 # the Node sidecar (Phase 6). The desktop release and `just tauri-dev` pass
 # it. It stays out of the default set so that a build without it is still
-# the Node sidecar, the rollback until 1.0; CI's `cargo check` covers both
+# the Node sidecar, the rollback until v0.3.0 has shipped; CI's `cargo check` covers both
 # paths.
 rust-backend = ["dep:privacytracker-core", "dep:tokio"]
 # Enable `tauri build` without devtools baked into the bundle.

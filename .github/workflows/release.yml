@@ -35,7 +35,7 @@ jobs:
     uses: ./.github/workflows/macos-release.yml
     with:
       # The desktop app serves itself with the Rust backend. To roll back
-      # to the Node sidecar (buildable until 1.0), set this to node and
+      # to the Node sidecar (buildable until v0.3.0 has shipped), set this to node and
       # release a NEW patch version: the updater never installs an older
       # one, so an earlier build cannot be re-promoted.
       backend: rust
@@ -45,7 +45,7 @@ jobs:
     uses: ./.github/workflows/docker-publish.yml
     with:
       # The image runs the Rust server. To roll back to `next start`
-      # (buildable until 1.0), set this to node and release a new patch
+      # (buildable until v0.3.0 has shipped), set this to node and release a new patch
       # version, as for the desktop app above.
       backend: rust
     secrets: inherit

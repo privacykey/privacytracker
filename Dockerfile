@@ -1,7 +1,7 @@
 # Which server the image runs. `rust`, the default since the Docker
 # cutover, is the Rust core (`pt-core serve`) over the prerendered build.
 # `node` is `next start`, as every image before it ran, kept buildable as
-# the rollback until 1.0:
+# the rollback until v0.3.0 has shipped:
 #
 #   docker build --build-arg BACKEND=node .
 #
