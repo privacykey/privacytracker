@@ -129,6 +129,11 @@ export function stageSite({ root = repo, into } = {}) {
     "public files": staged.some((f) =>
       f.includes(`${path.sep}public${path.sep}`)
     ),
+    // Copied into public/ by `pnpm build` (scripts/stage-ocr-assets.mjs);
+    // a bare `next build` leaves it out and screenshot import cannot run.
+    "the OCR worker": existsSync(
+      path.join(target, "public", "ocr", "worker.min.js")
+    ),
   };
   const missing = Object.entries(checks)
     .filter(([, held]) => !held)

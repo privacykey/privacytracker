@@ -794,15 +794,20 @@ jobs:
 
       - name: The image is the Rust server, with its notices
         # The default image runs pt-core. Nothing of Node ships in it, and the
-        # four notices travel with the binary, as they do in the desktop app.
+        # five notices travel with the binary, as they do in the desktop app.
+        # The site carries screenshot import's OCR worker, engine and model
+        # (scripts/stage-ocr-assets.mjs), which the app serves itself.
         run: |
           set -euo pipefail
           docker run --rm --entrypoint sh privacytracker-smoke -c '
             set -e
             if command -v node >/dev/null; then echo "node is in the image"; exit 1; fi
             test ! -e /app/node_modules || { echo "node_modules is in the image"; exit 1; }
-            for f in NOTICE LICENSE V8-LICENSE THIRD-PARTY-RUST.md; do
+            for f in NOTICE LICENSE V8-LICENSE THIRD-PARTY-RUST.md THIRD-PARTY-OCR.md; do
               test -s "/app/third-party/$f" || { echo "missing or empty: $f"; exit 1; }
+            done
+            for f in worker.min.js tesseract-core-simd-lstm.wasm.js eng.traineddata.gz THIRD-PARTY-OCR.md; do
+              test -s "/app/site/public/ocr/$f" || { echo "missing or empty: site/public/ocr/$f"; exit 1; }
             done
             pt-core version
           '
@@ -931,6 +936,9 @@ jobs:
         run: |
           set -euo pipefail
           docker build --build-arg BACKEND=node -t privacytracker-smoke-node .
+          docker run --rm --entrypoint sh privacytracker-smoke-node -c \
+            'test -s /app/public/ocr/worker.min.js && test -s /app/public/ocr/eng.traineddata.gz' \
+            || { echo "the Node image is missing public/ocr/"; exit 1; }
           docker run -d --rm --name privacytracker-smoke-node \
             -p 127.0.0.1:3000:3000 privacytracker-smoke-node
           for attempt in {1..40}; do
@@ -987,13 +995,21 @@ jobs:
           exit 1
 
       - name: Assert static assets are served (named volume)
-        # These three curls fail (404 → curl -f exits non-zero) if public/ is
+        # These curls fail (404 → curl -f exits non-zero) if public/ is
         # missing from the runtime image. /api/ready alone never exercises them.
+        # The OCR worker sits behind the auth gate like every other path, and
+        # its response carries the worker's own CSP, the only policy that
+        # allows WebAssembly (lib/ocr-assets.ts).
         run: |
           set -euxo pipefail
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/api/ready
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/fonts/InterVariable.woff2
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/brand-icon.png
+          curl -fsS --max-time 10 -o /dev/null -H "x-auditor-admin-token: $AUDITOR_ADMIN_TOKEN" \
+            http://127.0.0.1:3000/ocr/eng.traineddata.gz
+          curl -fsS --max-time 10 -D - -o /dev/null -H "x-auditor-admin-token: $AUDITOR_ADMIN_TOKEN" \
+            http://127.0.0.1:3000/ocr/worker.min.js \
+            | grep -i '^content-security-policy:' | grep -q "'wasm-unsafe-eval'"
 
       - name: Assert private data requires authentication inside Docker
         # From the runner through the published port, the way a browser
