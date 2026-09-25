@@ -14,6 +14,21 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- The privacy policy page lists what the app contacts today. New or
+  corrected entries: the Wayback CDX index that label-history imports read
+  first; the Internet Archive lookup, Save Page Now request and fallback
+  read that follow each privacy-policy fetch; the desktop updater's
+  manifest and download from GitHub (only when you press Install &
+  restart); webhooks you add, which receive app names and change
+  summaries; bundle-identifier lookups from device and app-list imports;
+  the Compare page's top-apps list; the site icons the server fetches for
+  manual apps; and, on the AI cards, the app name, developer and policy
+  address that go with the policy text. The developer-policy card says
+  when fetches run and how the throttle and Disable policy scraping stop
+  them, "No user accounts" explains the admin-token sign-in on Docker and
+  network installs, and the update section says plainly that the daily
+  GitHub check has no switch in Settings yet. The "last updated" date
+  follows the page's language.
 - The Legal page lists every runtime npm dependency (17, up from 6),
   among them `dompurify` under MPL-2.0 or Apache-2.0 and the Tauri packages
   under MIT or Apache-2.0. The list is built from `package.json`, so a new
