@@ -17,8 +17,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
+      # The source label links the edge package to this repository even if
+      # a preview is the first image pushed to it.
       - name: Build preview Docker image
-        run: docker build -t privacytracker-pr-preview .
+        run: docker build --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" -t privacytracker-pr-preview .
 
       - name: Run preview image smoke test
         run: |
@@ -49,16 +51,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Previews go to the private edge package, never to the public image,
+      # which only releases publish (see docker-publish.yml).
       - name: Publish same-repo preview tag
         if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}-edge:pr-${{ github.event.pull_request.number }}
         run: |
-          IMAGE="ghcr.io/${{ github.repository }}:pr-${{ github.event.pull_request.number }}"
           docker tag privacytracker-pr-preview "$IMAGE"
           docker push "$IMAGE"
           {
             echo "### Preview image"
             echo ""
-            echo "Published \`$IMAGE\` for this PR."
+            echo "Published \`$IMAGE\` for this PR. The edge package is private:"
+            echo "run \`docker login ghcr.io\` with an account that can read it first."
             echo ""
             echo "\`\`\`bash"
             echo "docker run --rm -p 127.0.0.1:3000:3000 $IMAGE"

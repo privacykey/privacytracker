@@ -91,8 +91,12 @@ background.
 
 ### Linux, Windows & self-host
 
-Available as a Docker image. Set `AUDITOR_ADMIN_TOKEN` before starting or
-upgrading, even when publishing the port only on localhost. See
+Available as a Docker image, `ghcr.io/privacykey/privacytracker`. Only
+releases are published there: `latest` is the newest release, and each
+release also has its own version tag (for example `0.3.0`), which is the
+one to pin. A prerelease gets its version tag only. Set
+`AUDITOR_ADMIN_TOKEN` before starting or upgrading, even when publishing
+the port only on localhost. See
 [secure deployment](docs/SECURE_DEPLOYMENT.md) and
 [upgrade and recovery guidance](docs/RELEASING.md).
 

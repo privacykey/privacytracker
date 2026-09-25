@@ -1,5 +1,15 @@
 name: Build & Push Docker image to GHCR
 
+# Two packages, because GHCR sets visibility per package, not per tag:
+#   - A release (this workflow called from release.yml on a v* tag) publishes
+#     ghcr.io/<owner>/<repo>, the public image: the version, and for a final
+#     release <major>.<minor> and `latest` as well. A prerelease gets only
+#     its version tag, so `latest` is always the newest release.
+#   - A push to main publishes ghcr.io/<owner>/<repo>-edge (`edge`,
+#     `sha-<commit>`), which stays private. PR previews push there too
+#     (pr-preview.yml).
+# scripts/docker-image.mjs makes that choice in the image-target job, and
+# the build and manifest jobs read it from there.
 on:
   push:
     branches:
@@ -176,10 +186,34 @@ jobs:
         if: always()
         run: docker compose -f deploy/traefik/compose.yaml down -v || true
 
+  # Release or edge: which package, and which tags. Decided once, so the
+  # build and the manifest jobs cannot disagree.
+  image-target:
+    name: Choose the image and its tags
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      image: ${{ steps.target.outputs.image }}
+      tags: ${{ steps.target.outputs.tags }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Choose the image and its tags
+        id: target
+        run: node scripts/docker-image.mjs
+
   build-and-push:
     name: Build Docker image (${{ matrix.arch }})
     runs-on: ${{ matrix.runner }}
-    needs: container-smoke
+    needs: [container-smoke, image-target]
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -221,17 +255,11 @@ jobs:
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
         with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            # branch name (e.g. main)
-            type=ref,event=branch
-            # full git SHA
-            type=sha,format=long
-            # semver tags from v* pushes  (v1.2.3 → 1.2.3, 1.2, 1)
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            # latest only on main
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+          images: ${{ needs.image-target.outputs.image }}
+          # Only the tags image-target chose; never an automatic `latest`.
+          flavor: |
+            latest=false
+          tags: ${{ needs.image-target.outputs.tags }}
 
       - name: Build and push Docker image digest
         id: build-and-push
@@ -247,7 +275,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=docker-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=docker-${{ matrix.arch }}
-          outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
+          outputs: type=image,name=${{ needs.image-target.outputs.image }},push-by-digest=true,name-canonical=true,push=true
           # Emit per-platform provenance + SBOM. The multi-arch manifest gets
           # an OIDC-signed SLSA attestation after the digest merge job.
           provenance: true
@@ -257,7 +285,7 @@ jobs:
       # into a named manifest. No release tag is promoted on scan failure.
       - name: Scan the exact candidate digest
         env:
-          IMAGE: ghcr.io/${{ github.repository }}@${{ steps.build-and-push.outputs.digest }}
+          IMAGE: ${{ needs.image-target.outputs.image }}@${{ steps.build-and-push.outputs.digest }}
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -293,7 +321,7 @@ jobs:
 
   publish-manifest:
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: [build-and-push, image-target]
     timeout-minutes: 20
 
     steps:
@@ -316,17 +344,10 @@ jobs:
         id: meta
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302  # v6
         with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            # branch name (e.g. main)
-            type=ref,event=branch
-            # full git SHA
-            type=sha,format=long
-            # semver tags from v* pushes  (v1.2.3 → 1.2.3, 1.2, 1)
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            # latest only on main
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+          images: ${{ needs.image-target.outputs.image }}
+          flavor: |
+            latest=false
+          tags: ${{ needs.image-target.outputs.tags }}
 
       - name: Download image digests
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8
@@ -338,6 +359,8 @@ jobs:
       - name: Create and push multi-arch manifest
         id: manifest
         working-directory: /tmp/digests
+        env:
+          IMAGE: ${{ needs.image-target.outputs.image }}
         run: |
           set -euo pipefail
           TAG_ARGS=()
@@ -355,7 +378,7 @@ jobs:
           DIGEST_ARGS=()
           for digest_file in "${digest_files[@]}"; do
             [[ "$digest_file" =~ ^[a-f0-9]{64}$ ]] || { echo "Invalid image digest artifact" >&2; exit 1; }
-            DIGEST_ARGS+=("ghcr.io/${{ github.repository }}@sha256:${digest_file}")
+            DIGEST_ARGS+=("${IMAGE}@sha256:${digest_file}")
           done
 
           docker buildx imagetools create "${TAG_ARGS[@]}" "${DIGEST_ARGS[@]}"
@@ -399,18 +422,19 @@ jobs:
       - name: Attest build provenance (SLSA)
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373  # v4.1.1
         with:
-          subject-name: ghcr.io/${{ github.repository }}
+          subject-name: ${{ needs.image-target.outputs.image }}
           subject-digest: ${{ steps.manifest.outputs.digest }}
           push-to-registry: true
 
       - name: Verify Docker provenance and SBOM attestations
-        run: |
-          node scripts/verify-docker-attestations.mjs "ghcr.io/${{ github.repository }}@${{ steps.manifest.outputs.digest }}"
+        env:
+          IMAGE: ${{ needs.image-target.outputs.image }}@${{ steps.manifest.outputs.digest }}
+        run: node scripts/verify-docker-attestations.mjs "$IMAGE"
 
       - name: Cryptographically verify published provenance
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE: ghcr.io/${{ github.repository }}@${{ steps.manifest.outputs.digest }}
+          IMAGE: ${{ needs.image-target.outputs.image }}@${{ steps.manifest.outputs.digest }}
         run: |
           gh attestation verify "oci://$IMAGE" --repo "$GITHUB_REPOSITORY" \
             --signer-workflow "$GITHUB_REPOSITORY/.github/workflows/docker-publish.yml" \
