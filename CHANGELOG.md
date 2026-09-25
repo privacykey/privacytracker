@@ -85,6 +85,16 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Onboarding no longer reports your apps as "not in the App Store" when the
+  App Store search itself failed. A server error, a rate limit hit before
+  any name was checked, or a lost connection now keeps you on the "Add
+  apps" step with the error and a Retry button, instead of moving on and
+  suggesting you save real apps as manual ones. If only part of a large
+  list got an answer, the answered names are kept, Retry searches just the
+  rest, and "Continue without them" goes on with what was found. Changing
+  the App Store region on the matches step keeps a row's previous match
+  when the new search fails, and apps still waiting on a paused search are
+  no longer counted as "didn't match".
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
