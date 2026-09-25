@@ -62,6 +62,19 @@ Dependency bumps are driven by **Renovate**, not Dependabot — `.github/dependa
 
 Activation is via the hosted **Mend Renovate GitHub App**, which reads `renovate.json` (it extends the shared org preset [`github>privacykey/renovate-config`](https://github.com/privacykey/renovate-config), where the schedule, grouping, and major-approval rules now live); the app's PRs trigger CI automatically. The old self-hosted `.github/workflows/renovate.yml` workflow was removed when the app path was adopted — do not reintroduce it.
 
+CI's `rust-check` job ends with `cargo audit` over the three Rust lockfiles
+(`core/`, `src-tauri/`, `scripts/verify-updater/`). A published RustSec
+advisory for a pinned crate fails the job; unmaintained, unsound and
+yanked warnings do not. Each lockfile resolves on its own, and the desktop
+shell compiles the core under `src-tauri/Cargo.lock`, so a fix in one lock
+does not reach the others. The advisory database is fetched fresh, so a
+new advisory can turn the check red on an unrelated PR. Fix it with
+`cargo update -p <crate> --precise <fixed> --manifest-path <dir>/Cargo.toml`,
+keep the lock diff to that crate and what it requires, and run
+`pnpm notices:rust`.
+`cargo-audit` is pinned by `CARGO_AUDIT_VERSION` in `ci.yml`, which Renovate
+tracks.
+
 ## Repo settings drift check
 
 `scripts/audit-github-settings.mjs` (`pnpm audit:repo-settings`) is a

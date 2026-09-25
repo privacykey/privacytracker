@@ -182,8 +182,16 @@ jobs:
     # no link) so this job adds well under a minute on the standard runner
     # and catches the common regressions: missing imports, type-error
     # changes after a tauri version bump, mismatched crate features.
+    #
+    # It also scans the three Rust lockfiles against the RustSec advisory
+    # database (the last step). A published advisory for a pinned crate
+    # fails the job; unmaintained, unsound and yanked warnings are printed
+    # but do not.
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Renovate tracks this pin (customManagers in renovate.json).
+      CARGO_AUDIT_VERSION: '0.22.2'
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -265,6 +273,35 @@ jobs:
         # small build, asked for a page and an API read, then stopped. The
         # quality job runs the same suite on the Node path (pnpm test:tauri).
         run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features rust-backend --locked
+
+      - name: Cache cargo-audit
+        id: cargo-audit-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit-${{ env.CARGO_AUDIT_VERSION }}
+
+      - name: Install cargo-audit
+        if: steps.cargo-audit-cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit --locked --version "$CARGO_AUDIT_VERSION"
+
+      - name: Rust advisory scan
+        # Nothing scanned the lockfiles before this step, so the desktop
+        # lockfile kept a rustls release with a published advisory while the
+        # core's lockfile had the fix. The desktop shell compiles the core
+        # under src-tauri/Cargo.lock, so each lockfile is scanned on its own.
+        # Every lockfile is scanned before the step fails, so one run shows
+        # every finding. The advisory database is fetched fresh each run, so
+        # a newly published advisory can turn this red on an unrelated PR:
+        # bump the crate (`cargo update -p <crate> --precise <fixed>`), then
+        # `pnpm notices:rust`.
+        run: |
+          status=0
+          for lock in core/Cargo.lock src-tauri/Cargo.lock scripts/verify-updater/Cargo.lock; do
+            echo "cargo audit --file $lock"
+            cargo audit --file "$lock" || status=1
+          done
+          exit "$status"
 
   core-parity:
     # Rust-core Phase 1 gate. Compiles the standalone core/ crate, runs its

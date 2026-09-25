@@ -1041,7 +1041,8 @@ Going forward, changes are recorded here as they land.
   encryption-level boundaries. The desktop app's HTTPS connections go
   through rustls: App Store pages, archive.org, privacy policy pages, AI
   providers and the update feed. The Docker image already
-  had the fixed release.
+  had the fixed release. CI's `rust-check` job now runs `cargo audit` over
+  all three Rust lockfiles and fails on a published advisory.
 - Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
   failing the dependency audit on every pull request:
   **two critical unauthenticated remote-code-execution issues** in Next.js

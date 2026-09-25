@@ -30,6 +30,15 @@
       "versioningTemplate": "cargo"
     },
     {
+      "description": "CI's rust-check job installs cargo-audit at CARGO_AUDIT_VERSION to scan the Rust lockfiles for advisories. Track it as the crates.io package, as cargo-auditable is tracked above, so the scanner does not silently age.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/ci\\.yml$/"],
+      "matchStrings": ["CARGO_AUDIT_VERSION: '(?<currentValue>[^']+)'"],
+      "datasourceTemplate": "crate",
+      "packageNameTemplate": "cargo-audit",
+      "versioningTemplate": "cargo"
+    },
+    {
       "description": "Track the exact Node runtime bundled into the desktop app.",
       "customType": "regex",
       "managerFilePatterns": ["/^\\.github/workflows/macos-release\\.yml$/"],
