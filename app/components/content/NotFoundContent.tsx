@@ -240,10 +240,11 @@ export default function NotFoundContent() {
         }
         .notfound-hint a {
           color: #0a84ff;
-          text-decoration: none;
+          text-decoration: underline;
+          text-underline-offset: 2px;
         }
         .notfound-hint a:hover {
-          text-decoration: underline;
+          text-decoration-thickness: 2px;
         }
         .notfound-issue {
           margin-top: 28px;
@@ -261,10 +262,12 @@ export default function NotFoundContent() {
         .notfound-issue a span {
           color: #0a84ff;
           font-weight: 500;
+          text-decoration: underline;
+          text-underline-offset: 2px;
         }
         .notfound-issue a:hover span,
         .notfound-issue a:focus-visible span {
-          text-decoration: underline;
+          text-decoration-thickness: 2px;
         }
         .notfound-issue a:focus-visible {
           outline: 2px solid #0a84ff;

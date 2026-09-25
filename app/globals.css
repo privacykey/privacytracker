@@ -15499,13 +15499,19 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   color: var(--text-3);
 }
 
+/* Links inside running text are underlined at rest, not only on hover:
+   colour alone does not mark them out (WCAG 1.4.1), and --blue sits
+   under 3:1 against the --text-2 / --text-3 prose around it. Hover
+   thickens the line instead. Same treatment as .priv-inline-link and
+   .legal-license-blurb a. */
 .ai-disclosure-inline-link {
   color: var(--blue);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .ai-disclosure-inline-link:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 .ai-disclosure-footer {
@@ -16227,22 +16233,26 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
 
 .priv-subproc-policy a {
   color: var(--blue);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .priv-subproc-policy a:hover {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 /* Inline link used inside running prose on /privacy-policy. Styled like
-   the subproc-policy link so privacy-page reading feels consistent. */
+   the subproc-policy link so privacy-page reading feels consistent.
+   Underlined at rest: colour alone must not be what marks a link in
+   running text (WCAG 1.4.1). */
 .priv-inline-link {
   color: var(--blue);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .priv-inline-link:hover,
 .priv-inline-link:focus-visible {
-  text-decoration: underline;
+  text-decoration-thickness: 2px;
 }
 
 /* Variant used when the link cross-navigates into /dashboard/settings and
@@ -16656,11 +16666,21 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
 
 .legal-license-blurb a {
   color: var(--blue);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .legal-license-blurb a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* Unclassed links in a paragraph of the legal-layout pages (/help/focus
+   uses bare <Link>s in its prose). With the base `a` reset they took the
+   text colour and no underline, so nothing marked them as links. Classed
+   links (buttons, sidebar, cards) are left to their own rules. */
+.legal-content p a:not([class]) {
   text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .legal-dep-list {

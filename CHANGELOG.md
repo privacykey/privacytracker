@@ -91,6 +91,11 @@ Going forward, changes are recorded here as they land.
   the bulk bar is announced each time it changes. Compare mode's cards are
   announced the same way.
 
+- Links inside running text are underlined, so they no longer rely on
+  colour alone: on the privacy policy, Legal, AI disclosure, focus help and
+  "page not found" pages, and the source policy link under an AI summary.
+  Navigation, buttons and cards are unchanged.
+
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
