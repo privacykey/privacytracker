@@ -2964,7 +2964,7 @@ body, and reads a `bodyBase64` reply, so the fixtures can hold both.
 
 **The oracle — `core/scripts/extract-leftovers-cases.mjs`.** Runs the
 REAL handlers of the four routes and the seed notification, and calls
-the two ticks as the server calls them. 132 cases. The webhook test:
+the two ticks as the server calls them. 139 cases. The webhook test:
 each format, the default, a 204, a 500, a redirect not followed, a
 failed request, and eleven refusals answered before any fetch — a
 loopback, metadata and `localhost` URL, one over 512 characters, `ftp:`,
@@ -2992,7 +2992,10 @@ the rel preference, the root's final URL, another host's icon, five
 misses, a private link, a hit refetched after a day and a miss after an
 hour, `http://`, an oversized icon. The preview: no URL, empty, off the
 store, not a URL, a page, Apple's 429 (a 429 with 70 s), a 500, no data
-script, a failed request, the thirty-first request. Each records the
+script, a failed request, the thirty-first request. Last, a hostile app
+name through each format, by the seed notification and by the summary
+tick: every chat format escapes its own markup, Discord allows no
+mentions, generic keeps the text as it is. Each records the
 wire response with the three headers these routes set — the favicon's
 bytes as base64 — the raw fetches with a POST's method and body, the
 write stream and three tables. `package.json`'s version, which the
