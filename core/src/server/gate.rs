@@ -9,6 +9,11 @@
 //!   2.   CSRF — mutating `/api/*` calls must be same-origin or carry the
 //!        admin-token HEADER (a cookie never exempts).
 //!
+//! One step has no Node counterpart: 0.75, the desktop app's launch
+//! credential (`desktop_auth.rs`). It runs only when the desktop shell
+//! passed one, which web and Docker never do, so on those every response
+//! is exactly the Node one.
+//!
 //! Step 0.5 was missing from the first cut of this port, which made
 //! `GET /api/health/` a 308 in Node and, here, a 401 — the un-routed path
 //! fell through to step 1, so only a deployment with auth off ever saw the
@@ -167,6 +172,18 @@ pub async fn gate(req: Request, next: Next) -> Response {
         }
     }
 
+    // ── Step 0.75 (desktop app only): the launch credential. Every /api
+    // call needs it, the public reads and the login routes included; the
+    // one-time link that hands the webview its cookie is answered here. ──
+    let desktop_credential = super::desktop_auth::configured();
+    if let Some(credential) = desktop_credential.as_deref() {
+        if let Some(res) =
+            desktop_step(&method, &path, req.uri().query(), req.headers(), credential)
+        {
+            return with_csp(res, &path);
+        }
+    }
+
     let is_read = method == Method::GET || method == Method::HEAD;
     let public_read = is_read && PUBLIC_READ_PATHS.contains(&path.as_str());
     let auth_path = AUTH_PATHS.contains(&path.as_str());
@@ -210,7 +227,10 @@ pub async fn gate(req: Request, next: Next) -> Response {
                 header::HeaderName::from_static("x-auditor-admin-token"),
             ),
             None, // a cookie never exempts the origin check
-        );
+        ) || desktop_credential.as_deref().is_some_and(|credential| {
+            // Nor does the desktop session cookie: only its header form.
+            super::desktop_auth::header_presented(req.headers(), credential)
+        });
         // A missing Origin on a mutation is rejected unless the token was
         // supplied — legitimate no-Origin mutations are tool-driven.
         if !(has_token_header || is_same_origin_request(req.headers(), trust)) {
@@ -251,6 +271,55 @@ fn no_store(mut res: Response) -> Response {
         header::HeaderValue::from_static("no-store"),
     );
     res
+}
+
+/// Step 0.75, for a server the desktop shell gave a launch credential:
+/// `None` to carry on through the gate, or the response that ends it.
+fn desktop_step(
+    method: &Method,
+    path: &str,
+    query: Option<&str>,
+    headers: &HeaderMap,
+    credential: &str,
+) -> Option<Response> {
+    use super::desktop_auth::{decide, nonces, Decision};
+    match decide(
+        method,
+        path,
+        query,
+        headers,
+        credential,
+        nonces(),
+        std::time::Instant::now(),
+    ) {
+        Decision::Pass => None,
+        Decision::Refused => Some(no_store(json_error(
+            StatusCode::UNAUTHORIZED,
+            "Desktop credential required",
+        ))),
+        Decision::LinkRefused => Some(no_store(json_error(
+            StatusCode::FORBIDDEN,
+            "Desktop sign-in link expired or already used",
+        ))),
+        Decision::SignedIn { set_cookie } => {
+            // Both values are ASCII this module wrote (the credential is
+            // hex), so neither can fail; if one ever did, the link ends in
+            // a refusal rather than falling through to the router.
+            let signed_in = redirect(StatusCode::SEE_OTHER, "/").and_then(|mut res| {
+                if let Some(cookie) = set_cookie {
+                    let value = header::HeaderValue::from_str(&cookie).ok()?;
+                    res.headers_mut().insert(header::SET_COOKIE, value);
+                }
+                Some(res)
+            });
+            Some(signed_in.unwrap_or_else(|| {
+                no_store(json_error(
+                    StatusCode::FORBIDDEN,
+                    "Desktop sign-in link expired or already used",
+                ))
+            }))
+        }
+    }
 }
 
 /// Step 0.5 of `proxy.ts`: the canonical target for a trailing-slash path, or
@@ -572,6 +641,207 @@ mod tests {
             ])
             .await;
             assert_eq!(csrf.status(), StatusCode::FORBIDDEN);
+        });
+    }
+
+    // ── Step 0.75: the desktop launch credential ─────────────────────
+
+    use super::super::desktop_auth::{
+        bootstrap_path, issue_bootstrap_nonce, set_test_credential, CREDENTIAL_HEADER,
+        SESSION_COOKIE,
+    };
+
+    const DESKTOP: &str = "a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f90";
+
+    /// Puts this thread's gate in desktop mode for as long as it lives, and
+    /// takes it out again even when an assertion fails.
+    struct DesktopMode;
+
+    impl DesktopMode {
+        fn on() -> Self {
+            set_test_credential(Some(DESKTOP));
+            Self
+        }
+    }
+
+    impl Drop for DesktopMode {
+        fn drop(&mut self) {
+            set_test_credential(None);
+        }
+    }
+
+    async fn body_of(res: Response) -> String {
+        let bytes = axum::body::to_bytes(res.into_body(), 1 << 16)
+            .await
+            .expect("body");
+        String::from_utf8_lossy(&bytes).into_owned()
+    }
+
+    fn session(value: &str) -> String {
+        format!("{SESSION_COOKIE}={value}")
+    }
+
+    /// These scenarios leave `PRIVACYTRACKER_BIND_HOST` unset, as every
+    /// test here does, so step 1 still demands the admin token where it
+    /// would. That keeps them independent of what other tests do to the
+    /// admin token, and shows the desktop step adding to step 1, never
+    /// replacing it: `/api/health` is a public read there, so anything
+    /// refusing it below is the desktop step.
+    #[test]
+    fn desktop_mode_refuses_the_api_without_the_credential() {
+        scenario(async {
+            let _desktop = DesktopMode::on();
+            let anonymous = get_("/api/health").await;
+            assert_eq!(anonymous.status(), StatusCode::UNAUTHORIZED);
+            assert_eq!(cache_control(&anonymous), Some("no-store"));
+            assert!(body_of(anonymous)
+                .await
+                .contains("Desktop credential required"));
+
+            let wrong = "0".repeat(DESKTOP.len());
+            let short = &DESKTOP[..DESKTOP.len() - 1];
+            let wrong_cookie = session(&wrong);
+            let admin_cookie = format!("pt_admin_token={DESKTOP}");
+            for headers in [
+                [("host", LOOPBACK), (CREDENTIAL_HEADER, wrong.as_str())],
+                [("host", LOOPBACK), (CREDENTIAL_HEADER, short)],
+                [("host", LOOPBACK), ("x-auditor-admin-token", DESKTOP)],
+                [("host", LOOPBACK), ("cookie", wrong_cookie.as_str())],
+                [("host", LOOPBACK), ("cookie", admin_cookie.as_str())],
+            ] {
+                let res = send(Method::GET, "/api/health", &headers).await;
+                assert_eq!(res.status(), StatusCode::UNAUTHORIZED, "{headers:?}");
+            }
+        });
+    }
+
+    #[test]
+    fn desktop_mode_accepts_the_header_or_the_cookie() {
+        scenario(async {
+            let _desktop = DesktopMode::on();
+            let by_header = send(
+                Method::GET,
+                "/api/health",
+                &[("host", LOOPBACK), (CREDENTIAL_HEADER, DESKTOP)],
+            )
+            .await;
+            assert_eq!(by_header.status(), StatusCode::OK);
+            let by_cookie = send(
+                Method::GET,
+                "/api/health",
+                &[("host", LOOPBACK), ("cookie", &session(DESKTOP))],
+            )
+            .await;
+            assert_eq!(by_cookie.status(), StatusCode::OK);
+        });
+    }
+
+    #[test]
+    fn desktop_mode_leaves_the_pages_to_the_rest_of_the_gate() {
+        scenario(async {
+            let _desktop = DesktopMode::on();
+            // Exactly what the same request gets without desktop mode (see
+            // `canonical_paths_are_not_redirected`): step 1's redirect, not
+            // the desktop step's 401.
+            let root = get_("/").await;
+            assert_eq!(root.status(), StatusCode::TEMPORARY_REDIRECT);
+            assert_eq!(location(&root), Some("/login"));
+        });
+    }
+
+    /// A matching Origin no longer admits a mutation on its own, and the
+    /// cookie still never stands in for one.
+    #[test]
+    fn desktop_mode_mutations_need_the_credential_and_the_origin_rule_still_holds() {
+        scenario(async {
+            let _desktop = DesktopMode::on();
+            let same_origin = ("origin", "http://127.0.0.1:3000");
+            let cookie = session(DESKTOP);
+
+            let forged = post_login(&[("host", LOOPBACK), same_origin]).await;
+            assert_eq!(forged.status(), StatusCode::UNAUTHORIZED);
+
+            let tool = post_login(&[("host", LOOPBACK), (CREDENTIAL_HEADER, DESKTOP)]).await;
+            assert_eq!(
+                tool.status(),
+                StatusCode::OK,
+                "the header stands in for the Origin"
+            );
+
+            let cookie_only = post_login(&[("host", LOOPBACK), ("cookie", &cookie)]).await;
+            assert_eq!(cookie_only.status(), StatusCode::FORBIDDEN);
+
+            let cross = post_login(&[
+                ("host", LOOPBACK),
+                ("cookie", &cookie),
+                ("origin", "http://evil.example"),
+            ])
+            .await;
+            assert_eq!(cross.status(), StatusCode::FORBIDDEN);
+
+            let webview = post_login(&[("host", LOOPBACK), ("cookie", &cookie), same_origin]).await;
+            assert_eq!(webview.status(), StatusCode::OK);
+        });
+    }
+
+    #[test]
+    fn the_one_time_link_signs_the_window_in_once() {
+        scenario(async {
+            let _desktop = DesktopMode::on();
+            let link = bootstrap_path(&issue_bootstrap_nonce().expect("nonce"));
+
+            let signed_in = get_(&link).await;
+            assert_eq!(signed_in.status(), StatusCode::SEE_OTHER);
+            assert_eq!(location(&signed_in), Some("/"));
+            assert_eq!(cache_control(&signed_in), Some("no-store"));
+            let set_cookie = header_of(&signed_in, header::SET_COOKIE)
+                .expect("the link sets the session cookie")
+                .to_string();
+            assert!(set_cookie.starts_with(&session(DESKTOP)), "{set_cookie}");
+            assert!(set_cookie.contains("HttpOnly") && set_cookie.contains("SameSite=Strict"));
+
+            // The cookie the link set is what the window's API calls carry.
+            let cookie = set_cookie.split(';').next().expect("name=value");
+            let read = send(
+                Method::GET,
+                "/api/health",
+                &[("host", LOOPBACK), ("cookie", cookie)],
+            )
+            .await;
+            assert_eq!(read.status(), StatusCode::OK);
+
+            let again = get_(&link).await;
+            assert_eq!(again.status(), StatusCode::FORBIDDEN, "single use");
+            assert_eq!(header_of(&again, header::SET_COOKIE), None);
+
+            // A window that already holds the cookie is simply sent on.
+            let reload = send(
+                Method::GET,
+                &link,
+                &[("host", LOOPBACK), ("cookie", cookie)],
+            )
+            .await;
+            assert_eq!(reload.status(), StatusCode::SEE_OTHER);
+            assert_eq!(header_of(&reload, header::SET_COOKIE), None);
+
+            // The host allowlist still runs first.
+            let fresh = bootstrap_path(&issue_bootstrap_nonce().expect("nonce"));
+            let rebound = send(Method::GET, &fresh, &[("host", "evil.example")]).await;
+            assert_eq!(rebound.status(), StatusCode::BAD_REQUEST);
+        });
+    }
+
+    /// Web and Docker never pass a credential: the link is then just an
+    /// unknown API path, answered by the rest of the gate as any other.
+    #[test]
+    fn without_a_credential_the_link_is_not_answered() {
+        scenario(async {
+            let link = bootstrap_path(&issue_bootstrap_nonce().expect("nonce"));
+            let res = get_(&link).await;
+            assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+            assert_eq!(header_of(&res, header::SET_COOKIE), None);
+            assert!(body_of(res).await.contains("Admin token required"));
+            assert_eq!(get_("/api/health").await.status(), StatusCode::OK);
         });
     }
 }
