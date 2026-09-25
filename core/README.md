@@ -4519,7 +4519,8 @@ only when it is. Nothing else in the shell knows which it got.
   must see exactly what `env_clear()` gave Node — the data directory, a
   loopback bind, `PRIVACYTRACKER_RUNTIME=desktop`, and no admin token
   (the desktop relies on the loopback bind, and no token is also what
-  keeps the server from demanding one);
+  keeps the server from demanding one; since superseded by a per-launch
+  credential, see "The desktop launch credential" below);
 - **the same `next build` output**, served from where it is staged
   rather than extracted into the data directory;
 - **three seconds** for requests in flight when the app quits, the grace
@@ -4707,7 +4708,9 @@ this way. `smoke-packaged-rust.mjs` then runs the Node smoke's checks over
 it — a v0.1.2 database opens and migrates, a backup exports with every
 table, a restore is trusted, the data survives a restart — plus two that
 belong to this build: the pages come from inside the bundle, and a read
-needs no token, which is the desktop's posture.
+needs no token, which is the desktop's posture. (Now the reverse: the
+smoke asserts the API refuses a read without the launch credential; see
+"The desktop launch credential".)
 
 **What was run.** A bundle was built with the overlay, signed ad-hoc with
 the hardened runtime, and the verifier run against it end to end: 98 static
@@ -5047,3 +5050,73 @@ gate on that file alone.
 
 **Next:** the UX tests and the cleanup (done: #328 to #336), then the
 first release on the Rust backend, v0.3.0, which the user cuts.
+
+### The desktop launch credential (before v0.3.0)
+
+Batch 4a started the embedded server with no admin token and let the
+loopback bind be the gate. That keeps the network out but not the rest of
+the Mac: any process, under any account, could read the library over HTTP,
+and a mutation needed only an `Origin` matching its `Host`, which a
+non-browser client writes itself. The desktop now has a credential of its
+own. This is a desktop-only mode of this server; the Node server has no
+counterpart, so the sidecar rollback runs without it.
+
+**The server side** (`server/desktop_auth.rs`, and step 0.75 of the gate).
+When the host environment carries `PRIVACYTRACKER_DESKTOP_TOKEN`, every
+`/api/*` request (public reads, the admin-token routes and
+`/api/csp-report` included) must present it, in the
+`X-PrivacyTracker-Desktop-Token` header or the `pt_desktop_session`
+cookie, or it is a 401 "Desktop credential required". Both sides are
+hashed with SHA-256 and the digests compared by a fold, so the time taken
+depends on neither the guess nor its length. Every cookie of that name is
+tried, so a stale one cannot shadow the current one. On a mutation the
+header stands in for a matching `Origin`, as the admin-token header does;
+the cookie never does. Pages and static files pass as before. Step 1 and
+step 2 are untouched, so the mode only ever adds a requirement.
+
+**Not the admin token, on purpose.** The frontend reads a configured
+`AUDITOR_ADMIN_TOKEN` as a network deployment: pages redirect to `/login`,
+Settings shows the unlock card and "Session locked", the deployment
+diagnostics report it, and the dev routes, which refuse to run on an
+install with no token configured, would start running. The desktop keeps
+the admin token unconfigured, so `/api/auth/admin-token/status` still
+answers `configured: false` and the user sees exactly what they saw.
+
+**The window's way in.** `desktop_auth::issue_bootstrap_nonce` is called in
+process by the shell, never over HTTP. The shell navigates the window to
+`/api/desktop/bootstrap?nonce=…` instead of the base URL. The gate answers
+that link itself: a nonce issued less than 60 s ago, used for the first
+time, gets a 303 to `/` with `pt_desktop_session=<credential>; Path=/api;
+HttpOnly; SameSite=Strict` (a session cookie, gone when the app quits); a
+request that already holds the cookie is sent on without a new one; anything
+else is a 403. The credential therefore never appears in a URL, in
+`document.cookie` or in the page's history.
+
+**Parity.** Nothing here reaches a harness. The link is answered by the
+gate, not routed, and has no `app/api` file, so `scripts/parity/manifest.mjs`
+has nothing to classify; web, Docker and every parity run leave the
+variable unset, and the gate then behaves exactly as before
+(`without_a_credential_the_link_is_not_answered`).
+
+**The shell** (`src-tauri/src/embedded.rs`, `backend.rs`). `start` mints
+32 bytes from the OS random source per launch, puts them in the env map,
+records them for `backend::get` and `backend::post` (every shell request
+goes through those two; the source scan now covers GETs too), and writes
+them to `<data dir>/.desktop-token` through a fresh 0600 file renamed into
+place, so the file is never half-written and a planted symlink is replaced,
+not followed. `EmbeddedServer::shutdown` removes it while it still holds
+this launch's credential. Same-user tools such as the MCP companion read it
+there, with the port from `.desktop-port`.
+
+**The gate.** Core unit tests for the decision (missing, wrong,
+wrong-length and right credential, header and cookie, the admin token's
+header and cookie refused as substitutes, single use, expiry, the pending
+cap) and for the wiring through the router on a current-thread runtime
+(`set_test_credential` is thread-local, so no process-wide variable leaks
+into other tests); `core/tests/desktop_credential.rs` end to end over a
+socket, including the admin-token status the frontend reads; the shell's
+boot test (401 without, 200 with the header, the file's content and mode,
+the link, the cookie, single use, the file gone after shutdown); and
+`scripts/smoke-packaged-rust.mjs`, which the release verifier runs against
+the packaged app, now asserts the 401s, the file's mode, the link and a new
+credential after the restart.

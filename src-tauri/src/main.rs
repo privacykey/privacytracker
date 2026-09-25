@@ -294,10 +294,15 @@ fn main() {
             // is silently blocked in some webview engines as a security
             // measure. The Rust-side navigate() bypasses that — it tells the
             // wry webview to load the URL directly, like clicking a link.
+            //
+            // On the Rust backend the first stop is a one-time sign-in link
+            // (backend::entry_url) that gives the webview this launch's
+            // credential as an HttpOnly cookie and redirects to the start
+            // page; every other navigation stays on that origin and keeps it.
             let window = app
                 .get_webview_window("main")
                 .ok_or("main window not found")?;
-            let url: tauri::Url = boot.base_url.parse()?;
+            let url: tauri::Url = backend::entry_url(&boot.base_url).parse()?;
             window.navigate(url)?;
 
             let hidden_boot = launched_hidden() || desktop_settings.launch_hidden;
@@ -353,8 +358,7 @@ fn main() {
             //     reflects the user's choice from launch. Flipping
             //     the flag at runtime requires an app restart.
             let dev_menu_enabled = {
-                let url = format!("{}/api/dev-menu-state", boot.base_url);
-                ureq::get(&url)
+                backend::get(&boot.base_url, "/api/dev-menu-state")
                     .timeout(std::time::Duration::from_secs(2))
                     .call()
                     .ok()
