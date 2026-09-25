@@ -208,9 +208,30 @@ export const SENSITIVE_SETTING_KEYS: ReadonlySet<string> = new Set([
  * covered automatically. The local HMAC signing key is in here too:
  * even a trusted envelope must not replace our key with the
  * sender's — that would let the sender forge future envelopes.
+ *
+ * The same rule covers `feature_flag_overrides.flag_key`: that table is
+ * what the flag resolver actually reads, so a `flag.devopts.*` row there
+ * (the destructive cfgutil flag, the feature-flag kill switch) is refused
+ * exactly as the matching `app_settings` row is.
  */
 const RESTORE_SETTING_KEY_DENY_PREFIXES = ["flag.devopts.", "AUDITOR_"];
 const RESTORE_SETTING_KEY_DENY_EXACT = new Set<string>();
+
+/**
+ * Whether a restored `feature_flag_overrides` row is quarantined, read
+ * the way the resolver reads it: only a stored `0` is live, so anything
+ * but a missing, null, `0`, `false` or `"0"` value counts. (A null is
+ * kept so it still fails the NOT NULL column as it always has.)
+ */
+function isQuarantinedOverride(value: unknown): boolean {
+  return !(
+    value === undefined ||
+    value === null ||
+    value === 0 ||
+    value === false ||
+    value === "0"
+  );
+}
 
 function isRestoreSettingKeyDenied(key: unknown): boolean {
   if (typeof key !== "string") {
@@ -487,7 +508,8 @@ export function restoreBackup(
           }
           const sanitised = sanitiseRowForRestore(
             name,
-            row as Record<string, unknown>
+            row as Record<string, unknown>,
+            trust
           );
           if (sanitised === null) {
             rejected += 1;
@@ -578,13 +600,32 @@ function verifyEnvelope(envelope: BackupEnvelope): "trusted" | "untrusted" {
  *
  * Returns the (possibly modified) row, or `null` if the row must be
  * dropped entirely.
+ *
+ * One rule depends on trust: an untrusted envelope's quarantined flag
+ * overrides are dropped. A quarantined row is an override for a flag the
+ * install does not know yet; the boot-time quarantine check makes it live
+ * the moment an upgrade adds that key, so from an envelope nobody can
+ * vouch for it would switch a feature the user never saw or chose. A
+ * trusted envelope was signed by this install, so its quarantined rows
+ * are this install's own (set on a newer version before a downgrade) and
+ * are kept.
  */
 function sanitiseRowForRestore(
   table: string,
-  row: Record<string, unknown>
+  row: Record<string, unknown>,
+  trust: "trusted" | "untrusted"
 ): Record<string, unknown> | null {
   if (table === "app_settings") {
     if (isRestoreSettingKeyDenied(row.key)) {
+      return null;
+    }
+    return row;
+  }
+  if (table === "feature_flag_overrides") {
+    if (isRestoreSettingKeyDenied(row.flag_key)) {
+      return null;
+    }
+    if (trust === "untrusted" && isQuarantinedOverride(row.quarantined)) {
       return null;
     }
     return row;

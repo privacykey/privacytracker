@@ -1036,6 +1036,7 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- Restoring a backup now applies the settings deny-list to feature-flag overrides as well: a `flag.devopts.*` override is never restored, whoever signed the backup, and a backup restored as untrusted brings no quarantined overrides with it. Both backends.
 - Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
   failing the dependency audit on every pull request:
   **two critical unauthenticated remote-code-execution issues** in Next.js
