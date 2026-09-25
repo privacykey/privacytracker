@@ -85,51 +85,6 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
-- In the apps grid's Select mode, screen readers now hear which apps are
-  selected. Each card is announced as a toggle button that is pressed or
-  not, Space toggles it as well as Enter, and the "N apps selected" line in
-  the bulk bar is announced each time it changes. Compare mode's cards are
-  announced the same way.
-
-- Links inside running text are underlined, so they no longer rely on
-  colour alone: on the privacy policy, Legal, AI disclosure, focus help and
-  "page not found" pages, and the source policy link under an AI summary.
-  Navigation, buttons and cards are unchanged.
-
-- Text that fell short of the WCAG AA contrast minimum, mostly in dark
-  mode, now meets it: the dashboard's "N mismatches" chips, the grid's
-  profile badges and Low and High risk pills, the selected sort tab, the
-  bulk bar's links, settings help text and labels on nested panels, the
-  selected privacy profile pills, the Import history pills, the focus
-  matrix's current values and the active language option. Light mode's
-  secondary text is a step darker, dark mode's tertiary text a step
-  lighter, and the "page not found" page and the Diagnostics status banner
-  now follow the light, dark and high contrast themes instead of fixed
-  colours.
-
-- Charts have a text alternative. Screen readers announce each Stats
-  chart (heatmap, flow chart, change timeline, policy fingerprint radar)
-  and an app's change timeline as an image with a name that says what it
-  shows, followed by its data in words: the categories each app collects
-  by how the data is used, the number of apps and categories for each
-  kind of use, the changes in each period, or each app's rating per policy
-  topic. Before, each chart was an unlabelled drawing.
-
-- The Compare page's category and accessibility matrices are now tables to
-  a screen reader, with a column header for each app and a row header for
-  each category or feature, instead of one long run of text.
-
-- On the Compare page, a picked app's Change and Clear buttons are no
-  longer inside the card's own button, where screen readers could not
-  reach them, and are at least 24 pixels square. The "Tracked" and
-  "Preview" labels, the accessibility count chip and the "over limit"
-  profile pill meet the contrast minimum in light and dark mode.
-
-- Screen readers now announce the name of the "Dev menu trigger" switch
-  in Settings, Admin, and of the dev menu's Privacy profile and
-  Accessibility profile switches. They were announced as unnamed
-  switches.
-
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
