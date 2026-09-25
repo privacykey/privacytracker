@@ -23,6 +23,7 @@ use super::{
     ratelimit::{self, RateLimiter},
     runtime_diag::{self, sqlite_metrics},
     stats::truthy,
+    token_guard,
     trust::{is_same_origin_request, request_origin, trust_proxy},
     writes::{internal_error, prop, Cx, RouteSpec, WriteRequest},
 };
@@ -328,6 +329,28 @@ pub(super) fn login_precheck(
     if !is_same_origin_request(headers, trust_proxy()) {
         return Err(json_error(StatusCode::FORBIDDEN, "Same-origin required"));
     }
+    // Every login presents a token, so a client past its budget of wrong
+    // tokens on any path is refused before this one is looked at. The
+    // budget is per client, so one client's guessing never refuses another.
+    let client = token_guard::client_key(headers);
+    if let Some(retry_after_ms) = token_guard::attempts_blocked(client.as_deref(), now) {
+        record_audit(
+            w,
+            ids,
+            now,
+            "admin_token.login.client_throttled",
+            actor,
+            Some(&format!("retryAfterMs={retry_after_ms}")),
+            false,
+        );
+        return Err(with_retry_after(
+            json_error(
+                StatusCode::TOO_MANY_REQUESTS,
+                token_guard::TOO_MANY_FAILURES,
+            ),
+            retry_after_ms,
+        ));
+    }
     let already_authed = request_has_valid_admin_token(
         head(headers, "x-auditor-admin-token"),
         head(headers, header::COOKIE.as_str()),
@@ -352,11 +375,10 @@ pub(super) fn login_precheck(
             ));
         }
     }
-    let key = ratelimit::key_for_request(
-        head(headers, "x-forwarded-for"),
-        head(headers, "x-real-ip"),
-        "admin-token-login",
-    );
+    // Keyed by the same client as the guess budget, so one client's
+    // attempts no longer fill a bucket every client shares; with no known
+    // client, the route's shared bucket, as before.
+    let key = format!("admin-token-login:{}", client.as_deref().unwrap_or("local"));
     let rate = limiter.check(&key, 5, 60_000, now);
     if !rate.allowed {
         record_audit(
@@ -416,8 +438,10 @@ fn login(cx: &mut Cx, body: BodyOutcome, headers: &HeaderMap, actor: &Actor) -> 
         return json_error(StatusCode::BAD_REQUEST, "Token is required");
     }
     let expected = crate::host_env::var("AUDITOR_ADMIN_TOKEN").unwrap_or_default();
+    let client = token_guard::client_key(headers);
     if !constant_time_eq(provided.as_bytes(), expected.as_bytes()) {
         record_login_failure(cx.now);
+        token_guard::record_failure(client.as_deref(), &format!("login {provided}"), cx.now);
         record_audit(
             cx.w,
             cx.ids,
@@ -429,6 +453,7 @@ fn login(cx: &mut Cx, body: BodyOutcome, headers: &HeaderMap, actor: &Actor) -> 
         );
         return json_error(StatusCode::UNAUTHORIZED, "Invalid token");
     }
+    token_guard::record_success(client.as_deref(), cx.now);
     record_audit(cx.w, cx.ids, cx.now, "admin_token.login", actor, None, true);
     // `Secure` only over HTTPS, read off the request's perceived scheme;
     // Next serialises the eight-hour cookie with both Expires and Max-Age.

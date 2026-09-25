@@ -5,7 +5,9 @@
 //!   0.   Host allowlist — every method including GET, before anything else.
 //!   0.5. Canonical trailing-slash redirect — a 308 to the slash-free path.
 //!   1.   Auth — required when the deployment is network-exposed OR a token is
-//!        configured, minus an exact-match public-read carve-out.
+//!        configured, minus an exact-match public-read carve-out. A client
+//!        past its budget of wrong tokens gets a 429 before its token is
+//!        checked (`token_guard.rs`).
 //!   2.   CSRF — mutating `/api/*` calls must be same-origin or carry the
 //!        admin-token HEADER (a cookie never exempts).
 //!
@@ -45,6 +47,7 @@ use axum::{
 
 use super::auth::request_has_valid_admin_token;
 use super::json::json_error;
+use super::token_guard;
 use super::trust::{
     effective_host, is_host_allowed, is_network_exposed, is_same_origin_request, request_origin,
     trust_proxy,
@@ -176,14 +179,21 @@ pub async fn gate(req: Request, next: Next) -> Response {
     // ── Step 1: auth. Fails CLOSED — see trust::is_network_exposed. ──────
     let requires_auth = is_network_exposed() || super::auth::admin_token_configured();
     if requires_auth && !(public_read || auth_path || csp_report) {
-        let ok = request_has_valid_admin_token(
-            header_str(
-                &req,
-                header::HeaderName::from_static("x-auditor-admin-token"),
-            ),
-            header_str(&req, header::COOKIE),
-        );
-        if !ok {
+        // A client past its budget of wrong tokens is refused before its
+        // token is looked at (token_guard.rs); every other check counts.
+        let check = token_guard::check_attempt(req.headers(), super::now_ms());
+        if let token_guard::Check::Throttled(retry_after_ms) = check {
+            let mut res = no_store(json_error(
+                StatusCode::TOO_MANY_REQUESTS,
+                token_guard::TOO_MANY_FAILURES,
+            ));
+            let seconds = (retry_after_ms.max(0) + 999) / 1000;
+            if let Ok(value) = header::HeaderValue::from_str(&seconds.to_string()) {
+                res.headers_mut().insert(header::RETRY_AFTER, value);
+            }
+            return with_csp(res, &path);
+        }
+        if check != token_guard::Check::Valid {
             // Node 401s API calls and sends page navigations to /login.
             // Unlike the 400 and 403 branches, proxy.ts DOES set no-store here.
             let res = if path.starts_with("/api/") {
@@ -539,6 +549,49 @@ mod tests {
             ])
             .await;
             assert_eq!(upper.status(), StatusCode::OK);
+        });
+    }
+
+    /// The guess budget (token_guard.rs) as the gate applies it: past ten
+    /// distinct wrong tokens a client's token-bearing request is a 429
+    /// before its token is checked, a token-less one is still a 401, and
+    /// another client is untouched.
+    #[test]
+    fn a_client_past_its_guess_budget_gets_a_429_before_its_token_is_checked() {
+        scenario(async {
+            std::env::set_var("AUDITOR_ADMIN_TOKEN", "gate-token");
+            token_guard::reset();
+            let from = |peer: &'static str, token: String| async move {
+                send(
+                    Method::GET,
+                    "/api/date-format",
+                    &[
+                        ("host", LOOPBACK),
+                        (token_guard::PEER_HEADER, peer),
+                        ("x-auditor-admin-token", &token),
+                    ],
+                )
+                .await
+            };
+            for i in 0..token_guard::PER_CLIENT_FAILURE_LIMIT {
+                let res = from("10.9.9.9", format!("guess-{i}")).await;
+                assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+            }
+            let refused = from("10.9.9.9", "gate-token".into()).await;
+            assert_eq!(refused.status(), StatusCode::TOO_MANY_REQUESTS);
+            assert_eq!(header_of(&refused, header::RETRY_AFTER), Some("900"));
+            assert_eq!(cache_control(&refused), Some("no-store"));
+            let bare = send(
+                Method::GET,
+                "/api/date-format",
+                &[("host", LOOPBACK), (token_guard::PEER_HEADER, "10.9.9.9")],
+            )
+            .await;
+            assert_eq!(bare.status(), StatusCode::UNAUTHORIZED);
+            let other = from("10.9.9.8", "gate-token".into()).await;
+            assert_eq!(other.status(), StatusCode::OK);
+            token_guard::reset();
+            std::env::remove_var("AUDITOR_ADMIN_TOKEN");
         });
     }
 

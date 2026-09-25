@@ -77,6 +77,25 @@ an oversized anonymous upload is answered 401, where the Node server answers 413
 A client also has 60 seconds to send its request headers, as with Node. Reverse
 proxies should set matching or smaller upload limits and deadlines.
 
+## Admin-token guess limits
+
+Every check of an admin token counts a wrong one against the client that sent
+it: the header or cookie on a private page or API call, the sign-in form, and
+the public token status endpoint. After 10 different wrong tokens from one client
+within 15 minutes, that client's requests that carry a token are answered 429,
+without the token being checked, until the oldest failure is 15 minutes old.
+Requests without a token still get their usual answer. Sending the same wrong
+value again, such as a cookie left over from before the token was changed, counts
+once. Sign-in also allows each client 5 attempts a minute. When 100 different
+wrong tokens have arrived from all clients within 15 minutes, only a client whose
+token was accepted in the last 24 hours can still present one.
+
+The client is the connecting address. Behind a reverse proxy, set
+`PRIVACYTRACKER_TRUST_PROXY=1` as described above so the client is the address the
+proxy reports; without it every request comes from the proxy's address, and
+everyone behind that proxy shares one budget. The limits apply only while an admin
+token is configured, and are kept in memory, so a restart clears them.
+
 ## Custom Node launchers
 
 The Node server (`pnpm start`, and the rollback image built with
@@ -88,7 +107,10 @@ sign-in, 512 KiB for ordinary requests, 8 MiB for audit bundles and 100 MiB for
 backup preview/restore, with a 30-second upload deadline. The larger import limits
 require authentication or an explicitly local default deployment; anonymous network
 requests retain the ordinary cap. Routes apply their
-own smaller limits too. Bare `next start` bypasses this entry-point protection.
+own smaller limits too. It also tells the server each request's connecting
+address, which the admin-token guess limits count against; without it those
+limits are off and sign-in falls back to one attempt limit shared by every
+client. Bare `next start` bypasses this entry-point protection.
 Reverse proxies should set matching or smaller upload limits and deadlines.
 
 ## Content Security Policy

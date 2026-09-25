@@ -1906,7 +1906,7 @@ clears everything and reports scope `""`. The locale cookie carries the
 `Expires` Next derives from `Max-Age`.
 
 **The oracle — `core/scripts/extract-writes-cases.mjs`.** Runs the REAL
-handlers over 266 requests with a frozen clock, counted ids, a distinct
+handlers over 275 requests with a frozen clock, counted ids, a distinct
 forwarded address per case behind `PRIVACYTRACKER_TRUST_PROXY=1` (so
 Node's process-wide limiter keeps one bucket per case), the admin token
 set per case, and a write recorder; it records the request, the setup
@@ -2331,9 +2331,10 @@ scan and answering the snapshot with the cached outcome folded in;
 (the slow-query ring, the lag histograms and the HTTP timings cleared)
 and `POST` (the profiling toggle, now live in the envelope and in the
 profile hook); `DELETE /api/ai/debug-log`; `POST
-/api/auth/admin-token/login` — same-origin, the global brute-force
-backstop skipped for a caller already holding a valid token, the
-per-address limit, the constant-time compare, the eight-hour HttpOnly
+/api/auth/admin-token/login` — same-origin, the per-client guess budget
+(`token_guard.rs`, added later with the admin-token guess limits), the
+global brute-force backstop skipped for a caller already holding a valid
+token, the per-client limit, the constant-time compare, the eight-hour HttpOnly
 cookie marked Secure when the request arrived over HTTPS — and `logout`;
 `POST /api/csp-report`, both the legacy and the Reporting API shapes
 summarised into the ring, newest first, fifty kept; `POST
@@ -2426,7 +2427,9 @@ unknown tables warned about and sorted last by `localeCompare`; and
 prior counts taken, foreign keys turned off AROUND one transaction that
 wipes children-first and inserts parents-first, only the columns that
 still exist, every row through the sanitiser whatever the envelope's
-trust (the `flag.devopts.` and `AUDITOR_` settings dropped and counted,
+trust (the `flag.devopts.` and `AUDITOR_` settings and flag overrides
+and the migration marker dropped and counted, and an untrusted
+envelope's quarantined overrides,
 every stored URL through `sanitizePolicyUrl`), `foreign_key_check`
 vetoing the commit, enforcement put back as it was found.
 `backup_snapshots.rs` grows the rest of `lib/backup-snapshots.ts`: the
@@ -2483,7 +2486,7 @@ enforcement ON and a bad backup would fail on its INSERT instead of at
 `foreign_key_check` — not what production does. Each case wipes every
 table and the data directory instead, writes a fixed signing key (or
 none, where minting it is the case, with `randomBytes(32)` counted), and
-seeds snapshot files with fixed mtimes. 101 cases: the settings saved,
+seeds snapshot files with fixed mtimes. 104 cases: the settings saved,
 clamped both ways, rounded, from strings, junk, `null`, a boolean and an
 array, partial, over a directory with a hand-named file and a stranger,
 and the body refusals; the snapshot over an empty install and the
@@ -2500,7 +2503,9 @@ by the oracle, and asserted trusted by the real verifier), aborting on a
 foreign-key violation, a missing column and a duplicate key, emptying
 the install, refusing during a sync before it reads the body; and the
 tick disabled, due, not yet due, due to the millisecond, and over an
-unreadable last run. Every case records the wire response with its
+unreadable last run; then, last, the flag-override deny-list over an
+untrusted and a trusted restore, and the migration marker a restore never
+writes. Every case records the wire response with its
 download headers, the write stream, all twenty-eight tables, the
 `backups/` directory afterwards by name, size and SHA-256, the key file,
 and that enforcement is back on. `core/src/server/backup_tests.rs`
@@ -2960,7 +2965,7 @@ body, and reads a `bodyBase64` reply, so the fixtures can hold both.
 
 **The oracle — `core/scripts/extract-leftovers-cases.mjs`.** Runs the
 REAL handlers of the four routes and the seed notification, and calls
-the two ticks as the server calls them. 132 cases. The webhook test:
+the two ticks as the server calls them. 139 cases. The webhook test:
 each format, the default, a 204, a 500, a redirect not followed, a
 failed request, and eleven refusals answered before any fetch — a
 loopback, metadata and `localhost` URL, one over 512 characters, `ftp:`,
@@ -2988,7 +2993,10 @@ the rel preference, the root's final URL, another host's icon, five
 misses, a private link, a hit refetched after a day and a miss after an
 hour, `http://`, an oversized icon. The preview: no URL, empty, off the
 store, not a URL, a page, Apple's 429 (a 429 with 70 s), a 500, no data
-script, a failed request, the thirty-first request. Each records the
+script, a failed request, the thirty-first request. Last, a hostile app
+name through each format, by the seed notification and by the summary
+tick: every chat format escapes its own markup, Discord allows no
+mentions, generic keeps the text as it is. Each records the
 wire response with the three headers these routes set — the favicon's
 bytes as base64 — the raw fetches with a POST's method and body, the
 write stream and three tables. `package.json`'s version, which the
@@ -3586,7 +3594,9 @@ model-list routes that sit beside it:
   the kill-switch refuses a fetch either way.
 - `POST /api/ai/policy-sample`: six a minute; the provider; the model
   (trimmed, at most 200 UTF-16 units); the key, where Settings' mask
-  `__SET__` stands for the stored one; the base URL normalised and
+  `__SET__` stands for the stored one, but only for the stored provider
+  and base URL (a 400 anywhere else, and nothing fetched); the base URL
+  normalised and
   checked with loopback allowed and a metadata address never; then 3a's
   sample summary, an activity row either way, and a 502 carrying a
   failure in friendlier words.
@@ -3600,6 +3610,8 @@ model-list routes that sit beside it:
   cursor moves, the query rewritten as `URLSearchParams` rewrites it),
   and for a custom endpoint falls back to Ollama's own tag list when the
   OpenAI-compatible one fails or is empty. Neither follows a redirect.
+  Both take the mask for the stored key under the same rule as the
+  sample, from `lib/ai-submitted-key.ts`.
 
 The run logger gained its phase stream: `PolicyPhaseStream.emit` is a
 sink told of each record as it stands when it is opened, closed or
@@ -3609,8 +3621,8 @@ message rather than `terminated`, as the streamed read already did; the
 recording caught it.
 
 **The oracle — `core/scripts/extract-ai-routes-cases.mjs`.** Runs the
-four REAL route handlers over 128 requests built as the browser sends
-them (32 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
+four REAL route handlers over 137 requests built as the browser sends
+them (32 regenerate, 23 sample, 48 test, 34 models), with 3a's harness:
 provider replies canned in the documented formats, a frozen clock that
 each awaited fetch moves on, counted ids and nonces, and Save Page Now
 held until the response is complete. Recorded per case: the response

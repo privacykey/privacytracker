@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { type DashboardLayout, DEFAULT_LAYOUT } from "@/lib/dashboard-layout";
 import { describePurpose } from "@/lib/onboarding-purpose";
+import { isSameOriginPath } from "@/lib/same-origin-path";
 import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
 import BundleImportProvenanceBanner from "./BundleImportProvenanceBanner";
 import CoachmarkTour from "./CoachmarkTour";
@@ -248,7 +249,9 @@ export default function HomeLoader() {
           if (!live) {
             return;
           }
-          if (typeof migrate?.targetPath === "string") {
+          // Checked here as well as on the server: this client never
+          // navigates anywhere but a path inside the app.
+          if (isSameOriginPath(migrate?.targetPath)) {
             router.replace(migrate.targetPath);
             return;
           }

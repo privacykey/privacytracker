@@ -18,6 +18,10 @@ test.afterEach(() => {
 
 test("sample policy summary route uses the selected model and saved masked OpenAI key", async () => {
   resetTestDb();
+  // Saved for this provider and base URL, which the request targets: the
+  // masked key only resolves for the endpoint it was saved for.
+  setSetting("ai_provider", "openai");
+  setSetting("ai_base_url", "https://api.openai.test/");
   setSetting("ai_api_key", "saved-openai-key");
 
   const aiRequests: Record<string, any>[] = [];

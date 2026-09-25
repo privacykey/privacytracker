@@ -93,9 +93,49 @@ export function readWebhookConfig(): WebhookConfig | null {
 }
 
 /**
+ * Slack's three control characters, escaped as Slack's message-formatting
+ * guide says to. Without this, text between `<` and `>` in an app name
+ * (which the developer chooses) would be read as a link or a mention such
+ * as `<!channel>`.
+ */
+export function escapeSlackText(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/**
+ * The ASCII punctuation Discord's and Teams' Markdown give a meaning to:
+ * emphasis, code, spoilers, quotes, headings, lists, masked links
+ * (`[text](url)`), mention syntax (`<@id>`) and inline HTML. Each is
+ * backslash-escaped, which both render as the plain character.
+ */
+const MARKDOWN_SPECIAL = /[\\`*_~|<>[\]()#&-]/g;
+
+/** Text shown literally by a Markdown renderer. */
+export function escapeMarkdownText(text: string): string {
+  return text.replace(MARKDOWN_SPECIAL, "\\$&");
+}
+
+/**
+ * Discord text: Markdown escaped, and `@everyone` / `@here` broken with a
+ * zero-width space so they read as text. The payload also sets
+ * `allowed_mentions: { parse: [] }`, so no mention in it can ping anyone.
+ */
+export function escapeDiscordText(text: string): string {
+  return escapeMarkdownText(text).replace(/@(everyone|here)/g, "@\u200b$1");
+}
+
+/**
  * Build the platform-specific JSON body for a payload. Slack and
  * Discord both accept a simple `{ text: '...' }` shape, Teams uses
  * MessageCard, generic ships the raw notification list under `data`.
+ *
+ * Titles and lines carry App Store app names, which the app's developer
+ * chooses, so every chat format escapes its own markup: a name can never
+ * add a link, a mention or formatting to the message. Generic is JSON
+ * for an automation and carries the text unchanged.
  */
 function buildPayload(
   format: WebhookFormat,
@@ -110,23 +150,31 @@ function buildPayload(
       // tooltip recommending users paste their channel-specific
       // Incoming Webhook URL rather than a workflow-builder one (the
       // latter requires a schema we'd have to second-guess).
-      return { text };
-    case "discord":
+      return { text: escapeSlackText(text) };
+    case "discord": {
       // Discord caps `content` at 2000 chars. We slice defensively —
-      // anything longer rarely reads well in a chat anyway.
-      return { content: text.length > 1900 ? `${text.slice(0, 1900)}…` : text };
+      // anything longer rarely reads well in a chat anyway. The cut is
+      // made after escaping, so the escapes cannot push it over the cap.
+      const content = escapeDiscordText(text);
+      return {
+        content: content.length > 1900 ? `${content.slice(0, 1900)}…` : content,
+        allowed_mentions: { parse: [] },
+      };
+    }
     case "teams":
       // Microsoft Teams uses the legacy MessageCard format for
       // Incoming Webhooks. The connector accepts an Adaptive Card via
       // the newer `attachments` shape too, but MessageCard works
       // across Teams + Outlook + Workflow connectors with one payload.
+      // Its text fields render Markdown (and some HTML), so each one is
+      // escaped.
       return {
         "@type": "MessageCard",
         "@context": "https://schema.org/extensions",
-        summary: title,
+        summary: escapeMarkdownText(title),
         themeColor: "0a84ff",
-        title,
-        text: lines.join("\n\n"),
+        title: escapeMarkdownText(title),
+        text: escapeMarkdownText(lines.join("\n\n")),
       };
     case "generic":
       // Generic POST — opaque JSON. Includes both the rendered text

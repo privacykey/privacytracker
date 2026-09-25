@@ -188,6 +188,13 @@
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
             "ai_api_key",
             "  sk-stored  "
           ]
@@ -235,6 +242,10 @@
         "activity_log": [],
         "ai_debug_log": [],
         "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
           {
             "key": "ai_api_key",
             "value": "  sk-stored  "
@@ -4589,6 +4600,13 @@
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
             "ai_api_key",
             "sk-stored"
           ]
@@ -4667,6 +4685,10 @@
         ],
         "ai_debug_log": [],
         "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
           {
             "key": "ai_api_key",
             "value": "sk-stored"
@@ -12142,6 +12164,656 @@
         "retryAfter": null,
         "cacheControl": null,
         "body": "{\"analysis\":{\"status\":\"needs_ai_config\",\"sourceTitle\":\"example.com\",\"sourceWordCount\":472,\"sourceOrigin\":\"direct\",\"sourceFinalUrl\":\"https://example.com/privacy\",\"updatedAt\":1789473600000,\"sourceFetchedAt\":1789473000000,\"model\":\"gpt-4.1-mini\",\"summary\":{\"overview\":\"An older summary.\",\"highlights\":[\"The policy does not address this clearly.\",\"The policy does not address this clearly.\",\"The policy does not address this clearly.\"],\"lenses\":[{\"key\":\"collection_scope\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"product_use\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"ads_marketing\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"third_party_sharing\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"tracking_analytics\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"user_controls\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"data_retention\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"},{\"key\":\"children_minors\",\"rating\":\"unclear\",\"summary\":\"The policy does not address this clearly.\"}]},\"previousSummary\":null,\"error\":\"Configure an AI provider in Settings to enable privacy-policy summaries.\",\"sourcePreview\":\"We collect personal information such as your name, email address and device identifiers when you create an account. Section 1.\\n\\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 2.\\n\\nWe share information with service providers and partners who process it on our behalf. Section 3.\\n\\nWe use cookies and analytics tools to understand how the app is used. Section 4.\\n\\nYou may request access to or deletion of your personal information at any time. Section 5.\\n\\nWe retain your information for as long as necessary to provide the service. Section 6.\\n\\nOur service is not directed to children under 13. Section 7.\\n\\nWe do not use your information for interest-based advertising or marketing. Section 8.\\n\\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 9.\\n\\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 10.\\n\\nWe share information with service providers and partners who process it on our behalf. Section 11.\\n\\nWe use cookies and analytics tools to understand how the app is used. Section 12.\\n\\nYou may request access to or deletion of your personal information at any time. Section 13.\\n\\nWe retain your information for as long as necessary to provide the service. Section 14.\\n\\nOur service is not directed to children under 13. Section 15.\\n\\nWe do not use your information for interest-based advertising or marketing. Section 16.\\n\\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 17.\\n\\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 18.\\n\\nWe share information with service providers and partners who process it on our behalf. Section 19.\\n\\nWe use cookies and analytics tools to understand how the app is used. Section 20.\\n\\nYou may request access to or deletion of your personal information at any time. Section 21.\\n\\nWe retain your information for as long as necessary to provide the service. Section 22.\\n\\nOur service is not directed to children under 13. Section 23.\\n\\nWe do not use your information for interest-based advertising or marketing. Section 24.\\n\\nWe collect personal information such as your name, email address and device identifiers when you create an account. Section 25.\\n\\nWe use your information to provide, operate and improve the service and to personalize your experience. Section 26.\\n\\nWe share information with service providers and partners who process it on our behalf. Section 27.\\n\\nWe use cookies and analytics tools to understand how the app is used. Section 28.\\n\\nYou may request access to or deletion of your personal information at any time. Section 29.\\n\\nWe retain your information for as long as necessary to provide the service. Section 30.\",\"sourceLength\":2889,\"lastRunLog\":[{\"phase\":\"needs-config\",\"at\":1789473600000,\"note\":\"No AI provider configured in Settings.\"}],\"runStatus\":\"running\",\"runStartedAt\":1789473600000}}"
+      }
+    },
+    {
+      "name": "test: the masked key is refused for another base URL",
+      "route": "/api/ai/test",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-stored"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.129.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"provider\":\"openai\",\"apiKey\":\"__SET__\",\"baseUrl\":\"https://collector.example/v1\"}",
+      "repeat": 1,
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-stored"
+          }
+        ],
+        "audit_log": [],
+        "apps": []
+      },
+      "expected": {
+        "status": 400,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"ok\":false,\"message\":\"The saved API key is only sent to the saved provider and base URL. Enter the key again to use a different one.\"}"
+      }
+    },
+    {
+      "name": "test: the masked key is refused for another provider",
+      "route": "/api/ai/test",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-stored"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.130.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"provider\":\"anthropic\",\"apiKey\":\"__SET__\"}",
+      "repeat": 1,
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-stored"
+          }
+        ],
+        "audit_log": [],
+        "apps": []
+      },
+      "expected": {
+        "status": 400,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"ok\":false,\"message\":\"The saved API key is only sent to the saved provider and base URL. Enter the key again to use a different one.\"}"
+      }
+    },
+    {
+      "name": "test: the masked key is refused under a disabled provider",
+      "route": "/api/ai/test",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "disabled"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.131.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"provider\":\"openai\",\"apiKey\":\"__SET__\"}",
+      "repeat": 1,
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "disabled"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk"
+          }
+        ],
+        "audit_log": [],
+        "apps": []
+      },
+      "expected": {
+        "status": 400,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"ok\":false,\"message\":\"The saved API key is only sent to the saved provider and base URL. Enter the key again to use a different one.\"}"
+      }
+    },
+    {
+      "name": "test: the masked key follows the stored base URL spelling",
+      "route": "/api/ai/test",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "custom"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_base_url",
+            "http://127.0.0.1:11434/"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-local"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.132.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"provider\":\"ollama\",\"apiKey\":\"__SET__\",\"baseUrl\":\"HTTP://127.0.0.1:11434\"}",
+      "repeat": 1,
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"llama3.2\",\"object\":\"model\",\"created\":1700000000,\"owned_by\":\"system\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "http://127.0.0.1:11434/v1/models",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "authorization",
+              "Bearer sk-local"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "custom"
+          },
+          {
+            "key": "ai_base_url",
+            "value": "http://127.0.0.1:11434/"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-local"
+          }
+        ],
+        "audit_log": [],
+        "apps": []
+      },
+      "expected": {
+        "status": 200,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"ok\":true,\"status\":200,\"modelsCount\":1,\"message\":\"Reachable · 1 model listed.\",\"latencyMs\":1000}"
+      }
+    },
+    {
+      "name": "test: the masked key is refused for another local port",
+      "route": "/api/ai/test",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "custom"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_base_url",
+            "http://127.0.0.1:11434/"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-local"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.133.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"provider\":\"custom\",\"apiKey\":\"__SET__\",\"baseUrl\":\"http://127.0.0.1:11435\"}",
+      "repeat": 1,
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "custom"
+          },
+          {
+            "key": "ai_base_url",
+            "value": "http://127.0.0.1:11434/"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-local"
+          }
+        ],
+        "audit_log": [],
+        "apps": []
+      },
+      "expected": {
+        "status": 400,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"ok\":false,\"message\":\"The saved API key is only sent to the saved provider and base URL. Enter the key again to use a different one.\"}"
+      }
+    },
+    {
+      "name": "test: a typed key still goes to any base URL",
+      "route": "/api/ai/test",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-stored"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.134.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"provider\":\"openai\",\"apiKey\":\"sk-typed\",\"baseUrl\":\"https://other.example/v1\"}",
+      "repeat": 1,
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"gpt-4o\",\"object\":\"model\",\"created\":1700000000,\"owned_by\":\"system\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://other.example/v1/models",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "authorization",
+              "Bearer sk-typed"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-stored"
+          }
+        ],
+        "audit_log": [],
+        "apps": []
+      },
+      "expected": {
+        "status": 200,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"ok\":true,\"status\":200,\"modelsCount\":1,\"message\":\"Reachable · 1 model listed.\",\"latencyMs\":1000}"
+      }
+    },
+    {
+      "name": "models: the masked key is refused for another base URL",
+      "route": "/api/ai/models",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "custom"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_base_url",
+            "http://127.0.0.1:11434/"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-local"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.135.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"provider\":\"custom\",\"apiKey\":\"__SET__\",\"baseUrl\":\"http://192.168.1.20:11434\"}",
+      "repeat": 1,
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "custom"
+          },
+          {
+            "key": "ai_base_url",
+            "value": "http://127.0.0.1:11434/"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-local"
+          }
+        ],
+        "audit_log": [],
+        "apps": []
+      },
+      "expected": {
+        "status": 400,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"ok\":false,\"message\":\"The saved API key is only sent to the saved provider and base URL. Enter the key again to use a different one.\"}"
+      }
+    },
+    {
+      "name": "models: the masked key reads the stored one",
+      "route": "/api/ai/models",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "custom"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_base_url",
+            "http://127.0.0.1:11434/"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-local"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.136.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"provider\":\"custom\",\"apiKey\":\"__SET__\",\"baseUrl\":\"http://127.0.0.1:11434/\"}",
+      "repeat": 1,
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"object\":\"list\",\"data\":[{\"id\":\"llama3.2\",\"object\":\"model\",\"created\":1700000000,\"owned_by\":\"system\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "http://127.0.0.1:11434/v1/models",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "authorization",
+              "Bearer sk-local"
+            ]
+          ]
+        }
+      ],
+      "stream": [],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "custom"
+          },
+          {
+            "key": "ai_base_url",
+            "value": "http://127.0.0.1:11434/"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-local"
+          }
+        ],
+        "audit_log": [],
+        "apps": []
+      },
+      "expected": {
+        "status": 200,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"ok\":true,\"models\":[{\"id\":\"llama3.2\",\"label\":\"llama3.2\",\"source\":\"openai-compat\"}]}"
+      }
+    },
+    {
+      "name": "sample: the masked key is refused for another base URL",
+      "route": "/api/ai/policy-sample",
+      "now": 1789473600000,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_provider",
+            "openai"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "ai_api_key",
+            "sk-stored"
+          ]
+        }
+      ],
+      "adminToken": null,
+      "headers": {
+        "x-forwarded-for": "10.9.137.7",
+        "user-agent": "ai-routes-oracle/1.0",
+        "content-type": "application/json"
+      },
+      "body": "{\"provider\":\"openai\",\"apiKey\":\"__SET__\",\"model\":\"gpt-4.1-mini\",\"baseUrl\":\"https://collector.example\"}",
+      "repeat": 1,
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "late": [],
+      "rows": {
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [],
+        "ai_debug_log": [],
+        "app_settings": [
+          {
+            "key": "ai_provider",
+            "value": "openai"
+          },
+          {
+            "key": "ai_api_key",
+            "value": "sk-stored"
+          }
+        ],
+        "audit_log": [],
+        "apps": []
+      },
+      "expected": {
+        "status": 400,
+        "type": "application/json",
+        "retryAfter": null,
+        "cacheControl": null,
+        "body": "{\"ok\":false,\"error\":\"The saved API key is only sent to the saved provider and base URL. Enter the key again to use a different one.\"}"
       }
     }
   ]

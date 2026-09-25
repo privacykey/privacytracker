@@ -4,11 +4,12 @@ import { NextResponse } from "next/server";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   type AIProvider,
+  normalizeAiBaseUrl,
   normalizeAiProvider,
   providerRequiresApiKey,
   resolveDefaultBaseUrl,
 } from "../../../../lib/ai-config";
-import { getSetting } from "../../../../lib/scheduler";
+import { resolveSubmittedApiKey } from "../../../../lib/ai-submitted-key";
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
@@ -86,7 +87,6 @@ export async function POST(request: Request) {
   }
 
   const provider = normalizeAiProvider(body.provider);
-  const apiKey = resolveSubmittedApiKey(body.apiKey);
   const rawBaseUrl =
     typeof body.baseUrl === "string" ? body.baseUrl.trim() : "";
 
@@ -97,6 +97,20 @@ export async function POST(request: Request) {
     });
   }
 
+  const baseUrl = normalizeAiBaseUrl(
+    rawBaseUrl || resolveDefaultBaseUrl(provider),
+    provider
+  );
+  // The stored key only ever goes to the endpoint it was saved for.
+  const key = resolveSubmittedApiKey(body.apiKey, provider, baseUrl);
+  if (!key.ok) {
+    return NextResponse.json(
+      { ok: false, message: key.message },
+      { status: 400 }
+    );
+  }
+  const apiKey = key.apiKey;
+
   if (providerRequiresApiKey(provider) && !apiKey) {
     return NextResponse.json({
       ok: false,
@@ -104,10 +118,6 @@ export async function POST(request: Request) {
     });
   }
 
-  const baseUrl = normalizeBaseUrl(
-    rawBaseUrl || resolveDefaultBaseUrl(provider),
-    provider
-  );
   if (!baseUrl) {
     return NextResponse.json({ ok: false, message: "Base URL is empty." });
   }
@@ -331,17 +341,6 @@ async function fetchAnthropicModels({
   return models;
 }
 
-function resolveSubmittedApiKey(raw: unknown): string {
-  const submitted = typeof raw === "string" ? raw.trim() : "";
-  if (submitted && submitted !== "__SET__") {
-    return submitted;
-  }
-  if (submitted === "__SET__") {
-    return getSetting("ai_api_key", "").trim();
-  }
-  return "";
-}
-
 function isLikelyOpenAiTextModel(id: string): boolean {
   const lowered = id.toLowerCase();
   if (
@@ -375,41 +374,4 @@ function friendlyNetworkMessage(message: string): string {
     return "Could not reach the endpoint.";
   }
   return message;
-}
-
-function normalizeBaseUrl(
-  value: string,
-  provider: Exclude<AIProvider, "disabled">
-): string {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  const defaultProtocol = provider === "custom" ? "http" : "https";
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `${defaultProtocol}://${trimmed}`;
-  let normalized = withProtocol.replace(/\/+$/, "");
-
-  if (
-    (provider === "custom" || provider === "openai") &&
-    shouldAppendOpenAiPath(normalized)
-  ) {
-    normalized = `${normalized}/v1`;
-  }
-
-  return normalized;
-}
-
-function shouldAppendOpenAiPath(baseUrl: string): boolean {
-  if (/\/v1$/i.test(baseUrl)) {
-    return false;
-  }
-  try {
-    const parsed = new URL(baseUrl);
-    return parsed.pathname === "/" || parsed.pathname === "";
-  } catch {
-    return false;
-  }
 }

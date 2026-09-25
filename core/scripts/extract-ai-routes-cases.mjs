@@ -711,7 +711,12 @@ try {
   });
   await route("test: the masked key reads the stored one", {
     route: TEST,
-    setup: [setting("ai_api_key", "  sk-stored  ")],
+    // The key is saved for OpenAI at its default base URL, which is where
+    // this request goes: the only place the stored key may be sent.
+    setup: [
+      setting("ai_provider", "openai"),
+      setting("ai_api_key", "  sk-stored  "),
+    ],
     json: { provider: "openai", apiKey: "__SET__" },
     replies: [openaiList(["gpt-4.1-mini", "gpt-4o"])],
   });
@@ -1168,7 +1173,11 @@ try {
   });
   await route("sample: the masked key reads the stored one", {
     route: SAMPLE,
-    setup: [setting("ai_api_key", "sk-stored")],
+    // Saved for OpenAI at its default base URL, where this request goes.
+    setup: [
+      setting("ai_provider", "openai"),
+      setting("ai_api_key", "sk-stored"),
+    ],
     json: sampleBody({ apiKey: "__SET__", model: "  gpt-4o  " }),
     replies: [openaiJson(MODEL_SUMMARY)],
   });
@@ -1422,6 +1431,98 @@ try {
       ...aiSettings({ model: "gpt-4.1", apiKey: "  " }),
     ],
     json: { appId: APP, phase: "summarise" },
+  });
+
+  // ── The masked key only goes where it was saved for ──
+  // Appended last, for the same reason. `__SET__` stands for the stored
+  // key only when the request names the stored provider and, once both
+  // are normalised, the stored base URL (or the provider's default when
+  // none is saved). Anywhere else is a 400 and nothing is fetched.
+  const savedOpenAi = [
+    setting("ai_provider", "openai"),
+    setting("ai_api_key", "sk-stored"),
+  ];
+  const savedLocal = [
+    setting("ai_provider", "custom"),
+    setting("ai_base_url", "http://127.0.0.1:11434/"),
+    setting("ai_api_key", "sk-local"),
+  ];
+  await route("test: the masked key is refused for another base URL", {
+    route: TEST,
+    setup: savedOpenAi,
+    json: {
+      provider: "openai",
+      apiKey: "__SET__",
+      baseUrl: "https://collector.example/v1",
+    },
+  });
+  await route("test: the masked key is refused for another provider", {
+    route: TEST,
+    setup: savedOpenAi,
+    json: { provider: "anthropic", apiKey: "__SET__" },
+  });
+  await route("test: the masked key is refused under a disabled provider", {
+    route: TEST,
+    setup: [setting("ai_provider", "disabled"), setting("ai_api_key", "sk")],
+    json: { provider: "openai", apiKey: "__SET__" },
+  });
+  await route("test: the masked key follows the stored base URL spelling", {
+    route: TEST,
+    setup: savedLocal,
+    json: {
+      provider: "ollama",
+      apiKey: "__SET__",
+      baseUrl: "HTTP://127.0.0.1:11434",
+    },
+    replies: [openaiList(["llama3.2"])],
+  });
+  await route("test: the masked key is refused for another local port", {
+    route: TEST,
+    setup: savedLocal,
+    json: {
+      provider: "custom",
+      apiKey: "__SET__",
+      baseUrl: "http://127.0.0.1:11435",
+    },
+  });
+  await route("test: a typed key still goes to any base URL", {
+    route: TEST,
+    setup: savedOpenAi,
+    json: {
+      provider: "openai",
+      apiKey: "sk-typed",
+      baseUrl: "https://other.example/v1",
+    },
+    replies: [openaiList(["gpt-4o"])],
+  });
+  await route("models: the masked key is refused for another base URL", {
+    route: MODELS,
+    setup: savedLocal,
+    json: {
+      provider: "custom",
+      apiKey: "__SET__",
+      baseUrl: "http://192.168.1.20:11434",
+    },
+  });
+  await route("models: the masked key reads the stored one", {
+    route: MODELS,
+    setup: savedLocal,
+    json: {
+      provider: "custom",
+      apiKey: "__SET__",
+      baseUrl: "http://127.0.0.1:11434/",
+    },
+    replies: [openaiList(["llama3.2"])],
+  });
+  await route("sample: the masked key is refused for another base URL", {
+    route: SAMPLE,
+    setup: savedOpenAi,
+    json: {
+      provider: "openai",
+      apiKey: "__SET__",
+      model: "gpt-4.1-mini",
+      baseUrl: "https://collector.example",
+    },
   });
 
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;

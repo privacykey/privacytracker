@@ -62,8 +62,37 @@ pub(super) const TABLES_IN_INSERT_ORDER: [&str; 28] = [
 
 /// Settings whose values never leave the install, whoever exports.
 const SENSITIVE_SETTING_KEYS: [&str; 2] = ["ai_api_key", "notification_webhook_url"];
-/// Settings a restore refuses to write, trusted envelope or not.
+/// Settings a restore refuses to write, trusted envelope or not. The same
+/// rule covers `feature_flag_overrides.flag_key`, the table the flag
+/// resolver reads.
 const RESTORE_SETTING_KEY_DENY_PREFIXES: [&str; 2] = ["flag.devopts.", "AUDITOR_"];
+/// Exact keys a restore never writes: the one-shot migration marker names
+/// a path the next dashboard load navigates to, so it only ever comes from
+/// this install's own audit-bundle import.
+const RESTORE_SETTING_KEY_DENY_EXACT: [&str; 1] = ["migration_flow_pending"];
+
+/// `isRestoreSettingKeyDenied`: a string key that is refused outright or
+/// sits under a refused prefix.
+fn restore_key_denied(key: Option<&Value>) -> bool {
+    key.and_then(Value::as_str).is_some_and(|k| {
+        RESTORE_SETTING_KEY_DENY_EXACT.contains(&k)
+            || RESTORE_SETTING_KEY_DENY_PREFIXES
+                .iter()
+                .any(|p| k.starts_with(p))
+    })
+}
+
+/// `isQuarantinedOverride`: only a missing, null, `0`, `false` or `"0"`
+/// value reads as live, as the resolver's `quarantined = 0` reads it.
+fn is_quarantined_override(value: Option<&Value>) -> bool {
+    match value {
+        None | Some(Value::Null) => false,
+        Some(Value::Bool(b)) => *b,
+        Some(Value::Number(n)) => n.as_f64() != Some(0.0),
+        Some(Value::String(s)) => s != "0",
+        Some(_) => true,
+    }
+}
 
 // ── The environment: where the key lives, where a fresh one comes from ─
 
@@ -550,16 +579,27 @@ fn safe_url(row: &Map<String, Value>, key: &str, fallback: Value) -> Value {
 }
 
 /// `sanitiseRowForRestore`: the fields rewritten for this table, or `None`
-/// when the row is dropped. Applied whatever the envelope's trust.
-fn sanitise_row(table: &str, row: &Map<String, Value>) -> Option<Vec<(&'static str, Value)>> {
+/// when the row is dropped. Applied whatever the envelope's trust, except
+/// that an untrusted envelope's quarantined flag overrides are dropped: the
+/// boot-time quarantine check would make one live as soon as an upgrade
+/// adds its key.
+fn sanitise_row(
+    table: &str,
+    row: &Map<String, Value>,
+    trusted: bool,
+) -> Option<Vec<(&'static str, Value)>> {
     Some(match table {
         "app_settings" => {
-            let denied = row.get("key").and_then(Value::as_str).is_some_and(|k| {
-                RESTORE_SETTING_KEY_DENY_PREFIXES
-                    .iter()
-                    .any(|p| k.starts_with(p))
-            });
-            if denied {
+            if restore_key_denied(row.get("key")) {
+                return None;
+            }
+            vec![]
+        }
+        "feature_flag_overrides" => {
+            if restore_key_denied(row.get("flag_key")) {
+                return None;
+            }
+            if !trusted && is_quarantined_override(row.get("quarantined")) {
                 return None;
             }
             vec![]
@@ -743,7 +783,7 @@ pub(super) fn restore_backup(
                     Value::Array(_) => &no_fields,
                     _ => continue,
                 };
-                let Some(overrides) = sanitise_row(name, fields) else {
+                let Some(overrides) = sanitise_row(name, fields, trusted) else {
                     rejected += 1;
                     continue;
                 };
@@ -857,6 +897,102 @@ mod tests {
         assert_eq!(base64_encode(b"AB"), "QUI=");
         assert_eq!(base64_encode(b"ABC"), "QUJD");
         assert_eq!(base64_encode(&[0xfb, 0xff, 0xfe]), "+//+");
+    }
+
+    #[test]
+    fn restore_refuses_devopts_overrides_whatever_the_trust() {
+        let row = |key: Value, quarantined: Option<Value>| {
+            let mut map = Map::new();
+            map.insert("flag_key".into(), key);
+            map.insert("override_value".into(), json!("on"));
+            if let Some(q) = quarantined {
+                map.insert("quarantined".into(), q);
+            }
+            map
+        };
+        let table = "feature_flag_overrides";
+        for trusted in [true, false] {
+            for key in [
+                "flag.devopts.cfgutil_uninstall",
+                "flag.devopts.feature_flag_system.enabled",
+                "AUDITOR_ADMIN_TOKEN",
+            ] {
+                assert!(
+                    sanitise_row(table, &row(json!(key), Some(json!(0))), trusted).is_none(),
+                    "{key} trusted={trusted}"
+                );
+            }
+            for key in [json!("flag.dashboard.stats"), json!(12), json!("auditor_x")] {
+                assert!(sanitise_row(table, &row(key, Some(json!(0))), trusted).is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn restore_never_writes_the_migration_marker() {
+        let setting = |key: &str| {
+            let mut map = Map::new();
+            map.insert("key".into(), json!(key));
+            map.insert("value".into(), json!("{\"targetPath\":\"/x\"}"));
+            map
+        };
+        for trusted in [true, false] {
+            assert!(
+                sanitise_row("app_settings", &setting("migration_flow_pending"), trusted).is_none()
+            );
+            assert!(sanitise_row(
+                "app_settings",
+                &setting("migration_flow_pending_x"),
+                trusted
+            )
+            .is_some());
+        }
+    }
+
+    #[test]
+    fn untrusted_restore_drops_quarantined_overrides_and_trusted_keeps_them() {
+        let row = |quarantined: Option<Value>| {
+            let mut map = Map::new();
+            map.insert("flag_key".into(), json!("flag.future.unknown"));
+            if let Some(q) = quarantined {
+                map.insert("quarantined".into(), q);
+            }
+            map
+        };
+        let table = "feature_flag_overrides";
+        let live = [
+            None,
+            Some(Value::Null),
+            Some(json!(0)),
+            Some(json!(0.0)),
+            Some(json!(-0.0)),
+            Some(json!(false)),
+            Some(json!("0")),
+        ];
+        let quarantined = [
+            Some(json!(1)),
+            Some(json!(2.5)),
+            Some(json!(true)),
+            Some(json!("1")),
+            Some(json!("")),
+            Some(json!("0.0")),
+            Some(json!([0])),
+            Some(json!({})),
+        ];
+        for q in live {
+            assert!(
+                sanitise_row(table, &row(q.clone()), false).is_some(),
+                "{q:?}"
+            );
+            assert!(sanitise_row(table, &row(q), true).is_some());
+        }
+        for q in quarantined {
+            assert!(
+                sanitise_row(table, &row(q.clone()), false).is_none(),
+                "{q:?}"
+            );
+            assert!(sanitise_row(table, &row(q), true).is_some());
+        }
     }
 
     #[test]

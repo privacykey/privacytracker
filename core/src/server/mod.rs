@@ -135,6 +135,7 @@ mod stats_tests;
 mod sync_runner;
 mod sysproc;
 mod timing;
+mod token_guard;
 mod trend;
 pub mod trust;
 mod unread_count;
