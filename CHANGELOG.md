@@ -1036,6 +1036,12 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- The desktop app now builds with rustls 0.23.45 (was 0.23.41), which
+  fixes RUSTSEC-2026-0285: TLS 1.3 handshake messages were accepted across
+  encryption-level boundaries. The desktop app's HTTPS connections go
+  through rustls: App Store pages, archive.org, privacy policy pages, AI
+  providers and the update feed. The Docker image already
+  had the fixed release.
 - Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
   failing the dependency audit on every pull request:
   **two critical unauthenticated remote-code-execution issues** in Next.js
