@@ -15,8 +15,15 @@
 #   CROWDIN_PROJECT_ID    — numeric project id from the Crowdin URL
 #   CROWDIN_PERSONAL_TOKEN — personal token with "Project" scope
 #
+# Until both secrets exist the job skips the sync with a notice instead
+# of failing. Every run before this guard failed for that reason alone
+# (the secrets were never created), which is why the workflow was
+# disabled.
+#
 # The default GITHUB_TOKEN is enough to open the translation PR (the
-# action uses contents:write + pull-requests:write below).
+# action uses contents:write + pull-requests:write below), provided the
+# repository allows it: Settings → Actions → General → "Allow GitHub
+# Actions to create and approve pull requests".
 #
 
 name: Crowdin
@@ -40,11 +47,28 @@ permissions:
 jobs:
   synchronize-with-crowdin:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
+      - name: Check Crowdin secrets
+        id: secrets
+        env:
+          CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+        run: |
+          if [ -n "$CROWDIN_PROJECT_ID" ] && [ -n "$CROWDIN_PERSONAL_TOKEN" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Crowdin sync skipped::CROWDIN_PROJECT_ID and CROWDIN_PERSONAL_TOKEN are not both set. See the setup notes at the top of .github/workflows/crowdin.yml."
+            echo "Crowdin sync skipped: the CROWDIN_PROJECT_ID and CROWDIN_PERSONAL_TOKEN repository secrets are not both set." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Checkout
+        if: steps.secrets.outputs.ready == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Crowdin push + pull
+        if: steps.secrets.outputs.ready == 'true'
         uses: crowdin/github-action@c7af9bc98b01694653031fef2a0dc6c7888ce9bc  # v2
         with:
           config: '.github/crowdin.yml'

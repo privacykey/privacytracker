@@ -16204,6 +16204,474 @@
    }
   },
   {
+   "name": "migration-flow protocol-relative target",
+   "route": "/api/migration-flow/consume",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/migration-flow/consume",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.11.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": null,
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      "{\"recommenderName\":\"Bob\",\"targetPath\":\"//example.test/\"}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      ""
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "migration_flow_pending",
+      "value": ""
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"targetPath\":\"/dashboard/review-recommendations\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "migration-flow triple-slash target",
+   "route": "/api/migration-flow/consume",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/migration-flow/consume",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.12.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": null,
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      "{\"recommenderName\":\"Bob\",\"targetPath\":\"///example.test/\"}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      ""
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "migration_flow_pending",
+      "value": ""
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"targetPath\":\"/dashboard/review-recommendations\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "migration-flow backslash target",
+   "route": "/api/migration-flow/consume",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/migration-flow/consume",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.13.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": null,
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      "{\"recommenderName\":\"Bob\",\"targetPath\":\"/\\\\example.test/\"}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      ""
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "migration_flow_pending",
+      "value": ""
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"targetPath\":\"/dashboard/review-recommendations\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "migration-flow tab inside the target",
+   "route": "/api/migration-flow/consume",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/migration-flow/consume",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.14.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": null,
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      "{\"recommenderName\":\"Bob\",\"targetPath\":\"/\\t/example.test/\"}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      ""
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "migration_flow_pending",
+      "value": ""
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"targetPath\":\"/dashboard/review-recommendations\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "migration-flow newline inside the target",
+   "route": "/api/migration-flow/consume",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/migration-flow/consume",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.15.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": null,
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      "{\"recommenderName\":\"Bob\",\"targetPath\":\"/\\n/example.test/\"}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      ""
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "migration_flow_pending",
+      "value": ""
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"targetPath\":\"/dashboard/review-recommendations\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "migration-flow space inside the target",
+   "route": "/api/migration-flow/consume",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/migration-flow/consume",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.16.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": null,
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      "{\"recommenderName\":\"Bob\",\"targetPath\":\"/ /example.test/\"}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      ""
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "migration_flow_pending",
+      "value": ""
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"targetPath\":\"/dashboard/review-recommendations\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "migration-flow absolute url target",
+   "route": "/api/migration-flow/consume",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/migration-flow/consume",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.17.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": null,
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      "{\"recommenderName\":\"Bob\",\"targetPath\":\"https://example.test/\"}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      ""
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "migration_flow_pending",
+      "value": ""
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"targetPath\":\"/dashboard/review-recommendations\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "migration-flow encoded slashes stay a path",
+   "route": "/api/migration-flow/consume",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/migration-flow/consume",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.18.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": null,
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      "{\"recommenderName\":\"Bob\",\"targetPath\":\"/%2F%2Fexample.test\"}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      ""
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "migration_flow_pending",
+      "value": ""
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"targetPath\":\"/%2F%2Fexample.test\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "migration-flow query and fragment kept",
+   "route": "/api/migration-flow/consume",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/migration-flow/consume",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.19.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": null,
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      "{\"recommenderName\":\"Bob\",\"targetPath\":\"/dashboard/review-recommendations?a=1#b\"}"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "migration_flow_pending",
+      ""
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "migration_flow_pending",
+      "value": ""
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"targetPath\":\"/dashboard/review-recommendations?a=1#b\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
    "name": "focus monitor keeps an explicit manual schedule",
    "route": "/api/focus",
    "method": "POST",
@@ -16212,7 +16680,7 @@
    "search": "",
    "query": [],
    "headers": {
-    "x-forwarded-for": "10.1.11.1",
+    "x-forwarded-for": "10.1.20.1",
     "user-agent": "writes-oracle/1.0"
    },
    "body": "{\"audience\":\"self\",\"monitor\":true,\"cleanup\":false,\"minimal\":false,\"accessibility\":false}",
@@ -16349,7 +16817,7 @@
    "search": "",
    "query": [],
    "headers": {
-    "x-forwarded-for": "10.1.12.1",
+    "x-forwarded-for": "10.1.21.1",
     "user-agent": "writes-oracle/1.0"
    },
    "body": "{\"audience\":\"self\",\"monitor\":true,\"cleanup\":false,\"minimal\":false,\"accessibility\":false}",
@@ -16486,7 +16954,7 @@
    "search": "",
    "query": [],
    "headers": {
-    "x-forwarded-for": "10.1.13.1",
+    "x-forwarded-for": "10.1.22.1",
     "user-agent": "writes-oracle/1.0"
    },
    "body": "{\"audience\":\"self\",\"monitor\":true,\"cleanup\":false,\"minimal\":false,\"accessibility\":false}",
@@ -16634,7 +17102,7 @@
    "search": "",
    "query": [],
    "headers": {
-    "x-forwarded-for": "10.1.14.1",
+    "x-forwarded-for": "10.1.23.1",
     "user-agent": "writes-oracle/1.0"
    },
    "body": "{\"audience\":\"self\",\"monitor\":false,\"cleanup\":true,\"minimal\":false,\"accessibility\":false}",
@@ -16771,7 +17239,7 @@
    "search": "",
    "query": [],
    "headers": {
-    "x-forwarded-for": "10.1.15.1",
+    "x-forwarded-for": "10.1.24.1",
     "user-agent": "writes-oracle/1.0"
    },
    "body": "{\"audience\":\"loved_one\",\"cleanup\":true}",

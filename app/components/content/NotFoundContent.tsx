@@ -112,6 +112,11 @@ export default function NotFoundContent() {
       className="notfound-root"
       role="alert"
     >
+      {/* Colours come from the theme tokens in globals.css, so the page
+          follows light, dark, a pinned theme and high contrast like every
+          other surface. It used to hard-code the dark palette and patch
+          light mode with its own media query, which missed the issue
+          line (#8e8e93 on white, 3.3:1) and ignored a pinned theme. */}
       <style>{`
         .notfound-root {
           min-height: calc(100vh - 60px);
@@ -120,20 +125,20 @@ export default function NotFoundContent() {
           justify-content: center;
           padding: 24px;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-          background: #08080f;
-          color: #f5f5f7;
+          background: var(--bg);
+          color: var(--text);
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
         }
         .notfound-card {
           width: 100%;
           max-width: 560px;
-          background: #111118;
-          border: 1px solid rgba(255, 255, 255, 0.07);
+          background: var(--bg-2);
+          border: 1px solid var(--border);
           border-radius: 24px;
           padding: 40px 36px;
           text-align: center;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.02);
+          box-shadow: var(--shadow-lg);
         }
         .notfound-brand {
           display: flex;
@@ -154,7 +159,7 @@ export default function NotFoundContent() {
           font-size: 17px;
           font-weight: 600;
           letter-spacing: -0.01em;
-          color: #f5f5f7;
+          color: var(--text);
         }
         .notfound-code {
           font-size: 72px;
@@ -162,11 +167,11 @@ export default function NotFoundContent() {
           letter-spacing: -0.04em;
           line-height: 1;
           margin: 0 0 16px;
-          background: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 100%);
+          background: linear-gradient(135deg, var(--blue) 0%, #5e5ce6 100%);
           -webkit-background-clip: text;
           background-clip: text;
           -webkit-text-fill-color: transparent;
-          color: #0a84ff; /* fallback for browsers without background-clip */
+          color: var(--blue); /* fallback for browsers without background-clip */
         }
         .notfound-eyebrow {
           display: block;
@@ -175,21 +180,21 @@ export default function NotFoundContent() {
           font-weight: 700;
           letter-spacing: 0.12em;
           text-transform: uppercase;
-          color: #8e8e93;
+          color: var(--text-3);
           margin: 0 0 12px;
         }
         .notfound-title {
           font-size: 26px;
           font-weight: 700;
           letter-spacing: -0.02em;
-          color: #f5f5f7;
+          color: var(--text);
           margin: 0 0 12px;
           line-height: 1.2;
         }
         .notfound-subtitle {
           font-size: 15px;
           line-height: 1.55;
-          color: #8e8e93;
+          color: var(--text-2);
           margin: 0 auto 28px;
           max-width: 440px;
         }
@@ -213,44 +218,51 @@ export default function NotFoundContent() {
           transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
         }
         .notfound-btn-primary {
-          background: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 100%);
+          background: linear-gradient(135deg, var(--blue-fill) 0%, #5e5ce6 100%);
           color: #ffffff;
           box-shadow: 0 4px 14px rgba(10, 132, 255, 0.35);
         }
         .notfound-btn-primary:hover {
           transform: translateY(-1px);
         }
+        /* High contrast: --blue-fill is yellow, so a solid fill with a
+           black label, as .btn-primary gets. */
+        html[data-theme-override="high-contrast"] .notfound-btn-primary {
+          background: var(--blue-fill);
+          color: #000000;
+        }
         .notfound-btn-secondary {
-          background: rgba(255, 255, 255, 0.05);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: #f5f5f7;
+          background: var(--surface);
+          border: 1px solid var(--border-strong);
+          color: var(--text);
         }
         .notfound-btn-secondary:hover {
-          background: rgba(255, 255, 255, 0.08);
+          background: var(--surface-hover);
         }
         .notfound-btn:focus-visible {
-          outline: 2px solid #0a84ff;
+          outline: 2px solid var(--blue);
           outline-offset: 3px;
         }
         .notfound-hint {
           font-size: 13px;
-          color: #8e8e93;
+          color: var(--text-2);
           line-height: 1.55;
           margin: 0;
         }
         .notfound-hint a {
-          color: #0a84ff;
-          text-decoration: none;
+          color: var(--blue);
+          text-decoration: underline;
+          text-underline-offset: 2px;
         }
         .notfound-hint a:hover {
-          text-decoration: underline;
+          text-decoration-thickness: 2px;
         }
         .notfound-issue {
           margin-top: 28px;
           padding-top: 20px;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          border-top: 1px solid var(--border);
           font-size: 12px;
-          color: #8e8e93;
+          color: var(--text-3);
           line-height: 1.5;
         }
         .notfound-issue a {
@@ -259,67 +271,19 @@ export default function NotFoundContent() {
           transition: color 0.12s ease;
         }
         .notfound-issue a span {
-          color: #0a84ff;
+          color: var(--blue);
           font-weight: 500;
+          text-decoration: underline;
+          text-underline-offset: 2px;
         }
         .notfound-issue a:hover span,
         .notfound-issue a:focus-visible span {
-          text-decoration: underline;
+          text-decoration-thickness: 2px;
         }
         .notfound-issue a:focus-visible {
-          outline: 2px solid #0a84ff;
+          outline: 2px solid var(--blue);
           outline-offset: 3px;
           border-radius: 4px;
-        }
-        @media (prefers-color-scheme: light) {
-          .notfound-root {
-            background: #f2f2f7;
-            color: #1d1d1f;
-          }
-          .notfound-card {
-            background: #ffffff;
-            border-color: rgba(0, 0, 0, 0.07);
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.02);
-          }
-          .notfound-logo {
-            box-shadow: 0 4px 14px rgba(0, 113, 227, 0.3);
-          }
-          .notfound-code {
-            background: linear-gradient(135deg, #0071e3 0%, #5e5ce6 100%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: #0071e3;
-          }
-          .notfound-brand-name,
-          .notfound-title {
-            color: #1d1d1f;
-          }
-          .notfound-eyebrow,
-          .notfound-subtitle,
-          .notfound-hint {
-            color: #6e6e73;
-          }
-          .notfound-btn-primary {
-            background: linear-gradient(135deg, #0071e3 0%, #5e5ce6 100%);
-            box-shadow: 0 4px 14px rgba(0, 113, 227, 0.3);
-          }
-          .notfound-btn-secondary {
-            background: rgba(0, 0, 0, 0.03);
-            border-color: rgba(0, 0, 0, 0.08);
-            color: #1d1d1f;
-          }
-          .notfound-btn-secondary:hover {
-            background: rgba(0, 0, 0, 0.06);
-          }
-          .notfound-hint a {
-            color: #0071e3;
-          }
-          .notfound-issue {
-            border-top-color: rgba(0, 0, 0, 0.07);
-          }
-          .notfound-issue a span {
-            color: #0071e3;
-          }
         }
         @media (max-width: 480px) {
           .notfound-card {

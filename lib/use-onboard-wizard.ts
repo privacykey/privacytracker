@@ -73,6 +73,12 @@ import {
 } from "@/lib/desktop";
 import { type DeviceClass, refineDeviceOnClient } from "@/lib/device";
 import {
+  awaitOcrStart,
+  describeOcrError,
+  OCR_START_TIMEOUT_MS,
+  OCR_WORKER_OPTIONS,
+} from "@/lib/ocr-assets";
+import {
   DEFAULT_COUNTRY,
   inferCountryFromLocale,
   normalizeCountry,
@@ -88,6 +94,39 @@ class SearchAccessBlockedError extends Error {
     this.name = "SearchAccessBlockedError";
     this.status = status;
   }
+}
+
+/**
+ * `/api/search` failed before it could check a single name: every chunk
+ * answered with an error (5xx, or our own 429 before anything got
+ * through) or the request never reached the server. `status` is 0 for a
+ * transport failure. Nothing was matched, so nothing may be shown as
+ * "not in the App Store": the wizard stays on step 2 and offers a retry.
+ */
+class SearchRequestFailedError extends Error {
+  readonly status: number;
+  constructor(status: number) {
+    super(
+      status === 0
+        ? "/api/search could not be reached"
+        : `/api/search failed with HTTP ${status}`
+    );
+    this.name = "SearchRequestFailedError";
+    this.status = status;
+  }
+}
+
+/** The step-2 message for a search that failed outright. */
+function searchFailureKey(
+  status: number
+): "search_failed" | "search_rate_limited_retry" | "search_server_error" {
+  if (status === 0) {
+    return "search_failed";
+  }
+  if (status === 429) {
+    return "search_rate_limited_retry";
+  }
+  return "search_server_error";
 }
 
 interface ImportItemSnapshot {
@@ -763,6 +802,17 @@ export function useOnboardWizard({
    */
   const [searchBlocked, setSearchBlocked] = useState(false);
   /**
+   * Set when the last step-2 search could not check some or all of the
+   * names (server error, rate limit, no connection). `all`: nothing was
+   * searched. `partial`: the names that did get an answer are in
+   * `searchResults`, and a retry searches only the rest. Drives the
+   * Retry button (and, for `partial`, "Review the N found") beside the
+   * step-2 error. Null when the error is not a retryable search failure.
+   */
+  const [searchRetry, setSearchRetry] = useState<"all" | "partial" | null>(
+    null
+  );
+  /**
    * Error from a single-block re-search on step 3 (`handleBlockResearch`).
    * Kept separate from `searchError`, which only renders on step 2 —
    * without this, a failed per-row retry was indistinguishable from
@@ -891,6 +941,12 @@ export function useOnboardWizard({
 
   // Import-history plumbing
   const [importId, setImportId] = useState<string | null>(null);
+  // The device row this session created when the user committed the
+  // import (handleConfirm). Created then, not at search time, so a session
+  // abandoned before Import leaves no "Manual entry · <date>" device behind
+  // (and so Step 3's "Whose device is this?" answer is the one it carries).
+  // Kept so a retried confirm reuses it instead of creating a second one.
+  const [importDeviceId, setImportDeviceId] = useState<string | null>(null);
   // Maps the current block-key (query-or-edited-query) to the server-side item id.
   const [itemIdByQuery, setItemIdByQuery] = useState<Map<string, string>>(
     new Map()
@@ -982,6 +1038,11 @@ export function useOnboardWizard({
   >(null);
   const [restoreError, setRestoreError] = useState("");
   const [restoreConfirmText, setRestoreConfirmText] = useState("");
+  // Set when the server refuses the file as not made by this install (409
+  // `untrusted_backup`), for example one exported before "Delete all data"
+  // deleted the signing key. The dialog says so, and the next confirm sends
+  // the explicit opt-in. Same flow as lib/use-backup.ts.
+  const [restoreUntrusted, setRestoreUntrusted] = useState(false);
 
   const resetRestoreFlow = () => {
     setRestoreStage("idle");
@@ -990,6 +1051,7 @@ export function useOnboardWizard({
     setPendingRestoreFilename(null);
     setRestoreError("");
     setRestoreConfirmText("");
+    setRestoreUntrusted(false);
   };
 
   // ── Modal focus management (WCAG 2.4.3 / 2.1.2) ────────────────────────
@@ -1020,6 +1082,7 @@ export function useOnboardWizard({
     setRestoreStage("previewing");
     setPendingRestoreFilename(file.name);
     setRestoreConfirmText("");
+    setRestoreUntrusted(false);
     try {
       const text = await file.text();
       let previewBody: unknown;
@@ -1069,16 +1132,31 @@ export function useOnboardWizard({
     try {
       const res = await fetch("/api/backup/restore", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(restoreUntrusted ? { "x-allow-untrusted-backup": "1" } : {}),
+        },
         body: pendingRestorePayload,
       });
       if (!res.ok) {
         let msg = tStatus("restore_failed");
+        let code: unknown = null;
         try {
           const body = await res.json();
           msg = body?.error || msg;
+          code = body?.code;
         } catch {
           /* no-op */
+        }
+        if (
+          res.status === 409 &&
+          code === "untrusted_backup" &&
+          !restoreUntrusted
+        ) {
+          // Nothing was written; ask again with the reason on screen.
+          setRestoreUntrusted(true);
+          setRestoreStage("confirm");
+          return;
         }
         setRestoreError(msg);
         setRestoreStage("confirm");
@@ -2060,6 +2138,7 @@ export function useOnboardWizard({
         namesText?: string;
         uploadedFileName?: string;
         importId?: string | null;
+        importDeviceId?: string | null;
         searchResults?: SearchResult[];
         selected?: [string, string][];
         skipped?: string[];
@@ -2117,6 +2196,9 @@ export function useOnboardWizard({
       }
       if (typeof draft.importId === "string") {
         setImportId(draft.importId);
+      }
+      if (typeof draft.importDeviceId === "string") {
+        setImportDeviceId(draft.importDeviceId);
       }
       const restoredResults = Array.isArray(draft.searchResults)
         ? draft.searchResults.filter(
@@ -2190,6 +2272,7 @@ export function useOnboardWizard({
           pendingAppText,
           uploadedFileName,
           importId,
+          importDeviceId,
           searchResults,
           selected: Array.from(selected.entries()).map(([query, candidate]) => [
             query,
@@ -2206,6 +2289,7 @@ export function useOnboardWizard({
     country,
     draftRestored,
     importId,
+    importDeviceId,
     importedApps,
     isPreviewMode,
     manuallyChosenQueries,
@@ -2324,31 +2408,52 @@ export function useOnboardWizard({
         // is in the WASM download, the traineddata fetch, or the recognize
         // loop itself — the three places this most often stalls on flaky
         // networks / strict CSPs / iOS WebKit.
-        const worker = await createWorker("eng", 1, {
-          logger: (msg: {
-            status?: string;
-            progress?: number;
-            [k: string]: unknown;
-          }) => {
-            if (!ocrDebug) {
-              return;
-            }
-            const pct =
-              typeof msg.progress === "number"
-                ? `${Math.round(msg.progress * 100)}%`
-                : "—";
-            console.log(
-              `[ocr] tesseract.logger status="${msg.status ?? "?"}" progress=${pct}`,
-              msg
-            );
-          },
-          errorHandler: (err: unknown) => {
-            // Errors still surface unconditionally — silent failure is
-            // exactly the diagnostic problem the rest of this gating was
-            // introduced to *not* reintroduce.
-            console.error("[ocr] tesseract.errorHandler", err);
-          },
-        });
+        //
+        // OCR_WORKER_OPTIONS points the worker, the engine and the English
+        // model at the copies served from this origin under /ocr/, and
+        // starts the worker from that URL rather than a blob: wrapper. The
+        // defaults fetch all three from public CDNs, which the CSP refuses.
+        //
+        // awaitOcrStart turns a start that tesseract.js would leave pending
+        // for ever (a model that fails to download, an engine that fails to
+        // compile) into a failure the catch below reports.
+        const worker = await awaitOcrStart(
+          (failStart) =>
+            createWorker("eng", 1, {
+              ...OCR_WORKER_OPTIONS,
+              logger: (msg: {
+                status?: string;
+                progress?: number;
+                [k: string]: unknown;
+              }) => {
+                if (!ocrDebug) {
+                  return;
+                }
+                const pct =
+                  typeof msg.progress === "number"
+                    ? `${Math.round(msg.progress * 100)}%`
+                    : "—";
+                console.log(
+                  `[ocr] tesseract.logger status="${msg.status ?? "?"}" progress=${pct}`,
+                  msg
+                );
+              },
+              errorHandler: (err: unknown) => {
+                // Errors still surface unconditionally — silent failure is
+                // exactly the diagnostic problem the rest of this gating was
+                // introduced to *not* reintroduce.
+                console.error("[ocr] tesseract.errorHandler", err);
+                // Ends the start if it is still pending; once the worker is
+                // up, a failed recognize also rejects its own promise and
+                // this is a no-op.
+                failStart(err);
+              },
+            }),
+          OCR_START_TIMEOUT_MS,
+          (late) => {
+            void late.terminate();
+          }
+        );
         mark("createWorker(eng): resolved");
 
         try {
@@ -2366,10 +2471,12 @@ export function useOnboardWizard({
               type: file.type,
               bytes: file.size,
             });
-            const objectUrl = URL.createObjectURL(file);
 
             try {
-              const result = await worker.recognize(objectUrl);
+              // The File itself, not a blob: URL: tesseract.js reads a File
+              // with FileReader, while a URL string is fetched, and the
+              // page's connect-src does not allow blob: URLs.
+              const result = await worker.recognize(file);
               const textLen = (result.data.text ?? "").length;
               mark(`recognize[${index + 1}/${files.length}]: resolved`, {
                 textChars: textLen,
@@ -2385,8 +2492,6 @@ export function useOnboardWizard({
                 `[ocr] recognize[${index + 1}/${files.length}] threw`,
                 perImageError
               );
-            } finally {
-              URL.revokeObjectURL(objectUrl);
             }
           }
           mark("recognize loop: done", { blocks: extractedBlocks.length });
@@ -2426,20 +2531,11 @@ export function useOnboardWizard({
         // Expose the real error to the UI under a collapsed `<details>` so the
         // user (or us, when triaging a support report) can see the underlying
         // tesseract.js / WASM / network failure instead of just "it failed".
-        const detail = (() => {
-          if (error instanceof Error) {
-            return error.message || error.name || String(error);
-          }
-          if (typeof error === "string") {
-            return error;
-          }
-          try {
-            return JSON.stringify(error);
-          } catch {
-            return String(error);
-          }
-        })();
-        setOcrErrorDetail(detail.slice(0, 500));
+        // describeOcrError never throws: a worker that fails to start
+        // rejects with `undefined`, and the inline version of this read
+        // `.slice` off `JSON.stringify(undefined)`, threw inside this catch
+        // and left the wizard on "Preparing screenshot scan…" for good.
+        setOcrErrorDetail(describeOcrError(error));
         if (isIosSafari) {
           // iOS WebKit almost always falls through here — give the user a clear
           // recommendation to switch paths rather than retrying fruitlessly.
@@ -2626,9 +2722,11 @@ export function useOnboardWizard({
       const startedAt = performance.now();
       recordImportEvent("onboarding.import.create.start", { total, method });
       try {
-        // Best-effort device resolution. Imports without a device still
-        // work; they just don't participate in the re-sync diff flow.
-        const deviceId = await resolveDeviceIdForImport();
+        // Only a re-sync names its device up front: that row already
+        // exists. A new device is created when the user commits the import
+        // (ensureImportDevice in handleConfirm), not here at search time,
+        // so a session abandoned at Step 3 leaves no device row behind.
+        const deviceId = resyncDeviceId ?? null;
         const res = await fetch("/api/imports", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2663,8 +2761,26 @@ export function useOnboardWizard({
         return null;
       }
     },
-    [method, deriveImportLabel, resolveDeviceIdForImport]
+    [method, deriveImportLabel, resyncDeviceId]
   );
+
+  /** The device this import is for, created on first call and reused after
+   *  (a retried confirm must not create a second row). `null` for a
+   *  re-sync, whose import already carries its device, and whenever the
+   *  create fails: the import still works, just without a device. */
+  const ensureImportDevice = useCallback(async (): Promise<string | null> => {
+    if (resyncDeviceId) {
+      return null;
+    }
+    if (importDeviceId) {
+      return importDeviceId;
+    }
+    const created = await resolveDeviceIdForImport();
+    if (created) {
+      setImportDeviceId(created);
+    }
+    return created;
+  }, [importDeviceId, resolveDeviceIdForImport, resyncDeviceId]);
 
   const writeImportItems = useCallback(
     async (
@@ -2860,6 +2976,12 @@ export function useOnboardWizard({
       queuedRetryAfterMs?: number;
       bundleMatched: number;
       bundleLookupTotal: number;
+      /**
+       * Names whose chunk the server never answered (5xx, or no
+       * connection). They are left out of `results` entirely: a name
+       * nobody searched for must not come back as "not in the App Store".
+       */
+      failedNames: string[];
     }> => {
       const phase1Matches = new Map<string, AppCandidate>();
       const phase1NamesWithBundle: string[] = [];
@@ -2998,6 +3120,17 @@ export function useOnboardWizard({
 
       const phase2Results: SearchResult[] = [];
       let aborted = false;
+      // A name only counts as searched when the server answered its
+      // chunk. `failedNames` collects the chunks it didn't; the status of
+      // the last failure decides the step-2 message when nothing at all
+      // got through (0 = the request never reached the server).
+      const failedNames = new Set<string>();
+      let lastFailureStatus = 0;
+      let anyChunkAnswered = false;
+      const nothingSearchedYet = () =>
+        !anyChunkAnswered &&
+        phase1Matches.size === 0 &&
+        holdForQueuedLookup.size === 0;
 
       for (let i = 0; i < phase2Chunks.length; i++) {
         if (searchAbortRef.current?.signal.aborted) {
@@ -3005,6 +3138,7 @@ export function useOnboardWizard({
           break;
         }
         const chunk = phase2Chunks[i];
+        let transportFailed = false;
         const res = await fetch("/api/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3015,14 +3149,39 @@ export function useOnboardWizard({
             aborted = true;
             return null;
           }
-          throw err;
+          console.error("[wizard] /api/search could not be reached:", err);
+          transportFailed = true;
+          return null;
         });
-        if (aborted || !res) {
+        if (aborted) {
           break;
+        }
+        if (transportFailed || !res) {
+          for (const row of chunk) {
+            failedNames.add(row.name);
+          }
+          lastFailureStatus = 0;
+          setSearchProgress((prev) =>
+            prev ? { ...prev, currentBatch: i + 1 } : prev
+          );
+          continue;
         }
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
             throw new SearchAccessBlockedError(res.status);
+          }
+          if (res.status === 429 && nothingSearchedYet()) {
+            // Our own limiter refused the search before a single name
+            // was checked. Parking the whole batch in the replay queue
+            // would drop the user on step 3 with nothing but "waiting"
+            // rows; saying so on step 2 and offering Retry is clearer.
+            for (let j = i; j < phase2Chunks.length; j++) {
+              for (const row of phase2Chunks[j]) {
+                failedNames.add(row.name);
+              }
+            }
+            lastFailureStatus = 429;
+            break;
           }
           if (res.status === 429) {
             // Our own /api/search rate limit (60 req/min per client) —
@@ -3049,17 +3208,20 @@ export function useOnboardWizard({
             break;
           }
           console.error(`[wizard] /api/search failed with ${res.status}`);
-          setSearchError(
-            tStatus("search_endpoint_error_prefix") +
-              '"unmatched" in Import History — open Settings → Import history to retry.'
-          );
           // Continue to the next chunk anyway — partial progress is
           // better than throwing away the entire batch on a single 5xx.
+          // This chunk's names were never checked, so they are held back
+          // from the results rather than reported as unmatched.
+          for (const row of chunk) {
+            failedNames.add(row.name);
+          }
+          lastFailureStatus = res.status;
           setSearchProgress((prev) =>
             prev ? { ...prev, currentBatch: i + 1 } : prev
           );
           continue;
         }
+        anyChunkAnswered = true;
         const data = await res.json().catch(() => ({}));
         const chunkResults: SearchResult[] = data.results ?? [];
         phase2Results.push(...chunkResults);
@@ -3122,12 +3284,20 @@ export function useOnboardWizard({
       // carries every name Apple deferred plus every name we never
       // got to (loop bailed mid-stream on rate-limit / abort).
 
+      // Nothing got an answer: there is no partial result to show, and
+      // every name would otherwise land on step 3 as "not in the App
+      // Store". Fail the whole search instead.
+      if (failedNames.size > 0 && nothingSearchedYet()) {
+        throw new SearchRequestFailedError(lastFailureStatus);
+      }
+
       const phase2ByQuery = new Map<string, SearchResult>();
       for (const r of phase2Results) {
         phase2ByQuery.set(r.query, r);
       }
       const queuedNames = new Set(queuedByName.keys());
-      const results: SearchResult[] = names.map((name) => {
+      const answeredNames = names.filter((name) => !failedNames.has(name));
+      const results: SearchResult[] = answeredNames.map((name) => {
         const lower = name.toLowerCase();
         const sourceBundleId = bundleByLowerName.get(lower) ?? null;
         const sourceDeveloper = developerByLowerName.get(lower) ?? null;
@@ -3210,6 +3380,7 @@ export function useOnboardWizard({
             : undefined,
         bundleMatched: phase1Matches.size,
         bundleLookupTotal: phase1NamesWithBundle.length,
+        failedNames: names.filter((name) => failedNames.has(name)),
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is stable; including it recreates the search function every render
     },
@@ -3363,6 +3534,7 @@ export function useOnboardWizard({
     setSearching(true);
     setSearchError("");
     setSearchBlocked(false);
+    setSearchRetry(null);
     // Fresh AbortController per run — `cancelSearch` reaches into this
     // ref to abort the in-flight chunk; `runMatchSearch` reads
     // `signal.aborted` between chunks to break the loop early.
@@ -3386,7 +3558,12 @@ export function useOnboardWizard({
         queuedRetryAfterMs,
         bundleMatched,
         bundleLookupTotal,
+        failedNames,
       } = await runMatchSearch(newNames, country);
+      // Names the server never answered for are not part of this import
+      // yet: they stay in the step-2 list, and Retry searches them again.
+      const failedSet = new Set(failedNames);
+      const searchedNames = newNames.filter((name) => !failedSet.has(name));
 
       // Tell the console how many names the server failed to match so
       // power users can see the list in devtools. The split between
@@ -3415,7 +3592,7 @@ export function useOnboardWizard({
       // couldn't process yet go in as `status='queued'` with the retry
       // deadline, so the history view has a full record of the batch from
       // the moment it starts instead of waiting for the replay to land.
-      const newImportId = await createImportRecord(newNames.length);
+      const newImportId = await createImportRecord(searchedNames.length);
       if (newImportId) {
         setImportId(newImportId);
         const idMap = await writeImportItems(
@@ -3424,11 +3601,12 @@ export function useOnboardWizard({
           autoSelected,
           queuedRows,
           queuedRetryAfterMs,
-          // Hand the full submitted list through so names that neither
-          // landed in `results` nor in the queued tail still get written as
+          // Hand the searched list through so names that neither landed
+          // in `results` nor in the queued tail still get written as
           // `unmatched` placeholders. Fixes the "total=N but itemCount=0"
-          // symptom when /api/search dies before returning anything usable.
-          newNames
+          // symptom. Names whose chunk failed are left out on purpose:
+          // they were never searched, and the retry records them.
+          searchedNames
         );
         setItemIdByQuery((prev) => {
           const merged = new Map(prev);
@@ -3506,6 +3684,20 @@ export function useOnboardWizard({
         );
       }
 
+      if (failedNames.length > 0) {
+        // Some chunks came back and some didn't. Stay on step 2: the
+        // answered names are kept (a retry skips them), and the rest are
+        // not shown anywhere as "not in the App Store".
+        setSearchRetry("partial");
+        setSearchError(
+          tStatus("search_partial_failed", {
+            failed: failedNames.length,
+            total: newNames.length,
+          })
+        );
+        return;
+      }
+
       setStep(3);
     } catch (error) {
       if (error instanceof SearchAccessBlockedError) {
@@ -3519,8 +3711,15 @@ export function useOnboardWizard({
         setSearchError(
           tStatus("search_access_blocked", { status: error.status })
         );
+      } else if (error instanceof SearchRequestFailedError) {
+        // Nothing could be checked (5xx, our own 429, or no connection).
+        // Same rule as the gate: stay on step 2 and say what happened.
+        console.error("[wizard] /api/search failed:", error.message);
+        setSearchRetry("all");
+        setSearchError(tStatus(searchFailureKey(error.status)));
       } else {
         console.error("[wizard] /api/search failed:", error);
+        setSearchRetry("all");
         setSearchError(tStatus("search_failed"));
       }
     } finally {
@@ -3539,6 +3738,17 @@ export function useOnboardWizard({
    */
   const cancelSearch = useCallback(() => {
     searchAbortRef.current?.abort();
+  }, []);
+
+  /**
+   * After a partial search failure, go on to step 3 with the names that
+   * did get an answer. The rest stay in the step-2 list; coming back and
+   * searching again picks them up.
+   */
+  const continueWithFoundMatches = useCallback(() => {
+    setSearchError("");
+    setSearchRetry(null);
+    setStep(3);
   }, []);
 
   /**
@@ -3849,6 +4059,7 @@ export function useOnboardWizard({
 
     setRematchingRegion(true);
     setSearchError("");
+    setBlockSearchError("");
     try {
       if (rematchCountry !== country || countryInferred) {
         await updateCountry(rematchCountry);
@@ -3870,12 +4081,20 @@ export function useOnboardWizard({
         autoSelected,
         queuedRows,
         queuedRetryAfterMs,
+        failedNames,
       } = await runMatchSearch(namesToSearch, rematchCountry);
       const freshByQuery = new Map(
         freshResults.map((result) => [result.query, result])
       );
+      // A name whose chunk failed was not searched in the new region, so
+      // it keeps the row (and the pick) it had rather than turning into
+      // "not in the App Store".
+      const failedSet = new Set(failedNames);
 
       const nextResults = searchResults.map((result) => {
+        if (failedSet.has(result.query)) {
+          return result;
+        }
         if (skippedQueries.has(result.query)) {
           return {
             ...result,
@@ -3905,12 +4124,23 @@ export function useOnboardWizard({
       for (const [query, candidate] of preservedManual) {
         nextSelected.set(query, candidate);
       }
+      for (const query of failedSet) {
+        const kept = selected.get(query);
+        if (kept) {
+          nextSelected.set(query, kept);
+        }
+      }
       for (const [query, candidate] of autoSelected) {
         nextSelected.set(query, candidate);
       }
 
       setSearchResults(nextResults);
       setSelected(nextSelected);
+      if (failedSet.size > 0) {
+        setBlockSearchError(
+          tStatus("rematch_partial_failed", { count: failedSet.size })
+        );
+      }
 
       if (importId) {
         const idMap = await writeImportItems(
@@ -3939,8 +4169,22 @@ export function useOnboardWizard({
         });
       }
     } catch (error) {
+      // Step 3 is where this runs, and step 3 shows `blockSearchError`
+      // (`searchError` only renders on step 2, so this used to be lost).
       console.error("[wizard] region rematch failed:", error);
-      setSearchError("Could not rematch this region. Try again in a moment.");
+      if (error instanceof SearchAccessBlockedError) {
+        setSearchBlocked(true);
+        setBlockSearchError(
+          tStatus("search_access_blocked", { status: error.status })
+        );
+      } else if (
+        error instanceof SearchRequestFailedError &&
+        error.status === 429
+      ) {
+        setBlockSearchError(tStatus("search_rate_limited_retry"));
+      } else {
+        setBlockSearchError(tStatus("rematch_failed"));
+      }
     } finally {
       setRematchingRegion(false);
     }
@@ -4007,10 +4251,18 @@ export function useOnboardWizard({
         selected: entries.length,
       });
       try {
+        // The import is being committed: this is where its device row is
+        // created (with Step 3's owner answer) and attached, so the apps
+        // are linked to it when the import completes.
+        const deviceId = await ensureImportDevice();
         const res = await fetch("/api/imports/items", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ importId, items: statusPayload }),
+          body: JSON.stringify({
+            importId,
+            items: statusPayload,
+            ...(deviceId ? { deviceId } : {}),
+          }),
         });
         if (!res.ok) {
           recordImportEvent("onboarding.confirm.bulk_status.error", {
@@ -5194,6 +5446,7 @@ export function useOnboardWizard({
     setSearchError,
     searchBlocked,
     setSearchBlocked,
+    searchRetry,
     blockSearchError,
     setBlockSearchError,
     blockSearching,
@@ -5257,6 +5510,7 @@ export function useOnboardWizard({
     setRestoreError,
     restoreConfirmText,
     setRestoreConfirmText,
+    restoreUntrusted,
     resetRestoreFlow,
     restoreModalCardRef,
     cancelModalCardRef,
@@ -5326,6 +5580,7 @@ export function useOnboardWizard({
     commitStep2Diff,
     handleSearch,
     cancelSearch,
+    continueWithFoundMatches,
     handleBlockResearch,
     handleBlockSkip,
     handleCancelQueuedMatches,

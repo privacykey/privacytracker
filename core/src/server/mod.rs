@@ -31,6 +31,7 @@ mod content_tests;
 mod csp_policy;
 mod csp_reports;
 mod deployment;
+pub mod desktop_auth;
 mod device_writes;
 #[cfg(test)]
 mod device_writes_tests;
@@ -135,6 +136,7 @@ mod stats_tests;
 mod sync_runner;
 mod sysproc;
 mod timing;
+mod token_guard;
 mod trend;
 pub mod trust;
 mod unread_count;

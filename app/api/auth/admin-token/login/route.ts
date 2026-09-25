@@ -8,14 +8,25 @@
  * path where an injected script could exfiltrate the token from
  * sessionStorage and replay it against destructive admin endpoints.
  *
- * Rate-limited per-IP (5 attempts / minute) so brute-forcing the token
- * via the loopback or LAN is impractical even when the proxy bypasses
- * the non-local admin gate for this path. Constant-time compare against
+ * Rate-limited per client (5 attempts / minute), and each wrong token
+ * counts toward the client's guess budget shared with every other token
+ * check (lib/admin-token-guard.ts), so brute-forcing the token via the
+ * loopback or LAN is impractical even when the proxy bypasses the
+ * non-local admin gate for this path. The client is the socket peer, or
+ * the last forwarded hop behind a trusted proxy, so one client's attempts
+ * never lock another out. Constant-time compare against
  * AUDITOR_ADMIN_TOKEN.
  */
 
 import { timingSafeEqual } from "node:crypto";
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  adminTokenAttemptsBlocked,
+  adminTokenClientKey,
+  recordAdminTokenFailure,
+  recordAdminTokenSuccess,
+  TOO_MANY_FAILURES,
+} from "@/lib/admin-token-guard";
 import { requestOrigin } from "@/lib/deployment-trust";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
@@ -24,7 +35,6 @@ import {
   checkRateLimit,
   isSameOriginRequest,
   loginBruteForceTripped,
-  rateLimitKeyForRequest,
   readBoundedJson,
   recordAudit,
   recordLoginFailure,
@@ -51,6 +61,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "Same-origin required" },
       { status: 403 }
+    );
+  }
+
+  // Every login presents a token, so a client past its budget of wrong
+  // tokens (on any path: this form, the header or cookie the proxy checks,
+  // the status endpoint) is refused before this one is looked at. The
+  // budget is per client, so one client's guessing never refuses another.
+  const client = adminTokenClientKey(request.headers);
+  const guessing = adminTokenAttemptsBlocked(client);
+  if (guessing.blocked) {
+    recordAudit({
+      action: "admin_token.login.client_throttled",
+      actorIp,
+      userAgent,
+      success: false,
+      detail: `retryAfterMs=${guessing.retryAfterMs}`,
+    });
+    return NextResponse.json(
+      { error: TOO_MANY_FAILURES },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.ceil(guessing.retryAfterMs / 1000)),
+        },
+      }
     );
   }
 
@@ -85,8 +120,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Keyed by the same client as the guess budget, so one client's attempts
+  // no longer fill a bucket every client shares. Without a known client (a
+  // server started without the request preloader) it falls back to the
+  // route's shared bucket, as before.
   const rate = checkRateLimit({
-    key: rateLimitKeyForRequest(request, "admin-token-login"),
+    key: `admin-token-login:${client ?? "local"}`,
     limit: 5,
     windowMs: 60_000,
   });
@@ -135,8 +174,10 @@ export async function POST(request: NextRequest) {
   const b = Buffer.from(expected);
   const matches = a.length === b.length && timingSafeEqual(a, b);
   if (!matches) {
-    // Feed the absolute brute-force backstop (failures only).
+    // Feed the absolute brute-force backstop (failures only) and this
+    // client's guess budget.
     recordLoginFailure();
+    recordAdminTokenFailure(client, `login ${provided}`);
     recordAudit({
       action: "admin_token.login.invalid",
       actorIp,
@@ -146,6 +187,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid token" }, { status: 401 });
   }
 
+  recordAdminTokenSuccess(client);
   recordAudit({
     action: "admin_token.login",
     actorIp,

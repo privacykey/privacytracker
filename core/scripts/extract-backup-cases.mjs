@@ -1403,6 +1403,88 @@ try {
       ],
     });
   }
+
+  // ── Restore deny-list on feature_flag_overrides ──────────────────
+  // Last, so the forwarded address of every case above stays as it was
+  // recorded. The deny-list covers the table the flag resolver reads,
+  // and an untrusted envelope's quarantined rows are dropped.
+  {
+    const route = "/api/backup/restore";
+    const method = "POST";
+    const row = (flagKey, value, quarantined) => ({
+      flag_key: flagKey,
+      override_value: value,
+      set_at: 1,
+      set_by: "user",
+      previous_focus: null,
+      ...(quarantined === undefined ? {} : { quarantined }),
+    });
+    const overrides = {
+      feature_flag_overrides: {
+        rows: [
+          row("flag.devopts.cfgutil_uninstall", "on", 0),
+          row("flag.devopts.feature_flag_system.enabled", "off"),
+          row("AUDITOR_ADMIN_TOKEN", "planted", 0),
+          row("flag.dashboard.stats", "off", 0),
+          row("flag.future.unknown", "on", 1),
+          row("flag.dashboard.activity", "off", "1"),
+          row("flag.dashboard.review_cta", "off", true),
+          row("flag.nav.device_scope", "off", "0"),
+          row("flag.detail.timeline.wayback_rows", "off", false),
+          row("flag.detail.annotations_sidebar", "off", 0.0),
+          row("flag.dashboard.task_list", "off", 2.5),
+          row("flag.dashboard.layout_editor.visible", "off", [1]),
+          row(12, "off", 0),
+        ],
+      },
+    };
+    await run(
+      "restore of an untrusted backup refuses devopts and quarantined overrides",
+      {
+        route,
+        method,
+        setup: other,
+        search: "?allowUntrusted=1",
+        json: { version: 1, exportedAt: now, tables: overrides },
+        expectTrust: "untrusted",
+      }
+    );
+    await run(
+      "restore of a trusted backup refuses devopts overrides and keeps quarantined ones",
+      {
+        route,
+        method,
+        setup: other,
+        json: sign({ version: 1, exportedAt: now, tables: overrides }),
+        expectTrust: "trusted",
+      }
+    );
+  }
+
+  // ── Restore never writes the migration-flow marker ───────────────
+  // Last, for the same reason as the block above.
+  await run("restore of a trusted backup never writes the migration marker", {
+    route: "/api/backup/restore",
+    method: "POST",
+    setup: [...other, setting("migration_flow_pending", "")],
+    json: sign({
+      version: 1,
+      exportedAt: now,
+      tables: {
+        app_settings: {
+          rows: [
+            {
+              key: "migration_flow_pending",
+              value: '{"recommenderName":"Bob","targetPath":"//example.test/"}',
+            },
+            { key: "migration_flow_pending_note", value: "kept" },
+            { key: "sync_schedule", value: "weekly" },
+          ],
+        },
+      },
+    }),
+    expectTrust: "trusted",
+  });
 } finally {
   db.close();
   rmSync(dir, { recursive: true, force: true });

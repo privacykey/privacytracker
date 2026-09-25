@@ -33,12 +33,15 @@ export const CURRENT_BACKUP_VERSION = 1;
 /**
  * Per-install HMAC key. Generated once on first export and stored as a
  * single base64 line in `<data-dir>/backup-signing.key` with 0600
- * permissions. Lives **outside** the SQLite DB on purpose: `/api/reset`
- * and `restoreBackup` both wipe `app_settings`, so storing the key
- * there would silently invalidate every existing backup the moment the
- * user did a reset. The key file persists across DB wipes, so the
- * normal same-install "reset, then restore from backup" flow stays a
- * trusted operation.
+ * permissions. Lives **outside** the SQLite DB on purpose: `restoreBackup`
+ * wipes `app_settings`, so storing the key there would invalidate every
+ * existing backup the moment the user restored one.
+ *
+ * "Delete everything" (`/api/reset`, `/api/admin/start-over`) deletes the
+ * key file as well, because it deletes everything that identifies this
+ * install. The next export mints a new key; a backup exported before the
+ * wipe then verifies as "untrusted" and restores only after the user
+ * confirms that (the restore dialogs ask).
  *
  * Independent of {@link AUDITOR_ADMIN_TOKEN}: that gate is about who
  * can call the route, this is about whether the envelope is authentic.
@@ -55,6 +58,24 @@ function backupKeyPath(): string {
   const dataDir =
     process.env.PRIVACYTRACKER_DATA_DIR || path.join(process.cwd(), "data");
   return path.join(dataDir, BACKUP_KEY_FILENAME);
+}
+
+/**
+ * Delete this install's backup signing key, for "Delete everything".
+ * Returns whether a key file was there to delete. A missing file is not an
+ * error; any other failure is logged and reported as `false`, because the
+ * wipe it belongs to has already committed.
+ */
+export function deleteBackupSigningKey(): boolean {
+  try {
+    fs.unlinkSync(backupKeyPath());
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== "ENOENT") {
+      console.warn("[backup] failed to delete signing key:", err);
+    }
+    return false;
+  }
 }
 
 function getOrCreateSigningKey(): Buffer {
@@ -208,9 +229,38 @@ export const SENSITIVE_SETTING_KEYS: ReadonlySet<string> = new Set([
  * covered automatically. The local HMAC signing key is in here too:
  * even a trusted envelope must not replace our key with the
  * sender's — that would let the sender forge future envelopes.
+ *
+ * The same rule covers `feature_flag_overrides.flag_key`: that table is
+ * what the flag resolver actually reads, so a `flag.devopts.*` row there
+ * (the destructive cfgutil flag, the feature-flag kill switch) is refused
+ * exactly as the matching `app_settings` row is.
  */
 const RESTORE_SETTING_KEY_DENY_PREFIXES = ["flag.devopts.", "AUDITOR_"];
-const RESTORE_SETTING_KEY_DENY_EXACT = new Set<string>();
+/**
+ * Exact keys a restore never writes. `migration_flow_pending` is a
+ * one-shot marker the audit-bundle importer sets on this install; the
+ * next dashboard load navigates to the path it names, so it is never
+ * taken from a backup.
+ */
+const RESTORE_SETTING_KEY_DENY_EXACT = new Set<string>([
+  "migration_flow_pending",
+]);
+
+/**
+ * Whether a restored `feature_flag_overrides` row is quarantined, read
+ * the way the resolver reads it: only a stored `0` is live, so anything
+ * but a missing, null, `0`, `false` or `"0"` value counts. (A null is
+ * kept so it still fails the NOT NULL column as it always has.)
+ */
+function isQuarantinedOverride(value: unknown): boolean {
+  return !(
+    value === undefined ||
+    value === null ||
+    value === 0 ||
+    value === false ||
+    value === "0"
+  );
+}
 
 function isRestoreSettingKeyDenied(key: unknown): boolean {
   if (typeof key !== "string") {
@@ -487,7 +537,8 @@ export function restoreBackup(
           }
           const sanitised = sanitiseRowForRestore(
             name,
-            row as Record<string, unknown>
+            row as Record<string, unknown>,
+            trust
           );
           if (sanitised === null) {
             rejected += 1;
@@ -578,13 +629,32 @@ function verifyEnvelope(envelope: BackupEnvelope): "trusted" | "untrusted" {
  *
  * Returns the (possibly modified) row, or `null` if the row must be
  * dropped entirely.
+ *
+ * One rule depends on trust: an untrusted envelope's quarantined flag
+ * overrides are dropped. A quarantined row is an override for a flag the
+ * install does not know yet; the boot-time quarantine check makes it live
+ * the moment an upgrade adds that key, so from an envelope nobody can
+ * vouch for it would switch a feature the user never saw or chose. A
+ * trusted envelope was signed by this install, so its quarantined rows
+ * are this install's own (set on a newer version before a downgrade) and
+ * are kept.
  */
 function sanitiseRowForRestore(
   table: string,
-  row: Record<string, unknown>
+  row: Record<string, unknown>,
+  trust: "trusted" | "untrusted"
 ): Record<string, unknown> | null {
   if (table === "app_settings") {
     if (isRestoreSettingKeyDenied(row.key)) {
+      return null;
+    }
+    return row;
+  }
+  if (table === "feature_flag_overrides") {
+    if (isRestoreSettingKeyDenied(row.flag_key)) {
+      return null;
+    }
+    if (trust === "untrusted" && isQuarantinedOverride(row.quarantined)) {
       return null;
     }
     return row;

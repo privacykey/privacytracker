@@ -25,8 +25,12 @@ export default function RestoreBackupModal({
   handleRestoreConfirm,
   resetRestoreFlow,
   restoreModalCardRef,
+  restoreUntrusted,
 }: {
   restoreStage: OnboardRestoreStage;
+  /** The server said this install did not make the file; the next confirm
+   *  sends the explicit opt-in (lib/use-onboard-wizard.ts). */
+  restoreUntrusted: boolean;
   /** Non-null by construction: the wizard only renders this once the
    *  server has returned a preview. */
   restorePreview: OnboardRestorePreview;
@@ -42,138 +46,146 @@ export default function RestoreBackupModal({
   const tModalRestore = useTranslations("onboard.modals.restore_backup");
 
   return (
-    <>
-      restorePreview && (
+    <div
+      className="modal-overlay"
+      onClick={() => {
+        if (restoreStage !== "applying") {
+          resetRestoreFlow();
+        }
+      }}
+    >
       <div
-        className="modal-overlay"
-        onClick={() => {
-          if (restoreStage !== "applying") {
-            resetRestoreFlow();
-          }
-        }}
+        aria-labelledby="onboard-restore-title"
+        aria-modal="true"
+        className="modal-card"
+        onClick={(event) => event.stopPropagation()}
+        ref={restoreModalCardRef}
+        role="dialog"
+        tabIndex={-1}
       >
+        <div className="modal-badge">{tModalRestore("badge")}</div>
+        <h2 className="modal-title" id="onboard-restore-title">
+          {tModalRestore("title")}
+        </h2>
+        <p className="modal-copy">
+          {pendingRestoreFilename ? (
+            <>
+              <strong>{pendingRestoreFilename}</strong>
+              {restorePreview.exportedAt
+                ? tModalRestore("exported_suffix", {
+                    date: new Date(
+                      restorePreview.exportedAt
+                    ).toLocaleDateString(),
+                  })
+                : null}{" "}
+              {tModalRestore("version_suffix", {
+                version: restorePreview.version,
+              })}{" "}
+              {tModalRestore("rows", { count: restorePreview.totalRows })}
+            </>
+          ) : (
+            tModalRestore("no_filename", {
+              count: restorePreview.totalRows,
+              tables: restorePreview.perTable.length,
+            })
+          )}
+        </p>
+
         <div
-          aria-labelledby="onboard-restore-title"
-          aria-modal="true"
-          className="modal-card"
-          onClick={(event) => event.stopPropagation()}
-          ref={restoreModalCardRef}
-          role="dialog"
-          tabIndex={-1}
+          aria-label={tModalRestore("rows_per_table_aria")}
+          className="backup-preview-table"
         >
-          <div className="modal-badge">{tModalRestore("badge")}</div>
-          <h2 className="modal-title" id="onboard-restore-title">
-            {tModalRestore("title")}
-          </h2>
-          <p className="modal-copy">
-            {pendingRestoreFilename ? (
-              <>
-                <strong>{pendingRestoreFilename}</strong>
-                {restorePreview.exportedAt
-                  ? tModalRestore("exported_suffix", {
-                      date: new Date(
-                        restorePreview.exportedAt
-                      ).toLocaleDateString(),
-                    })
-                  : null}{" "}
-                {tModalRestore("version_suffix", {
-                  version: restorePreview.version,
-                })}{" "}
-                {tModalRestore("rows", { count: restorePreview.totalRows })}
-              </>
-            ) : (
-              tModalRestore("no_filename", {
-                count: restorePreview.totalRows,
-                tables: restorePreview.perTable.length,
-              })
-            )}
-          </p>
+          {restorePreview.perTable
+            .filter((row) => row.rows > 0)
+            .map((row) => (
+              <div className="backup-preview-row" key={row.name}>
+                <span className="backup-preview-name">{row.name}</span>
+                <span className="backup-preview-count">
+                  {row.rows.toLocaleString()}
+                </span>
+              </div>
+            ))}
+        </div>
 
+        {restorePreview.warnings.length > 0 && (
+          <ul className="backup-preview-warnings">
+            {restorePreview.warnings.map((warning, index) => (
+              <li key={index}>⚠ {warning}</li>
+            ))}
+          </ul>
+        )}
+
+        <div className="modal-warning" style={{ marginTop: 12 }}>
+          {tModalRestore("warning")}
+        </div>
+
+        {restoreUntrusted && (
           <div
-            aria-label={tModalRestore("rows_per_table_aria")}
-            className="backup-preview-table"
+            className="modal-warning"
+            data-testid="restore-untrusted"
+            role="alert"
+            style={{ marginTop: 12 }}
           >
-            {restorePreview.perTable
-              .filter((row) => row.rows > 0)
-              .map((row) => (
-                <div className="backup-preview-row" key={row.name}>
-                  <span className="backup-preview-name">{row.name}</span>
-                  <span className="backup-preview-count">
-                    {row.rows.toLocaleString()}
-                  </span>
-                </div>
-              ))}
+            <span aria-hidden="true">⚠ </span>
+            {tModalRestore("untrusted")}
           </div>
+        )}
 
-          {restorePreview.warnings.length > 0 && (
-            <ul className="backup-preview-warnings">
-              {restorePreview.warnings.map((warning, index) => (
-                <li key={index}>⚠ {warning}</li>
-              ))}
-            </ul>
-          )}
+        <label className="modal-confirm-label" htmlFor="onboard-restore-input">
+          {tModalRestore.rich("confirm_label", {
+            code: (chunks) => <code>{chunks}</code>,
+          })}
+        </label>
+        <input
+          autoComplete="off"
+          autoCorrect="off"
+          className="modal-confirm-input"
+          disabled={restoreStage === "applying"}
+          id="onboard-restore-input"
+          onChange={(event) => {
+            setRestoreConfirmText(event.target.value);
+            if (restoreError) {
+              setRestoreError("");
+            }
+          }}
+          placeholder={tModalRestore("confirm_placeholder")}
+          spellCheck={false}
+          type="text"
+          value={restoreConfirmText}
+        />
 
-          <div className="modal-warning" style={{ marginTop: 12 }}>
-            {tModalRestore("warning")}
-          </div>
+        {restoreError && (
+          <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>
+            {restoreError}
+          </p>
+        )}
 
-          <label
-            className="modal-confirm-label"
-            htmlFor="onboard-restore-input"
-          >
-            {tModalRestore.rich("confirm_label", {
-              code: (chunks) => <code>{chunks}</code>,
-            })}
-          </label>
-          <input
-            autoComplete="off"
-            autoCorrect="off"
-            className="modal-confirm-input"
+        <div className="modal-actions">
+          <button
+            className="btn btn-ghost"
             disabled={restoreStage === "applying"}
-            id="onboard-restore-input"
-            onChange={(event) => {
-              setRestoreConfirmText(event.target.value);
-              if (restoreError) {
-                setRestoreError("");
-              }
-            }}
-            placeholder={tModalRestore("confirm_placeholder")}
-            spellCheck={false}
-            type="text"
-            value={restoreConfirmText}
-          />
-
-          {restoreError && (
-            <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>
-              {restoreError}
-            </p>
-          )}
-
-          <div className="modal-actions">
-            <button
-              className="btn btn-ghost"
-              disabled={restoreStage === "applying"}
-              onClick={resetRestoreFlow}
-              type="button"
-            >
-              {tModalRestore("cancel")}
-            </button>
-            <button
-              className="btn btn-danger"
-              disabled={
-                restoreStage === "applying" ||
-                restoreConfirmText.trim().toUpperCase() !== "RESTORE"
-              }
-              onClick={handleRestoreConfirm}
-              type="button"
-            >
-              {restoreStage === "applying"
-                ? tModalRestore("restoring")
+            onClick={resetRestoreFlow}
+            type="button"
+          >
+            {tModalRestore("cancel")}
+          </button>
+          <button
+            className="btn btn-danger"
+            disabled={
+              restoreStage === "applying" ||
+              restoreConfirmText.trim().toUpperCase() !== "RESTORE"
+            }
+            onClick={handleRestoreConfirm}
+            type="button"
+          >
+            {restoreStage === "applying"
+              ? tModalRestore("restoring")
+              : restoreUntrusted
+                ? tModalRestore("confirm_untrusted")
                 : tModalRestore("confirm")}
-            </button>
-          </div>
+          </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }

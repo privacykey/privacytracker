@@ -46,6 +46,7 @@ fn main() {
                 "set_dock_badge",
                 "set_tray_visible",
                 "reveal_main_window",
+                "install_verified_update",
                 "check_cfgutil",
                 "run_cfgutil_export",
                 "list_connected_devices",

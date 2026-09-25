@@ -83,8 +83,7 @@ fn tick(
     watermark: &Arc<AtomicI64>,
     first_tick: &Arc<AtomicBool>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let url = format!("{base_url}/api/notifications");
-    let resp: NotificationsResponse = ureq::get(&url)
+    let resp: NotificationsResponse = crate::backend::get(base_url, "/api/notifications")
         .timeout(Duration::from_secs(5))
         .call()?
         .into_json()?;

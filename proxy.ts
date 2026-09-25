@@ -2,10 +2,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { requestHasValidAdminHeader } from "@/lib/admin-auth";
 import {
-  requestHasValidAdminHeader,
-  requestHasValidAdminToken,
-} from "@/lib/admin-auth";
+  checkAdminTokenAttempt,
+  TOO_MANY_FAILURES,
+} from "@/lib/admin-token-guard";
 import { cspRouteKey } from "@/lib/csp-route-key";
 import {
   effectiveHostFromHeaders,
@@ -14,6 +15,7 @@ import {
   isSameOriginRequest,
   requestOrigin,
 } from "@/lib/deployment-trust";
+import { OCR_WORKER_CSP_DIRECTIVES, OCR_WORKER_PATH } from "@/lib/ocr-assets";
 
 /**
  * Global proxy — runs before every matched route. Runs on the Node runtime.
@@ -28,7 +30,9 @@ import {
  *      to every response.
  *   3. Require the AUDITOR_ADMIN_TOKEN on private pages and API calls whenever the
  *      deployment is declared network-exposed (config-driven, NOT derived from
- *      the spoofable Host header).
+ *      the spoofable Host header). A client that has presented too many wrong
+ *      tokens is answered 429 before its token is checked
+ *      (`lib/admin-token-guard.ts`).
  *   4. Enforce same-origin CSRF protection on mutating API calls so a
  *      malicious cross-origin page can't drive the local app. Bypass
  *      is granted when the configured AUDITOR_ADMIN_TOKEN header is
@@ -162,6 +166,16 @@ function scriptSrc(pathname: string): string {
 }
 
 function buildCsp(pathname: string): string {
+  // Screenshot import's OCR worker. A dedicated worker started from a
+  // same-origin URL runs under the policy delivered with its own script,
+  // not the page's, and this worker compiles the Tesseract engine to
+  // WebAssembly, which needs `'wasm-unsafe-eval'`. Giving that keyword to
+  // this one response keeps it off every page. Starting the worker needs
+  // nothing new from the page: its `script-src 'self'` covers a
+  // same-origin worker. See lib/ocr-assets.ts.
+  if (pathname === OCR_WORKER_PATH) {
+    return OCR_WORKER_CSP_DIRECTIVES.join("; ");
+  }
   return [
     "default-src 'self'",
     "base-uri 'self'",
@@ -257,19 +271,32 @@ export function proxy(request: NextRequest) {
     (method === "GET" || method === "HEAD") && PUBLIC_READ_PATHS.has(pathname);
   const requiresAuth =
     isNetworkExposed() || Boolean(process.env.AUDITOR_ADMIN_TOKEN);
-  if (
-    requiresAuth &&
-    !(publicRead || cspReport) &&
-    !AUTH_PATHS.has(pathname) &&
-    !requestHasValidAdminToken(request)
-  ) {
-    const res = pathname.startsWith("/api/")
-      ? NextResponse.json({ error: "Admin token required" }, { status: 401 })
-      : NextResponse.redirect(
-          new URL("/login", requestOrigin(request) ?? request.url)
-        );
-    res.headers.set("Cache-Control", "no-store");
-    return attachSecurityHeaders(res, pathname);
+  if (requiresAuth && !(publicRead || cspReport) && !AUTH_PATHS.has(pathname)) {
+    // A client past its budget of wrong tokens is refused before its token
+    // is looked at (lib/admin-token-guard.ts); every other check counts.
+    const check = checkAdminTokenAttempt(request.headers);
+    if (check.outcome === "throttled") {
+      const res = NextResponse.json(
+        { error: TOO_MANY_FAILURES },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(check.retryAfterMs / 1000)),
+          },
+        }
+      );
+      res.headers.set("Cache-Control", "no-store");
+      return attachSecurityHeaders(res, pathname);
+    }
+    if (check.outcome !== "valid") {
+      const res = pathname.startsWith("/api/")
+        ? NextResponse.json({ error: "Admin token required" }, { status: 401 })
+        : NextResponse.redirect(
+            new URL("/login", requestOrigin(request) ?? request.url)
+          );
+      res.headers.set("Cache-Control", "no-store");
+      return attachSecurityHeaders(res, pathname);
+    }
   }
 
   // CSRF: reject mutating API calls that are neither same-origin nor

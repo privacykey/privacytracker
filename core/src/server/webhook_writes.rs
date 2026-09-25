@@ -110,8 +110,56 @@ fn read_config(conn: &rusqlite::Connection) -> Option<Config> {
     })
 }
 
+/// `escapeSlackText`: Slack's three control characters, as its
+/// formatting guide escapes them.
+pub(super) fn escape_slack_text(text: &str) -> String {
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+}
+
+/// `escapeMarkdownText`: each character of `MARKDOWN_SPECIAL`
+/// (`` \ ` * _ ~ | < > [ ] ( ) # & - ``) backslash-escaped, which Discord
+/// and Teams both render as the plain character.
+pub(super) fn escape_markdown_text(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        if matches!(
+            c,
+            '\\' | '`'
+                | '*'
+                | '_'
+                | '~'
+                | '|'
+                | '<'
+                | '>'
+                | '['
+                | ']'
+                | '('
+                | ')'
+                | '#'
+                | '&'
+                | '-'
+        ) {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// `escapeDiscordText`: Markdown escaped, and `@everyone` / `@here`
+/// broken with a zero-width space so they read as text.
+pub(super) fn escape_discord_text(text: &str) -> String {
+    escape_markdown_text(text)
+        .replace("@everyone", "@\u{200b}everyone")
+        .replace("@here", "@\u{200b}here")
+}
+
 /// `buildPayload`: Slack and Discord take a line of text, Teams a
-/// MessageCard, generic the text and the rows both.
+/// MessageCard, generic the text and the rows both. Every chat format
+/// escapes its own markup, because titles and lines carry App Store app
+/// names the developer chooses; Discord also turns every mention off.
 fn build_payload(
     format: &str,
     title: &str,
@@ -120,24 +168,29 @@ fn build_payload(
 ) -> Value {
     let text = format!("{title}\n{}", lines.join("\n"));
     match format {
-        "slack" => json!({ "text": text }),
+        "slack" => json!({ "text": escape_slack_text(&text) }),
         "discord" => {
-            // Discord caps `content` at 2000 characters; cut well short.
-            let content = if js_length(&text) > 1900 {
-                format!("{}…", js_slice_prefix(&text, 1900))
+            // Discord caps `content` at 2000 characters; cut well short,
+            // after escaping so the escapes cannot push it over.
+            let escaped = escape_discord_text(&text);
+            let content = if js_length(&escaped) > 1900 {
+                format!("{}…", js_slice_prefix(&escaped, 1900))
             } else {
-                text
+                escaped
             };
-            json!({ "content": content })
+            json!({ "content": content, "allowed_mentions": { "parse": [] } })
         }
         "teams" => {
             let mut card = Map::new();
             card.insert("@type".into(), json!("MessageCard"));
             card.insert("@context".into(), json!("https://schema.org/extensions"));
-            card.insert("summary".into(), json!(title));
+            card.insert("summary".into(), json!(escape_markdown_text(title)));
             card.insert("themeColor".into(), json!("0a84ff"));
-            card.insert("title".into(), json!(title));
-            card.insert("text".into(), json!(lines.join("\n\n")));
+            card.insert("title".into(), json!(escape_markdown_text(title)));
+            card.insert(
+                "text".into(),
+                json!(escape_markdown_text(&lines.join("\n\n"))),
+            );
             Value::Object(card)
         }
         _ => json!({
@@ -549,6 +602,36 @@ mod tests {
         assert_eq!(
             build_payload("generic", "T", &lines, &rows).to_string(),
             r#"{"title":"T","text":"T\none\ntwo","notifications":[{"appName":"App","summary":"one","createdAt":5},{"appName":null,"summary":"two","createdAt":5}]}"#
+        );
+    }
+
+    #[test]
+    fn hostile_app_names_carry_no_markup_into_chat_payloads() {
+        let name = "Evil <!channel> @everyone @here [Update now](https://x.test) *b* & <@123>";
+        let title = format!("📱 {name}: 2 privacy changes");
+        let lines = vec!["2 privacy changes".to_string()];
+        let rows = [n(Some(name), "2 privacy changes")];
+        assert_eq!(
+            build_payload("slack", &title, &lines, &rows)["text"],
+            "📱 Evil &lt;!channel&gt; @everyone @here [Update now](https://x.test) *b* &amp; &lt;@123&gt;: 2 privacy changes\n2 privacy changes"
+        );
+        let discord = build_payload("discord", &title, &lines, &rows);
+        assert_eq!(
+            discord["content"],
+            "📱 Evil \\<!channel\\> @\u{200b}everyone @\u{200b}here \\[Update now\\]\\(https://x.test\\) \\*b\\* \\& \\<@123\\>: 2 privacy changes\n2 privacy changes"
+        );
+        assert_eq!(discord["allowed_mentions"], json!({ "parse": [] }));
+        let teams = build_payload("teams", &title, &lines, &rows);
+        let escaped_title = "📱 Evil \\<!channel\\> @everyone @here \\[Update now\\]\\(https://x.test\\) \\*b\\* \\& \\<@123\\>: 2 privacy changes";
+        assert_eq!(teams["title"], escaped_title);
+        assert_eq!(teams["summary"], escaped_title);
+        // Generic is JSON for an automation: the text as it is.
+        let generic = build_payload("generic", &title, &lines, &rows);
+        assert_eq!(generic["notifications"][0]["appName"], name);
+        assert_eq!(generic["title"], title.as_str());
+        assert_eq!(
+            escape_markdown_text("a\\b`c_d~e|f#g-h"),
+            "a\\\\b\\`c\\_d\\~e\\|f\\#g\\-h"
         );
     }
 
