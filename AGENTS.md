@@ -13,7 +13,12 @@ released: v0.1.2 is the last release, and the next is v0.3.0, the first on
 the Rust backend. The draft's body is the CHANGELOG.md section above its
 `[//]: # (release-notes-end)` line, under GitHub's 125,000 characters. Do
 not auto-publish releases or bypass the macos-signing reviewer gate. `pnpm test:release` requires first building the
-small locked verifier in scripts/verify-updater.
+small locked verifier in scripts/verify-updater. The bump needs no parity
+re-recording: extractors write package.json's version as `<APP_VERSION>`
+and the Rust replays substitute it back (`extract-bundles-cases.mjs`,
+`extract-leftovers-cases.mjs`). `pnpm test:release` fails if any file under
+`core/tests/fixtures/` or `core/src/server/*.json` records the version as
+written.
 
 ## Commands
 
@@ -61,6 +66,19 @@ Separate Python companion script in `scripts/ios-app-import/` (stdlib-only, Pyth
 Dependency bumps are driven by **Renovate**, not Dependabot — `.github/dependabot.yml` was removed because its pnpm support left `pnpm-lock.yaml` stale (needing a manual regen) and it fanned each ecosystem out into separate, mutually-conflicting PRs. Renovate regenerates the lockfile natively and, per `renovate.json`, bundles every **non-major** update across all four ecosystems (npm, cargo, docker, github-actions) into a **single** PR on a stable branch. A `customManagers` regex additionally treats the Dockerfile's `ARG PNPM_VERSION` as the npm `pnpm` package, so the Docker pnpm pin rides in that same PR instead of drifting from `packageManager` (which is what happened in PR #125). **Major** upgrades are held on the Dependency Dashboard issue (`dependencyDashboardApproval`) for one-at-a-time review — tick one there to let Renovate raise its PR. Do NOT reintroduce a `dependabot.yml`; that would duplicate Renovate's PRs.
 
 Activation is via the hosted **Mend Renovate GitHub App**, which reads `renovate.json` (it extends the shared org preset [`github>privacykey/renovate-config`](https://github.com/privacykey/renovate-config), where the schedule, grouping, and major-approval rules now live); the app's PRs trigger CI automatically. The old self-hosted `.github/workflows/renovate.yml` workflow was removed when the app path was adopted — do not reintroduce it.
+
+CI's `rust-check` job ends with `cargo audit` over the three Rust lockfiles
+(`core/`, `src-tauri/`, `scripts/verify-updater/`). A published RustSec
+advisory for a pinned crate fails the job; unmaintained, unsound and
+yanked warnings do not. Each lockfile resolves on its own, and the desktop
+shell compiles the core under `src-tauri/Cargo.lock`, so a fix in one lock
+does not reach the others. The advisory database is fetched fresh, so a
+new advisory can turn the check red on an unrelated PR. Fix it with
+`cargo update -p <crate> --precise <fixed> --manifest-path <dir>/Cargo.toml`,
+keep the lock diff to that crate and what it requires, and run
+`pnpm notices:rust`.
+`cargo-audit` is pinned by `CARGO_AUDIT_VERSION` in `ci.yml`, which Renovate
+tracks.
 
 ## Repo settings drift check
 
