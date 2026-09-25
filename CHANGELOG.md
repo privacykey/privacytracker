@@ -82,6 +82,18 @@ Going forward, changes are recorded here as they land.
   written once. Pinned by a plain-JS validator
   (`scripts/parity/diagnostics-envelope.mjs`) that both the parity harness
   and `tests/app/runtime-diagnostics.test.ts` hold the payload to.
+- Choosing "Monitor my apps" now turns on daily sync. The Monitor goal
+  promises to tell you when an app starts asking for more, but a new
+  install stayed on Manual sync until you found the optional "Let it watch
+  in the background" step, so nothing was checked. Saving a focus with
+  Monitor (on the welcome screen, in Settings, or anywhere else the focus
+  is saved) now sets the schedule to Daily if you have never picked one.
+  The first automatic sync runs a day later, not straight after the
+  import that just fetched every app. A schedule you chose yourself,
+  Manual included, is never changed, and turning Monitor off later leaves
+  the schedule as it is. The "Let it watch in the background" checklist
+  item then shows as done and says auto-sync is on, instead of asking you
+  to turn it on. Both servers behave the same.
 
 ### Fixed
 
