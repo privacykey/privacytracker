@@ -37,11 +37,13 @@ export default function Step3ConfirmMatches({
     handleConfirm,
     handleRegionRematch,
     hideTrackedBlocks,
+    isPreviewMode,
     onboardHideTrackedToggleOn,
     onboardStepConfirmMatchesOn,
     ratePending,
     rateTick,
     rematchingRegion,
+    savedManualQueries,
     searchBlocked,
     searchResults,
     searching,
@@ -50,6 +52,7 @@ export default function Step3ConfirmMatches({
     setHideTrackedBlocks,
     setImportedApps,
     setManuallyChosenQueries,
+    setSavedManualQueries,
     setSearchResults,
     setSelected,
     setSkippedQueries,
@@ -127,12 +130,17 @@ export default function Step3ConfirmMatches({
           // whose currently-chosen candidate matches a tracked app. If
           // no candidate is chosen yet (skipped / no matches), we keep
           // the block visible — there's nothing confident to hide.
+          // Rows saved as manual apps are done: they leave every section,
+          // the Skipped one included.
+          const listedResults = searchResults.filter(
+            (result) => !savedManualQueries.has(result.query)
+          );
           const visibleResults = hideTrackedBlocks
-            ? searchResults.filter((result) => {
+            ? listedResults.filter((result) => {
                 const chosen = selected.get(result.query);
                 return !(chosen && isCandidateTracked(chosen));
               })
-            : searchResults;
+            : listedResults;
 
           // `effectiveSelected` is what actually gets imported. When the
           // toggle is on, we exclude tracked rows from the import so the
@@ -185,7 +193,7 @@ export default function Step3ConfirmMatches({
                 result.matchSource !== "bundle"
             ).length,
             pending: pendingMatchCount,
-            skipped: searchResults.filter(
+            skipped: listedResults.filter(
               (result) => statusFor(result) === "skipped"
             ).length,
             unavailable: searchResults.filter(
@@ -254,7 +262,11 @@ export default function Step3ConfirmMatches({
                 (result) => statusFor(result) === "skipped"
               ),
             },
-          ].filter((section) => section.results.length > 0);
+          ].filter(
+            (section) =>
+              section.results.length > 0 ||
+              (section.id === "unavailable" && unmatchedSaveState === "saved")
+          );
 
           // List of query names that returned no App Store candidates,
           // and the subset that the user hasn't already skipped /
@@ -657,7 +669,7 @@ export default function Step3ConfirmMatches({
                 a batch of manual web-apps is the right action 99% of the
                 time, and clearing them gets the panel out of the way for
                 the App Store match review below. */}
-              {webClipEntries.length > 0 && (
+              {(webClipEntries.length > 0 || webClipSaveState === "saved") && (
                 <section
                   aria-labelledby="webclip-section-heading"
                   className="onboard-match-section"
@@ -682,7 +694,11 @@ export default function Step3ConfirmMatches({
                             })}
                       </p>
                     </div>
-                    <span>{webClipEntries.length}</span>
+                    <span>
+                      {webClipSaveState === "saved"
+                        ? webClipSavedCount
+                        : webClipEntries.length}
+                    </span>
                   </div>
                   {webClipSaveState !== "saved" && (
                     <>
@@ -743,29 +759,37 @@ export default function Step3ConfirmMatches({
                             setWebClipSaveState("saving");
                             setWebClipSaveError("");
                             try {
-                              const res = await fetch("/api/manual-apps/bulk", {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                },
-                                body: JSON.stringify({
-                                  apps: webClipEntries.map((e) => ({
-                                    name: e.name,
-                                    source: "web_clip" as const,
-                                    developer: e.developer ?? null,
-                                  })),
-                                }),
-                              });
-                              const data = await res.json().catch(() => ({}));
-                              if (!res.ok) {
-                                throw new Error(
-                                  data?.error ?? `HTTP ${res.status}`
+                              // The dev preview saves nothing, as its banner
+                              // promises.
+                              let created = webClipEntries.length;
+                              if (!isPreviewMode) {
+                                const res = await fetch(
+                                  "/api/manual-apps/bulk",
+                                  {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                      apps: webClipEntries.map((e) => ({
+                                        name: e.name,
+                                        source: "web_clip" as const,
+                                        developer: e.developer ?? null,
+                                      })),
+                                    }),
+                                  }
                                 );
+                                const data = await res.json().catch(() => ({}));
+                                if (!res.ok) {
+                                  throw new Error(
+                                    data?.error ?? `HTTP ${res.status}`
+                                  );
+                                }
+                                created =
+                                  typeof data.created === "number"
+                                    ? data.created
+                                    : 0;
                               }
-                              const created =
-                                typeof data.created === "number"
-                                  ? data.created
-                                  : 0;
                               setWebClipSavedCount(created);
                               setWebClipSaveState("saved");
                               // Drop the web-clip rows from importedApps so
@@ -829,7 +853,11 @@ export default function Step3ConfirmMatches({
                                 : section.description}
                             </p>
                           </div>
-                          <span>{section.results.length}</span>
+                          <span>
+                            {unmatchedSaveState === "saved"
+                              ? unmatchedSavedCount
+                              : section.results.length}
+                          </span>
                         </div>
                         {unmatchedSaveState !== "saved" && (
                           <>
@@ -1026,35 +1054,48 @@ export default function Step3ConfirmMatches({
                                     return;
                                   }
                                   try {
-                                    const res = await fetch(
-                                      "/api/manual-apps/bulk",
-                                      {
-                                        method: "POST",
-                                        headers: {
-                                          "Content-Type": "application/json",
-                                        },
-                                        body: JSON.stringify({
-                                          apps: payload,
-                                        }),
-                                      }
-                                    );
-                                    const data = await res
-                                      .json()
-                                      .catch(() => ({}));
-                                    if (!res.ok) {
-                                      throw new Error(
-                                        data?.error ?? `HTTP ${res.status}`
+                                    // The dev preview saves nothing, as its
+                                    // banner promises.
+                                    let created = payload.length;
+                                    if (!isPreviewMode) {
+                                      const res = await fetch(
+                                        "/api/manual-apps/bulk",
+                                        {
+                                          method: "POST",
+                                          headers: {
+                                            "Content-Type": "application/json",
+                                          },
+                                          body: JSON.stringify({
+                                            apps: payload,
+                                          }),
+                                        }
                                       );
+                                      const data = await res
+                                        .json()
+                                        .catch(() => ({}));
+                                      if (!res.ok) {
+                                        throw new Error(
+                                          data?.error ?? `HTTP ${res.status}`
+                                        );
+                                      }
+                                      created =
+                                        typeof data.created === "number"
+                                          ? data.created
+                                          : 0;
                                     }
-                                    const created =
-                                      typeof data.created === "number"
-                                        ? data.created
-                                        : 0;
                                     setUnmatchedSavedCount(created);
                                     setUnmatchedSaveState("saved");
                                     // Skip the just-saved rows so they
-                                    // disappear from this section and don't
-                                    // count toward summary.unavailable.
+                                    // leave the import and don't count
+                                    // toward summary.unavailable; the saved
+                                    // set keeps them out of Skipped.
+                                    setSavedManualQueries(
+                                      (prev) =>
+                                        new Set([
+                                          ...prev,
+                                          ...payload.map((row) => row.name),
+                                        ])
+                                    );
                                     for (const row of payload) {
                                       void handleBlockSkip(row.name);
                                     }
@@ -1076,7 +1117,11 @@ export default function Step3ConfirmMatches({
                                   </>
                                 ) : (
                                   tStep3("unavailable_save_cta", {
-                                    count: section.results.length,
+                                    count: section.results.filter(
+                                      (r) =>
+                                        (triageChoices.get(r.query) ??
+                                          "sideloaded") !== "skip"
+                                    ).length,
                                   })
                                 )}
                               </button>
