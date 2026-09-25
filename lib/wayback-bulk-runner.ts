@@ -34,6 +34,7 @@ import {
   type ImportProgressEvent,
   importAppHistory,
 } from "./historical-import";
+import { withLiveBulkRun } from "./live-bulk-runs";
 import { recordAudit } from "./security";
 import { isAbortError, isWaybackUnavailableError } from "./wayback";
 import {
@@ -196,8 +197,17 @@ export function buildInitialQueue(): { queue: QueueEntry[]; appCount: number } {
  *
  * Callers are responsible for any HTTP-level concerns (rate limiting,
  * request parsing). This function only talks to the DB + activity log.
+ *
+ * Live in this process until it settles, so the boot-time resume check
+ * never mistakes it for a run a previous process left behind.
  */
-export async function runBulkWaybackImport(
+export function runBulkWaybackImport(
+  options: RunBulkOptions
+): Promise<RunBulkResult> {
+  return withLiveBulkRun("wayback", () => runBulkWaybackImportLoop(options));
+}
+
+async function runBulkWaybackImportLoop(
   options: RunBulkOptions
 ): Promise<RunBulkResult> {
   const writer: StreamWriter = options.streamWriter ?? (() => {});

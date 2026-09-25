@@ -148,6 +148,7 @@ export async function register() {
       summarisePolicyState,
     } = await import("./lib/policy-bulk-state");
     const { runBulkPolicySync } = await import("./lib/policy-bulk-runner");
+    const { isBulkRunLive } = await import("./lib/live-bulk-runs");
     const { recordActivity } = await import("./lib/activity");
     const {
       createWaybackResumeNotification,
@@ -350,6 +351,16 @@ export async function register() {
     // up. All failure modes are recorded to activity_log / audit_log.
     const resumeWaybackImport = async () => {
       try {
+        // A run this process started since boot is live, not left behind
+        // by a crash: its blob and mutex are its own. Nothing to heal or
+        // resume. The same guard opens the sync and policy checks below.
+        if (isBulkRunLive("wayback")) {
+          console.log(
+            "[WaybackResume] An import started since boot is running; nothing to resume"
+          );
+          return;
+        }
+
         const state = readBulkState();
         const mutexHeld = isBulkMutexHeld();
 
@@ -497,6 +508,13 @@ export async function register() {
     // killed and the activity log already records both equally.
     const resumeAppStoreSync = async () => {
       try {
+        if (isBulkRunLive("sync")) {
+          console.log(
+            "[SyncResume] A sync started since boot is running; nothing to resume"
+          );
+          return;
+        }
+
         const state = readSyncBulkState();
         const mutexHeld = isSyncBulkMutexHeld();
 
@@ -585,6 +603,13 @@ export async function register() {
     // resume doesn't silently degrade to a cheap re-fetch.
     const resumePolicySync = async () => {
       try {
+        if (isBulkRunLive("policy")) {
+          console.log(
+            "[PolicyResume] A policy sync started since boot is running; nothing to resume"
+          );
+          return;
+        }
+
         const state = readPolicyBulkState();
         const mutexHeld = isPolicyBulkMutexHeld();
 

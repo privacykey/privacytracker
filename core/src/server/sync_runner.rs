@@ -24,6 +24,7 @@ use super::lifecycle::{isolate, sleep_or_stop};
 use super::{
     activity_log::record_activity,
     flags::{context_from_db, resolve_flag},
+    live_runs::{self, Job},
     routes_status::{compute_is_due, interval_ms},
     writes::Cx,
     AppState,
@@ -310,6 +311,9 @@ pub(crate) async fn run_bulk_sync(
     initiator: &str,
     resume: Option<SyncState>,
 ) -> Result<RunResult, String> {
+    // Live on this server until the run ends, however it ends, so the boot
+    // check never mistakes it for a run a previous process left behind.
+    let _live = db.with(|w| live_runs::enter(w.conn, Job::Sync));
     let mut state = match resume {
         Some(mut state) => {
             // The blob still names whoever started the run; record who runs
@@ -778,6 +782,12 @@ pub(crate) async fn resume_app_store_sync(
 ) -> Result<(), String> {
     let now = clock.now();
     let resume = db.with(|w| -> Result<Option<SyncState>, String> {
+        // A run this server started since boot is live, not left behind by
+        // a crash: its blob and mutex are its own. Nothing to heal or
+        // resume. The Wayback and policy checks open the same way.
+        if live_runs::is_live(w.conn, Job::Sync) {
+            return Ok(None);
+        }
         let cx = &mut Cx { w, ids, now };
         let state = read_state(cx);
         let held = mutex_held(cx);

@@ -29,6 +29,7 @@
 import crypto from "node:crypto";
 import { recordActivity } from "./activity";
 import db from "./db";
+import { withLiveBulkRun } from "./live-bulk-runs";
 import { schedulePostAppUpdatePolicyFetch } from "./post-app-update-policy-fetch";
 import {
   acquireSyncBulkMutex,
@@ -155,8 +156,17 @@ function activityTypeFor(
  *   - If `resumeState` is present, callers should have already acquired
  *     the mutex (or the runner will do so defensively).
  *   - If absent, the runner creates a fresh state blob.
+ *
+ * Live in this process until it settles, so the boot-time resume check
+ * never mistakes it for a run a previous process left behind.
  */
-export async function runBulkSync(
+export function runBulkSync(
+  options: RunSyncBulkOptions
+): Promise<RunSyncBulkResult> {
+  return withLiveBulkRun("sync", () => runBulkSyncLoop(options));
+}
+
+async function runBulkSyncLoop(
   options: RunSyncBulkOptions
 ): Promise<RunSyncBulkResult> {
   let state: SyncBulkState;
@@ -188,8 +198,10 @@ export async function runBulkSync(
     };
   }
 
-  // Defensive mutex acquire — the policy/wayback routes already hold it
-  // by this point, resume path doesn't. A redundant set is harmless.
+  // Take the mutex. Nothing takes it before the runner: the trigger route
+  // and the scheduler only check that it is free, so every run, fresh or
+  // resumed, acquires it here. A resumed run finds it still set by the
+  // process that died, and setting it again is harmless.
   acquireSyncBulkMutex();
   writeSyncBulkState(state);
 

@@ -18,6 +18,7 @@
 import crypto from "node:crypto";
 import { recordActivity } from "./activity";
 import db from "./db";
+import { withLiveBulkRun } from "./live-bulk-runs";
 import {
   acquirePolicyBulkMutex,
   clearPolicyBulkState,
@@ -207,8 +208,17 @@ function bulkSummaryLine(
  *
  * Callers are responsible for HTTP concerns (rate limits, body parsing).
  * This function only talks to the DB + activity log.
+ *
+ * Live in this process until it settles, so the boot-time resume check
+ * never mistakes it for a run a previous process left behind.
  */
-export async function runBulkPolicySync(
+export function runBulkPolicySync(
+  options: RunPolicyBulkOptions
+): Promise<RunPolicyBulkResult> {
+  return withLiveBulkRun("policy", () => runBulkPolicySyncLoop(options));
+}
+
+async function runBulkPolicySyncLoop(
   options: RunPolicyBulkOptions
 ): Promise<RunPolicyBulkResult> {
   const writer: PolicyStreamWriter = options.streamWriter ?? (() => {});
@@ -245,8 +255,9 @@ export async function runBulkPolicySync(
     };
   }
 
-  // Defensive mutex acquire — POST handler takes it already, resume path
-  // doesn't. A redundant set to 'true' is harmless.
+  // Take the mutex. The sync-all route only checks that it is free, so
+  // every run, fresh or resumed, acquires it here. A resumed run finds it
+  // still set by the process that died, and setting it again is harmless.
   acquirePolicyBulkMutex();
   writePolicyBulkState(state);
 

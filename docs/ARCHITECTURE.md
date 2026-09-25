@@ -203,7 +203,9 @@ app's work, and boot-time healers resume or clear what's left.
 | +60s | health check — PASSIVE WAL checkpoint, clear provably-dead locks, report-only memory/orphan checks | 24 h |
 
 The resume healers are staggered *before* the 60s health check so a freshly-resumed run is
-never mistaken for a dead lock.
+never mistaken for a dead lock. Each healer also skips a job whose runner is live in its own
+process (`lib/live-bulk-runs.ts`; `core/src/server/live_runs.rs` in Rust): a run started in
+the first seconds after boot has the same blob and mutex as a crash-left one (§4·3).
 
 ```mermaid
 flowchart TD
@@ -324,6 +326,7 @@ flip rows as they land, and update the diagram label in the same PR.
 | §2·1 / §4·1 | Rate limiting | open | On 429 the bulk sync abandons the run and restarts the whole fleet next tick. Resume from the state blob's cursor instead; consider shared per-app backoff with the import queue. | M |
 | §2·2 | Cross-platform import | idea | Python export needs a manual round-trip. Drag-drop hint or watch-folder hand-off. | M |
 | §4·2 | Polling | idea | Three pollers (TaskCenter 4s, notification watcher, per-job GETs) → one SSE stream from the sidecar. | L |
+| §4·3 | Boot resume | ✅ fixed | A bulk run started before its 8/10/12 s healer fired was "resumed" by its own process: a second runner on the same queue, every pending app fetched twice, and a "resumed after server restart" notification with no restart. Runners now register as live in memory and the healers skip a live job; a crash still clears the registry, so crash-left runs resume as before. Pinned in Node and Rust. | — |
 | §5·1 | Wayback | idea | Track quarters skipped for lack of captures and offer "retry skipped" once Save-Page-Now requests have had time to land. | S–M |
 
 Suggested order: §1·1 next (protect the core scraper), then the rate-limit
