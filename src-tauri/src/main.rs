@@ -48,6 +48,7 @@ mod zoom;
 mod touch_id;
 mod window_lock;
 mod update_guard;
+mod autostart;
 
 use std::sync::Mutex;
 
@@ -78,10 +79,10 @@ pub fn state() -> &'static AppState {
     STATE.get().expect("AppState not initialised")
 }
 
-/// True when the process was started by the autostart LaunchAgent with
-/// `--hidden` (i.e. the user enabled "launch hidden in tray"). The
-/// autostart plugin appends this flag to its launch plist when we call
-/// `autostart().enable_with_args(["--hidden"])`.
+/// True when the process was started with `--hidden`, which the autostart
+/// LaunchAgent always passes: a launch at login starts in the menu bar. The
+/// plugin writes the flag into the plist's ProgramArguments (see the
+/// `.plugin(tauri_plugin_autostart::init(...))` call below).
 fn launched_hidden() -> bool {
     std::env::args().any(|a| a == "--hidden")
 }
@@ -143,11 +144,16 @@ fn main() {
         // restart goes through RunEvent::ExitRequested below, so the
         // sidecar is shut down before the new version starts.
         .plugin(tauri_plugin_process::init())
-        // Passing Some(vec!["--hidden"]) means the LaunchAgent plist we
-        // generate when autostart is enabled will spawn us with that flag —
-        // letting the boot path below skip window.show().
+        // "Start at login" writes a LaunchAgent,
+        // ~/Library/LaunchAgents/privacytracker.plist, whose
+        // ProgramArguments carry "--hidden" so a login launch skips the
+        // boot reveal below. A LaunchAgent needs no permission. The
+        // AppleScript launcher used before drove System Events, which the
+        // signed app is not entitled to do, so it most likely never worked;
+        // autostart::migrate registers the LaunchAgent for users who had
+        // the setting on.
         .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::AppleScript,
+            MacosLauncher::LaunchAgent,
             Some(vec!["--hidden"]),
         ))
         .plugin(tauri_plugin_notification::init())
@@ -394,6 +400,10 @@ fn main() {
             //     DeviceConnectedToast that was blocking the apps-page
             //     navigation. No-op outside macOS.
             usb_watcher::start(app.handle().clone());
+
+            // 11. Move "Start at login" to the LaunchAgent for users who
+            //     turned it on under the old AppleScript launcher. Runs once.
+            autostart::migrate(app.handle());
 
             // Restore persisted Dock visibility choice. Read from the same
             // /api/settings endpoint the UI uses, so the source of truth

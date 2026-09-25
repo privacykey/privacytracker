@@ -35,9 +35,10 @@ semver = "1"
 # restart only (process:allow-restart). Keep it on the npm package's major and
 # minor: the tauri CLI refuses to build when the two drift apart.
 tauri-plugin-process = "2"
-# "Start at login" + "launch hidden in tray" both live behind this plugin. It
-# writes a LaunchAgent plist on macOS and a Run registry key on Windows. We
-# pass CLI args ("--hidden") that main.rs honours to know which boot path it's on.
+# "Start at login" lives behind this plugin. main.rs picks its LaunchAgent
+# launcher, which writes ~/Library/LaunchAgents/privacytracker.plist on macOS
+# (a Run registry key on Windows) and needs no permission. The plist passes
+# "--hidden", which main.rs honours so a login launch starts in the menu bar.
 tauri-plugin-autostart = "2"
 # Native macOS Notification Center / Windows toast bridge. Only used when
 # desktop_native_notifications is on; otherwise we stay with the in-app bell.

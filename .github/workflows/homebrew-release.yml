@@ -115,10 +115,13 @@ jobs:
             app "privacytracker.app"
 
             zap trash: [
+              "~/Library/Application Support/org.privacykey.privacytracker",
               "~/Library/Application Support/privacytracker",
               "~/Library/Caches/org.privacykey.privacytracker",
               "~/Library/HTTPStorages/org.privacykey.privacytracker",
               "~/Library/HTTPStorages/org.privacykey.privacytracker.binarycookies",
+              "~/Library/LaunchAgents/privacytracker.plist",
+              "~/Library/Logs/org.privacykey.privacytracker",
               "~/Library/Preferences/org.privacykey.privacytracker.plist",
               "~/Library/Saved Application State/org.privacykey.privacytracker.savedState",
               "~/Library/WebKit/org.privacykey.privacytracker",
