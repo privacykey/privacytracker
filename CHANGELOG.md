@@ -85,6 +85,12 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- The Diagnostics error log on the Node server now lists the warnings and
+  errors the server logs. In a production build it was always empty,
+  whatever the server had logged, because the server wrote to one copy of
+  the log and the page read another. The Rust server, which the desktop app
+  and the Docker image run by default, always showed them. The Node server
+  stays available as the rollback build until 1.0.
 - A bulk sync started in the first seconds after the server starts is no
   longer "resumed" by that same server. Each start, the server looks for an
   App Store sync, policy sync or Wayback import that a previous run left

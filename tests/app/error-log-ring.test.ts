@@ -164,3 +164,33 @@ test("limit option clamps to MAX_ENTRIES and rejects 0/negative", () => {
   const zero = snapshotErrorLog({ limit: 0 });
   assert.ok(zero.entries.length >= 1);
 });
+
+test("a second copy of the module reads and clears the same ring", async () => {
+  // `instrumentation.ts` installs the patches through its copy of this
+  // module and the diagnostics routes read theirs, and a production build
+  // gives the two separate instances. A second import URL is a second
+  // instance here too, so this is the route reading what boot installed.
+  const specifier = "../../lib/error-log-ring.ts?instance=route";
+  const route = (await import(
+    specifier
+  )) as typeof import("../../lib/error-log-ring");
+  clearErrorLog();
+  silently(() => {
+    console.warn("seen by the route");
+  });
+  assert.deepEqual(
+    route.snapshotErrorLog().entries.map((entry) => entry.message),
+    ["seen by the route"]
+  );
+
+  // And the route's Clear empties the ring the patches write to.
+  route.clearErrorLog();
+  assert.equal(snapshotErrorLog().entries.length, 0);
+
+  // Its install is the same no-op: one warning, one entry.
+  assert.equal(route.installErrorLogRing(), null);
+  silently(() => {
+    console.warn("once");
+  });
+  assert.equal(route.snapshotErrorLog().entries.length, 1);
+});
