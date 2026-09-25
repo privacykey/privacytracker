@@ -842,14 +842,14 @@ function EditModeToolbar({
           return (
             <div
               className={`home-edit-toolbar-preset-cell${
-                isPending ? "has-pending-confirm" : ""
+                isPending ? " has-pending-confirm" : ""
               }`}
               key={presetKey}
             >
               <button
                 aria-checked={isActive}
                 className={`home-edit-toolbar-preset-pill${
-                  isActive ? "is-active" : ""
+                  isActive ? " is-active" : ""
                 }`}
                 data-preset={presetKey}
                 data-severity={meta.severityCls}

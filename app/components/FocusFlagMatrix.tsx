@@ -917,8 +917,8 @@ function FocusMatrixRow({
         return (
           <td
             className={`focus-matrix-cell focus-matrix-cell-${desired ?? current}${
-              drift ? "is-drift" : ""
-            }${desired === undefined ? "" : "is-authored"}`}
+              drift ? " is-drift" : ""
+            }${desired === undefined ? "" : " is-authored"}`}
             key={comboId(combo)}
           >
             <button

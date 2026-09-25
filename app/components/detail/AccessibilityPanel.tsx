@@ -154,7 +154,7 @@ export default function AccessibilityPanel({
         <div
           aria-label={tDetail("actions.your_a11y_prefs_aria")}
           className={`a11y-profile-key${
-            totalMissingPreferred === 0 ? "a11y-profile-key-match" : ""
+            totalMissingPreferred === 0 ? " a11y-profile-key-match" : ""
           }`}
           role="note"
         >

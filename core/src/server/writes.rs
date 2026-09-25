@@ -728,7 +728,8 @@ fn maintenance_routes() -> Vec<RouteSpec> {
             None,
             Guard::Inline(InlineGuard {
                 prefix: "reset",
-                limit: 30,
+                // Sized for the E2E suite; see app/api/reset/route.ts.
+                limit: 60,
                 window_ms: 10 * 60_000,
                 message: "Rate limit exceeded for reset. Try again later.",
                 rate_audit: Some("reset.rate_limited"),

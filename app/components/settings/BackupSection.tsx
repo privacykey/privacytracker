@@ -101,7 +101,7 @@ export default function BackupSection({
             {tBackupCard("restore_copy_after")}
           </p>
           <label
-            className={`btn btn-secondary${status?.isRunning || restoreStage === "previewing" || restoreStage === "applying" ? "is-disabled" : ""}`}
+            className={`btn btn-secondary${status?.isRunning || restoreStage === "previewing" || restoreStage === "applying" ? " is-disabled" : ""}`}
             style={{
               cursor: status?.isRunning ? "not-allowed" : "pointer",
             }}

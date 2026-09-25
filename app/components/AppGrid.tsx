@@ -452,6 +452,12 @@ export default function AppGrid({
   const [loadFailed, setLoadFailed] = useState(false);
   const [fetchedMeta, setFetchedMeta] =
     useState<FetchedGridMeta>(EMPTY_FETCHED_META);
+  // Verdicts changed on this page by the bulk bar (null: removed by Undo).
+  // The loader's maps only learn of them on the next load, and merging
+  // never removes a key, so these are laid over both.
+  const [localVerdicts, setLocalVerdicts] = useState<
+    Record<string, VerdictValue | null>
+  >({});
 
   // Bulk-scope actions (Sync all / queue / select-all) silently operating
   // on a partial fleet would be a correctness bug — hold them until every
@@ -530,10 +536,20 @@ export default function AppGrid({
     () => ({ ...profileBadges, ...fetchedMeta.badges }),
     [profileBadges, fetchedMeta.badges]
   );
-  const verdicts = useMemo(
-    () => ({ ...userVerdicts, ...fetchedMeta.verdicts }),
-    [userVerdicts, fetchedMeta.verdicts]
-  );
+  const verdicts = useMemo(() => {
+    const merged: Record<string, VerdictValue> = {
+      ...userVerdicts,
+      ...fetchedMeta.verdicts,
+    };
+    for (const [appId, verdict] of Object.entries(localVerdicts)) {
+      if (verdict === null) {
+        delete merged[appId];
+      } else {
+        merged[appId] = verdict;
+      }
+    }
+    return merged;
+  }, [userVerdicts, fetchedMeta.verdicts, localVerdicts]);
   const pendingByApp = useMemo(
     () => ({ ...pendingChangeCategoriesByApp, ...fetchedMeta.pending }),
     [pendingChangeCategoriesByApp, fetchedMeta.pending]
@@ -1665,6 +1681,9 @@ export default function AppGrid({
           onClear={() => setBulkSelectedIds([])}
           onExit={exitSelectMode}
           onSelectAll={() => setBulkSelectedIds(sorted.map((a) => a.id))}
+          onVerdictsChanged={(changes) =>
+            setLocalVerdicts((prev) => ({ ...prev, ...changes }))
+          }
           selectedIds={bulkSelectedIds}
           visibleIds={sorted.map((a) => a.id)}
         />

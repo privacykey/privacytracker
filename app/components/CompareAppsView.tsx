@@ -3403,7 +3403,7 @@ function AccessibilityComparisonTable({
         <div
           aria-label={tCompare("your_a11y_prefs_aria")}
           className={`a11y-profile-key a11y-profile-key-compact${
-            totalMissingPreferred === 0 ? "a11y-profile-key-match" : ""
+            totalMissingPreferred === 0 ? " a11y-profile-key-match" : ""
           }`}
           role="note"
           style={{ marginBottom: 10 }}
