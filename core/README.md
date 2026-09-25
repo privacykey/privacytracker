@@ -3590,7 +3590,9 @@ model-list routes that sit beside it:
   the kill-switch refuses a fetch either way.
 - `POST /api/ai/policy-sample`: six a minute; the provider; the model
   (trimmed, at most 200 UTF-16 units); the key, where Settings' mask
-  `__SET__` stands for the stored one; the base URL normalised and
+  `__SET__` stands for the stored one, but only for the stored provider
+  and base URL (a 400 anywhere else, and nothing fetched); the base URL
+  normalised and
   checked with loopback allowed and a metadata address never; then 3a's
   sample summary, an activity row either way, and a 502 carrying a
   failure in friendlier words.
@@ -3604,6 +3606,8 @@ model-list routes that sit beside it:
   cursor moves, the query rewritten as `URLSearchParams` rewrites it),
   and for a custom endpoint falls back to Ollama's own tag list when the
   OpenAI-compatible one fails or is empty. Neither follows a redirect.
+  Both take the mask for the stored key under the same rule as the
+  sample, from `lib/ai-submitted-key.ts`.
 
 The run logger gained its phase stream: `PolicyPhaseStream.emit` is a
 sink told of each record as it stands when it is opened, closed or
@@ -3613,8 +3617,8 @@ message rather than `terminated`, as the streamed read already did; the
 recording caught it.
 
 **The oracle — `core/scripts/extract-ai-routes-cases.mjs`.** Runs the
-four REAL route handlers over 128 requests built as the browser sends
-them (32 regenerate, 22 sample, 42 test, 32 models), with 3a's harness:
+four REAL route handlers over 137 requests built as the browser sends
+them (32 regenerate, 23 sample, 48 test, 34 models), with 3a's harness:
 provider replies canned in the documented formats, a frozen clock that
 each awaited fetch moves on, counted ids and nonces, and Save Page Now
 held until the response is complete. Recorded per case: the response

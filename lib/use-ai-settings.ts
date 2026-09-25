@@ -329,7 +329,18 @@ export function useAiSettings({
         err instanceof Error ? err.message : "Could not list models."
       );
     }
-  }, [aiProvider, aiApiKey, aiBaseUrl, canDiscoverModels]);
+    // The saved provider and base URL are deps on purpose: the server sends
+    // the saved key (`__SET__`) only to the endpoint it was saved for, so a
+    // list refused while an edited base URL was unsaved is asked for again
+    // once the save lands, even when the field's text did not change.
+  }, [
+    aiProvider,
+    aiApiKey,
+    aiBaseUrl,
+    canDiscoverModels,
+    storedAi?.provider,
+    storedAi?.baseUrl,
+  ]);
 
   // Auto-fetch with a debounce so typing in the Base URL doesn't spam requests.
   useEffect(() => {

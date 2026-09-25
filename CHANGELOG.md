@@ -1038,6 +1038,7 @@ Going forward, changes are recorded here as they land.
 
 - Restoring a backup now applies the settings deny-list to feature-flag overrides as well: a `flag.devopts.*` override is never restored, whoever signed the backup, and a backup restored as untrusted brings no quarantined overrides with it. Both backends.
 - The one-time redirect after importing a migration bundle only ever goes to a path inside the app: the server and the dashboard both refuse a target that starts with `//`, contains a backslash, a space or a control character, or resolves to another origin, and a backup restore never writes that redirect marker. Both backends.
+- The saved AI API key is only sent to the provider and base URL it was saved for. The AI connection test, model list and sample summary still accept the saved key in place of a typed one, but only when the request names the saved provider and the same base URL (the provider's default when none is saved); for any other endpoint the key must be typed again, and the request is refused with a 400 before anything is sent. Both backends.
 - Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
   failing the dependency audit on every pull request:
   **two critical unauthenticated remote-code-execution issues** in Next.js
