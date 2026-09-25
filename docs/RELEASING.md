@@ -58,6 +58,29 @@ permission. In that case an administrator must make this setting change. Do not
 remove the preflight to work around it. Confirm the run pauses for review and
 that an ordinary branch cannot enter the signing environment.
 
+## One-time container package setup
+
+GHCR sets visibility per package, not per tag. `ghcr.io/privacykey/privacytracker`
+receives release images only and is meant to be public;
+`ghcr.io/privacykey/privacytracker-edge` receives builds of main and PR previews
+and must stay private. Until the split, builds of main (`main`, `sha-<commit>`)
+and PR previews (`pr-<n>`) went to the first package, and its `latest` tag still
+names a build of main.
+
+1. Make the package public only after the first release image exists in it.
+   Only a final release moves `latest`: after a prerelease such as
+   `v0.3.0-rc.1` alone, `latest` still names that old build of main, so wait
+   for `v0.3.0` or delete that version first (step 2).
+2. Optionally, before that, delete the package's old versions tagged `main`,
+   `pr-<n>` or `sha-<commit>` (package settings, **Manage versions**), because
+   a public package exposes every version in it. Leave untagged versions alone
+   unless you know which image they belong to: a release image's platform
+   images and attestations are listed as untagged versions too.
+3. Change the package's visibility to public.
+4. After the first push to `privacytracker-edge`, confirm it is private (a new
+   package starts private) and that this repository has write access to both
+   packages under **Manage Actions access**.
+
 ## Prepare a candidate
 
 1. On a branch, run `pnpm release:prepare 0.3.0` (or the explicit next version).
@@ -88,9 +111,19 @@ that an ordinary branch cannot enter the signing environment.
    version, OS minimum, architecture, native-addon loading, code signatures,
    notarization and Gatekeeper. The server must also pass an isolated
    v0.1.2 upgrade, authenticated restore and restart rehearsal: the extracted
-   standalone tree on the node backend, the packaged app itself on the rust one. The assembler requires both platforms and
-   verifies updater signatures with the same verifier used by Tauri. Missing,
-   altered or wrongly signed archives stop manifest creation.
+   standalone tree on the node backend, the packaged app itself on the rust one.
+   Each job then packs the updater archive from the bundle it has just
+   verified, checks that the archive holds that same signed app and nothing
+   else, signs it with the updater key and records its SHA-256 in
+   `build-evidence.json` (in the `updater-<target>` workflow artifact). It
+   uploads that archive to the draft, replacing the copy tauri-action
+   attached, and reads it back. The updater key never signs anything
+   downloaded from the draft. The assembler requires both platforms, refuses
+   any draft or artifact archive whose digest differs from the build's record,
+   and verifies updater signatures with the same verifier used by Tauri.
+   Missing, altered or wrongly signed archives stop manifest creation. The
+   final draft check repeats the digest comparison, refuses any asset besides
+   the six it covers, and writes both sets of digests to `release-evidence.json`.
 5. Docker jobs scan the **exact immutable image digest** for each architecture,
    including OS and application packages. HIGH/CRITICAL findings prevent named
    manifest promotion; an untagged candidate digest may already exist in GHCR.
@@ -98,6 +131,12 @@ that an ordinary branch cannot enter the signing environment.
    the final cryptographic attestation verification against the repository,
    publishing workflow and source commit. Docker tags are produced by this workflow;
    GitHub desktop assets remain draft until the manual publication step.
+   A release publishes `ghcr.io/privacykey/privacytracker` with its version tag,
+   plus `<major>.<minor>` and `latest` for a final release. A prerelease such
+   as `v0.3.0-rc.1` gets only `0.3.0-rc.1`, so a rehearsal never moves
+   `latest`. Pushes to main publish `edge` and `sha-<commit>` to the private
+   `ghcr.io/privacykey/privacytracker-edge` instead, where PR previews
+   (`pr-<n>`) go too; nothing unreleased reaches the public package.
 
 ### Which backend a build ships
 
@@ -138,6 +177,9 @@ For a signing-only rehearsal, run **macOS desktop release** on an existing
 reviewed tag with the same `tag` input and `dry_run=true`. It uploads workflow
 artifacts only, unsets notarization credentials, skips release creation/uploads
 and does not open a Homebrew PR. These unnotarized artifacts are not distributable.
+It still packs, signs and verifies the updater archive, so the rehearsal
+exercises the updater key; its `build-evidence.json` is marked as a dry run,
+and no release step accepts it.
 Run the full candidate build to obtain notarized distribution artifacts.
 
 ## Required checks before publication
