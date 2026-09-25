@@ -85,52 +85,6 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
-- Onboarding no longer reports your apps as "not in the App Store" when the
-  App Store search itself failed. A server error, a rate limit hit before
-  any name was checked, or a lost connection now keeps you on the "Add
-  apps" step with the error and a Retry button, instead of moving on and
-  suggesting you save real apps as manual ones. If only part of a large
-  list got an answer, the answered names are kept, Retry searches just the
-  rest, and "Continue without them" goes on with what was found. Changing
-  the App Store region on the matches step keeps a row's previous match
-  when the new search fails, and apps still waiting on a paused search are
-  no longer counted as "didn't match".
-- A page that could not load your apps no longer sends you to onboarding.
-  When the apps list, the app count behind Settings, Stats and the Privacy
-  Map, or the review queue failed to load, the page treated the failure as
-  an empty install and showed "Add the apps from your iPhone" to someone
-  with a full library. These pages now say "This page couldn't load its
-  data" with a Try again button, and only an empty answer that loaded
-  successfully leads to onboarding. Opening the site root while the app
-  count cannot be read now goes to the dashboard instead of the welcome
-  page, and the review queue no longer sends you to onboarding when you
-  pick a device with nothing on it.
-- A slow server no longer leaves a blank page. Every page now shows its
-  outline straight away (a skip link, a placeholder navigation bar on pages
-  that have one, and grey placeholder blocks announced as loading to screen
-  readers) and swaps in the real page when its data arrives. The dashboard
-  and the apps list also start more of their reads at the same time, so
-  with each request taking 3 seconds the dashboard now appears in about 9
-  seconds instead of 13, and the apps list in about 6 instead of 10.
-- On phones the accessibility options button no longer covers the page's
-  own buttons. It floated over the bottom-right corner at every width and
-  sat on the end of the welcome page's Next button, onboarding's "Search
-  App Store" and "Other import options", and the delete button of the
-  first app card. On screens narrower than 480 pixels it now sits at the
-  end of the page, below the content, and the same panel also opens from
-  the top of every page: an "Accessibility" item in the navigation menu,
-  a button in the sample-data navigation bar, and a button above the
-  content on pages without a navigation bar (welcome, onboarding, help).
-  Closing the panel returns focus to whichever control opened it. Wider
-  screens keep the floating button, and "g then u" still opens the panel.
-- "Try with sample data" now has a way out. The demo showed no exit, and
-  every link in the navigation bar led to a page that sent a new user to
-  onboarding without saying why. The demo now shows a sample-data bar with
-  "Start with your own apps" (clears the demo and opens onboarding) and
-  "Back to welcome", and its navigation bar only links back into the demo
-  or to "Start with your own apps", which stays on screen while you
-  scroll. The `flag.dashboard.sample_data_banner` flag, which hid the only
-  exit by default, now controls just the extra "Clear samples" button.
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
