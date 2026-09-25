@@ -113,6 +113,18 @@ Going forward, changes are recorded here as they land.
   summaries. Selecting a child no longer marks the "Help a friend" tile as
   selected, and choosing that tile explicitly switches to another adult.
 
+- Onboarding's match step now says what its counts mean. The first chip
+  read "4 imported" before anything had been imported; it now reads "4 in
+  your list". The second read "0 matched" beside visible matches because
+  it counted only the rows ticked for import; it now reads "0 selected"
+  and always agrees with the Import button. The "Matched by name" section
+  explains that a name with more than one possible app starts unticked.
+  On the AI step, the Disabled card no longer shows the Own Model hint
+  about Ollama endpoints, and the Anthropic and Own Model hints no longer
+  repeat their descriptions. Diagnostics shows the process's virtual size
+  in GB as "virtual address space", so the hundreds of GB macOS reserves
+  for any process no longer read like memory in use.
+
 - Completing a dashboard bulk sync now re-reads triage, review counts, and
   related dashboard data so the page reflects the just-finished sync without
   requiring a manual reload.

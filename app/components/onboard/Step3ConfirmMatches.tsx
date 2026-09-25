@@ -166,9 +166,13 @@ export default function Step3ConfirmMatches({
           ).length;
           const summary = {
             total: searchResults.length,
-            matched: searchResults.filter(
+            // What the Import button will import, not every matched row: a
+            // name match with more than one candidate starts unticked, and
+            // hidden already-tracked apps are left out.
+            selected: searchResults.filter(
               (result) =>
-                statusFor(result) === "matched" && selected.has(result.query)
+                statusFor(result) === "matched" &&
+                effectiveSelected.has(result.query)
             ).length,
             bundle: searchResults.filter(
               (result) =>
@@ -607,10 +611,10 @@ export default function Step3ConfirmMatches({
 
               <div className="onboard-match-summary">
                 <span>
-                  {tStep3("summary_chip_imported", { count: summary.total })}
+                  {tStep3("summary_chip_in_list", { count: summary.total })}
                 </span>
                 <span>
-                  {tStep3("summary_chip_matched", { count: summary.matched })}
+                  {tStep3("summary_chip_selected", { count: summary.selected })}
                 </span>
                 <span>
                   {tStep3("summary_chip_bundle", { count: summary.bundle })}
