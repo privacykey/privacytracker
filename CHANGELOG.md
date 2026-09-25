@@ -85,6 +85,12 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- In the apps grid's Select mode, screen readers now hear which apps are
+  selected. Each card is announced as a toggle button that is pressed or
+  not, Space toggles it as well as Enter, and the "N apps selected" line in
+  the bulk bar is announced each time it changes. Compare mode's cards are
+  announced the same way.
+
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of

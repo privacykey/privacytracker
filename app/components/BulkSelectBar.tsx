@@ -203,7 +203,11 @@ export default function BulkSelectBar({
           <span aria-hidden="true" className="bulk-select-bar-icon">
             {hasSelection ? "✓" : "☐"}
           </span>
-          <span className="bulk-select-bar-title">
+          {/* A polite live region, so a screen reader hears the count
+              change each time a card is toggled (the tick on the card
+              itself is decorative; the card announces its own pressed
+              state). */}
+          <span className="bulk-select-bar-title" role="status">
             {hasSelection
               ? t("headline_active", { count: selectedIds.length })
               : t("headline_empty")}

@@ -74,13 +74,33 @@ browserFlow(
       expect(await verdictOf(request, id)).toBeNull();
     }
 
+    // Outside Select mode a card is a plain link with no toggle state.
+    const firstLink = cards.nth(0).locator(".app-card-link");
+    await expect(firstLink).not.toHaveAttribute("role", "button");
+    await expect(firstLink).not.toHaveAttribute("aria-pressed");
+
     await page.getByRole("button", { name: "Select", exact: true }).click();
     const bar = page.getByRole("region", { name: "Bulk actions" });
     await expect(bar).toBeVisible();
-    // In select mode a card link toggles the card instead of opening it.
-    await cards.nth(0).locator(".app-card-link").click();
-    await cards.nth(1).locator(".app-card-link").click();
-    await expect(bar).toContainText("2 apps selected");
+    // The count line is a live region, so each toggle is announced.
+    const count = bar.getByRole("status");
+    await expect(count).toHaveText(
+      "Select multiple apps to mark them together"
+    );
+    // In select mode a card link toggles the card instead of opening it,
+    // and says so: it is a toggle button carrying its pressed state.
+    await expect(firstLink).toHaveAttribute("role", "button");
+    await expect(firstLink).toHaveAttribute("aria-pressed", "false");
+    await firstLink.click();
+    await expect(firstLink).toHaveAttribute("aria-pressed", "true");
+    await expect(count).toContainText("1 app selected");
+    // Space toggles it like any button (the link alone would scroll).
+    const secondLink = cards.nth(1).locator(".app-card-link");
+    await secondLink.focus();
+    await page.keyboard.press("Space");
+    await expect(secondLink).toHaveAttribute("aria-pressed", "true");
+    await expect(page).toHaveURL(/\/dashboard\/apps/);
+    await expect(count).toContainText("2 apps selected");
 
     // Up to ten apps apply at once; more ask to confirm first.
     await bar.getByRole("button", { name: /Mark safe/ }).click();

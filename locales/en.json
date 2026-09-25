@@ -3232,6 +3232,7 @@
     "removing_custom_aria": "Removing {name}",
     "deselect_app_aria": "Deselect {name}",
     "deselect_app_title": "Deselect {name}",
+    "select_app_title": "Select {name}",
     "select_compare_title": "Select {name} for comparison",
     "open_app_shift_hint_title": "Open {name} — Shift-click to add to compare",
     "search_placeholder": "Search apps…",

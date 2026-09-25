@@ -3232,6 +3232,7 @@
     "removing_custom_aria": "正在移除 {name}",
     "deselect_app_aria": "取消选择 {name}",
     "deselect_app_title": "取消选择 {name}",
+    "select_app_title": "选择 {name}",
     "select_compare_title": "选择 {name} 进行对比",
     "open_app_shift_hint_title": "打开 {name} — 按住 Shift 点击可加入对比",
     "search_placeholder": "搜索应用…",
