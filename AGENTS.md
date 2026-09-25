@@ -63,7 +63,7 @@ Activation is via the hosted **Mend Renovate GitHub App**, which reads `renovate
 
 `scripts/audit-github-settings.mjs` (`pnpm audit:repo-settings`) is a
 **read-only** check that the repo's GitHub settings still match intent —
-branch protection on `main`, required checks (`quality`, `rust-check`, `container-smoke`),
+branch protection on `main`, required checks (`quality`, `rust-check`, `container-smoke`, `e2e-rust`),
 macOS signing reviewers/tag restrictions, secret scanning, Dependabot alerts, CodeQL. `.github/workflows/repo-settings-audit.yml`
 runs it weekly and writes the report to the job summary.
 
