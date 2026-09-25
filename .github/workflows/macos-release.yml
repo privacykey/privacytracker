@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       backend:
-        description: 'Which backend the app ships: rust (the app serves itself) or node (the bundled sidecar, kept for rollback until 1.0).'
+        description: 'Which backend the app ships: rust (the app serves itself) or node (the bundled sidecar, kept for rollback until v0.3.0 has shipped).'
         required: false
         default: rust
         type: string
@@ -36,7 +36,7 @@ env:
   # instead and this pin does not apply to it.
   NODE_VERSION: '24.20.0'
   # rust since the desktop cutover; node builds the sidecar release, kept
-  # for a rollback until 1.0. Every Node-only step below is gated on this,
+  # for a rollback until v0.3.0 has shipped. Every Node-only step below is gated on this,
   # and the verifier is told which bundle it is looking at.
   BACKEND: ${{ inputs.backend || 'rust' }}
 

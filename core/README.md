@@ -4,8 +4,8 @@ The server both shipped builds run. This crate replaced the Node/Next
 *server* runtime while keeping the React frontend and the public API
 contract byte-for-byte identical. Since Phase 6 the desktop app serves
 from it inside its own process and the Docker image runs `pt-core serve`.
-The Node server stays buildable as the rollback until 1.0 has shipped;
-batch 7 then deletes it.
+The Node server stays buildable as the rollback until v0.3.0 has
+shipped; batch 7 then deletes it.
 
 ## Topology
 

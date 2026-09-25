@@ -108,7 +108,7 @@ Node tarball's ~200 MB), no Node is fetched or bundled, and the bundle is
 signed with `entitlements-rust.plist`, which grants none of the three
 entitlements V8 needed. `node` bundles the Next.js standalone tree and a
 verified Node binary, as every release up to v0.1.2 did. It stays buildable
-as the rollback until 1.0.
+as the rollback until v0.3.0 has shipped.
 
 `Prepare verified release draft` passes `backend: rust`. To roll back,
 change that line in `.github/workflows/release.yml` to `node` in a reviewed

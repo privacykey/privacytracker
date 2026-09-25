@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       backend:
-        description: 'Which server the image runs: rust (pt-core) or node (next start, kept for rollback until 1.0).'
+        description: 'Which server the image runs: rust (pt-core) or node (next start, kept for rollback until v0.3.0 has shipped).'
         required: false
         default: rust
         type: string

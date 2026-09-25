@@ -244,7 +244,7 @@ jobs:
         # Phase 6, batch 4: with this feature the shell serves the app from
         # the Rust core instead of spawning the Node sidecar. Release builds
         # and `pnpm tauri:build` pass it since the cutover; built without it,
-        # the shell is the Node rollback, kept until 1.0. Both paths have to keep
+        # the shell is the Node rollback, kept until v0.3.0 has shipped. Both paths have to keep
         # compiling until then, and this pair of checks is what makes "off
         # by default" mean something: the check above never links the core.
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --features rust-backend --locked
@@ -703,8 +703,8 @@ jobs:
     # Rust-core Phase 6: the whole Playwright suite, run against the Rust
     # core instead of `next start`. The core serves the same `next build`
     # output (`pt-core serve --site .`), so this is the quality job's
-    # Browser E2E step with only the server swapped. Not a required check
-    # yet: it becomes one after a week green.
+    # Browser E2E step with only the server swapped. A required check on
+    # main since 2026-09-25.
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -924,7 +924,7 @@ jobs:
         if: always()
         run: docker compose -f deploy/traefik/compose.yaml down -v || true
 
-      # The Node image is the rollback until 1.0, so it has to keep building
+      # The Node image is the rollback until v0.3.0 has shipped, so it has to keep building
       # and booting. It shares the build stage with the image above, so this
       # mostly re-uses that stage's layers.
       - name: Build and boot the Node rollback image

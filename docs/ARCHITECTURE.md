@@ -25,7 +25,7 @@ without the shell column.
 `pt-core` binary) in place of Next.js: the desktop app serves itself from its own process
 on a remembered loopback port, and the Docker image runs `pt-core serve`. The port follows
 these flows route for route, with the Node server as its specification (the parity gates
-compare the two) and as the rollback until 1.0. The diagrams below still describe the
+compare the two) and as the rollback until v0.3.0 has shipped. The diagrams below still describe the
 Node implementation; `core/README.md` records where the Rust one differs.
 
 ```mermaid

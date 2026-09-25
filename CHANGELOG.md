@@ -25,9 +25,9 @@ Going forward, changes are recorded here as they land.
   its request headers too slowly is still cut off after 60 seconds. One
   answer differs: an oversized upload from a client that is not signed in
   gets 401 instead of 413, because this server checks the token before it
-  reads a body. To go back to the Node server
-  until 1.0, set `PRIVACYTRACKER_BACKEND=node` in `.env` and rebuild; both
-  open the same volume. The image ships its notices under
+  reads a body. The Node server stays buildable
+  through this release: to go back to it, set `PRIVACYTRACKER_BACKEND=node`
+  in `.env` and rebuild; both open the same volume. The image ships its notices under
   `/app/third-party/`, and the binary is built so vulnerability scanners
   can see its Rust dependencies.
 
@@ -47,8 +47,8 @@ Going forward, changes are recorded here as they land.
   rollback possible. For contributors, `just tauri-dev` and
   `just tauri-build` (and `pnpm tauri:dev` / `pnpm tauri:build`) now build
   this backend and need no Node sidecar; the Node build is
-  `just tauri-dev-node` / `just tauri-build-node`, kept as the rollback until
-  1.0, and the release workflow's `backend` input defaults to `rust`. A
+  `just tauri-dev-node` / `just tauri-build-node`, kept as the rollback
+  through this release, and the release workflow's `backend` input defaults to `rust`. A
   development build run from `target/` now serves the frontend `pnpm build`
   just wrote, not a copy an earlier bundle build left there. No version
   bump comes with this change.
@@ -90,7 +90,7 @@ Going forward, changes are recorded here as they land.
   whatever the server had logged, because the server wrote to one copy of
   the log and the page read another. The Rust server, which the desktop app
   and the Docker image run by default, always showed them. The Node server
-  stays available as the rollback build until 1.0.
+  stays available as the rollback build through this release.
 - A bulk sync started in the first seconds after the server starts is no
   longer "resumed" by that same server. Each start, the server looks for an
   App Store sync, policy sync or Wayback import that a previous run left
