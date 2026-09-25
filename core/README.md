@@ -1906,7 +1906,7 @@ clears everything and reports scope `""`. The locale cookie carries the
 `Expires` Next derives from `Max-Age`.
 
 **The oracle — `core/scripts/extract-writes-cases.mjs`.** Runs the REAL
-handlers over 266 requests with a frozen clock, counted ids, a distinct
+handlers over 275 requests with a frozen clock, counted ids, a distinct
 forwarded address per case behind `PRIVACYTRACKER_TRUST_PROXY=1` (so
 Node's process-wide limiter keeps one bucket per case), the admin token
 set per case, and a write recorder; it records the request, the setup
@@ -2427,7 +2427,8 @@ prior counts taken, foreign keys turned off AROUND one transaction that
 wipes children-first and inserts parents-first, only the columns that
 still exist, every row through the sanitiser whatever the envelope's
 trust (the `flag.devopts.` and `AUDITOR_` settings and flag overrides
-dropped and counted, and an untrusted envelope's quarantined overrides,
+and the migration marker dropped and counted, and an untrusted
+envelope's quarantined overrides,
 every stored URL through `sanitizePolicyUrl`), `foreign_key_check`
 vetoing the commit, enforcement put back as it was found.
 `backup_snapshots.rs` grows the rest of `lib/backup-snapshots.ts`: the
@@ -2484,7 +2485,7 @@ enforcement ON and a bad backup would fail on its INSERT instead of at
 `foreign_key_check` — not what production does. Each case wipes every
 table and the data directory instead, writes a fixed signing key (or
 none, where minting it is the case, with `randomBytes(32)` counted), and
-seeds snapshot files with fixed mtimes. 103 cases: the settings saved,
+seeds snapshot files with fixed mtimes. 104 cases: the settings saved,
 clamped both ways, rounded, from strings, junk, `null`, a boolean and an
 array, partial, over a directory with a hand-named file and a stranger,
 and the body refusals; the snapshot over an empty install and the
@@ -2502,7 +2503,8 @@ foreign-key violation, a missing column and a duplicate key, emptying
 the install, refusing during a sync before it reads the body; and the
 tick disabled, due, not yet due, due to the millisecond, and over an
 unreadable last run; then, last, the flag-override deny-list over an
-untrusted and a trusted restore. Every case records the wire response with its
+untrusted and a trusted restore, and the migration marker a restore never
+writes. Every case records the wire response with its
 download headers, the write stream, all twenty-eight tables, the
 `backups/` directory afterwards by name, size and SHA-256, the key file,
 and that enforcement is back on. `core/src/server/backup_tests.rs`

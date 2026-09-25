@@ -1460,6 +1460,31 @@ try {
       }
     );
   }
+
+  // ── Restore never writes the migration-flow marker ───────────────
+  // Last, for the same reason as the block above.
+  await run("restore of a trusted backup never writes the migration marker", {
+    route: "/api/backup/restore",
+    method: "POST",
+    setup: [...other, setting("migration_flow_pending", "")],
+    json: sign({
+      version: 1,
+      exportedAt: now,
+      tables: {
+        app_settings: {
+          rows: [
+            {
+              key: "migration_flow_pending",
+              value: '{"recommenderName":"Bob","targetPath":"//example.test/"}',
+            },
+            { key: "migration_flow_pending_note", value: "kept" },
+            { key: "sync_schedule", value: "weekly" },
+          ],
+        },
+      },
+    }),
+    expectTrust: "trusted",
+  });
 } finally {
   db.close();
   rmSync(dir, { recursive: true, force: true });

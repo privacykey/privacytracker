@@ -215,7 +215,15 @@ export const SENSITIVE_SETTING_KEYS: ReadonlySet<string> = new Set([
  * exactly as the matching `app_settings` row is.
  */
 const RESTORE_SETTING_KEY_DENY_PREFIXES = ["flag.devopts.", "AUDITOR_"];
-const RESTORE_SETTING_KEY_DENY_EXACT = new Set<string>();
+/**
+ * Exact keys a restore never writes. `migration_flow_pending` is a
+ * one-shot marker the audit-bundle importer sets on this install; the
+ * next dashboard load navigates to the path it names, so it is never
+ * taken from a backup.
+ */
+const RESTORE_SETTING_KEY_DENY_EXACT = new Set<string>([
+  "migration_flow_pending",
+]);
 
 /**
  * Whether a restored `feature_flag_overrides` row is quarantined, read

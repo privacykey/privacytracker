@@ -1472,6 +1472,36 @@ for (const [route, field] of [
   });
 }
 
+// ── /api/migration-flow/consume: only paths inside the app ───────────
+// Appended last, as above. A marker whose target could leave the app is
+// consumed as usual and answered with the default target.
+{
+  const route = "/api/migration-flow/consume";
+  const method = "POST";
+  const marker = (targetPath) =>
+    setting(
+      "migration_flow_pending",
+      JSON.stringify({ recommenderName: "Bob", targetPath })
+    );
+  for (const [name, targetPath] of [
+    ["protocol-relative target", "//example.test/"],
+    ["triple-slash target", "///example.test/"],
+    ["backslash target", "/\\example.test/"],
+    ["tab inside the target", "/\t/example.test/"],
+    ["newline inside the target", "/\n/example.test/"],
+    ["space inside the target", "/ /example.test/"],
+    ["absolute url target", "https://example.test/"],
+    ["encoded slashes stay a path", "/%2F%2Fexample.test"],
+    ["query and fragment kept", "/dashboard/review-recommendations?a=1#b"],
+  ]) {
+    await run(`migration-flow ${name}`, {
+      route,
+      method,
+      setup: [marker(targetPath)],
+    });
+  }
+}
+
 writeFileSync(
   path.join(
     path.dirname(new URL(import.meta.url).pathname),

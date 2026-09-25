@@ -66,13 +66,19 @@ const SENSITIVE_SETTING_KEYS: [&str; 2] = ["ai_api_key", "notification_webhook_u
 /// rule covers `feature_flag_overrides.flag_key`, the table the flag
 /// resolver reads.
 const RESTORE_SETTING_KEY_DENY_PREFIXES: [&str; 2] = ["flag.devopts.", "AUDITOR_"];
+/// Exact keys a restore never writes: the one-shot migration marker names
+/// a path the next dashboard load navigates to, so it only ever comes from
+/// this install's own audit-bundle import.
+const RESTORE_SETTING_KEY_DENY_EXACT: [&str; 1] = ["migration_flow_pending"];
 
-/// `isRestoreSettingKeyDenied`: a string key under a refused prefix.
+/// `isRestoreSettingKeyDenied`: a string key that is refused outright or
+/// sits under a refused prefix.
 fn restore_key_denied(key: Option<&Value>) -> bool {
     key.and_then(Value::as_str).is_some_and(|k| {
-        RESTORE_SETTING_KEY_DENY_PREFIXES
-            .iter()
-            .any(|p| k.starts_with(p))
+        RESTORE_SETTING_KEY_DENY_EXACT.contains(&k)
+            || RESTORE_SETTING_KEY_DENY_PREFIXES
+                .iter()
+                .any(|p| k.starts_with(p))
     })
 }
 
@@ -919,6 +925,27 @@ mod tests {
             for key in [json!("flag.dashboard.stats"), json!(12), json!("auditor_x")] {
                 assert!(sanitise_row(table, &row(key, Some(json!(0))), trusted).is_some());
             }
+        }
+    }
+
+    #[test]
+    fn restore_never_writes_the_migration_marker() {
+        let setting = |key: &str| {
+            let mut map = Map::new();
+            map.insert("key".into(), json!(key));
+            map.insert("value".into(), json!("{\"targetPath\":\"/x\"}"));
+            map
+        };
+        for trusted in [true, false] {
+            assert!(
+                sanitise_row("app_settings", &setting("migration_flow_pending"), trusted).is_none()
+            );
+            assert!(sanitise_row(
+                "app_settings",
+                &setting("migration_flow_pending_x"),
+                trusted
+            )
+            .is_some());
         }
     }
 

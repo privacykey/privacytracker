@@ -21705,6 +21705,307 @@
         "cacheControl": null,
         "backupVersion": null
       }
+    },
+    {
+      "name": "restore of a trusted backup never writes the migration marker",
+      "kind": "route",
+      "delay": null,
+      "route": "/api/backup/restore",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "param": null,
+      "headers": {
+        "x-forwarded-for": "10.0.104.7",
+        "user-agent": "backup-oracle/1.0"
+      },
+      "body": "{\"version\":1,\"exportedAt\":1789473600000,\"tables\":{\"app_settings\":{\"rows\":[{\"key\":\"migration_flow_pending\",\"value\":\"{\\\"recommenderName\\\":\\\"Bob\\\",\\\"targetPath\\\":\\\"//example.test/\\\"}\"},{\"key\":\"migration_flow_pending_note\",\"value\":\"kept\"},{\"key\":\"sync_schedule\",\"value\":\"weekly\"}]}},\"signature\":{\"alg\":\"HMAC-SHA256\",\"mac\":\"oMIDXC//+3qI5ty8JpcgQp1Az9edDgeO8HBoBJz2THY=\"}}",
+      "adminToken": null,
+      "repeat": 1,
+      "compare": "exact",
+      "key": "BRAbJjE8R1JdaHN+iZSfqrXAy9bh7PcCDRgjLjlET1o=\n",
+      "files": [],
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "runtime_environment",
+            ""
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, iconUrl, privacyPolicyUrl, firstSeen, lastSynced, changeCount, priceAmount, priceCurrency) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "9001",
+            "Replaced",
+            "https://apps.apple.com/us/app/fixture/id9001",
+            "https://is1-ssl.mzstatic.com/image/9001.png",
+            "https://example.com/9001/privacy",
+            1789041600000,
+            1789387200000,
+            2,
+            4.99,
+            "USD"
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_types (id, app_id, identifier, title) VALUES (?, ?, ?, ?)",
+          "params": [
+            "pt-9",
+            "9001",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You"
+          ]
+        },
+        {
+          "sql": "INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read) VALUES (?, ?, ?, ?, ?, ?)",
+          "params": [
+            "n-9",
+            "9001",
+            "App",
+            "[]",
+            1789387200000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_schedule",
+            "weekly"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "flag.devopts.cfgutil_uninstall",
+            "on"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "migration_flow_pending",
+            ""
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM change_review_actions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM activity_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM audit_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM ai_debug_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM feature_flag_overrides",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_settings",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM audit_bundle_imports",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM import_items",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM imports",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM notifications",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM shortlist_entries",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_app_policy_versions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_app_events",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM manual_apps",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_verdicts",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM annotations",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_policy_versions",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_policy_analyses",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_snapshots",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM accessibility_features",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_data_types",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_categories",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_purposes",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM app_devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM devices",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM apps",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO app_settings (\"key\", \"value\") VALUES (?, ?)",
+          "params": [
+            "migration_flow_pending_note",
+            "kept"
+          ]
+        },
+        {
+          "sql": "INSERT INTO app_settings (\"key\", \"value\") VALUES (?, ?)",
+          "params": [
+            "sync_schedule",
+            "weekly"
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "backup.restore",
+            "10.0.104.7",
+            "backup-oracle/1.0",
+            "{\"restoredAt\":1789473600000,\"version\":1,\"exportedAt\":1789473600000,\"totalRows\":2,\"inserted\":[{\"name\":\"apps\",\"rows\":0},{\"name\":\"devices\",\"rows\":0},{\"name\":\"app_devices\",\"rows\":0},{\"name\":\"privacy_types\",\"rows\":0},{\"name\":\"privacy_purposes\",\"rows\":0},{\"name\":\"privacy_categories\",\"rows\":0},{\"name\":\"privacy_data_types\",\"rows\":0},{\"name\":\"accessibility_features\",\"rows\":0},{\"name\":\"privacy_snapshots\",\"rows\":0},{\"name\":\"privacy_policy_analyses\",\"rows\":0},{\"name\":\"privacy_policy_versions\",\"rows\":0},{\"name\":\"annotations\",\"rows\":0},{\"name\":\"app_verdicts\",\"rows\":0},{\"name\":\"manual_apps\",\"rows\":0},{\"name\":\"manual_app_events\",\"rows\":0},{\"name\":\"manual_app_policy_versions\",\"rows\":0},{\"name\":\"shortlist_entries\",\"rows\":0},{\"name\":\"notifications\",\"rows\":0},{\"name\":\"imports\",\"rows\":0},{\"name\":\"import_items\",\"rows\":0},{\"name\":\"audit_bundle_imports\",\"rows\":0},{\"name\":\"app_settings\",\"rows\":2},{\"name\":\"feature_flag_overrides\",\"rows\":0},{\"name\":\"ai_debug_log\",\"rows\":0},{\"name\":\"audit_log\",\"rows\":0},{\"name\":\"activity_log\",\"rows\":0},",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [],
+        "devices": [],
+        "app_devices": [],
+        "privacy_types": [],
+        "privacy_purposes": [],
+        "privacy_categories": [],
+        "privacy_data_types": [],
+        "accessibility_features": [],
+        "privacy_snapshots": [],
+        "privacy_policy_analyses": [],
+        "privacy_policy_versions": [],
+        "annotations": [],
+        "app_verdicts": [],
+        "manual_apps": [],
+        "manual_app_events": [],
+        "manual_app_policy_versions": [],
+        "shortlist_entries": [],
+        "notifications": [],
+        "imports": [],
+        "import_items": [],
+        "audit_bundle_imports": [],
+        "app_settings": [
+          {
+            "key": "migration_flow_pending_note",
+            "value": "kept"
+          },
+          {
+            "key": "sync_schedule",
+            "value": "weekly"
+          }
+        ],
+        "feature_flag_overrides": [],
+        "ai_debug_log": [],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "backup.restore",
+            "actor_ip": "10.0.104.7",
+            "user_agent": "backup-oracle/1.0",
+            "detail": "{\"restoredAt\":1789473600000,\"version\":1,\"exportedAt\":1789473600000,\"totalRows\":2,\"inserted\":[{\"name\":\"apps\",\"rows\":0},{\"name\":\"devices\",\"rows\":0},{\"name\":\"app_devices\",\"rows\":0},{\"name\":\"privacy_types\",\"rows\":0},{\"name\":\"privacy_purposes\",\"rows\":0},{\"name\":\"privacy_categories\",\"rows\":0},{\"name\":\"privacy_data_types\",\"rows\":0},{\"name\":\"accessibility_features\",\"rows\":0},{\"name\":\"privacy_snapshots\",\"rows\":0},{\"name\":\"privacy_policy_analyses\",\"rows\":0},{\"name\":\"privacy_policy_versions\",\"rows\":0},{\"name\":\"annotations\",\"rows\":0},{\"name\":\"app_verdicts\",\"rows\":0},{\"name\":\"manual_apps\",\"rows\":0},{\"name\":\"manual_app_events\",\"rows\":0},{\"name\":\"manual_app_policy_versions\",\"rows\":0},{\"name\":\"shortlist_entries\",\"rows\":0},{\"name\":\"notifications\",\"rows\":0},{\"name\":\"imports\",\"rows\":0},{\"name\":\"import_items\",\"rows\":0},{\"name\":\"audit_bundle_imports\",\"rows\":0},{\"name\":\"app_settings\",\"rows\":2},{\"name\":\"feature_flag_overrides\",\"rows\":0},{\"name\":\"ai_debug_log\",\"rows\":0},{\"name\":\"audit_log\",\"rows\":0},{\"name\":\"activity_log\",\"rows\":0},",
+            "success": 1
+          }
+        ],
+        "activity_log": [],
+        "change_review_actions": [],
+        "related_apps_observed": []
+      },
+      "disk": null,
+      "keyAfter": "BRAbJjE8R1JdaHN+iZSfqrXAy9bh7PcCDRgjLjlET1o=\n",
+      "foreignKeys": 1,
+      "expected": {
+        "status": 200,
+        "body": "{\"success\":true,\"inserted\":[{\"name\":\"apps\",\"rows\":0},{\"name\":\"devices\",\"rows\":0},{\"name\":\"app_devices\",\"rows\":0},{\"name\":\"privacy_types\",\"rows\":0},{\"name\":\"privacy_purposes\",\"rows\":0},{\"name\":\"privacy_categories\",\"rows\":0},{\"name\":\"privacy_data_types\",\"rows\":0},{\"name\":\"accessibility_features\",\"rows\":0},{\"name\":\"privacy_snapshots\",\"rows\":0},{\"name\":\"privacy_policy_analyses\",\"rows\":0},{\"name\":\"privacy_policy_versions\",\"rows\":0},{\"name\":\"annotations\",\"rows\":0},{\"name\":\"app_verdicts\",\"rows\":0},{\"name\":\"manual_apps\",\"rows\":0},{\"name\":\"manual_app_events\",\"rows\":0},{\"name\":\"manual_app_policy_versions\",\"rows\":0},{\"name\":\"shortlist_entries\",\"rows\":0},{\"name\":\"notifications\",\"rows\":0},{\"name\":\"imports\",\"rows\":0},{\"name\":\"import_items\",\"rows\":0},{\"name\":\"audit_bundle_imports\",\"rows\":0},{\"name\":\"app_settings\",\"rows\":2},{\"name\":\"feature_flag_overrides\",\"rows\":0},{\"name\":\"ai_debug_log\",\"rows\":0},{\"name\":\"audit_log\",\"rows\":0},{\"name\":\"activity_log\",\"rows\":0},{\"name\":\"change_review_actions\",\"rows\":0},{\"name\":\"related_apps_observed\",\"rows\":0}],\"totalRows\":2,\"restoredAt\":1789473600000,\"trust\":\"trusted\",\"blocked\":[{\"name\":\"app_settings\",\"rows\":1}]}",
+        "type": "application/json",
+        "retryAfter": null,
+        "disposition": null,
+        "cacheControl": null,
+        "backupVersion": null
+      }
     }
   ]
 }
