@@ -12,7 +12,9 @@ import { expect, type Page, test } from "@playwright/test";
  *   - the primary CTA is reachable without opening it,
  *   - selecting no tiles stays a VALID empty baseline (the
  *     no-silent-default invariant),
- *   - guardian reveals the child age-band picker.
+ *   - guardian reveals the child age-band picker,
+ *   - Monitor turns on daily sync unless a schedule was already chosen,
+ *     and the background-sync checklist item then reads as done.
  */
 
 const sameOriginHeaders = {
@@ -79,6 +81,15 @@ async function readFocus(page: Page): Promise<StoredFocus> {
   return (await res.json()) as StoredFocus;
 }
 
+/** The sync schedule the server resolves ("manual" when none is stored). */
+async function readSchedule(page: Page): Promise<string> {
+  const res = await page.request.get("/api/settings", {
+    headers: sameOriginHeaders,
+  });
+  await expect(res).toBeOK();
+  return ((await res.json()) as { sync_schedule: string }).sync_schedule;
+}
+
 // ---------------------------------------------------------------------------
 // 1. Monitor my apps
 // ---------------------------------------------------------------------------
@@ -96,6 +107,8 @@ browserFlow("persona: monitor my apps", async ({ page }) => {
   expect(focus.monitor).toBe(true);
   expect(focus.cleanup).toBe(false);
   expect(focus.minimal).toBe(false);
+  // Monitor promises to notice changes, so a fresh install syncs daily.
+  expect(await readSchedule(page)).toBe("daily");
 });
 
 // ---------------------------------------------------------------------------
@@ -121,6 +134,8 @@ browserFlow("persona: clean up my phone", async ({ page }) => {
   expect(focus.cleanup).toBe(true);
   expect(focus.monitor).toBe(false);
   expect(focus.audience).toBe("self");
+  // Only Monitor turns auto-sync on.
+  expect(await readSchedule(page)).toBe("manual");
 });
 
 // ---------------------------------------------------------------------------
@@ -250,5 +265,56 @@ browserFlow(
     await page.mouse.wheel(0, 4000);
     await page.waitForTimeout(300);
     await expect(next).toBeInViewport();
+  }
+);
+
+// ---------------------------------------------------------------------------
+// Monitor's daily-sync default
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "monitor keeps a sync schedule the user already chose",
+  async ({ page }) => {
+    const chosen = await page.request.post("/api/settings", {
+      headers: sameOriginHeaders,
+      data: { sync_schedule: "manual" },
+    });
+    await expect(chosen).toBeOK();
+
+    await openWelcome(page);
+    await expect(goalTile(page, /monitor my apps/i)).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await submit(page);
+
+    expect((await readFocus(page)).monitor).toBe(true);
+    expect(await readSchedule(page)).toBe("manual");
+  }
+);
+
+browserFlow(
+  "monitor: the checklist shows background sync as already on",
+  async ({ page }) => {
+    await openWelcome(page);
+    await submit(page);
+    expect(await readSchedule(page)).toBe("daily");
+
+    // A library to land on; the welcome step opted this user into the
+    // "Let it watch in the background" item.
+    const seed = await page.request.post(
+      "/api/dev/seed-sample-data?source=canned&limit=3",
+      { headers: sameOriginHeaders }
+    );
+    await expect(seed).toBeOK();
+    await page.goto("/dashboard");
+
+    const row = page
+      .locator(".task-list-row")
+      .filter({ hasText: "Let it watch in the background" });
+    await expect(row).toHaveClass(/task-list-row-completed/);
+    // Says what is true now, not an instruction the app already carried out.
+    await expect(row).toContainText("Auto-sync is on");
+    await expect(row).not.toContainText("Turn on auto-sync");
   }
 );

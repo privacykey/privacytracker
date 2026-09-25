@@ -55,6 +55,11 @@ use serde_json::{json, Map, Value};
 use std::sync::OnceLock;
 
 const SET_SETTING: &str = "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)";
+/// `applyMonitorSyncDefault` (lib/scheduler.ts): write only when the key has
+/// no row, or an empty one.
+const SET_SETTING_IF_UNCHOSEN: &str = "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE value = ''";
+/// `MONITOR_DEFAULT_SYNC_SCHEDULE`.
+const MONITOR_DEFAULT_SYNC_SCHEDULE: &str = "daily";
 const SET_OVERRIDE: &str = "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined)\n     VALUES (?, ?, ?, 'user', ?, 0)\n     ON CONFLICT(flag_key) DO UPDATE SET\n       override_value = excluded.override_value,\n       set_at = excluded.set_at,\n       set_by = excluded.set_by,\n       previous_focus = excluded.previous_focus,\n       quarantined = 0";
 const CLEAR_OVERRIDE: &str = "DELETE FROM feature_flag_overrides WHERE flag_key = ?";
 const CLEAR_ALL_OVERRIDES: &str = "DELETE FROM feature_flag_overrides WHERE quarantined = 0";
@@ -2133,6 +2138,20 @@ fn focus(cx: &mut Cx, body: BodyOutcome) -> Response {
         if let Some(band) = child_age_band {
             // `childAgeBand ?? ""`: null clears; a string is stored as is.
             cx.set("guardian_child_age_band", band.as_str().unwrap_or(""))?;
+        }
+        // `applyMonitorSyncDefault`: Monitor syncs daily unless a schedule
+        // was already chosen (any stored value but ""); never reverted.
+        // When it writes, it records when, which the schedule counts from.
+        if monitor
+            && cx.w.run(
+                SET_SETTING_IF_UNCHOSEN,
+                vec![json!("sync_schedule"), json!(MONITOR_DEFAULT_SYNC_SCHEDULE)],
+            )? > 0
+        {
+            cx.set(
+                super::routes_status::MONITOR_DEFAULT_AT_KEY,
+                &cx.now.to_string(),
+            )?;
         }
         Ok(())
     })();

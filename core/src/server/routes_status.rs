@@ -56,6 +56,16 @@ pub(super) fn compute_is_due(interval: i64, last_run: i64, now: i64) -> bool {
     interval > 0 && now >= last_run + interval
 }
 
+/// `MONITOR_DEFAULT_AT_KEY` (lib/scheduler.ts): when the Monitor default
+/// turned daily sync on.
+pub(super) const MONITOR_DEFAULT_AT_KEY: &str = "sync_schedule_default_at";
+
+/// `Math.max(lastRun, parseInt(defaultAt) || 0)`: what the schedule counts
+/// from, the last sync or the moment the Monitor default turned it on.
+pub(super) fn schedule_since(last_run: i64, default_at: &str) -> i64 {
+    last_run.max(js_parse_int(default_at).unwrap_or(0))
+}
+
 fn now_ms() -> i64 {
     use std::time::{SystemTime, UNIX_EPOCH};
     SystemTime::now()
@@ -72,15 +82,18 @@ pub async fn sync_status(State(state): State<AppState>) -> Response {
     let schedule = get("sync_schedule", "manual");
     // `Number.parseInt(...) || 0` — NaN, "", and a literal 0 all become 0.
     let last_run = js_parse_int(&get("last_auto_sync", "0")).unwrap_or(0);
+    // A schedule the Monitor default turned on counts from then until a
+    // sync runs; `lastRun` stays the last real sync.
+    let since = schedule_since(last_run, &get(MONITOR_DEFAULT_AT_KEY, "0"));
     let is_running = get("sync_running", "false") == "true";
 
     let interval = interval_ms(&schedule);
     let next_run = if interval > 0 {
-        Some(last_run + interval)
+        Some(since + interval)
     } else {
         None
     };
-    let is_due = compute_is_due(interval, last_run, now_ms());
+    let is_due = compute_is_due(interval, since, now_ms());
 
     json_ok(&SyncStatus {
         schedule,
@@ -352,6 +365,24 @@ mod tests {
         assert!(compute_is_due(interval_ms("daily"), ancient, now));
         // And a fresh run is not yet due.
         assert!(!compute_is_due(interval_ms("daily"), now, now));
+    }
+
+    #[test]
+    fn the_monitor_default_counts_its_first_day_from_when_it_was_turned_on() {
+        let day = interval_ms("daily");
+        let now = 1_789_000_000_000i64;
+        // Never synced, default turned on an hour ago: not due yet, where a
+        // bare "never synced" would be due at once.
+        let since = schedule_since(0, &(now - 3_600_000).to_string());
+        assert!(!compute_is_due(day, since, now));
+        assert!(compute_is_due(day, 0, now));
+        // A day after the default: due.
+        assert!(compute_is_due(day, schedule_since(0, &(now - day).to_string()), now));
+        // Once a sync has run since, the sync is what counts.
+        assert_eq!(schedule_since(now - 10, &(now - day).to_string()), now - 10);
+        // No marker, or garbage, is `|| 0`.
+        assert_eq!(schedule_since(42, "0"), 42);
+        assert_eq!(schedule_since(42, "nope"), 42);
     }
 
     #[test]

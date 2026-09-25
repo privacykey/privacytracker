@@ -1543,7 +1543,8 @@
     },
     "setup_background_mode": {
       "title": "Let it watch in the background",
-      "body": "Turn on auto-sync so changes to any app's labels get caught without you checking."
+      "body": "Turn on auto-sync so changes to any app's labels get caught without you checking.",
+      "done_body": "Auto-sync is on, so label changes get caught without you checking. You can change how often it runs in Settings."
     },
     "remove_apps_from_phone": {
       "title": "Clear flagged apps off your phone",

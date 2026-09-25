@@ -271,7 +271,16 @@ export default function TaskListInteractive({
         )}
         <span className="task-list-row-text">
           <span className="task-list-row-title">{t(`${task.id}.title`)}</span>
-          <span className="task-list-row-body">{t(`${task.id}.body`)}</span>
+          <span className="task-list-row-body">
+            {/* A done row whose body is an instruction ("Turn on
+                auto-sync") reads as if still to do, or as credit for
+                something the app did itself (the Monitor goal turns on
+                daily sync). Such tasks carry a `done_body` that says what
+                is now true; the rest keep their body. */}
+            {task.state === "completed" && t.has(`${task.id}.done_body`)
+              ? t(`${task.id}.done_body`)
+              : t(`${task.id}.body`)}
+          </span>
         </span>
         <span aria-hidden="true" className="task-list-row-arrow">
           →

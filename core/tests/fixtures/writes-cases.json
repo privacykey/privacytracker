@@ -6081,6 +6081,20 @@
     {
      "sql": "COMMIT",
      "params": []
+    },
+    {
+     "sql": "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE value = ''",
+     "params": [
+      "sync_schedule",
+      "daily"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "sync_schedule_default_at",
+      "1789473600000"
+     ]
     }
    ],
    "rows": {
@@ -6111,6 +6125,14 @@
      },
      {
       "key": "flag.focus.updated_at",
+      "value": "1789473600000"
+     },
+     {
+      "key": "sync_schedule",
+      "value": "daily"
+     },
+     {
+      "key": "sync_schedule_default_at",
       "value": "1789473600000"
      }
     ],
@@ -6317,6 +6339,20 @@
     {
      "sql": "COMMIT",
      "params": []
+    },
+    {
+     "sql": "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE value = ''",
+     "params": [
+      "sync_schedule",
+      "daily"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "sync_schedule_default_at",
+      "1789473600000"
+     ]
     }
    ],
    "rows": {
@@ -6347,6 +6383,14 @@
      },
      {
       "key": "flag.focus.updated_at",
+      "value": "1789473600000"
+     },
+     {
+      "key": "sync_schedule",
+      "value": "daily"
+     },
+     {
+      "key": "sync_schedule_default_at",
       "value": "1789473600000"
      }
     ],
@@ -16622,6 +16666,683 @@
    "expected": {
     "status": 200,
     "body": "{\"targetPath\":\"/dashboard/review-recommendations?a=1#b\",\"recommenderName\":\"Bob\"}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "focus monitor keeps an explicit manual schedule",
+   "route": "/api/focus",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/focus",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.20.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"audience\":\"self\",\"monitor\":true,\"cleanup\":false,\"minimal\":false,\"accessibility\":false}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "sync_schedule",
+      "manual"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "BEGIN",
+     "params": []
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.audience",
+      "self"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.monitor",
+      "true"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.cleanup",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.minimal",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.accessibility",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.workflow",
+      "self_monitor"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.updated_at",
+      "1789473600000"
+     ]
+    },
+    {
+     "sql": "COMMIT",
+     "params": []
+    },
+    {
+     "sql": "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE value = ''",
+     "params": [
+      "sync_schedule",
+      "daily"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "sync_schedule",
+      "value": "manual"
+     },
+     {
+      "key": "flag.focus.audience",
+      "value": "self"
+     },
+     {
+      "key": "flag.focus.goal.monitor",
+      "value": "true"
+     },
+     {
+      "key": "flag.focus.goal.cleanup",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.minimal",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.accessibility",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.workflow",
+      "value": "self_monitor"
+     },
+     {
+      "key": "flag.focus.updated_at",
+      "value": "1789473600000"
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"audience\":\"self\",\"monitor\":true,\"cleanup\":false,\"minimal\":false,\"accessibility\":false,\"workflow\":\"self_monitor\",\"childAgeBand\":null}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "focus monitor keeps an explicit weekly schedule",
+   "route": "/api/focus",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/focus",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.21.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"audience\":\"self\",\"monitor\":true,\"cleanup\":false,\"minimal\":false,\"accessibility\":false}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "sync_schedule",
+      "weekly"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "BEGIN",
+     "params": []
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.audience",
+      "self"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.monitor",
+      "true"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.cleanup",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.minimal",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.accessibility",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.workflow",
+      "self_monitor"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.updated_at",
+      "1789473600000"
+     ]
+    },
+    {
+     "sql": "COMMIT",
+     "params": []
+    },
+    {
+     "sql": "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE value = ''",
+     "params": [
+      "sync_schedule",
+      "daily"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "sync_schedule",
+      "value": "weekly"
+     },
+     {
+      "key": "flag.focus.audience",
+      "value": "self"
+     },
+     {
+      "key": "flag.focus.goal.monitor",
+      "value": "true"
+     },
+     {
+      "key": "flag.focus.goal.cleanup",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.minimal",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.accessibility",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.workflow",
+      "value": "self_monitor"
+     },
+     {
+      "key": "flag.focus.updated_at",
+      "value": "1789473600000"
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"audience\":\"self\",\"monitor\":true,\"cleanup\":false,\"minimal\":false,\"accessibility\":false,\"workflow\":\"self_monitor\",\"childAgeBand\":null}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "focus monitor fills an empty schedule",
+   "route": "/api/focus",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/focus",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.22.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"audience\":\"self\",\"monitor\":true,\"cleanup\":false,\"minimal\":false,\"accessibility\":false}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "sync_schedule",
+      ""
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "BEGIN",
+     "params": []
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.audience",
+      "self"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.monitor",
+      "true"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.cleanup",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.minimal",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.accessibility",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.workflow",
+      "self_monitor"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.updated_at",
+      "1789473600000"
+     ]
+    },
+    {
+     "sql": "COMMIT",
+     "params": []
+    },
+    {
+     "sql": "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE value = ''",
+     "params": [
+      "sync_schedule",
+      "daily"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "sync_schedule_default_at",
+      "1789473600000"
+     ]
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "sync_schedule",
+      "value": "daily"
+     },
+     {
+      "key": "flag.focus.audience",
+      "value": "self"
+     },
+     {
+      "key": "flag.focus.goal.monitor",
+      "value": "true"
+     },
+     {
+      "key": "flag.focus.goal.cleanup",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.minimal",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.accessibility",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.workflow",
+      "value": "self_monitor"
+     },
+     {
+      "key": "flag.focus.updated_at",
+      "value": "1789473600000"
+     },
+     {
+      "key": "sync_schedule_default_at",
+      "value": "1789473600000"
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"audience\":\"self\",\"monitor\":true,\"cleanup\":false,\"minimal\":false,\"accessibility\":false,\"workflow\":\"self_monitor\",\"childAgeBand\":null}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "focus monitor off keeps the daily default",
+   "route": "/api/focus",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/focus",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.23.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"audience\":\"self\",\"monitor\":false,\"cleanup\":true,\"minimal\":false,\"accessibility\":false}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "sync_schedule",
+      "daily"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.monitor",
+      "true"
+     ]
+    }
+   ],
+   "stream": [
+    {
+     "sql": "BEGIN",
+     "params": []
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.audience",
+      "self"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.monitor",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.cleanup",
+      "true"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.minimal",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.accessibility",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.workflow",
+      "self_cleanup"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.updated_at",
+      "1789473600000"
+     ]
+    },
+    {
+     "sql": "COMMIT",
+     "params": []
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "sync_schedule",
+      "value": "daily"
+     },
+     {
+      "key": "flag.focus.audience",
+      "value": "self"
+     },
+     {
+      "key": "flag.focus.goal.monitor",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.cleanup",
+      "value": "true"
+     },
+     {
+      "key": "flag.focus.goal.minimal",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.accessibility",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.workflow",
+      "value": "self_cleanup"
+     },
+     {
+      "key": "flag.focus.updated_at",
+      "value": "1789473600000"
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"audience\":\"self\",\"monitor\":false,\"cleanup\":true,\"minimal\":false,\"accessibility\":false,\"workflow\":\"self_cleanup\",\"childAgeBand\":null}",
+    "type": "application/json",
+    "retryAfter": null,
+    "setCookie": null
+   }
+  },
+  {
+   "name": "focus without monitor sets no schedule",
+   "route": "/api/focus",
+   "method": "POST",
+   "param": null,
+   "pathname": "/api/focus",
+   "search": "",
+   "query": [],
+   "headers": {
+    "x-forwarded-for": "10.1.24.1",
+    "user-agent": "writes-oracle/1.0"
+   },
+   "body": "{\"audience\":\"loved_one\",\"cleanup\":true}",
+   "adminToken": null,
+   "repeat": 1,
+   "setup": [],
+   "stream": [
+    {
+     "sql": "BEGIN",
+     "params": []
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.audience",
+      "loved_one"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.monitor",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.cleanup",
+      "true"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.minimal",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.goal.accessibility",
+      "false"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.workflow",
+      "custom"
+     ]
+    },
+    {
+     "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+     "params": [
+      "flag.focus.updated_at",
+      "1789473600000"
+     ]
+    },
+    {
+     "sql": "COMMIT",
+     "params": []
+    }
+   ],
+   "rows": {
+    "app_settings": [
+     {
+      "key": "flag.focus.audience",
+      "value": "loved_one"
+     },
+     {
+      "key": "flag.focus.goal.monitor",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.cleanup",
+      "value": "true"
+     },
+     {
+      "key": "flag.focus.goal.minimal",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.goal.accessibility",
+      "value": "false"
+     },
+     {
+      "key": "flag.focus.workflow",
+      "value": "custom"
+     },
+     {
+      "key": "flag.focus.updated_at",
+      "value": "1789473600000"
+     }
+    ],
+    "feature_flag_overrides": [],
+    "activity_log": [],
+    "audit_log": []
+   },
+   "expected": {
+    "status": 200,
+    "body": "{\"audience\":\"loved_one\",\"monitor\":false,\"cleanup\":true,\"minimal\":false,\"accessibility\":false,\"workflow\":\"custom\",\"childAgeBand\":null}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
