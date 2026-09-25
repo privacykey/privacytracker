@@ -1,8 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import RequireFlagGate from "@/app/components/RequireFlagGate";
+
+/**
+ * When the page was last checked against the code. Bump it whenever a card
+ * or a body string changes what the page claims. Rendered through the
+ * locale's own month format, so a translated page does not show an English
+ * month name.
+ */
+const LAST_UPDATED = new Date(Date.UTC(2026, 8, 25));
 
 /**
  * /privacy-policy — plain-language statement of what data the app does (and
@@ -10,11 +18,14 @@ import RequireFlagGate from "@/app/components/RequireFlagGate";
  * the running service may contact. Mirrors the two-column sticky-sidebar
  * layout used on /legal so the two disclosure pages feel like one family.
  *
- * Server component — renders without JS so readers with scripts disabled
- * still get the full text. Anchor navigation is pure <a href="#…"> links,
- * no JS required. Only cross-page jumps into /dashboard/settings/policies#ai-summaries
- * rely on client-side code (the pulse is nice-to-have — the scroll is
- * handled by the browser).
+ * A client component since the Phase 0 layout batch: the route prerenders
+ * as a static shell and the copy follows the client-resolved locale.
+ * Anchor navigation is plain <a href="#…"> links. Cross-page jumps into
+ * Settings (#ai-summaries, #policy-scrape-disabled) scroll by hash; the
+ * pulse on arrival is a nice-to-have.
+ *
+ * The card copy (trigger / sends / receives) is English by design; the
+ * page chrome, section ledes and "going offline" steps are translated.
  */
 
 // Canonical GitHub repo — referenced from README / SECURITY / Homebrew tap.
@@ -27,13 +38,24 @@ const GITHUB_REPO = "https://github.com/privacykey/privacytracker";
 // don't drift apart.
 const SETTINGS_AI_HASH = "/dashboard/settings/policies#ai-summaries";
 
+// The "Disable policy scraping" card. Its id is in GROUP_SECTIONS
+// (app/components/settings/section-groups.ts), so the group route scrolls
+// straight to it.
+const SETTINGS_POLICY_SCRAPING_HASH =
+  "/dashboard/settings/policies#policy-scrape-disabled";
+
 // One third-party endpoint the app may call, plus the purpose / trigger /
 // data shape. Kept as a typed record so the renderer can group them by
 // category and the SSR output stays deterministic.
 interface Subprocessor {
   endpoint: string;
   name: string;
-  /** Whether calling it is required for the core loop or only optional. */
+  /**
+   * "required": the app's main job (checking App Store labels and
+   * policies) needs it. "optional": an extra that runs automatically or
+   * once configured, which the main job does not need. "on-demand": only
+   * when you start it.
+   */
   necessity: "required" | "optional" | "on-demand";
   /** Link to the third party's own privacy policy, if they publish one. */
   policyUrl?: string;
@@ -45,104 +67,169 @@ interface Subprocessor {
   trigger: string;
 }
 
+// Every card below was checked against the code that makes the request
+// (September 2026). When you change who the app talks to, when, or what it
+// sends, update the matching card in the same PR: the page is only useful
+// while it matches the code. Pointers per group:
+//   App Store     lib/scraper.ts, lib/compare-scrape.ts, app/api/related-apps
+//   Policies      lib/privacy-policy.ts (fetchPolicyRaw, the Wayback copy
+//                 step after a fetch), lib/post-app-update-policy-fetch.ts,
+//                 app/api/favicon
+//   Archives      lib/wayback.ts, lib/historical-import.ts
+//   AI            lib/ai-config.ts
+//   Webhooks      lib/notification-webhooks.ts
+//   Updates       lib/update-check.ts, lib/tauri-updater.ts,
+//                 src-tauri/tauri.conf.json (plugins.updater)
+// The Rust core (core/src) makes the same requests under the same rules.
 const APP_STORE_SUBPROCESSORS: Subprocessor[] = [
   {
-    name: "Apple — iTunes Search API",
-    endpoint: "itunes.apple.com/search, itunes.apple.com/lookup",
+    name: "Apple iTunes Search API",
+    endpoint:
+      "itunes.apple.com/search, itunes.apple.com/lookup, itunes.apple.com/<region>/rss/…",
     trigger:
-      "Whenever you search for an app by name during onboarding, or when the app syncs metadata (version, developer, icon).",
+      "When you search for an app by name, when you import apps by bundle identifier (from a connected device, a device backup or an exported app list), when an app's details are refreshed, and when the Compare page suggests top apps in the same category.",
     sends:
-      "The app name you typed, or a known Apple track ID, plus the country code you picked (default AU).",
+      "The name you typed, the bundle identifiers of the apps you import (for example com.example.app), an Apple app ID, or a category ID, plus the App Store region you chose. No cookies, no account or device identifiers.",
     receives:
-      "A public-catalogue JSON payload: track ID, name, developer, icon URL, App Store URL, current version.",
+      "Public App Store catalogue data: app ID, name, developer, icon URL, App Store URL, version, category and price.",
     necessity: "required",
     policyUrl: "https://www.apple.com/legal/privacy/en-ww/",
   },
   {
-    name: "Apple — App Store web listing",
-    endpoint: "apps.apple.com/<country>/app/<slug>/id<id>",
+    name: "Apple App Store web pages",
+    endpoint: "apps.apple.com/<region>/app/<slug>/id<id>",
     trigger:
-      "During every privacy-label scrape — initial import, manual resync, and the 30-minute background sync.",
+      "Every privacy-label check: when you add an app, when you sync one app or all of them, on the scheduled sync if you turn one on (daily or weekly, in Settings → Sync Schedule or the background setup; off by default), and when the Compare page previews an app you have not added.",
     sends:
-      "A standard browser-style HTTP GET with a Referer of apps.apple.com. No cookies, no identifiers.",
+      "A standard HTTP GET with a Safari User-Agent. No cookies, no identifiers.",
     receives:
-      "The App Store page HTML, which the app parses for the privacy label JSON blob and developer's privacy policy link.",
+      "The App Store page HTML, which the app reads for the privacy label and the link to the developer's privacy policy.",
     necessity: "required",
   },
   {
-    name: "Apple — mzstatic image CDN",
-    endpoint: "is1-ssl.mzstatic.com (and siblings)",
+    name: "Apple image servers (mzstatic)",
+    endpoint: "is1-ssl.mzstatic.com to is5-ssl.mzstatic.com",
     trigger:
-      "Only when your browser renders an app icon returned by the Apple lookup — Apple host the icons here directly.",
-    sends: "Nothing beyond a standard image request.",
-    receives: "PNG / JPG icon bytes.",
+      "When your browser shows an app icon. Icons load straight from Apple's servers, not through privacytracker.",
+    sends:
+      "A standard image request made by your browser. Apple sees your IP address, your browser's User-Agent and at most the web address of your privacytracker install, never which page you were on.",
+    receives: "PNG or JPEG icon files.",
     necessity: "required",
   },
 ];
 
 const POLICY_SUBPROCESSORS: Subprocessor[] = [
   {
-    name: "Developer-published privacy policy URLs",
-    endpoint: "Whatever host the developer links to on the App Store page",
+    name: "Developer privacy policy pages",
+    endpoint:
+      "Whatever host the developer links to on the App Store page, or the policy link you enter for a manual app",
     trigger:
-      "Each time you resync an app or the 30-minute background sync runs, we follow the privacy-policy link Apple publishes on the App Store page for that app.",
-    sends: "A standard HTTP GET. No cookies, no identifiers.",
-    receives: "The HTML of the developer’s published privacy policy.",
+      "Automatically, a few seconds after an import or App Store sync finishes (including a scheduled sync); when you run a fetch from Settings → Privacy Policies; when you refresh one app from its AI Policy tab; and when you press Scrape privacy policy now on a manual app. Automatic and bulk fetches skip an app whose policy was fetched within the Policy Scrape Throttle window (60 minutes by default). While Disable policy scraping is on (Settings → Policy Scraping), no App Store app's policy is fetched at all; a manual app's Scrape privacy policy now button still works because you press it yourself.",
+    sends:
+      "A standard HTTP GET with a Safari User-Agent. If the site refuses it, one retry with Chrome browser headers and a Referer of apps.apple.com. No cookies, no identifiers.",
+    receives: "The HTML or text of the developer's published privacy policy.",
     necessity: "required",
+  },
+  {
+    name: "Internet Archive: copies of privacy policies",
+    endpoint:
+      "archive.org/wayback/available, web.archive.org/save/<policy URL>, web.archive.org/web/<timestamp>/<policy URL>",
+    trigger:
+      "After each successful policy fetch for an App Store app, the app looks up the newest Wayback Machine copy of that policy and asks the Archive to save a fresh one, so the AI Policy and Change History tabs can link to an archived copy. If a developer's site refuses both direct requests, the app reads the policy from the newest Wayback copy instead. None of this happens while policy scraping is disabled.",
+    sends:
+      "The public address of the developer's privacy policy. No cookies, no identifiers.",
+    receives:
+      "The address of an archived copy, whether the save request was accepted, or the archived policy page.",
+    necessity: "optional",
+    policyUrl: "https://archive.org/about/terms.php",
+  },
+  {
+    name: "Website icons for manual apps",
+    endpoint:
+      "The host of a policy or source link you entered for a manual app",
+    trigger:
+      "When the Manual Apps list or a manual app's page shows the small site icon beside its links. The privacytracker server fetches the icon, not your browser, and remembers the result for up to a day.",
+    sends:
+      "A standard HTTP GET for the site's home page (to find its icon) and for the icon itself, with a User-Agent naming privacytracker. No cookies, no identifiers.",
+    receives: "The site's home page HTML and its icon image.",
+    necessity: "optional",
   },
 ];
 
 const ARCHIVE_SUBPROCESSORS: Subprocessor[] = [
   {
-    name: "Internet Archive — Wayback availability API",
-    endpoint: "archive.org/wayback/available",
+    name: "Internet Archive: Wayback CDX index",
+    endpoint: "web.archive.org/cdx/search/cdx",
     trigger:
-      "Only when you explicitly run a historical Wayback import (once per app, per calendar quarter).",
+      "When you run a label-history import (Settings → Historical Import, or Check the archive on an app's Change History tab), including an import that resumes after a restart. One request per app lists the archived copies of its App Store page.",
     sends:
-      "The App Store URL you’re trying to back-fill, plus a target timestamp. No cookies, no identifiers.",
-    receives: "The closest available Wayback capture URL for that timestamp.",
+      "The App Store URL of the app being back-filled. No cookies, no identifiers.",
+    receives: "A list of the dates the Archive captured that page.",
     necessity: "on-demand",
     policyUrl: "https://archive.org/about/terms.php",
   },
   {
-    name: "Internet Archive — Wayback Machine replay",
-    endpoint: "web.archive.org/web/<timestamp>id_/<original>",
+    name: "Internet Archive: Wayback availability API",
+    endpoint: "archive.org/wayback/available",
     trigger:
-      "Follow-up to the availability API — downloads the archived App Store HTML so we can re-parse it against the same schema as a live scrape.",
-    sends: "A standard HTTP GET.",
-    receives:
-      "The archived HTML with Wayback’s toolbar injector disabled (`id_` suffix).",
+      "During a label-history import, only when the CDX index cannot be read: the import then asks for the capture closest to each target date instead.",
+    sends:
+      "The App Store URL being back-filled and a target date. No cookies, no identifiers.",
+    receives: "The address of the capture closest to that date.",
     necessity: "on-demand",
   },
   {
-    name: "Internet Archive — Save Page Now",
+    name: "Internet Archive: Wayback Machine replay",
+    endpoint: "web.archive.org/web/<timestamp>id_/<original>",
+    trigger:
+      "During a label-history import, to download each chosen capture so it can be read like a live App Store page.",
+    sends: "A standard HTTP GET.",
+    receives:
+      "The archived App Store HTML, without the Wayback toolbar (the id_ suffix).",
+    necessity: "on-demand",
+  },
+  {
+    name: "Internet Archive: Save Page Now",
     endpoint: "web.archive.org/save/<url>",
     trigger:
-      "Only fired when a historical import finds an empty quarter with no existing capture — we ask the Archive to create one for future runs.",
+      "At the end of a label-history import, at most once per app, and only when the Archive has no copy of that app's page from the last 45 days. The app asks the Archive to capture today's page for future imports.",
     sends: "The public App Store URL of the app. Nothing else.",
     receives:
-      "An HTTP response indicating whether the snapshot request was accepted; no data stored client-side.",
+      "Whether the Archive accepted the request. Nothing is stored beyond a note on the app's Change History tab.",
     necessity: "on-demand",
   },
 ];
 
-// Update-availability check. Runs at most once per 24h on the server,
-// caches the result in app_settings, and powers the in-app UpdateBanner.
-// Disclosed here because it's the first endpoint we contact that the user
-// didn't directly *ask* for — the App Store / Wayback / AI calls all fire
-// from explicit user actions, but this one ticks on a timer. Disable it
-// from Settings → Updates (toggles `update_check_enabled` to "false").
+// Update checks. The server-side check runs on a timer with no switch in
+// Settings; `update_check_enabled = false` in app_settings is the only way
+// to stop it (lib/update-check.ts). The desktop updater is reached only
+// from the update banner's Install & restart button, which the banner shows
+// only when that server-side check found a newer release.
 const UPDATE_CHECK_SUBPROCESSORS: Subprocessor[] = [
   {
     name: "GitHub Releases API",
     endpoint: "api.github.com/repos/privacykey/privacytracker/releases/latest",
     trigger:
-      'Once every 24 hours by default, or when you press "Check for updates" in Settings → Updates. Disable entirely with the same toggle.',
+      "Automatically, while the server runs: it looks about 25 seconds after start-up and then every 6 hours, but only asks GitHub again once the last successful answer is more than 24 hours old (after a failure it waits 15 minutes, then longer). There is no switch in Settings yet; it stops when update_check_enabled is set to false in the app's database.",
     sends:
-      "A standard HTTP GET with a User-Agent identifying the running version. No cookies, no API token, no machine identifier.",
+      "A standard HTTP GET with a User-Agent naming privacytracker and the version you run. No cookies, no API token, no machine identifier.",
     receives:
-      "JSON metadata for the most recent published release: tag, body (release notes), download URLs.",
+      "Details of the newest published release: version, release notes and links.",
     necessity: "optional",
+    policyUrl:
+      "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement",
+  },
+  {
+    name: "GitHub release downloads (desktop app updater)",
+    endpoint:
+      "github.com/privacykey/privacytracker/releases/latest/download/latest-v2.json, then the update file from github.com",
+    trigger:
+      "Desktop app only, and only when you press Install & restart on the update banner. The banner appears only after the release check above finds a newer version, so turning that check off turns this off too.",
+    sends:
+      "A standard HTTPS GET for the update manifest, then one for the update file, which GitHub may serve from its own download host. The addresses carry no version, device or user identifier.",
+    receives:
+      "The update manifest (version, notes, download address and signature), then the signed update. The app checks the signature and refuses any version that is not newer than the one you run.",
+    necessity: "on-demand",
     policyUrl:
       "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement",
   },
@@ -153,9 +240,9 @@ const AI_SUBPROCESSORS: Subprocessor[] = [
     name: "OpenAI API",
     endpoint: "api.openai.com",
     trigger:
-      "Only if you set the AI provider to “OpenAI” in Settings → AI and supply your own API key.",
+      "Only after you choose OpenAI in Settings → AI Policy Summaries and enter your own API key. Then a policy is sent when you ask for its summary, from an app's AI Policy tab or Settings → Privacy Policies, and during your first import if Summarize policies during first import is on.",
     sends:
-      "The scraped developer privacy policy text plus a structured-summary prompt. No app data beyond what’s in the policy.",
+      "The app's name, its developer and its policy address, the fetched policy text, and a structured-summary prompt (which also asks for a child-safety summary when your focus is on a child), with your API key in the request header. Nothing about your other apps or your device.",
     receives:
       "A JSON summary keyed by the lenses defined in lib/privacy-policy.ts.",
     necessity: "optional",
@@ -165,38 +252,66 @@ const AI_SUBPROCESSORS: Subprocessor[] = [
     name: "Anthropic API",
     endpoint: "api.anthropic.com",
     trigger:
-      "Only if you explicitly set the AI provider to “Anthropic” in Settings → AI and supply your own API key.",
-    sends: "The same scraped policy text + summary prompt.",
+      "Only after you choose Anthropic in Settings → AI Policy Summaries and enter your own API key, at the same moments as above.",
+    sends:
+      "The same as for OpenAI: app name, developer, policy address, policy text and summary prompt, with your API key in the request header.",
     receives: "A JSON summary.",
     necessity: "optional",
     policyUrl: "https://www.anthropic.com/legal/privacy",
   },
   {
-    name: "Custom / local AI endpoint (Ollama, OpenAI-compatible self-host, etc.)",
+    name: "Custom or local AI endpoint (Ollama or any OpenAI-compatible server)",
     endpoint: "Whatever base URL you configure (default 127.0.0.1:11434)",
     trigger:
-      "Only if you set the AI provider to “Custom” in Settings → AI. Intended for local models — no data leaves your network if the endpoint is local.",
-    sends: "Scraped policy text + summary prompt.",
+      "Only after you choose Own Model in Settings → AI Policy Summaries. Meant for local models: when the endpoint runs on your own machine or network, the policy text stays there.",
+    sends: "The same as for OpenAI, plus the API key if you entered one.",
     receives: "A JSON summary.",
+    necessity: "optional",
+  },
+];
+
+// Webhooks the user adds in the background setup wizard
+// (BackgroundModeWizard). Unlike every other card, these requests carry the
+// user's own data (app names and change summaries) by design, so the card
+// says so plainly.
+const WEBHOOK_SUBPROCESSORS: Subprocessor[] = [
+  {
+    name: "Your notification webhook (Slack, Discord, Microsoft Teams or any URL)",
+    endpoint: "The webhook URL you paste",
+    trigger:
+      "Only if you add a webhook while setting up background mode (Keep privacytracker running in the background). It posts each change as it happens, or a daily or weekly summary, depending on the frequency you pick, plus one test message when you press Test webhook. Clear the URL to stop it.",
+    sends:
+      "The notifications themselves: the names of the apps that changed and a short summary of each change, formatted for the service you picked.",
+    receives: "A status code, used only to tell you whether the post worked.",
     necessity: "optional",
   },
 ];
 
 // "What we collect from you" is intentionally short. The long list used to
 // enumerate every category we don't touch (ads, data brokers, tracking
-// pixels, cookies, etc.) but that became noise — the meta-statement here
+// pixels, cookies, etc.) but that became noise; the meta-statement here
 // is enough, and the detail lives in the subprocessor table below.
 const OUT_OF_SCOPE: { title: string; detail: string }[] = [
   {
     title: "No analytics, telemetry, or tracking cookies",
     detail:
-      "There's no Google Analytics, Plausible, Mixpanel, Sentry, PostHog, Segment, or any other telemetry pipeline. No tracking pixels, no advertising cookies, and no crash-reporting backend. The app doesn't phone home about your usage, device, or errors. Accessibility preferences (theme, font scale, dyslexic font) are stored in your browser's localStorage so they survive reloads — those preferences never leave your device.",
+      "There's no Google Analytics, Plausible, Mixpanel, Sentry, PostHog, Segment, or any other telemetry pipeline. No tracking pixels, no advertising cookies, and no crash-reporting backend. The app doesn't phone home about your usage, device, or errors. Accessibility preferences (theme, font scale, dyslexic font) are stored in your browser's localStorage and your language choice in a cookie, so they survive reloads; they never leave your device.",
   },
   {
-    title: "No user accounts, no sign-in",
+    title: "No user accounts",
     detail:
-      "The app has no login system and no user accounts. Everything — the apps you track, the privacy-label history, any AI settings — lives in a single SQLite file on the machine running privacytracker.",
+      "There is nothing to register: no user list, no email, no profile. The desktop app, and a local install that only listens on this computer, open without signing in. A Docker install, an install other devices on your network can reach, or any install whose operator set an admin token (AUDITOR_ADMIN_TOKEN) shows a sign-in page that asks for that token. It is one shared password for the install, not an account. After you sign in, the token is kept in a cookie that only this install reads, and the sign-in is written to an audit log in the same local database (with your browser's User-Agent, and an IP address only when a trusted proxy supplies one). Nothing about signing in is sent anywhere else. Everything else, from the apps you track to the privacy-label history and your AI settings, lives in a single SQLite file on the machine running privacytracker.",
   },
+];
+
+// Every card group rendered below, so the sidebar count cannot miss one.
+const ALL_SUBPROCESSOR_GROUPS: Subprocessor[][] = [
+  APP_STORE_SUBPROCESSORS,
+  POLICY_SUBPROCESSORS,
+  ARCHIVE_SUBPROCESSORS,
+  AI_SUBPROCESSORS,
+  WEBHOOK_SUBPROCESSORS,
+  UPDATE_CHECK_SUBPROCESSORS,
 ];
 
 // Sidebar entries. Kept here so the sidebar renders in a stable order and
@@ -220,18 +335,14 @@ const SIDEBAR_SECTIONS: {
   {
     id: "priv-subprocessors",
     labelKey: "third_parties",
-    hint: `${APP_STORE_SUBPROCESSORS.length + POLICY_SUBPROCESSORS.length + ARCHIVE_SUBPROCESSORS.length + AI_SUBPROCESSORS.length + UPDATE_CHECK_SUBPROCESSORS.length}`,
+    hint: `${ALL_SUBPROCESSOR_GROUPS.reduce((n, group) => n + group.length, 0)}`,
   },
   { id: "priv-self-host", labelKey: "going_offline" },
   { id: "priv-alternatives", labelKey: "other_summarisers" },
   { id: "priv-questions", labelKey: "questions" },
 ];
 
-/**
- * Necessity chip — Required / Optional / On-demand. Async because it
- * calls `getTranslations`, which is fine: this is a server component
- * and React's RSC pipeline awaits async children transparently.
- */
+/** Necessity chip: Required / Optional / On demand. */
 function NecessityChip({ value }: { value: Subprocessor["necessity"] }) {
   const tField = useTranslations("privacy_policy_page.subproc_field");
   const label =
@@ -291,7 +402,12 @@ export default function PrivacyPolicyContent() {
   const tSec = useTranslations("privacy_policy_page.sections");
   const tBody = useTranslations("privacy_policy_page.bodies");
 
-  const lastUpdated = "April 2026";
+  const format = useFormatter();
+  const lastUpdated = format.dateTime(LAST_UPDATED, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 
   // Pre-filled issue URL. Round 3 PR 5: the standalone `privacy-policy.yml`
   // template merged into the main `bug_report.yml`, which now has a
@@ -482,8 +598,20 @@ export default function PrivacyPolicyContent() {
                 ))}
               </div>
 
+              <h3 className="priv-subsection-title">{tSec("webhooks")}</h3>
+              <p className="priv-subsection-sub">{tBody("webhooks_sub")}</p>
+              <div className="priv-subproc-grid-wrap">
+                {WEBHOOK_SUBPROCESSORS.map((s) => (
+                  <SubprocessorCard key={s.name} s={s} />
+                ))}
+              </div>
+
               <h3 className="priv-subsection-title">{tSec("update_check")}</h3>
-              <p className="priv-subsection-sub">{tBody("update_check_sub")}</p>
+              <p className="priv-subsection-sub">
+                {tBody.rich("update_check_sub", {
+                  code: (chunks) => <code>{chunks}</code>,
+                })}
+              </p>
               <div className="priv-subproc-grid-wrap">
                 {UPDATE_CHECK_SUBPROCESSORS.map((s) => (
                   <SubprocessorCard key={s.name} s={s} />
@@ -520,8 +648,32 @@ export default function PrivacyPolicyContent() {
                   })}
                 </li>
                 <li>
+                  {tBody.rich("going_offline_step_policies", {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                    settings: (chunks) => (
+                      <Link
+                        className="priv-inline-link priv-inline-link-settings"
+                        href={SETTINGS_POLICY_SCRAPING_HASH}
+                      >
+                        {chunks}
+                      </Link>
+                    ),
+                  })}
+                </li>
+                <li>
                   {tBody.rich("going_offline_step_wayback", {
                     strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
+                </li>
+                <li>
+                  {tBody.rich("going_offline_step_webhooks", {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                  })}
+                </li>
+                <li>
+                  {tBody.rich("going_offline_step_updates", {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                    code: (chunks) => <code>{chunks}</code>,
                   })}
                 </li>
               </ul>

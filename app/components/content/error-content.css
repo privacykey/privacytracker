@@ -1,0 +1,100 @@
+/* ErrorContent (app/error.tsx). Built on the global tokens so it follows
+   the theme, font-size and high-contrast toggles like every other page. */
+
+.app-error-root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100svh - 120px);
+  padding: 24px 16px;
+}
+
+.app-error-card {
+  width: min(100%, 560px);
+  padding: 36px 32px;
+  text-align: center;
+  background: var(--bg-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+}
+
+.app-error-eyebrow {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* Paired with the eyebrow text, so the warning is never carried by
+   colour alone. */
+.app-error-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 13px;
+  color: var(--orange);
+  background: var(--orange-dim);
+  border-radius: 50%;
+}
+
+.app-error-title {
+  margin: 0 0 12px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.app-error-body {
+  max-width: 440px;
+  margin: 0 auto 24px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.app-error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.app-error-report {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 20px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+  border-top: 1px solid var(--border);
+}
+
+.app-error-report a {
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.app-error-report-note {
+  font-size: 12px;
+}
+
+@media (max-width: 480px) {
+  .app-error-card {
+    padding: 28px 20px;
+  }
+  .app-error-title {
+    font-size: 22px;
+  }
+}

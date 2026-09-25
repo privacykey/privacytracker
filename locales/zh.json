@@ -4170,30 +4170,35 @@
       "developer_policies": "开发者隐私政策",
       "historical_archives": "历史存档（可选）",
       "ai_providers": "AI 提供方（可选）",
-      "update_check": "更新通知（可选退出）"
+      "update_check": "更新检查",
+      "webhooks": "你设置的 Webhook（可选）"
     },
     "bodies": {
       "nothing_lede": "什么都不收集。没有账户、没有邮箱、没有设备标识符、没有分析上报、没有崩溃报告、没有 IP 日志。",
-      "nothing_body": "你添加的应用、我们为它们保留的隐私标签历史、你配置的隐私档案，以及你保存的任何 AI 提供方设置 — 这些都存放在运行privacytracker的设备上的一个 SQLite 文件中（默认是 <code>./data/privacy.db</code>）。删除该文件，状态便会消失。我们没有副本。",
-      "third_parties_lede": "使用privacytracker时，应用会代表你调用少量公开端点。这里没有发送你的个人标识符 — 但这些主机会看到标准的 HTTP 请求元数据（你的 IP、User-Agent、抓取的 URL），所以我们将它们一一列出。",
-      "third_parties_body": "<em>浏览器</em>中没有任何内容与第三方通信 — React、Next.js、ECharts、Tesseract，以及 Inter 字体（v4.1，SIL OFL-1.1）都从应用的同一来源提供。下面列出的是<em>服务器</em>代表你抓取的全部内容。",
+      "nothing_body": "你添加的应用、我们为它们保留的隐私标签历史、你配置的隐私档案，以及你保存的任何 AI 提供方设置，都存放在运行 privacytracker 的设备上的一个 SQLite 文件中（应用数据文件夹中的 <code>privacy.db</code>）。删除该文件，状态便会消失。我们没有副本。",
+      "third_parties_lede": "使用 privacytracker 时，应用会代表你调用少量公开端点。它们都不会收到账户、邮箱或设备标识符，但每个主机都会看到标准的请求信息（你的 IP 地址、User-Agent 以及所请求的地址），所以我们将它们一一列出。你添加的 Webhook 是唯一的例外，这正是它的用途：它会收到发生变化的应用名称。",
+      "third_parties_body": "除了由浏览器直接从 Apple 图片服务器加载的应用图标外，<em>浏览器</em>不会与任何第三方通信。React、Next.js、ECharts、Inter 字体（v4.1，SIL OFL-1.1）以及截图识别工具（Tesseract，它在你的浏览器中读取截图里的文字，图片不会离开你的设备）都从应用的同一来源提供。下面列出的其余内容，都由 privacytracker <em>服务器</em>代表你抓取。",
       "appstore_sub": "核心循环必需。没有这些，应用就无法查找、识别或同步 iOS 应用。",
-      "developer_sub": "直接来自开发者发布所用的主机。我们不通过任何中介路由此请求。",
-      "archives_sub": "只有当你在「设置 → Wayback 导入」中明确运行 Wayback 导入时才会联系。",
+      "developer_sub": "直接从开发者发布政策的主机抓取：每次导入或同步完成几秒后，以及你主动请求时。Internet Archive 会保存每份政策的公开副本，并在网站拦截直接请求时作为替代来源。在「设置 → 隐私政策抓取」中开启「禁用隐私政策抓取」即可同时停止这两项。手动添加的应用链接旁的小网站图标同样由服务器抓取，因此你的浏览器不会联系这些网站。",
+      "archives_sub": "只有当你开始标签历史导入时才会联系：在「设置 → 历史导入」中，或在应用的「变更历史」标签页中点击「检查存档」。被重启中断的导入会在应用再次启动时继续。上面的政策副本与此无关。",
       "ai_sub_prefix": "除非你在",
       "ai_sub_settings_link": "「设置 → AI 政策摘要」",
       "ai_sub_suffix": "中开启 AI 摘要并选择提供方，否则不会联系。默认值是「已禁用」。",
-      "going_offline_p1": "前端本身已经没有任何第三方连接 — Inter 字体在原始 SIL OFL-1.1 许可下从 <code>/public/fonts/</code> 自托管，所有 JS / CSS 资源都从同一来源提供。浏览器中不会向 CDN 回拨。",
-      "going_offline_p2": "服务端可以从应用内部切断最后两个可选的对外调用：",
-      "going_offline_step_ai": "<strong>AI 摘要</strong> — 打开 <settings>「设置 → AI 政策摘要」</settings>，将提供方设为「已禁用」，或将其指向本地 Ollama 端点，让摘要在设备上完成。卡片会在你到达时闪烁，方便查找。",
-      "going_offline_step_wayback": "<strong>Wayback 导入</strong> — 不要触碰它们。它们是可选的，所以一直不运行就完全不会涉及 Internet Archive。",
-      "going_offline_p3": "余下的只有 Apple 自己的端点（iTunes Search + App Store 页面）以及你明确抓取的开发者隐私政策链接 — 这两类正是这款应用的核心。",
+      "going_offline_p1": "除了由浏览器从 Apple 图片服务器加载的应用图标外，前端不会建立任何第三方连接。Inter 字体在原始 SIL OFL-1.1 许可下从 <code>/public/fonts/</code> 自托管，所有 JS 和 CSS 文件都从应用的同一来源提供。",
+      "going_offline_p2": "在服务端，下面这些步骤可以停止检查 App Store 标签所不需要的对外请求：",
+      "going_offline_step_ai": "<strong>AI 摘要</strong>：打开 <settings>「设置 → AI 政策摘要」</settings>，将提供方设为「已禁用」，或将其指向本地 Ollama 端点，让摘要在你自己的设备上生成。卡片会在你到达时闪烁，方便查找。",
+      "going_offline_step_wayback": "<strong>标签历史导入</strong>：只有你主动开始时才会运行。只要不开始导入，就不会向 Internet Archive 发出任何标签历史请求。",
+      "going_offline_p3": "余下的只有 Apple 自己的服务器（iTunes Search API、App Store 页面和应用图标），这正是这款应用的核心；另外还有你添加的手动应用的网站图标，以及你自己发起的请求，例如手动应用的「立即抓取隐私政策」按钮。",
       "alternatives_p1": "privacytracker的 AI 摘要是理解冗长政策文档的一种方式，但它是可选的，且按设计范围有限 — 我们只为你主动添加的应用生成摘要。有两个长期运营的第三方项目针对更广泛的目录解决同样的问题：",
       "alternatives_tosdr": "<strong><tosdr>Terms of Service; Didn't Read (ToSDR) ↗</tosdr></strong> — 由社区评审的数千个服务的评级，每个都拆分为通俗的「要点」（good / neutral / blocker），并附有指向条款来源的链接。",
       "alternatives_privacyspy": "<strong><privacyspy>PrivacySpy ↗</privacyspy></strong> — 一份开源、机器可读的隐私政策评分，覆盖一份精选服务列表，每条评级都有评分准则支持的理由。",
       "alternatives_p2": "privacytracker与上述任一项目均无关联 — 列出它们是因为读者经常询问，并且它们是本应用的有益补充。如果你决定使用其中任一项服务，请先阅读<em>它们的</em>服务条款和隐私政策 — 打开这些网站意味着<strong>那个主机</strong>（而非privacytracker）会看到你的请求，每个项目都有自己的资金模式、数据实践和范围。从它们 <tosdr>tosdr.org ↗</tosdr> 和 <privacyspy>privacyspy.org ↗</privacyspy> 上的「关于」 / 「隐私」页面入手通常是最佳起点。",
       "questions_p1": "如果本页有任何看起来不对、不完整或与应用实际行为不符的地方，请在 GitHub 上提交 issue。下方链接会预先在 issue 正文中标注它来自 <code>/privacy-policy</code>，方便维护者一目了然。",
-      "update_check_sub": "最多每 24 小时轮询一次，用于检查是否有更新版的 privacytracker 发布。不会发送任何关于你或你数据的内容 — 只是一个标准的 HTTP GET 请求。如果你更想手动检查，可以在「设置 → 更新」中关闭。"
+      "update_check_sub": "服务器每天最多向 GitHub 询问一次是否有更新的 privacytracker 版本。它不会发送任何关于你或你数据的内容。「设置」中暂时没有对应的开关：只有将应用数据库中的 <code>update_check_enabled</code> 设为 <code>false</code> 才会停止。桌面应用只有在你点击「安装并重启」时才会下载更新。",
+      "webhooks_sub": "除非你粘贴了 Webhook URL，否则不会发送任何内容。一旦设置，你选择的服务会收到应用名称和变更摘要，请像对待其他分享这份列表的地方一样对待它。",
+      "going_offline_step_policies": "<strong>隐私政策抓取</strong>：在 <settings>「设置 → 隐私政策抓取」</settings> 中开启「禁用隐私政策抓取」。这会停止所有自动和批量的政策抓取，以及随后在 Internet Archive 上保存的副本。",
+      "going_offline_step_webhooks": "<strong>Webhook</strong>：不要添加，或在后台设置中清空 URL。",
+      "going_offline_step_updates": "<strong>更新检查</strong>：「设置」中暂时没有开关。将应用数据库中的 <code>update_check_enabled</code> 设为 <code>false</code>，即可停止每天的 GitHub 检查，桌面应用的更新横幅也会随之消失。"
     },
     "subproc_field": {
       "endpoint": "端点",
@@ -5951,5 +5956,14 @@
   "loader_error": {
     "title": "此页面的数据加载失败。",
     "retry": "重试"
+  },
+  "error_page": {
+    "eyebrow": "出现问题",
+    "title": "此页面停止了工作",
+    "body": "此页面的某个部分在加载时出错。重试通常可以解决。如果问题反复出现，请报告给我们，以便修复。",
+    "try_again": "重试",
+    "home": "首页",
+    "report": "在 GitHub 上报告此问题",
+    "report_note": "将打开一个已填入此页面地址的错误报告表单。发送前你可以检查并修改所有内容。"
   }
 }
