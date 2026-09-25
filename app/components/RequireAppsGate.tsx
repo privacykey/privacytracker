@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import LoaderError from "./LoaderError";
 
 /**
  * Client-side replacement for the server-side empty-install bounce
@@ -12,9 +13,13 @@ import { useEffect, useState } from "react";
  * client-fetching shells so they no longer read the database in a server
  * component — this gate is the shared piece of that pattern. It asks the API whether any apps exist
  * (`/api/apps?limit=1` returns the `{ total }` envelope) and either
- * renders its children or replaces the location, exactly matching the
- * old server semantics — including treating a failed read as an empty
- * install, which is what the old `try { getAllApps() } catch` did.
+ * renders its children or replaces the location.
+ *
+ * A FAILED read is not an empty install. The first port copied the old
+ * server page's `try { getAllApps() } catch` and treated a failure as
+ * "no apps", which sent a user with a full library to onboarding
+ * whenever the read hiccuped. It now shows a retryable error instead;
+ * only a read that succeeds with a zero total bounces.
  *
  * Children stay unmounted until the check resolves so a to-be-redirected
  * visitor never sees the gated surface flash in.
@@ -27,10 +32,14 @@ export default function RequireAppsGate({
   redirectTo?: string;
 }) {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const [state, setState] = useState<"checking" | "ready" | "failed">(
+    "checking"
+  );
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let live = true;
+    setState("checking");
     fetch("/api/apps?limit=1")
       .then((res) =>
         res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
@@ -39,23 +48,28 @@ export default function RequireAppsGate({
         if (!live) {
           return;
         }
+        if (typeof total !== "number") {
+          throw new Error("Invalid apps count");
+        }
         if (total > 0) {
-          setReady(true);
+          setState("ready");
         } else {
           router.replace(redirectTo);
         }
       })
-      .catch(() => {
-        // DB not ready / fetch failed — same fallback the server pages
-        // used: treat as an empty install.
+      .catch((error) => {
+        console.warn("[apps-gate] could not read the app count:", error);
         if (live) {
-          router.replace(redirectTo);
+          setState("failed");
         }
       });
     return () => {
       live = false;
     };
-  }, [router, redirectTo]);
+  }, [router, redirectTo, retry]);
 
-  return ready ? children : null;
+  if (state === "failed") {
+    return <LoaderError onRetry={() => setRetry((value) => value + 1)} />;
+  }
+  return state === "ready" ? children : null;
 }

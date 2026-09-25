@@ -95,6 +95,16 @@ Going forward, changes are recorded here as they land.
   the App Store region on the matches step keeps a row's previous match
   when the new search fails, and apps still waiting on a paused search are
   no longer counted as "didn't match".
+- A page that could not load your apps no longer sends you to onboarding.
+  When the apps list, the app count behind Settings, Stats and the Privacy
+  Map, or the review queue failed to load, the page treated the failure as
+  an empty install and showed "Add the apps from your iPhone" to someone
+  with a full library. These pages now say "This page couldn't load its
+  data" with a Try again button, and only an empty answer that loaded
+  successfully leads to onboarding. Opening the site root while the app
+  count cannot be read now goes to the dashboard instead of the welcome
+  page, and the review queue no longer sends you to onboarding when you
+  pick a device with nothing on it.
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of

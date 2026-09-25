@@ -7,6 +7,7 @@ import type { Audience } from "@/lib/feature-flag-rules";
 import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
 import AppGrid, { type AppGridFlagState } from "./AppGrid";
 import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
+import LoaderError from "./LoaderError";
 import Nav from "./Nav";
 
 /**
@@ -37,7 +38,10 @@ import Nav from "./Nav";
  *    are validated against.
  * 4. PER-READ DEFAULTS ARE INDEPENDENT. The page had six separate
  *    try/catch blocks with different fallbacks; each fetch here degrades
- *    on its own rather than one failure blanking the page.
+ *    on its own rather than one failure blanking the page. The one
+ *    exception is the apps page itself: without it there is nothing to
+ *    show and no way to tell an empty install from a failed read, so a
+ *    failure renders LoaderError (Try again), never the onboarding bounce.
  */
 
 const APPGRID_FLAG_KEYS = [
@@ -107,9 +111,22 @@ const json = (url: string) =>
     .then((res) => (res.ok ? res.json() : null))
     .catch(() => null);
 
+/** A read the page cannot stand in for: a failure rejects, never `null`. */
+const requiredJson = (url: string) =>
+  fetch(url).then((res) =>
+    res.ok
+      ? res.json()
+      : Promise.reject(new Error(`HTTP ${res.status}: ${url}`))
+  );
+
 export default function AppsGridLoader() {
   const router = useRouter();
   const [state, setState] = useState<LoadedState | null>(null);
+  // A failed apps read is not an empty install. It used to come back as
+  // `null`, read as `total ?? 0`, and bounce a user with a full library
+  // to onboarding. It now shows a retryable error instead.
+  const [failed, setFailed] = useState(false);
+  const [retry, setRetry] = useState(0);
   const flagValues = useFlagBundle(APPGRID_FLAG_KEYS);
   const { failedToLoad } = useFlagBundleStatus();
   // The device scope decides which apps this page is even about, so the
@@ -126,8 +143,9 @@ export default function AppsGridLoader() {
       return;
     }
     let live = true;
+    setFailed(false);
     Promise.all([
-      json(
+      requiredJson(
         withScopeParam(
           `/api/apps?limit=${GRID_INITIAL_PAGE_SIZE}&offset=0&meta=grid`,
           scopeParam
@@ -138,53 +156,73 @@ export default function AppsGridLoader() {
       json("/api/focus"),
       json("/api/privacy-profile"),
       json("/api/devices"),
-    ]).then(([grid, manual, settings, focus, profileJson, devicesJson]) => {
-      if (!live) {
-        return;
-      }
-      const total: number = grid?.total ?? 0;
-      const manualApps = manual?.apps ?? [];
+    ])
+      .then(([grid, manual, settings, focus, profileJson, devicesJson]) => {
+        if (!live) {
+          return;
+        }
+        if (typeof grid?.total !== "number") {
+          throw new Error("Invalid apps page");
+        }
+        const total: number = grid.total;
+        const manualApps = manual?.apps ?? [];
 
-      // The page's own guard: only bounce when BOTH lists are empty.
-      //
-      // `!scopeParam` is load-bearing. Scoped to a device that happens to
-      // have no App Store apps, `total` is legitimately 0 — bouncing
-      // would throw a user with a full library out to onboarding because
-      // they picked the wrong phone in the nav. Only an unscoped empty
-      // read means "this install has nothing in it".
-      if (total === 0 && manualApps.length === 0 && !scopeParam) {
-        router.replace("/onboard");
-        return;
-      }
+        // The page's own guard: only bounce when BOTH lists are empty.
+        //
+        // `!scopeParam` is load-bearing. Scoped to a device that happens
+        // to have no App Store apps, `total` is legitimately 0 — bouncing
+        // would throw a user with a full library out to onboarding
+        // because they picked the wrong phone in the nav. Only an
+        // unscoped empty read means "this install has nothing in it".
+        //
+        // And both reads must have SUCCEEDED to say so: an unreadable
+        // manual-apps list cannot prove there are no custom apps, and an
+        // install with only custom apps must reach the grid.
+        if (total === 0 && !scopeParam) {
+          if (!manual) {
+            throw new Error("Could not read custom apps");
+          }
+          if (manualApps.length === 0) {
+            router.replace("/onboard");
+            return;
+          }
+        }
 
-      const profile = profileJson?.profile;
-      setState({
-        apps: grid?.apps ?? [],
-        total,
-        profileBadges: grid?.meta?.profileBadges ?? {},
-        pendingChangeCategoriesByApp:
-          grid?.meta?.pendingChangeCategoriesByApp ?? {},
-        userVerdicts: grid?.meta?.userVerdicts ?? {},
-        appDeviceMap: grid?.meta?.appDeviceMap ?? {},
-        manualApps,
-        manualSources: manual?.sources ?? [],
-        // Each default matches the server page's individual fallback.
-        showAccessibilityFilter: settings?.track_accessibility_labels !== false,
-        showQueueProgressBar: settings?.queue_show_progress_bar !== false,
-        audience: (focus?.audience ?? "self") as Audience,
-        childAgeBand: isValidAgeBand(focus?.childAgeBand ?? "")
-          ? (focus.childAgeBand as AgeBandKey)
-          : null,
-        // Key-count, not truthiness — the same expression the page used.
-        hasProfile: Boolean(profile) && Object.keys(profile).length > 0,
-        devices: devicesJson?.devices ?? [],
-        scopeKey,
-      } as LoadedState);
-    });
+        const profile = profileJson?.profile;
+        setState({
+          apps: grid.apps ?? [],
+          total,
+          profileBadges: grid.meta?.profileBadges ?? {},
+          pendingChangeCategoriesByApp:
+            grid.meta?.pendingChangeCategoriesByApp ?? {},
+          userVerdicts: grid.meta?.userVerdicts ?? {},
+          appDeviceMap: grid.meta?.appDeviceMap ?? {},
+          manualApps,
+          manualSources: manual?.sources ?? [],
+          // Each default matches the server page's individual fallback.
+          showAccessibilityFilter:
+            settings?.track_accessibility_labels !== false,
+          showQueueProgressBar: settings?.queue_show_progress_bar !== false,
+          audience: (focus?.audience ?? "self") as Audience,
+          childAgeBand: isValidAgeBand(focus?.childAgeBand ?? "")
+            ? (focus.childAgeBand as AgeBandKey)
+            : null,
+          // Key-count, not truthiness — the same expression the page used.
+          hasProfile: Boolean(profile) && Object.keys(profile).length > 0,
+          devices: devicesJson?.devices ?? [],
+          scopeKey,
+        } as LoadedState);
+      })
+      .catch((error) => {
+        console.warn("[apps] grid load failed:", error);
+        if (live) {
+          setFailed(true);
+        }
+      });
     return () => {
       live = false;
     };
-  }, [router, scopeReady, scopeParam]);
+  }, [router, scopeReady, scopeParam, retry]);
 
   // Nav renders above the hold guard so the chrome (and its app-count
   // badge) is present while the grid loads, as it was server-side.
@@ -228,6 +266,15 @@ export default function AppsGridLoader() {
           reviewQueueCfgutilUninstall:
             flagValues["flag.appgrid.review_queue.cfgutil_uninstall"],
         };
+
+  if (failed) {
+    return (
+      <>
+        <Nav />
+        <LoaderError onRetry={() => setRetry((value) => value + 1)} />
+      </>
+    );
+  }
 
   return (
     <>
