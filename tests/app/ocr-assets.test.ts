@@ -35,7 +35,8 @@ import {
   WORKER_FILE,
 } from "../../scripts/stage-ocr-assets.mjs";
 
-const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const escapeRegExp = (text: string) =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const repo = path.resolve(import.meta.dirname, "..", "..");
 const requireFromRepo = createRequire(path.join(repo, "package.json"));
