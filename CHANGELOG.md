@@ -587,31 +587,6 @@ Going forward, changes are recorded here as they land.
   open would make any `app_devices`-reading route (`/api/apps?meta=grid` is the
   first) differ for reasons of boot order rather than correctness. Measured at
   1 device and 22 links on a 22-app copy. Developer-facing only.
-- "Start over" and "Reset all data" are now one action, "Delete all data",
-  and it deletes what it says. Both used to promise a wipe of everything,
-  but neither removed your devices (their names, owners and the permission
-  you recorded for someone else's device) or the automatic backup
-  snapshots and backup signing key in the data folder, and "Reset all data"
-  also kept the activity log, feature overrides, bundle-import records and
-  the AI debug log. Settings now shows one button; its dialog lists what
-  will be deleted and enables "Delete everything" only after you type
-  DELETE, as restoring a backup asks for RESTORE. Only the schema, the
-  flag-migration marker and the runtime marker are kept, plus one activity
-  entry and one audit entry recording the wipe. `POST /api/reset` and
-  `POST /api/admin/start-over` run the same wipe, on both servers, and the
-  start-over route now refuses while a sync is running, as reset did.
-  Backup files you downloaded are not touched. Because the signing key is
-  gone, they restore as "untrusted": the restore dialogs in Settings and
-  onboarding now explain that and offer "Restore anyway" instead of
-  failing with a technical error.
-- Onboarding no longer creates a device when you only search for apps. A
-  typed list abandoned before Import used to leave a "Manual entry · date"
-  device with no apps in the device picker and Settings, and made the next
-  import ask "Whose device is this?". The device is now created when you
-  press Import, which also means the answer to "Whose device is this?" on
-  that screen is the one the device gets. `POST /api/imports/items`
-  accepts an optional `deviceId` for this, attached only to an import that
-  has no device yet and only if the device exists.
 
 ### Added
 
