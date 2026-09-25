@@ -107,6 +107,14 @@ Going forward, changes are recorded here as they land.
   now follow the light, dark and high contrast themes instead of fixed
   colours.
 
+- Charts have a text alternative. Screen readers announce each Stats
+  chart (heatmap, flow chart, change timeline, policy fingerprint radar)
+  and an app's change timeline as an image with a name that says what it
+  shows, followed by its data in words: the categories each app collects
+  by how the data is used, the number of apps and categories for each
+  kind of use, the changes in each period, or each app's rating per policy
+  topic. Before, each chart was an unlabelled drawing.
+
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of

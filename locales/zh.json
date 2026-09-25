@@ -3728,6 +3728,25 @@
     "summary_reviews": "审查",
     "failed_load": "加载失败"
   },
+  "chart_a11y": {
+    "list_separator": "、",
+    "group_separator": "；",
+    "radar_label": "政策指纹雷达图，比较 {count} 个应用在 {topics} 个政策主题上的表现。形状越大，政策条款越令人担忧。",
+    "radar_app": "{app}：{ratings}。",
+    "radar_rating": "{topic}（{rating}）",
+    "radar_not_rated": "未评级",
+    "heatmap_label": "热力图：{count} 个应用收集的数据类别，按数据用途着色。",
+    "heatmap_page": "第 {start} 至 {end} 个应用，共 {total} 个。",
+    "matrix_app": "{app}：{groups}。",
+    "matrix_group": "{severity}：{categories}",
+    "matrix_app_empty": "{app}：未收集数据。",
+    "sankey_label": "流向图：将 {apps} 个应用与其数据用途及 {categories} 个数据类别相连。",
+    "sankey_severity": "{severity}：{apps} 个应用，涉及{categories}。",
+    "timeline_label": "隐私变更随时间变化的堆叠面积图：所选时段内共 {count} 项变更。",
+    "app_timeline_label": "此应用的变更时间线：所选时段内共 {count} 项变更。",
+    "timeline_bucket": "{bucket}：{items}。",
+    "timeline_item": "{series}（{value}）"
+  },
   "policy_lens": {
     "collection_scope": "收集范围",
     "product_use": "产品使用",

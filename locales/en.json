@@ -3728,6 +3728,25 @@
     "summary_reviews": "reviews",
     "failed_load": "Failed to load"
   },
+  "chart_a11y": {
+    "list_separator": ", ",
+    "group_separator": "; ",
+    "radar_label": "Policy fingerprint radar chart comparing {count, plural, one {# app} other {# apps}} across {topics, plural, one {# policy topic} other {# policy topics}}. A larger shape means more concerning policy terms.",
+    "radar_app": "{app}: {ratings}.",
+    "radar_rating": "{topic} ({rating})",
+    "radar_not_rated": "not rated",
+    "heatmap_label": "Heatmap of the data categories collected by {count, plural, one {# app} other {# apps}}, coloured by how the data is used.",
+    "heatmap_page": "Apps {start} to {end} of {total}.",
+    "matrix_app": "{app}: {groups}.",
+    "matrix_group": "{severity}: {categories}",
+    "matrix_app_empty": "{app}: no data collected.",
+    "sankey_label": "Flow chart linking {apps, plural, one {# app} other {# apps}} to how their data is used and to {categories, plural, one {# data category} other {# data categories}}.",
+    "sankey_severity": "{severity}: {apps, plural, one {# app} other {# apps}}, covering {categories}.",
+    "timeline_label": "Stacked area chart of privacy changes over time: {count, plural, one {# change} other {# changes}} in the selected period.",
+    "app_timeline_label": "Change timeline for this app: {count, plural, one {# change} other {# changes}} in the selected period.",
+    "timeline_bucket": "{bucket}: {items}.",
+    "timeline_item": "{series} ({value})"
+  },
   "policy_lens": {
     "collection_scope": "Collection Scope",
     "product_use": "Product Use",
