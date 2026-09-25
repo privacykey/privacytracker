@@ -1784,6 +1784,51 @@ try {
       settle: true,
     });
   }
+
+  // ── Appended last (each case's forwarded address comes from a counter,
+  // so a case inserted above would shift every later case's headers).
+  // `POST /api/imports/items` with `deviceId`: the onboarding wizard now
+  // creates the device only when the user commits the import, and attaches
+  // it here. Only an import with no device takes one, and only a device
+  // that exists. ──
+  {
+    const route = "/api/imports/items";
+    const items = [{ query: "One", status: "matched" }];
+    await run("items add attaches the committed device", {
+      route,
+      method: "POST",
+      setup: [importRow(I1), device("dev-new", "Manual entry")],
+      json: { importId: I1, deviceId: " dev-new ", items },
+    });
+    await run("items add keeps the device an import already has", {
+      route,
+      method: "POST",
+      setup: [
+        device("dev-old", "Phone"),
+        device("dev-new", "Manual entry"),
+        importRow(I1, { deviceId: "dev-old" }),
+      ],
+      json: { importId: I1, deviceId: "dev-new", items },
+    });
+    await run("items add ignores a device that does not exist", {
+      route,
+      method: "POST",
+      setup: [importRow(I1)],
+      json: { importId: I1, deviceId: "ghost", items },
+    });
+    await run("items add with a device for an unknown import", {
+      route,
+      method: "POST",
+      setup: [device("dev-new", "Manual entry")],
+      json: { importId: "imp_missing", deviceId: "dev-new", items },
+    });
+    await run("items add ignores a device id that is not a string", {
+      route,
+      method: "POST",
+      setup: [importRow(I1), device("dev-new", "Manual entry")],
+      json: { importId: I1, deviceId: 7, items },
+    });
+  }
 } finally {
   db.close();
   rmSync(dir, { recursive: true, force: true });

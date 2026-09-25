@@ -637,12 +637,14 @@ fn resolve_node_binary(server_js: &Path) -> Result<PathBuf, Box<dyn std::error::
 const READY_TIMEOUT: Duration = Duration::from_secs(60);
 
 pub fn wait_until_ready(base_url: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let target = format!("{base_url}/api/apps");
     let deadline = Instant::now() + READY_TIMEOUT;
     let mut attempt = 0u32;
     while Instant::now() < deadline {
         attempt += 1;
-        match ureq::get(&target).timeout(Duration::from_secs(2)).call() {
+        match crate::backend::get(base_url, "/api/apps")
+            .timeout(Duration::from_secs(2))
+            .call()
+        {
             Ok(resp) if resp.status() < 500 => {
                 log::info!("Sidecar ready after {attempt} probes");
                 return Ok(());

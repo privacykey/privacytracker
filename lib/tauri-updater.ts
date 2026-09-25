@@ -52,11 +52,36 @@ function errorMessage(e: unknown): string {
 }
 
 /**
+ * What the shell's `install_verified_update` command resolves with
+ * (src-tauri/src/update_guard.rs): the version of the bundle it installed,
+ * read from the bundle on disk, and the version that is running.
+ */
+interface VerifiedInstall {
+  installedVersion: string;
+  runningVersion: string;
+}
+
+function isVerifiedInstall(value: unknown): value is VerifiedInstall {
+  const v = value as Partial<VerifiedInstall> | null;
+  return (
+    typeof v?.installedVersion === "string" &&
+    typeof v.runningVersion === "string"
+  );
+}
+
+/**
  * Checks for an update via Tauri's updater plugin and (if found) downloads,
  * installs, and relaunches. Outside Tauri, returns `{ available: false,
  * installed: false }` so the UI falls back to manual instructions. A
  * relaunch failure after a successful install still reports `installed:
  * true`, with the reason in `relaunchError`.
+ *
+ * The install goes through the shell's `install_verified_update` command,
+ * not the plugin's own `downloadAndInstall()`. The version in the update
+ * manifest is not signed (the signature covers only the archive), so the
+ * shell reads the version from the signed archive, installs only if it is
+ * newer than the running app, and reads it again from the installed
+ * bundle. The page is granted the plugin's `check` alone.
  */
 export async function checkAndInstall(): Promise<TauriUpdateResult> {
   if (!isTauri()) {
@@ -68,18 +93,16 @@ export async function checkAndInstall(): Promise<TauriUpdateResult> {
     // Tauri build loads. The catch swallows resolution failures gracefully.
     const updater = await import("@tauri-apps/plugin-updater");
     const proc = await import("@tauri-apps/plugin-process");
+    const { invoke } = await import("@tauri-apps/api/core");
 
     const update = await updater.check();
     if (!update?.available) {
       return { available: false, installed: false };
     }
 
-    // Downgrade protection. Tauri's ed25519 signature check verifies
-    // authenticity but not freshness — a GitHub-repo compromise (without
-    // the minisign key) could re-promote a previously-signed older
-    // build as `latest` and we'd otherwise install it on next launch.
-    // Refuse anything whose version isn't strictly newer than the
-    // running app.
+    // A manifest that doesn't even claim a newer version is refused before
+    // anything is downloaded. Its claim proves nothing on its own: the
+    // shell checks the version inside the signed archive below.
     const current = packageJson.version;
     if (
       typeof update.version === "string" &&
@@ -89,15 +112,38 @@ export async function checkAndInstall(): Promise<TauriUpdateResult> {
         available: false,
         installed: false,
         version: update.version,
-        error: `Refusing to install ${update.version} — current version is ${current} (downgrade blocked).`,
+        error: `The update offered is version ${update.version}, which is not newer than the version you are running (${current}). It was not installed.`,
       };
     }
 
-    await update.downloadAndInstall();
+    const verified = await invoke("install_verified_update", {
+      rid: update.rid,
+    });
+    // The shell has refused anything that isn't newer. Relaunching is what
+    // would start an older build, so check its answer again before that.
+    if (!isVerifiedInstall(verified)) {
+      return {
+        available: true,
+        installed: false,
+        version: update.version,
+        error:
+          "privacytracker could not confirm which version was installed, so it did not restart. Download the current version from the releases page and install it again.",
+      };
+    }
+    if (
+      compareVersions(verified.installedVersion, verified.runningVersion) <= 0
+    ) {
+      return {
+        available: true,
+        installed: false,
+        version: verified.installedVersion,
+        error: `The update that was installed is version ${verified.installedVersion}, which is not newer than the version you are running (${verified.runningVersion}), so privacytracker did not restart. Download the current version from the releases page and install it again.`,
+      };
+    }
     const installed: TauriUpdateResult = {
       available: true,
       installed: true,
-      version: update.version,
+      version: verified.installedVersion,
       notes: update.body,
     };
     try {

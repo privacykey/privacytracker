@@ -225,11 +225,37 @@ const DEPENDENCIES: DependencyEntry[] = [
     about:
       "WebAssembly port of the Tesseract OCR engine. Runs entirely in the browser or in Node.",
     usage:
-      "Optional, local-only OCR. Used in onboarding when the user imports iOS app screenshots — Tesseract extracts the visible app names so we can look them up on the App Store. No image leaves your device.",
+      "Optional, local-only OCR. Used in onboarding when the user imports iOS app screenshots: Tesseract reads the visible app names so we can look them up on the App Store. Its worker script (worker.min.js) is served by the app itself from /ocr/, with its licence and the notices of the small libraries it bundles alongside. No image leaves your device, and nothing is fetched from a CDN.",
     links: {
       website: "https://tesseract.projectnaptha.com",
       repo: "https://github.com/naptha/tesseract.js",
       npm: "https://www.npmjs.com/package/tesseract.js",
+    },
+  },
+  {
+    name: "tesseract.js-core",
+    version: pkgVersion("tesseract.js-core"),
+    license: "Apache-2.0",
+    about:
+      "The Tesseract OCR engine compiled to WebAssembly, together with the libraries it is built with: Leptonica (BSD-2-Clause), libjpeg from the Independent JPEG Group, libpng, libtiff, libwebp (BSD-3-Clause), giflib (MIT), zlib and openlibm, each under its own licence. This software is based in part on the work of the Independent JPEG Group.",
+    usage:
+      "The engine screenshot import runs inside a browser worker. Three builds ship in /ocr/ (plain, SIMD and relaxed SIMD) and tesseract.js loads the one your browser supports. THIRD-PARTY-OCR.md beside them lists each component and its licence.",
+    links: {
+      repo: "https://github.com/naptha/tesseract.js-core",
+      npm: "https://www.npmjs.com/package/tesseract.js-core",
+    },
+  },
+  {
+    name: "@tesseract.js-data/eng",
+    version: pkgVersion("@tesseract.js-data/eng"),
+    license: "Apache-2.0",
+    about:
+      "Tesseract’s English recognition model, in the integer build of tesseract-ocr/tessdata_best (Apache-2.0) that tesseract.js uses by default. The npm package that carries it declares the MIT licence.",
+    usage:
+      "Served from /ocr/eng.traineddata.gz so screenshot import can read English app names offline. Your browser keeps a copy in this site’s own storage so the next scan starts faster.",
+    links: {
+      repo: "https://github.com/naptha/tessdata",
+      npm: "https://www.npmjs.com/package/@tesseract.js-data/eng",
     },
   },
 

@@ -182,8 +182,16 @@ jobs:
     # no link) so this job adds well under a minute on the standard runner
     # and catches the common regressions: missing imports, type-error
     # changes after a tauri version bump, mismatched crate features.
+    #
+    # It also scans the three Rust lockfiles against the RustSec advisory
+    # database (the last step). A published advisory for a pinned crate
+    # fails the job; unmaintained, unsound and yanked warnings are printed
+    # but do not.
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Renovate tracks this pin (customManagers in renovate.json).
+      CARGO_AUDIT_VERSION: '0.22.2'
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -265,6 +273,35 @@ jobs:
         # small build, asked for a page and an API read, then stopped. The
         # quality job runs the same suite on the Node path (pnpm test:tauri).
         run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features rust-backend --locked
+
+      - name: Cache cargo-audit
+        id: cargo-audit-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit-${{ env.CARGO_AUDIT_VERSION }}
+
+      - name: Install cargo-audit
+        if: steps.cargo-audit-cache.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit --locked --version "$CARGO_AUDIT_VERSION"
+
+      - name: Rust advisory scan
+        # Nothing scanned the lockfiles before this step, so the desktop
+        # lockfile kept a rustls release with a published advisory while the
+        # core's lockfile had the fix. The desktop shell compiles the core
+        # under src-tauri/Cargo.lock, so each lockfile is scanned on its own.
+        # Every lockfile is scanned before the step fails, so one run shows
+        # every finding. The advisory database is fetched fresh each run, so
+        # a newly published advisory can turn this red on an unrelated PR:
+        # bump the crate (`cargo update -p <crate> --precise <fixed>`), then
+        # `pnpm notices:rust`.
+        run: |
+          status=0
+          for lock in core/Cargo.lock src-tauri/Cargo.lock scripts/verify-updater/Cargo.lock; do
+            echo "cargo audit --file $lock"
+            cargo audit --file "$lock" || status=1
+          done
+          exit "$status"
 
   core-parity:
     # Rust-core Phase 1 gate. Compiles the standalone core/ crate, runs its
@@ -517,7 +554,9 @@ jobs:
         # of the eleven tables an import can touch and the wire response
         # with its download headers. The two support bundles are machine
         # state, so they are recorded as a projection: the keys, the jobs,
-        # the rate limits, the flag overrides and the redacted errors. A
+        # the rate limits, the flag overrides and the redacted errors.
+        # package.json's version, which a bundle carries, is masked as
+        # <APP_VERSION> so a release bump does not fail this step. A
         # diff means a Node route, lib/audit-bundle.ts,
         # lib/audit-bundle-import.ts or lib/deployment-diagnostics.ts changed and
         # core/src/server/audit_bundle.rs or bundle_writes.rs has not been
@@ -794,15 +833,20 @@ jobs:
 
       - name: The image is the Rust server, with its notices
         # The default image runs pt-core. Nothing of Node ships in it, and the
-        # four notices travel with the binary, as they do in the desktop app.
+        # five notices travel with the binary, as they do in the desktop app.
+        # The site carries screenshot import's OCR worker, engine and model
+        # (scripts/stage-ocr-assets.mjs), which the app serves itself.
         run: |
           set -euo pipefail
           docker run --rm --entrypoint sh privacytracker-smoke -c '
             set -e
             if command -v node >/dev/null; then echo "node is in the image"; exit 1; fi
             test ! -e /app/node_modules || { echo "node_modules is in the image"; exit 1; }
-            for f in NOTICE LICENSE V8-LICENSE THIRD-PARTY-RUST.md; do
+            for f in NOTICE LICENSE V8-LICENSE THIRD-PARTY-RUST.md THIRD-PARTY-OCR.md; do
               test -s "/app/third-party/$f" || { echo "missing or empty: $f"; exit 1; }
+            done
+            for f in worker.min.js tesseract-core-simd-lstm.wasm.js eng.traineddata.gz THIRD-PARTY-OCR.md; do
+              test -s "/app/site/public/ocr/$f" || { echo "missing or empty: site/public/ocr/$f"; exit 1; }
             done
             pt-core version
           '
@@ -931,6 +975,9 @@ jobs:
         run: |
           set -euo pipefail
           docker build --build-arg BACKEND=node -t privacytracker-smoke-node .
+          docker run --rm --entrypoint sh privacytracker-smoke-node -c \
+            'test -s /app/public/ocr/worker.min.js && test -s /app/public/ocr/eng.traineddata.gz' \
+            || { echo "the Node image is missing public/ocr/"; exit 1; }
           docker run -d --rm --name privacytracker-smoke-node \
             -p 127.0.0.1:3000:3000 privacytracker-smoke-node
           for attempt in {1..40}; do
@@ -987,13 +1034,21 @@ jobs:
           exit 1
 
       - name: Assert static assets are served (named volume)
-        # These three curls fail (404 → curl -f exits non-zero) if public/ is
+        # These curls fail (404 → curl -f exits non-zero) if public/ is
         # missing from the runtime image. /api/ready alone never exercises them.
+        # The OCR worker sits behind the auth gate like every other path, and
+        # its response carries the worker's own CSP, the only policy that
+        # allows WebAssembly (lib/ocr-assets.ts).
         run: |
           set -euxo pipefail
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/api/ready
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/fonts/InterVariable.woff2
           curl -fsS --max-time 10 -o /dev/null http://127.0.0.1:3000/brand-icon.png
+          curl -fsS --max-time 10 -o /dev/null -H "x-auditor-admin-token: $AUDITOR_ADMIN_TOKEN" \
+            http://127.0.0.1:3000/ocr/eng.traineddata.gz
+          curl -fsS --max-time 10 -D - -o /dev/null -H "x-auditor-admin-token: $AUDITOR_ADMIN_TOKEN" \
+            http://127.0.0.1:3000/ocr/worker.min.js \
+            | grep -i '^content-security-policy:' | grep -q "'wasm-unsafe-eval'"
 
       - name: Assert private data requires authentication inside Docker
         # From the runner through the published port, the way a browser

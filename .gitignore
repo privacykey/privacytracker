@@ -45,6 +45,12 @@
 # Rust build output from `npm run test:tauri`.
 /src-tauri/target/
 
+# ── Generated OCR assets ─────────────────────────────────────────────
+# scripts/stage-ocr-assets.mjs copies tesseract.js's worker, engine and
+# English model out of node_modules into public/ocr/ before every build
+# (~14 MB). Rebuilt each time, so never committed.
+/public/ocr/
+
 # ── Local runtime data ───────────────────────────────────────────────
 # /data is the SQLite location for `npm run dev` / Docker bind-mount.
 # Treat it like a user database — never commit.

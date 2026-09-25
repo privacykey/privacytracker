@@ -204,30 +204,16 @@ pub fn set_dock_badge(count: u32) -> Result<(), String> {
     Ok(())
 }
 
-/// Reveal the main window. Shared helper for:
-///   - Tray "Open" menu item
-///   - Global shortcut handler
-///   - Deep-link handler (privacytracker://...)
-///   - Webview button "Bring to front" (rarely useful, but convenient for testing)
+/// Reveal the main window from the webview. The tray, global shortcut,
+/// deep links and menu bar call `window_lock::reveal` directly; this is
+/// the same gate for the page.
 ///
-/// Respects desktop_require_unlock: if it's on and we haven't cleared Touch
-/// ID this session, we prompt before revealing. The unlock state is stored
-/// in-process only; killing the tray forces a re-auth on next reveal.
+/// Respects desktop_require_unlock: when it's on and the window is locked,
+/// the gate asks for Touch ID / password before showing it. The unlock
+/// state is in-process only: hiding the window or quitting locks it again.
 #[tauri::command]
 pub fn reveal_main_window(app: AppHandle) -> Result<(), String> {
-    let window = app
-        .get_webview_window("main")
-        .ok_or_else(|| "main window not found".to_string())?;
-
-    // NOTE: For v1 we always reveal immediately and let the webview itself
-    // draw a lock overlay if desktop_require_unlock is on + the session
-    // hasn't authenticated yet. That keeps Touch ID prompting off the
-    // critical path of "click tray → see something" and lets the UI
-    // handle the retry UX. The command is still on the Rust side so the
-    // webview can invoke it on the user's Touch ID success to re-reveal.
-    window.show().map_err(|e| e.to_string())?;
-    window.unminimize().ok();
-    window.set_focus().map_err(|e| e.to_string())?;
+    crate::window_lock::reveal(&app);
     Ok(())
 }
 

@@ -1,0 +1,15 @@
+/* AI summary disclaimer (AI Policy tab). Co-located with
+ * AiSummaryDisclaimer.tsx, see docs/CSS.md.
+ *
+ * The source-policy and archive links sit inside the disclaimer
+ * sentence. The base `a` reset gives them the sentence's own colour and
+ * no underline, so without this nothing marked them as links (WCAG
+ * 1.4.1). */
+.policy-ai-disclaimer-link {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.policy-ai-disclaimer-link:hover {
+  text-decoration-thickness: 2px;
+}

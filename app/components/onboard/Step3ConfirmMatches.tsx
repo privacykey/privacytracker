@@ -275,8 +275,14 @@ export default function Step3ConfirmMatches({
           // clicking "Skip this" per row is unworkable. The banner
           // gives a single "skip all" affordance and a count so the
           // user knows what they're collapsing.
+          // Rows still waiting on a rate-limited search have no candidates
+          // yet either, but nothing has said they are missing from the App
+          // Store; counting them here told the user their apps "didn't
+          // match" while the search was only paused.
           const unmatchedQueries = searchResults
-            .filter((r) => r.candidates.length === 0)
+            .filter(
+              (r) => r.candidates.length === 0 && statusFor(r) !== "pending"
+            )
             .map((r) => r.query);
           // Active = no candidate AND not already marked skipped. We
           // approximate "marked skipped" by checking whether the item

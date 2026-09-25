@@ -75,6 +75,7 @@ const UPDATE_COUNTERS: &str =
     "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?";
 const CLAIM_BUMP: &str = "UPDATE import_items\n         SET attempt_count = attempt_count + 1,\n             next_attempt_at = ?\n       WHERE id = ? AND status = 'queued'";
 const COMPLETE_IMPORT: &str = "UPDATE imports SET completed_at = ? WHERE id = ?";
+const ATTACH_DEVICE_TO_IMPORT: &str = "UPDATE imports SET device_id = ? WHERE id = ? AND device_id IS NULL AND EXISTS (SELECT 1 FROM devices WHERE id = ?)";
 const UPSERT_APP_DEVICE: &str = "\n        INSERT INTO app_devices (app_id, device_id, first_seen_at, last_seen_at)\n        VALUES (?, ?, ?, ?)\n        ON CONFLICT(app_id, device_id) DO UPDATE SET last_seen_at = excluded.last_seen_at\n      ";
 const TOUCH_DEVICE: &str = "UPDATE devices SET last_synced_at = ? WHERE id = ?";
 const REPLACE_MATCH: &str = "UPDATE import_items\n         SET status = 'imported',\n             app_id = ?,\n             app_name = ?,\n             developer = ?,\n             url = ?,\n             icon_url = ?,\n             scrape_error = NULL,\n             removed_app_id = NULL\n       WHERE id = ?";
@@ -1225,6 +1226,21 @@ fn add_items(cx: &mut Cx, body: BodyOutcome) -> Response {
     }
     if cleaned.is_empty() {
         return json_error(StatusCode::BAD_REQUEST, "items must be a non-empty array");
+    }
+    // `attachDeviceToImport`: the device the wizard created when the user
+    // committed the import, attached only to an import without one and
+    // only if the device exists.
+    let device_id = trimmed(&body, "deviceId");
+    if !device_id.is_empty()
+        && cx
+            .w
+            .run(
+                ATTACH_DEVICE_TO_IMPORT,
+                vec![json!(device_id), json!(import_id), json!(device_id)],
+            )
+            .is_err()
+    {
+        return internal_error();
     }
     match add_import_items(cx, &import_id, &cleaned) {
         Ok(items) => json_ok(&json!({"items": items})),

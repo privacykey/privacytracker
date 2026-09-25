@@ -18,8 +18,8 @@ use axum::{
 use rusqlite::OptionalExtension;
 use serde::Serialize;
 
-use super::auth::{admin_token_configured, request_has_valid_admin_token};
-use super::json::{json_ok, json_response};
+use super::auth::admin_token_configured;
+use super::json::{json_error, json_ok, json_response};
 use super::settings::get_setting;
 use super::AppState;
 
@@ -59,14 +59,25 @@ struct AdminTokenStatus {
     unlocked: bool,
 }
 
+/// `unlocked` says whether a presented token is right, so a wrong one counts
+/// toward the client's guess budget like every other check, and a client
+/// past it is answered 429 before its token is looked at (token_guard.rs).
 pub async fn admin_token_status(headers: HeaderMap) -> Response {
-    let header_token = headers
-        .get("x-auditor-admin-token")
-        .and_then(|v| v.to_str().ok());
-    let cookie = headers.get(header::COOKIE).and_then(|v| v.to_str().ok());
+    let check = super::token_guard::check_attempt(&headers, super::now_ms());
+    if let super::token_guard::Check::Throttled(retry_after_ms) = check {
+        let mut res = json_error(
+            StatusCode::TOO_MANY_REQUESTS,
+            super::token_guard::TOO_MANY_FAILURES,
+        );
+        let seconds = (retry_after_ms.max(0) + 999) / 1000;
+        if let Ok(value) = header::HeaderValue::from_str(&seconds.to_string()) {
+            res.headers_mut().insert(header::RETRY_AFTER, value);
+        }
+        return res;
+    }
     json_ok(&AdminTokenStatus {
         configured: admin_token_configured(),
-        unlocked: request_has_valid_admin_token(header_token, cookie),
+        unlocked: check == super::token_guard::Check::Valid,
     })
 }
 

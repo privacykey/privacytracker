@@ -23,6 +23,7 @@ use super::{
     ratelimit::{self, RateLimiter},
     runtime_diag::{self, sqlite_metrics},
     stats::truthy,
+    token_guard,
     trust::{is_same_origin_request, request_origin, trust_proxy},
     writes::{internal_error, prop, Cx, RouteSpec, WriteRequest},
 };
@@ -67,21 +68,20 @@ const APP_DATA_TABLES_TO_TRUNCATE: [&str; 22] = [
     "activity_log",
     "shortlist_entries",
 ];
-const START_OVER_EXTRA_TABLES: [&str; 3] = ["feature_flag_overrides", "audit_log", "ai_debug_log"];
-/// `/api/reset`'s own list, in its order.
-const RESET_TABLES: [&str; 11] = [
-    "notifications",
-    "import_items",
-    "imports",
-    "manual_apps",
-    "privacy_data_types",
-    "privacy_categories",
-    "privacy_purposes",
-    "privacy_snapshots",
-    "privacy_types",
-    "apps",
-    "app_settings",
+/// `USER_DATA_TABLES_TO_TRUNCATE`'s tail: what only "Delete everything"
+/// empties after the app-data list.
+const USER_DATA_EXTRA_TABLES: [&str; 5] = [
+    "app_devices",
+    "devices",
+    "feature_flag_overrides",
+    "audit_log",
+    "ai_debug_log",
 ];
+/// `SETTINGS_KEYS_KEPT_BY_WIPE`, and the statement that keeps them, as
+/// lib/wipe-all-data.ts spells it.
+const SETTINGS_KEYS_KEPT_BY_WIPE: [&str; 2] =
+    ["feature_flag_migration_version", "runtime_environment"];
+const DELETE_SETTINGS_EXCEPT_KEPT: &str = "DELETE FROM app_settings WHERE key NOT IN (?, ?)";
 
 pub(super) fn handles(spec: &RouteSpec) -> bool {
     matches!(
@@ -328,6 +328,28 @@ pub(super) fn login_precheck(
     if !is_same_origin_request(headers, trust_proxy()) {
         return Err(json_error(StatusCode::FORBIDDEN, "Same-origin required"));
     }
+    // Every login presents a token, so a client past its budget of wrong
+    // tokens on any path is refused before this one is looked at. The
+    // budget is per client, so one client's guessing never refuses another.
+    let client = token_guard::client_key(headers);
+    if let Some(retry_after_ms) = token_guard::attempts_blocked(client.as_deref(), now) {
+        record_audit(
+            w,
+            ids,
+            now,
+            "admin_token.login.client_throttled",
+            actor,
+            Some(&format!("retryAfterMs={retry_after_ms}")),
+            false,
+        );
+        return Err(with_retry_after(
+            json_error(
+                StatusCode::TOO_MANY_REQUESTS,
+                token_guard::TOO_MANY_FAILURES,
+            ),
+            retry_after_ms,
+        ));
+    }
     let already_authed = request_has_valid_admin_token(
         head(headers, "x-auditor-admin-token"),
         head(headers, header::COOKIE.as_str()),
@@ -352,11 +374,10 @@ pub(super) fn login_precheck(
             ));
         }
     }
-    let key = ratelimit::key_for_request(
-        head(headers, "x-forwarded-for"),
-        head(headers, "x-real-ip"),
-        "admin-token-login",
-    );
+    // Keyed by the same client as the guess budget, so one client's
+    // attempts no longer fill a bucket every client shares; with no known
+    // client, the route's shared bucket, as before.
+    let key = format!("admin-token-login:{}", client.as_deref().unwrap_or("local"));
     let rate = limiter.check(&key, 5, 60_000, now);
     if !rate.allowed {
         record_audit(
@@ -416,8 +437,10 @@ fn login(cx: &mut Cx, body: BodyOutcome, headers: &HeaderMap, actor: &Actor) -> 
         return json_error(StatusCode::BAD_REQUEST, "Token is required");
     }
     let expected = crate::host_env::var("AUDITOR_ADMIN_TOKEN").unwrap_or_default();
+    let client = token_guard::client_key(headers);
     if !constant_time_eq(provided.as_bytes(), expected.as_bytes()) {
         record_login_failure(cx.now);
+        token_guard::record_failure(client.as_deref(), &format!("login {provided}"), cx.now);
         record_audit(
             cx.w,
             cx.ids,
@@ -429,6 +452,7 @@ fn login(cx: &mut Cx, body: BodyOutcome, headers: &HeaderMap, actor: &Actor) -> 
         );
         return json_error(StatusCode::UNAUTHORIZED, "Invalid token");
     }
+    token_guard::record_success(client.as_deref(), cx.now);
     record_audit(cx.w, cx.ids, cx.now, "admin_token.login", actor, None, true);
     // `Secure` only over HTTPS, read off the request's perceived scheme;
     // Next serialises the eight-hour cookie with both Expires and Max-Age.
@@ -816,22 +840,60 @@ fn wipe_apps(cx: &mut Cx, actor: &Actor) -> Response {
     json_ok(&json!({ "ok": true, "rowsRemoved": rows_removed, "durationMs": cx.now - started_at }))
 }
 
+// ── "Delete everything": the wipe both teardowns share ──────────────
+
+/// `wipeAllUserData` (lib/wipe-all-data.ts): every user-data table and
+/// every setting but the two process keys in one transaction; then, only
+/// once that committed, the automatic snapshots and the signing key; then
+/// the one activity row. `Err` is the transaction's failure, with nothing
+/// on disk touched.
+fn wipe_everything(cx: &mut Cx, mode: &str, started_at: i64) -> Result<(), String> {
+    transaction(cx, |cx| {
+        for table in APP_DATA_TABLES_TO_TRUNCATE
+            .iter()
+            .chain(USER_DATA_EXTRA_TABLES.iter())
+        {
+            truncate(cx, mode, table);
+        }
+        cx.w.run(
+            DELETE_SETTINGS_EXCEPT_KEPT,
+            SETTINGS_KEYS_KEPT_BY_WIPE.iter().map(|k| json!(k)).collect(),
+        )
+        .map(drop)
+    })?;
+    let env = super::backup::env();
+    let snapshots_deleted = super::backup_snapshots::delete_all(&env);
+    let key_deleted = super::backup::delete_signing_key(&env);
+    // Written AFTER the wipe so the row is the one entry in the emptied log.
+    record_activity(
+        cx.w,
+        cx.ids,
+        cx.now,
+        "reset",
+        "ok",
+        None,
+        Some("Deleted all data on this install"),
+        Some(&json!({
+            "mode": mode,
+            "backupSnapshotsDeleted": snapshots_deleted,
+            "signingKeyDeleted": key_deleted,
+        })),
+        started_at,
+    );
+    Ok(())
+}
+
 // ── POST /api/reset ──────────────────────────────────────────────────
 
 fn reset(cx: &mut Cx, actor: &Actor) -> Response {
+    let started_at = cx.now;
     if cx.get("sync_running", "false") == "true" {
         return json_error(
             StatusCode::CONFLICT,
             "A sync is currently running. Please wait until it finishes.",
         );
     }
-    let wiped = transaction(cx, |cx| {
-        for table in RESET_TABLES {
-            cx.w.run(&format!("DELETE FROM {table}"), vec![])?;
-        }
-        Ok(())
-    });
-    match wiped {
+    match wipe_everything(cx, "reset", started_at) {
         Ok(()) => {
             record_audit(cx.w, cx.ids, cx.now, "reset.success", actor, None, true);
             json_ok(&json!({ "success": true }))
@@ -851,17 +913,14 @@ fn reset(cx: &mut Cx, actor: &Actor) -> Response {
 
 fn start_over(cx: &mut Cx, actor: &Actor) -> Response {
     let started_at = cx.now;
-    let wiped = transaction(cx, |cx| {
-        for table in APP_DATA_TABLES_TO_TRUNCATE
-            .iter()
-            .chain(START_OVER_EXTRA_TABLES.iter())
-        {
-            truncate(cx, "start-over", table);
-        }
-        // Nothing survives: the preserve list is empty.
-        cx.w.run("DELETE FROM app_settings", vec![]).map(drop)
-    });
-    if let Err(e) = wiped {
+    // Same refusal as /api/reset: a sync still writing would put apps back.
+    if cx.get("sync_running", "false") == "true" {
+        return json_error(
+            StatusCode::CONFLICT,
+            "A sync is currently running. Please wait until it finishes.",
+        );
+    }
+    if let Err(e) = wipe_everything(cx, "start-over", started_at) {
         diag::log_error(format!("[/api/admin/start-over] failed: {e}"));
         record_audit(
             cx.w,
@@ -877,17 +936,6 @@ fn start_over(cx: &mut Cx, actor: &Actor) -> Response {
             "Start Over failed; database left untouched",
         );
     }
-    record_activity(
-        cx.w,
-        cx.ids,
-        cx.now,
-        "reset",
-        "ok",
-        None,
-        Some("Started over — all user data wiped, schema preserved"),
-        Some(&json!({ "mode": "start-over" })),
-        started_at,
-    );
     record_audit(
         cx.w,
         cx.ids,

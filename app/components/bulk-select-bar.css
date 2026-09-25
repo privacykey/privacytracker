@@ -156,14 +156,17 @@
   gap: 12px;
   align-items: center;
   font-size: 12px;
-  color: var(--text, #6b7280);
-  opacity: 0.85;
+  /* --text-2 rather than faded --text: opacity on the whole row also
+     faded the link below it under 4.5:1. */
+  color: var(--text-2);
 }
 .bulk-select-bar-link {
   padding: 0;
   font: inherit;
   font-size: 12px;
-  color: var(--blue, #2563eb);
+  /* Pulled toward --text: plain --blue on the active bar's --blue-dim
+     tint is 4.2:1 in light mode. */
+  color: color-mix(in srgb, var(--blue) 75%, var(--text));
   text-decoration: underline;
   cursor: pointer;
   background: none;

@@ -1,38 +1,34 @@
 /**
- * /api/admin/start-over — POST wipes all user data, preserves schema.
+ * /api/admin/start-over — POST runs "Delete everything"
+ * (lib/wipe-all-data.ts), the one full wipe Settings offers.
  *
- * Distinct from `/api/admin/reset` (which deletes the DB file entirely).
- * Start Over keeps the schema + migration version intact and zeroes out:
+ * `/api/reset` runs the same wipe behind a different guard (it doubles as
+ * the E2E suite's per-spec reset). Both remove:
  *
- *   - all tracked apps + privacy types/categories + snapshots + history
- *   - all annotations
- *   - all flag overrides + the active focus
- *   - all profiles (privacy + accessibility)
- *   - all AI config (provider, keys, timeouts, debug logs)
- *   - all notifications + activity rows
- *   - the welcomed_at timestamp
+ *   - all tracked and manual apps, with their labels, snapshots, history,
+ *     policy summaries, notes, verdicts and shortlist entries
+ *   - all devices and their app links (names, ECIDs, owners, attestations)
+ *   - imports, notifications, the activity log, the audit log, the AI
+ *     debug log and every flag override
+ *   - every setting (focus, profiles, AI config, schedule, welcomed_at)
+ *     except the flag-migration marker and the runtime marker
+ *   - the automatic backup snapshots and the backup signing key
  *
- * On completion the user's next page load lands on /welcome (audience
- * unset → §4.10 hybrid-redirect kicks in).
+ * The schema stays. On completion the next page load lands on /welcome
+ * (audience unset → §4.10 hybrid-redirect kicks in).
  *
- * Implemented as a single transaction so a partial failure leaves the DB
- * in its pre-call state. Audit-logged via activity_log AFTER the wipe so
- * the row survives.
+ * The database part is one transaction, so a failure leaves it in its
+ * pre-call state and no file is touched. The activity and audit rows are
+ * written after the wipe, so they survive it.
  */
 
 import { NextResponse } from "next/server";
-import { recordActivity } from "@/lib/activity";
 import { requireMutationGuard } from "@/lib/api-guards";
-import db from "@/lib/db";
-import { START_OVER_TABLES_TO_TRUNCATE } from "@/lib/reset-tables";
+import { getSetting } from "@/lib/scheduler";
 import { recordAudit } from "@/lib/security";
+import { wipeAllUserData } from "@/lib/wipe-all-data";
 
 export const dynamic = "force-dynamic";
-
-// app_settings keys that survive Start Over. Currently nothing — the user
-// is starting completely fresh. If we ever need to keep e.g. a debug flag
-// across resets, list it here.
-const SETTINGS_KEYS_TO_PRESERVE: readonly string[] = [];
 
 export async function POST(request: Request) {
   const startedAt = Date.now();
@@ -49,32 +45,17 @@ export async function POST(request: Request) {
     return guard.response;
   }
 
+  // Same refusal as /api/reset: a sync that is still writing would put
+  // apps back into the emptied database.
+  if (getSetting("sync_running", "false") === "true") {
+    return NextResponse.json(
+      { error: "A sync is currently running. Please wait until it finishes." },
+      { status: 409 }
+    );
+  }
+
   try {
-    const wipe = db.transaction(() => {
-      // Truncate per-table data.
-      for (const table of START_OVER_TABLES_TO_TRUNCATE) {
-        try {
-          db.prepare(`DELETE FROM ${table}`).run();
-        } catch (e) {
-          // Table may not exist on older installs — log and continue.
-          console.warn(`[start-over] DELETE FROM ${table} skipped:`, e);
-        }
-      }
-
-      // Wipe app_settings except any keys we want to preserve.
-      if (SETTINGS_KEYS_TO_PRESERVE.length === 0) {
-        db.prepare("DELETE FROM app_settings").run();
-      } else {
-        const placeholders = SETTINGS_KEYS_TO_PRESERVE.map(() => "?").join(
-          ", "
-        );
-        db.prepare(
-          `DELETE FROM app_settings WHERE key NOT IN (${placeholders})`
-        ).run(...SETTINGS_KEYS_TO_PRESERVE);
-      }
-    });
-
-    wipe();
+    wipeAllUserData("start-over", startedAt);
   } catch (e) {
     console.error("[/api/admin/start-over] failed:", e);
     recordAudit({
@@ -90,20 +71,6 @@ export async function POST(request: Request) {
     );
   }
 
-  // Log the operation AFTER the wipe so the activity row is in the
-  // freshly-empty log. Best-effort — don't fail the response if this
-  // fails for some reason.
-  try {
-    recordActivity({
-      type: "reset",
-      status: "ok",
-      summary: "Started over — all user data wiped, schema preserved",
-      detail: { mode: "start-over" },
-      startedAt,
-    });
-  } catch (e) {
-    console.warn("[/api/admin/start-over] activity-log failed:", e);
-  }
   recordAudit({
     action: "admin.start_over.success",
     actorIp: guard.actorIp,

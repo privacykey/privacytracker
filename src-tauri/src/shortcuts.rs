@@ -8,9 +8,10 @@
 // register_global_shortcut command so the new binding takes effect
 // immediately (no restart).
 //
-// The handler reveals the main window — same as clicking the tray icon —
-// and shifts focus to it. If desktop_require_unlock is on, Touch ID
-// prompting happens inside reveal_main_window, not here.
+// The handler reveals the main window, the same as the tray's "Show
+// privacytracker", and shifts focus to it. The reveal goes through
+// window_lock, which asks for Touch ID / password first when
+// desktop_require_unlock is on and the window is locked.
 
 use tauri::AppHandle;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
@@ -51,7 +52,7 @@ pub fn register_from_settings(app: &AppHandle, shortcut_str: &str) {
         if event.state != ShortcutState::Pressed {
             return;
         }
-        let _ = crate::commands::reveal_main_window(app_for_handler.clone());
+        crate::window_lock::reveal(&app_for_handler);
     });
 
     match res {

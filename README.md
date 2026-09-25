@@ -40,8 +40,9 @@ until you configure a provider yourself.
 ## What it does
 
 **Get your apps in.** Four ways, because there is no good API for "what is
-installed on my phone": screenshots of your App Library (read with on-device
-OCR), a text or CSV file, an Apple Configurator export, or typing names in.
+installed on my phone": screenshots of your App Library (read by OCR that
+runs in your browser, so the images are never uploaded), a text or CSV file,
+an Apple Configurator export, or typing names in.
 There is also a stdlib-only [Python helper](scripts/ios-app-import) that reads
 an iTunes backup or a connected device.
 
@@ -106,6 +107,18 @@ Everything is stored in a single local SQLite file (`data/privacy.db` — a
 Docker named volume by default, or the app-data directory in the desktop
 build). The app restricts it to your user account on open (`0700` on the
 directory, `0600` on the database files).
+
+The desktop app reads that database through a small server on this Mac's
+loopback address, and that server answers only to the app itself: every
+launch creates a new random credential, gives it to the app's window as a
+cookie page scripts cannot read, and refuses API requests that lack it, so
+other programs and other accounts on the Mac cannot read or change your
+data over it. Your own local tools, such as the MCP companion, can read
+this launch's credential from `.desktop-token` in the app-data directory
+(readable by your account only; the port is in `.desktop-port`) and send it
+in an `X-PrivacyTracker-Desktop-Token` header. The file is replaced on every
+launch and removed when the app quits. The Docker image uses its access
+token instead.
 
 Be aware that if you configure an AI provider, **your API key is stored in
 plaintext inside that local database** — anyone with access to your user

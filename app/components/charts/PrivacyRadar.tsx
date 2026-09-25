@@ -47,6 +47,8 @@ export default function PrivacyRadar({
   onStatusChange,
 }: PrivacyRadarProps = {}) {
   const tRadar = useTranslations("privacy_radar");
+  const tA11y = useTranslations("chart_a11y");
+  const tRating = useTranslations("policy_rating");
   const [data, setData] = useState<RadarData | null>(null);
   const [available, setAvailable] = useState<AppOption[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -239,6 +241,31 @@ export default function PrivacyRadar({
   const plotted = data.apps.filter((a) => a.hasPolicy);
   const missing = data.apps.filter((a) => !a.hasPolicy);
 
+  // Text alternative for the canvas: one sentence per plotted app with
+  // each topic's rating, the same values the polygon encodes.
+  const radarApps = plotted.slice(0, MAX_SERIES);
+  const ariaLabel = tA11y("radar_label", {
+    count: radarApps.length,
+    topics: data.axes.length,
+  });
+  const ariaDescription = radarApps
+    .map((app) =>
+      tA11y("radar_app", {
+        app: app.name,
+        ratings: app.lenses
+          .map((lens) =>
+            tA11y("radar_rating", {
+              topic: lens.label,
+              rating: lens.rating
+                ? tRating(lens.rating)
+                : tA11y("radar_not_rated"),
+            })
+          )
+          .join(tA11y("list_separator")),
+      })
+    )
+    .join(" ");
+
   return (
     <div>
       {plotted.length === 0 ? (
@@ -249,7 +276,12 @@ export default function PrivacyRadar({
           </div>
         </div>
       ) : (
-        <EChart height={440} option={option} />
+        <EChart
+          ariaDescription={ariaDescription}
+          ariaLabel={ariaLabel}
+          height={440}
+          option={option}
+        />
       )}
 
       {/* App chip row — click to toggle. Capped at MAX_SERIES active. */}

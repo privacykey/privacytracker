@@ -15,9 +15,15 @@ import { useEffect } from "react";
  * for the app count and the `audienceSet` field on `GET /api/focus`
  * (added for exactly this page: the resolved focus always has an
  * audience, so the raw has-the-user-ever-chosen signal needs its own
- * field). Any failure falls back to /welcome, which renders without any
- * pre-existing state — the same fallback the server version used for an
- * uninitialised DB.
+ * field).
+ *
+ * A failed apps read goes to /dashboard, not /welcome. The server
+ * version treated an unreadable DB as an empty install, but a read that
+ * merely failed says nothing about whether the install is empty, and
+ * /welcome would ask a user with a full library to start again (and
+ * rewrite their focus if they clicked through). The dashboard shows its
+ * own "couldn't load / Try again" state, and once a read succeeds it
+ * makes the same empty-install redirect this page would have.
  */
 export default function RootPage() {
   const router = useRouter();
@@ -54,7 +60,7 @@ export default function RootPage() {
       })
       .catch(() => {
         if (live) {
-          router.replace("/welcome");
+          router.replace("/dashboard");
         }
       });
     return () => {

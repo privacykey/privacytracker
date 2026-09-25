@@ -22,11 +22,19 @@
  * and the duplicate message. That message is `toLocaleString()` in the
  * HOST's locale on Node; it is pinned to en-US here, which is what Node
  * resolves with no LANG set and what the core spells.
+ *
+ * An exported bundle carries `package.json`'s version (`app_version`),
+ * and the import's version check quotes it back ("you're on …"). The
+ * release bump changes it, so it is masked as `<APP_VERSION>` in the
+ * whole fixture, requests, writes and rows included, and substituted back
+ * in the replay, as the leftovers oracle does. A release then does not
+ * fail core-parity, and `tests/release/release.test.mjs` fails if a
+ * fixture records the version as written.
  */
 process.env.TZ = "UTC";
 
 import nodeCrypto from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -1319,6 +1327,12 @@ try {
   rmSync(dir, { recursive: true, force: true });
 }
 
+const APP_VERSION = JSON.parse(
+  readFileSync(
+    path.join(import.meta.dirname, "..", "..", "package.json"),
+    "utf8"
+  )
+).version;
 const out = path.join(
   import.meta.dirname,
   "..",
@@ -1326,6 +1340,12 @@ const out = path.join(
   "fixtures",
   "bundles-cases.json"
 );
-writeFileSync(out, `${JSON.stringify({ now, cases }, null, 2)}\n`);
+writeFileSync(
+  out,
+  `${JSON.stringify({ now, cases }, null, 2)}\n`.replaceAll(
+    APP_VERSION,
+    "<APP_VERSION>"
+  )
+);
 console.log(`wrote ${cases.length} cases to ${out}`);
 process.exit(0);

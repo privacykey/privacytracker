@@ -2596,9 +2596,11 @@ fn migration_flow_consume(cx: &mut Cx) -> Response {
     };
     // Always cleared after the read; the marker is one-shot.
     let _ = cx.set("migration_flow_pending", "");
+    // Only a path that stays inside the app is handed out: the dashboard
+    // navigates to it.
     let target = prop(&parsed, "targetPath")
         .and_then(Value::as_str)
-        .filter(|p| p.starts_with('/'))
+        .filter(|p| is_same_origin_path(p))
         .unwrap_or("/dashboard/review-recommendations");
     let recommender = prop(&parsed, "recommenderName")
         .and_then(Value::as_str)
@@ -2606,9 +2608,29 @@ fn migration_flow_consume(cx: &mut Cx) -> Response {
     json_ok(&json!({ "targetPath": target, "recommenderName": recommender }))
 }
 
+/// `isSameOriginPath` (lib/same-origin-path.ts): exactly one leading `/`,
+/// no backslash, no ASCII control character or space (a URL parser reads
+/// `\` as `/` and drops tabs and newlines, either of which can turn a
+/// path into a host), and resolving against a placeholder origin keeps
+/// that origin.
+pub(super) fn is_same_origin_path(path: &str) -> bool {
+    if !path.starts_with('/') || path.starts_with("//") {
+        return false;
+    }
+    if path.chars().any(|c| c <= ' ' || c == '\u{7f}' || c == '\\') {
+        return false;
+    }
+    const PLACEHOLDER: &str = "http://same-origin.invalid";
+    url::Url::parse(PLACEHOLDER)
+        .and_then(|base| base.join(path))
+        .is_ok_and(|resolved| resolved.origin().ascii_serialization() == PLACEHOLDER)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{array_index, js_entries, js_object_keys, match_profile_preset};
+    use super::{
+        array_index, is_same_origin_path, js_entries, js_object_keys, match_profile_preset,
+    };
     use serde_json::json;
 
     #[test]
@@ -2642,5 +2664,37 @@ mod tests {
         partial.remove("OTHER");
         assert_eq!(match_profile_preset(Some(&partial)), None);
         assert_eq!(match_profile_preset(None), None);
+    }
+
+    #[test]
+    fn migration_targets_must_stay_inside_the_app() {
+        for path in [
+            "/",
+            "/dashboard/review-recommendations",
+            "/dashboard?edit=layout#top",
+            "/%2F%2Fexample.test",
+            "/a/../b",
+            "/apps/caf\u{e9}",
+        ] {
+            assert!(is_same_origin_path(path), "{path:?}");
+        }
+        for path in [
+            "",
+            "dashboard",
+            "//example.test/",
+            "///example.test/",
+            "/\\example.test/",
+            "/dash\\board",
+            "/\t/example.test/",
+            "/\n/example.test/",
+            "/\r/example.test/",
+            "/ /example.test/",
+            "/\u{7f}",
+            "/\u{0}",
+            "https://example.test/",
+            "javascript:alert(1)",
+        ] {
+            assert!(!is_same_origin_path(path), "{path:?}");
+        }
     }
 }

@@ -97,7 +97,15 @@ names a build of main.
    and the full list below it stays in `CHANGELOG.md`. The release check
    refuses a body over the limit before anything is built; a section without
    the line is used whole. Review the notes, especially the compatibility and
-   recovery requirements above. Open a PR and merge only
+   recovery requirements above. The command leaves the Rust-core parity
+   fixtures alone, and they need no re-recording: extractors write
+   `package.json`'s version as `<APP_VERSION>` and the Rust replays put the
+   current version back, so `core-parity` passes on the new version as it
+   did on the old. `pnpm test:release` fails if any fixture records the
+   version as written. If it does, fix that fixture's extractor in its own
+   PR to `main`: mask the version, or change canned data that only happens
+   to match it. Do not re-record fixtures on the release branch.
+   Open a PR and merge only
    after the required checks and review pass. If the version is already prepared
    in the PR, do not run the command a second time.
 2. Create a signed/annotated `v0.3.0` tag at the reviewed main commit and push it
