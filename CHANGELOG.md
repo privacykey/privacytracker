@@ -85,6 +85,18 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Screenshot import in onboarding works again. After choosing a screenshot
+  the wizard stayed on "Preparing screenshot scan…" and never finished,
+  because the app's Content Security Policy refused the OCR worker, which
+  would also have downloaded its engine and English model from public CDNs.
+  The worker, the engine and the model now ship with the app and are served
+  from its own origin under `/ocr/`, so scanning works offline and nothing
+  is fetched from a third party. Only the worker script's response allows
+  WebAssembly; no page does. A scan that cannot start now ends with an error
+  message instead of a spinner. Both the Node and the Rust server serve the
+  files, as do the Docker image and the desktop app, which also carry
+  `THIRD-PARTY-OCR.md` with the components' licences (and list them on the
+  Legal page). The files add about 14 MB to each build.
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
