@@ -1,48 +1,57 @@
-# privacytracker-core (Rust) — the `rust-core` branch
+# privacytracker-core (Rust)
 
-This branch is the long-lived home of the Rust core migration: replacing
-the Node/Next *server* runtime with a single Rust crate while keeping the
-React frontend and the public API contract byte-for-byte identical. It is
-kept mergeable from `main` and is **not** shipped from until the parity
-and benchmark gates below pass.
+The server both shipped builds run. This crate replaced the Node/Next
+*server* runtime while keeping the React frontend and the public API
+contract byte-for-byte identical. Since Phase 6 the desktop app serves
+from it inside its own process and the Docker image runs `pt-core serve`.
+The Node server stays buildable as the rollback until 1.0 has shipped;
+batch 7 then deletes it.
 
-## Target topology
+## Topology
 
-One crate (`core/`) owning everything that is server-side today — SQLite,
-the App Store scraper, snapshot diffing, the Wayback importer, the three
-crash-safe bulk runners, schedulers, the policy pipeline, and the HTTP API
-— served two ways:
+One crate (`core/`) owning everything that is server-side: SQLite, the
+App Store scraper, snapshot diffing, the Wayback importer, the three
+crash-safe bulk runners, schedulers, the policy pipeline, and the HTTP
+API. It is served two ways:
 
-- **Docker**: an axum binary + the static-exported React frontend,
-  replacing `next start`.
+- **Docker**: `pt-core serve --host 0.0.0.0 --site /app/site`, serving
+  the normal `pnpm build` output where the image used to run
+  `next start`.
 - **Desktop**: the same axum server embedded in the Tauri process on
-  localhost, replacing the Node sidecar. HTTP stays the only data
-  interface — the identical static frontend bundle ships in both
-  distributions, and Tauri IPC remains reserved for genuinely native
-  calls (cfgutil, Touch ID, updater), exactly as today.
+  loopback, where the Node sidecar used to run. HTTP stays the only data
+  interface: the same frontend build ships in both distributions, and
+  Tauri IPC remains reserved for genuinely native calls (cfgutil, Touch
+  ID, updater).
 
-`core/` is a standalone crate, deliberately **not** a workspace root —
+`core/` is a standalone crate, deliberately **not** a workspace root, and
 `src-tauri/` keeps its own independent Cargo build.
 
-## What lands on `main`, and what lands here
+## How it landed on `main`
 
-**Revised.** This branch was originally the home of every phase, with
-`main` untouched until the Phase 6 cutover. That plan traded one risk for
-a worse one: a multi-month branch accumulating divergence, which the
-design study itself ranks as debt #4 ("two brains during the transition
-— keep the window short"). Three and a half weeks in, with no Rust
-written yet, this branch was already 87 commits behind `main`.
+The crate was built on `main` while it was inert: no shipped artifact
+built, imported or ran it. The Docker image, the Tauri bundle and
+`pnpm build` never compiled it; it declares its own empty `[workspace]` so
+it cannot disturb `src-tauri`'s cargo build; and it adds no npm
+dependency. That gave every phase continuous CI (`core-parity`) and small,
+reviewable PRs. The first plan kept every phase on a long-lived
+`rust-core` branch until the cutover, and three and a half weeks in, with
+no Rust written yet, that branch was already 87 commits behind `main`:
+the "two brains during the transition" debt the design study ranks
+fourth.
 
-So the rule is now:
+That inertness was **enforced, not assumed**:
+`tests/app/rust-core-inert.test.ts` failed if any shipping path (`app/`,
+`lib/`, `proxy.ts`, `next.config.js`, `instrumentation.ts`,
+`src-tauri/src/`, the Dockerfile, the standalone staging script) started
+referencing the core. It runs in `pnpm test`, inside the required
+`quality` job; `scripts/parity/**` is exempt, because those harnesses
+exist to drive the core. Phase 6 narrowed it in the same commit as each
+piece of wiring, so every change to it was visible in review. It now
+keeps the core off the Node paths, so the rollback stays Node, and batch
+7 deletes it along with them.
 
-> **Anything INERT lands on `main`. Only the cutover lands here.**
-
-The `core/` crate is inert by construction — no shipped artifact builds,
-imports or runs it. The Docker image, the Tauri bundle and `pnpm build`
-never compile it; it declares its own empty `[workspace]` so it cannot
-disturb `src-tauri`'s cargo build; and it adds no npm dependency. Merging
-it into `main` therefore costs `main` nothing, while giving every phase
-continuous CI (`core-parity`) and small, reviewable PRs.
+Phase 0 (page shells + the `scripts/parity/` and `scripts/bench/`
+harnesses) landed on `main` for the same reason and remains there.
 
 **Batches stack while the previous one is in review.** A batch that
 depends on an unmerged batch branches from that batch's branch and targets
@@ -50,29 +59,6 @@ it, not `main`, and stays in draft. Merge the oldest first, rebase its
 child onto the updated `main`, retarget the child and let its checks rerun
 before marking it ready; repeat down the stack. Never merge a dependent PR
 into an already-merged feature branch.
-
-That inertness is **enforced, not assumed**:
-`tests/app/rust-core-inert.test.ts` fails if any shipping path
-(`app/`, `lib/`, `proxy.ts`, `next.config.js`, `instrumentation.ts`,
-`src-tauri/src/`, the Dockerfile, the standalone staging script) starts
-referencing the core. It runs in `pnpm test`, inside the required
-`quality` job. `scripts/parity/**` is exempt — those harnesses exist to
-drive the core.
-
-**Phase 6 is where that guard changes**, because wiring axum into the
-desktop or Docker path is exactly what stops being inert. Its first
-batches touch only `core/` and keep the guard as it is; the batch that
-wires the server into the Tauri shell narrows the guard in the same
-commit, so the change is visible in review.
-
-This also *improves* the eventual A/B test rather than compromising it.
-The comparison wants `main`-built Node app vs `rust-core`-built Rust app
-differing by the backend only. With the crate already on `main` and
-inert, this branch's diff shrinks to the cutover wiring itself — a far
-cleaner isolation than "Node app vs Node app plus 30k lines of Rust".
-
-Phase 0 (page shells + the `scripts/parity/` and `scripts/bench/`
-harnesses) landed on `main` for the same reason and remains there.
 
 ## Phases
 
@@ -86,12 +72,14 @@ harnesses) landed on `main` for the same reason and remains there.
 4. *(on main, inert)* Writers, schedulers, the crash-safe runners, health
    check.
 5. *(on main, inert)* The AI policy pipeline.
-6. **(in progress)** Desktop cutover (embed axum, drop the Node
-   sidecar), then Docker straight after, before the next release. The
-   first phase that is NOT inert; see "Status — Phase 6" below. Its
-   binaries must ship the third-party notice in `core/V8-LICENSE` (the
+6. *(done)* The desktop cutover (embed axum, drop the Node sidecar), then
+   the Docker cutover straight after, with no release between them. The
+   first phase that was not inert; see "Status — Phase 6" below. Its
+   binaries ship the third-party notice in `core/V8-LICENSE` (the
    `Date.parse` port in `jsdate` and the `JSON.parse` error port in
    `jsjson`) alongside `NOTICE`.
+7. *(after 1.0)* Delete the Node paths: the desktop sidecar, the Node
+   Docker stage, and the inert test with them.
 
 ## The gates (how the two implementations are compared)
 
@@ -100,10 +88,10 @@ harnesses) landed on `main` for the same reason and remains there.
 sample data), replays the same request manifest against both, normalises
 volatile fields (timestamps, UUIDs, durations), and fails on any
 remaining byte difference. Self-test: two Node instances must diff to
-zero; the Rust server must hold the same zero before any cutover.
-Additionally, the whole Playwright suite (46 behavioural specs + the
-axe gates) and the local visual net (13 shots) run against either
-backend unchanged, because they only speak HTTP.
+zero, and the Rust server holds the same zero. Additionally, the whole
+Playwright suite and the local visual net run against either backend
+unchanged, because they only speak HTTP: CI runs the suite on Node in
+the `quality` job and on the core in `e2e-rust`, on every PR.
 
 **Benchmarks** — `scripts/bench/bench.mjs` (on `main`), same flags for
 both backends:
@@ -3869,10 +3857,11 @@ Rust suite: 269 pass (268 + the replay).
 
 ## Status — Phase 6 (the cutover)
 
-The desktop app moves first: the Tauri shell will run this server inside
-its own process instead of spawning Node, and Docker follows straight
-after, before the next release. The batches that touch only `core/` come
-first, so every build that ships stays on Node until the shell is wired.
+The desktop app moved first: the Tauri shell runs this server inside its
+own process instead of spawning Node, and the Docker image followed
+straight after, with no release between them. The batches that touched
+only `core/` came first, so every shipped build stayed on Node until the
+shell was wired.
 
 ### Batch 1 — an embeddable server (no routes)
 

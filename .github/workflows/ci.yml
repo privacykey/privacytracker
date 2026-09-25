@@ -241,11 +241,12 @@ jobs:
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --locked
 
       - name: Cargo check with the Rust backend
-        # Phase 6, batch 4: the shell can serve the app from the Rust core
-        # instead of spawning the Node sidecar, behind a feature no shipped
-        # build passes. Both paths have to keep compiling until the cutover
-        # release, and this pair of checks is what makes "off by default"
-        # mean something: the check above never links the core.
+        # Phase 6, batch 4: with this feature the shell serves the app from
+        # the Rust core instead of spawning the Node sidecar. Release builds
+        # and `pnpm tauri:build` pass it since the cutover; built without it,
+        # the shell is the Node rollback, kept until 1.0. Both paths have to keep
+        # compiling until then, and this pair of checks is what makes "off
+        # by default" mean something: the check above never links the core.
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --features rust-backend --locked
 
       - name: Third-party crate notices are current

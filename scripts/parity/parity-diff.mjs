@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Dual-live API parity differ — the correctness gate for the Rust core
- * migration (see core/README.md on the rust-core branch).
+ * migration (see core/README.md).
  *
  * Boots nothing itself. Point it at two RUNNING servers (today:
  * Node-vs-Node as the harness self-test; later: Node-vs-Rust as the
