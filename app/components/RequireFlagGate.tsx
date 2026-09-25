@@ -8,9 +8,9 @@ import { useFlagBundleStatus, useResolvedFlag } from "@/lib/use-flag-bundle";
  * Client-side replacement for the server-side page gate
  * `resolveFlagFromDb(key) !== "on" → notFound()`.
  *
- * Phase 0 of the Rust-core migration (core/README.md on the rust-core
- * branch): pages stop reading the flag resolver in a server component
- * and read the same resolved values from `GET /api/feature-flags`,
+ * Phase 0 of the Rust-core migration (core/README.md): pages stop
+ * reading the flag resolver in a server component and read the same
+ * resolved values from `GET /api/feature-flags`,
  * through the shared `useFlagBundle` fetch — so a page that gates AND
  * reads a flag bundle still makes one request.
  *

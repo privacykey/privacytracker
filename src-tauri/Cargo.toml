@@ -80,9 +80,10 @@ log = "0.4"
 tar = "0.4"
 # The Rust backend (Phase 6), behind the `rust-backend` feature and off by
 # default: with it, this process serves the app itself instead of spawning
-# the Node sidecar (see src/backend.rs). Optional, so a default build
-# neither compiles nor links the crate, and shipped builds stay on Node
-# until the cutover release.
+# the Node sidecar (see src/backend.rs). Release builds and
+# `pnpm tauri:build` pass it since the cutover. Optional, so a build
+# without it neither compiles nor links the crate: that build is the Node
+# rollback, kept until 1.0.
 privacytracker-core = { path = "../core", optional = true }
 # Only the embedded backend needs an async runtime of its own: the server
 # is started on Tauri's, and the shutdown waits on it.

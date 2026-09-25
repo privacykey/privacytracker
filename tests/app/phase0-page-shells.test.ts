@@ -1,6 +1,5 @@
 /**
- * Phase 0 conversion ledger (Rust-core migration — core/README.md on the
- * rust-core branch).
+ * Phase 0 conversion ledger (Rust-core migration — core/README.md).
  *
  * Pages listed here have been converted from server components that read
  * the database to client-fetching shells, so they no longer depend on

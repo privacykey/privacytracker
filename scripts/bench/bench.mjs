@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Backend benchmark harness — the performance half of the Rust-core
- * comparison gates (see core/README.md on the rust-core branch). Run it
+ * comparison gates (see core/README.md). Run it
  * with identical flags against the Node build and the Rust build and
  * compare the reports.
  *
