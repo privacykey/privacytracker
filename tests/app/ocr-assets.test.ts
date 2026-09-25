@@ -35,6 +35,8 @@ import {
   WORKER_FILE,
 } from "../../scripts/stage-ocr-assets.mjs";
 
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const repo = path.resolve(import.meta.dirname, "..", "..");
 const requireFromRepo = createRequire(path.join(repo, "package.json"));
 const tesseractDir = path.dirname(
@@ -169,7 +171,7 @@ test("the staged engine builds are exactly the ones tesseract.js loads", () => {
   );
   assert.match(
     workerScript,
-    new RegExp(`lstmOnly \\? \`[^\`]*/${LANG_DATA_DIR.replace(/\./g, "\\.")}\``)
+    new RegExp(`lstmOnly \\? \`[^\`]*/${escapeRegExp(LANG_DATA_DIR)}\``)
   );
   assert.match(workerScript, /\.traineddata\$\{gzip \? '\.gz' : ''\}/);
 
@@ -303,7 +305,7 @@ test("refuses to stage when a file tesseract.js needs is missing", () => {
     rmSync(path.join(root, "node_modules", "tesseract.js-core", CORE_FILES[1]));
     assert.throws(
       () => stageOcrAssets({ root, into: path.join(root, "out") }),
-      new RegExp(`missing .*${CORE_FILES[1].replace(/\./g, "\\.")}`)
+      new RegExp(`missing .*${escapeRegExp(CORE_FILES[1])}`)
     );
   } finally {
     rmSync(root, { recursive: true, force: true });
