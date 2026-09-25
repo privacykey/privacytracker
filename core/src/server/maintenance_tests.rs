@@ -140,6 +140,7 @@ fn maintenance_paths_match_node_wire_stream_rows_and_ring() {
         // stands alone — as the oracle reset Node's.
         crate::scrape::ratelimit::reset_soft_buckets();
         auth::reset_login_failures();
+        super::token_guard::reset();
         diag::clear_error_log();
         csp_reports::replace_for_test(vec![]);
         diag::reset_histograms();

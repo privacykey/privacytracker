@@ -180,6 +180,9 @@ for (const route of ROUTES) {
   handlers[`/api/${route}`] = await import(`../../app/api/${route}/route.ts`);
 }
 const { _resetLoginBruteForce } = await import("../../lib/security.ts");
+const { _resetAdminTokenGuard } = await import(
+  "../../lib/admin-token-guard.ts"
+);
 const { clearErrorLog } = await import("../../lib/error-log-ring.ts");
 const { resetEventLoopMonitor } = await import(
   "../../lib/runtime-diagnostics.ts"
@@ -633,6 +636,7 @@ async function run(name, spec) {
   }
   // Process state the routes read or write, reset so each case stands alone.
   _resetLoginBruteForce();
+  _resetAdminTokenGuard();
   clearErrorLog();
   cspRing().length = 0;
   resetEventLoopMonitor();

@@ -2331,9 +2331,10 @@ scan and answering the snapshot with the cached outcome folded in;
 (the slow-query ring, the lag histograms and the HTTP timings cleared)
 and `POST` (the profiling toggle, now live in the envelope and in the
 profile hook); `DELETE /api/ai/debug-log`; `POST
-/api/auth/admin-token/login` — same-origin, the global brute-force
-backstop skipped for a caller already holding a valid token, the
-per-address limit, the constant-time compare, the eight-hour HttpOnly
+/api/auth/admin-token/login` — same-origin, the per-client guess budget
+(`token_guard.rs`, added later with the admin-token guess limits), the
+global brute-force backstop skipped for a caller already holding a valid
+token, the per-client limit, the constant-time compare, the eight-hour HttpOnly
 cookie marked Secure when the request arrived over HTTPS — and `logout`;
 `POST /api/csp-report`, both the legacy and the Reporting API shapes
 summarised into the ring, newest first, fifty kept; `POST
