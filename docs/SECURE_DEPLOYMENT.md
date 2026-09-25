@@ -30,6 +30,28 @@ SameSite=Strict cookie valid for eight hours. Rotating the server token invalida
 all existing cookies. Keep the token out of URLs, screenshots and source control.
 Scripts authenticate using the `x-auditor-admin-token` request header.
 
+## Published images
+
+`ghcr.io/privacykey/privacytracker` holds releases only. `latest` is the newest
+release. Every release also has its own version tag, such as `0.3.0`, and a
+final release a `<major>.<minor>` tag, such as `0.3`. A prerelease (for example
+`0.3.0-rc.1`) gets its version tag and nothing else, so `latest` never moves to
+one. Pin a version tag, or its digest, for a deployment you need to reproduce.
+The Caddy and Traefik examples below default to `latest`; set
+`PRIVACYTRACKER_IMAGE` in their `.env` to pin one.
+
+Builds of `main` and pull request previews go to a separate, private package,
+`ghcr.io/privacykey/privacytracker-edge`. They have not been released and are
+not meant for deployment.
+
+Each release image carries signed build provenance. To check that an image was
+built from this repository by its release workflow:
+
+```sh
+gh attestation verify oci://ghcr.io/privacykey/privacytracker:0.3.0 \
+  --repo privacykey/privacytracker
+```
+
 ## LAN and reverse proxies
 
 Use HTTPS for LAN access, including on a home network. Configure

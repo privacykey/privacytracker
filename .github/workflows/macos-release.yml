@@ -134,13 +134,26 @@ jobs:
       - name: Cache Cargo registry + target
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6
         with:
+          # Compiled crates only: a bundle is a build's output, never an input.
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
+            !src-tauri/target/*/release/bundle
           key: cargo-${{ matrix.target }}-${{ hashFiles('src-tauri/Cargo.toml') }}
           restore-keys: |
             cargo-${{ matrix.target }}-
+
+      # A cache saved before the bundle directory was excluded above still
+      # holds the app, DMG and app tar of whichever run saved it (a dry
+      # run's, say). tauri-action tars the app only when no tar exists, so
+      # it would upload that stale one to the draft. The upload step below
+      # removes tauri-action's tar anyway, but everything under bundle/
+      # must come from this run.
+      - name: Remove bundles restored from the cache
+        env:
+          TARGET: ${{ matrix.target }}
+        run: rm -rf "src-tauri/target/$TARGET/release/bundle"
 
       - name: Install JS dependencies
         env:
@@ -241,11 +254,11 @@ jobs:
       - name: Stage Next.js standalone bundle
         # TAURI_BUILD_TARGET tells scripts/stage-standalone.mjs which
         # Node binary to drop into the .node-helper.app bundle that
-        # ships inside standalone.tar. This matters for the x86_64 leg
-        # which runs on an arm64 runner — host arch != target arch, so
-        # without an explicit target the staging script would package
-        # the host's arm64 Node into the Intel .app and crash on
-        # launch on Intel Macs.
+        # ships inside standalone.tar. Each leg builds on a runner of its
+        # own architecture (macos-15-intel for x86_64), so the target and
+        # the host agree today; naming the target explicitly keeps the
+        # Intel .app from ever carrying an arm64 Node if a leg is moved to
+        # another runner.
         #
         # APPLE_SIGNING_IDENTITY is the trigger for the codesign pass
         # inside stage-standalone.mjs — without it the script prunes
@@ -294,9 +307,11 @@ jobs:
       #   • Running `tauri build --target ${{ matrix.target }}`
       #   • Invoking notarytool with the App Store Connect API key creds
       #   • Stapling the notarization ticket onto the .app and .dmg
-      #   • Signing the .app.tar.gz updater payload with TAURI_SIGNING_*
-      #   • Uploading the resulting artifacts to a draft release when a tag
-      #     push fires this workflow (see `tagName` / `releaseName` below).
+      #   • Uploading the DMG to the draft release (see `tagName` /
+      #     `releaseName` below), along with its own tar of the .app. That
+      #     tar is not the updater archive: the steps after verification
+      #     pack that from the verified bundle, sign it and put it in the
+      #     draft in its place.
       - name: Build, sign, notarize, and upload
         id: tauri
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f  # action-v1.0.0
@@ -331,24 +346,24 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_KEY_PATH: ${{ steps.write-api-key.outputs.p8_path }}
 
-          # --- Tauri updater signing (ed25519) ---
-          # Generate with: npx @tauri-apps/cli signer generate -w <path>
-          # Put the PRIVATE key contents in TAURI_SIGNING_PRIVATE_KEY; put
-          # the public key (printed by the generator) in tauri.conf.json
-          # under plugins.updater.pubkey.
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # --- Tauri updater signing (ed25519): deliberately absent ---
+          # The build creates no updater artifacts (tauri.conf.json leaves
+          # bundle.createUpdaterArtifacts off), so it needs no updater key,
+          # and keeping the key out of this step keeps it away from every
+          # build script the frontend build runs. Only "Pack, sign and
+          # record the updater archive" below holds it, and it signs only
+          # an archive it packed from the verified bundle.
 
           RELEASE_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
 
-          # --- Cross-compile target awareness ---
+          # --- Build target awareness ---
           # tauri-action runs `tauri build --target ${{ matrix.target }}`
-          # which invokes the beforeBuildCommand (pnpm build:standalone),
-          # which calls scripts/stage-standalone.mjs. The staging script
-          # picks the bundled Node binary based on TAURI_BUILD_TARGET
-          # rather than the host arch — see the comment in that script.
-          # This export keeps the explicit-stage step (above) and the
-          # tauri-action's implicit re-run consistent.
+          # which invokes the beforeBuildCommand (pnpm build:standalone on
+          # the node backend), which calls scripts/stage-standalone.mjs.
+          # The staging script picks the bundled Node binary based on
+          # TAURI_BUILD_TARGET rather than the host arch (see the comment
+          # in that script). This export keeps the explicit-stage step
+          # (above) and the tauri-action's implicit re-run consistent.
           TAURI_BUILD_TARGET: ${{ matrix.target }}
 
           # --- Skip the redundant beforeBuildCommand re-stage ---
@@ -403,8 +418,8 @@ jobs:
           # "working" right up until a release shipped a broken manifest.
           uploadUpdaterJson: false
           # v1 split .sig upload out of the manifest flag. v0 suppressed
-          # both together, and the staging step below depends on the
-          # release NOT carrying tauri's own .sig (see its step 1 note).
+          # both together. The release carries no .sig file at all: the
+          # signature of the archive packed below goes into the feed.
           uploadUpdaterSignatures: false
 
       - name: Verify bundled application and notarization
@@ -414,70 +429,43 @@ jobs:
           RELEASE_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: node scripts/verify-macos-bundle.mjs "src-tauri/target/$TARGET/release/bundle/macos/privacytracker.app" "$NODE_ARCH" "$BACKEND"
 
-      # Stage the per-arch updater signature so the assemble job can
-      # build a multi-platform latest.json without re-running tauri.
-      # The hard part is getting a fresh .sig file that matches the
-      # .app.tar.gz on the draft release:
-      #
-      #   1. tauri-action with `uploadUpdaterSignatures: false` skips
-      #      uploading the .sig sidecar to the GitHub release
-      #      (`gh release view v0.1.0` lists only .dmg + .app.tar.gz).
-      #      On the v0 action this was folded into `includeUpdaterJson`;
-      #      v1 splits it out, hence the separate input above.
-      #   2. The on-disk .sig in `src-tauri/.../bundle/macos/` is
-      #      stale: tauri-action repacks `privacytracker.app.tar.gz`
-      #      AFTER the bundler's initial sign, so the saved .sig is
-      #      against the pre-repack tarball.
-      #   3. This pinned action SHA doesn't populate a `signature`
-      #      output we can read directly — `steps.tauri.outputs.signature`
-      #      came through empty.
-      #
-      # Re-sign the .app.tar.gz attached to the release with the same
-      # key tauri-action used. ed25519 is deterministic, so the
-      # resulting .sig is the canonical signature for those bytes —
-      # exactly what the auto-updater verifies on the client.
-      - name: Stage updater payload for assemble job
-        if: ${{ success() && !inputs.dry_run }}
+      # The updater archive is the one thing the release signs with the
+      # updater key, so it is packed here from the bundle the step above
+      # verified, never taken from the draft: anything able to write to the
+      # draft could otherwise choose the bytes that key signs. The script
+      # checks the archive holds that same signed app and nothing else,
+      # signs it, checks the signature against the public key the shipped
+      # app trusts and records the archive's SHA-256 in build-evidence.json.
+      # A dry run does all of this too, so a rehearsal exercises the signing.
+      - name: Build updater signature verifier
+        run: cargo build --locked --manifest-path scripts/verify-updater/Cargo.toml
+
+      - name: Pack, sign and record the updater archive
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: ${{ matrix.target }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: node scripts/stage-updater-archive.mjs "$RELEASE_TAG" "$TARGET" "src-tauri/target/$TARGET/release/bundle/macos/privacytracker.app" "updater-stage/$TARGET"
+
+      # Put that archive on the draft under the name the update feed uses,
+      # replacing any other updater archive for this platform (tauri-action
+      # uploads its own tar of the app), and read it back. The assemble job
+      # and the release's draft check compare the draft with the recorded
+      # digest again, and stop on any difference.
+      - name: Upload the verified updater archive to the draft
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TARGET: ${{ matrix.target }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          STAGE="updater-stage/${{ matrix.target }}"
-          mkdir -p "$STAGE"
+        run: node scripts/upload-updater-archive.mjs "$RELEASE_TAG" "$TARGET" "updater-stage/$TARGET"
 
-          # Pull the .app.tar.gz asset back from the draft release.
-          # tauri-action renames the local file before upload (e.g.
-          # privacytracker.app.tar.gz -> privacytracker_x64.app.tar.gz),
-          # so the release asset is the single source of truth for
-          # the filename here.
-          case "${{ matrix.target }}" in
-            aarch64-apple-darwin) ASSET_GLOB='privacytracker_aarch64.app.tar.gz' ;;
-            x86_64-apple-darwin)  ASSET_GLOB='privacytracker_x64.app.tar.gz'    ;;
-            *) echo "::error::unknown target ${{ matrix.target }}" ; exit 1 ;;
-          esac
-          gh release download "${RELEASE_TAG}" \
-            --repo "${GITHUB_REPOSITORY}" \
-            --pattern "${ASSET_GLOB}" \
-            --dir "$STAGE"
-
-          tarballs=("$STAGE"/*.app.tar.gz)
-          test "${#tarballs[@]}" -eq 1
-          tarball="${tarballs[0]}"
-
-          # `tauri signer sign` reads TAURI_SIGNING_PRIVATE_KEY +
-          # TAURI_SIGNING_PRIVATE_KEY_PASSWORD straight from env
-          # (per `tauri signer sign --help` — env fallbacks are
-          # documented on -k / -p). Writes the signature to
-          # <input>.sig next to the tarball.
-          pnpm tauri signer sign "${tarball}"
-
-          ls -la "$STAGE"
-
+      # Also on a dry run: the rehearsal's signed archive and its evidence
+      # can be inspected, though its app is not notarised.
       - name: Upload updater payload artefact
-        if: ${{ success() && !inputs.dry_run }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
         with:
           name: updater-${{ matrix.target }}
@@ -521,7 +509,10 @@ jobs:
         with:
           path: updater
           pattern: updater-*
-      - name: Verify archives, preserve legacy feed and assemble v0.2 feed
+      # assemble-updater.mjs refuses an artifact or draft archive whose
+      # digest differs from the one its build job recorded, before it
+      # verifies a signature or writes a feed.
+      - name: Verify archives against the build evidence, preserve legacy feed and assemble latest-v2.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

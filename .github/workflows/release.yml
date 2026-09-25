@@ -59,6 +59,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
       - name: Build updater signature verifier
         run: cargo build --locked --manifest-path scripts/verify-updater/Cargo.toml
+      # The desktop build jobs' record of each updater archive they packed
+      # from a verified bundle and signed. The draft's archives must be
+      # exactly those bytes.
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          path: updater
+          pattern: updater-*
       - name: Require both DMGs and both update feeds on the draft
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

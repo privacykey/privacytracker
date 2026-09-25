@@ -2,6 +2,8 @@ name: privacytracker-traefik
 
 services:
   privacytracker:
+    # `latest` is the newest release. Set PRIVACYTRACKER_IMAGE in .env to
+    # pin a version.
     image: ${PRIVACYTRACKER_IMAGE:-ghcr.io/privacykey/privacytracker:latest}
     restart: unless-stopped
     expose:
