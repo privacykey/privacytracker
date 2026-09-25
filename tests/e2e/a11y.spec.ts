@@ -489,3 +489,68 @@ browserFlow(
     }
   }
 );
+
+// ---------------------------------------------------------------------------
+// 8. Settings → Admin and the dev menu — every switch has a name
+// ---------------------------------------------------------------------------
+
+browserFlow(
+  "a11y: Settings → Admin has no blocking violations and its switches are named",
+  async ({ page, request }) => {
+    await setDefaultFocus(request);
+    await seedCannedApps(request);
+
+    // The dev-menu switch's caption is a sibling of the switch, so the
+    // switch used to have no accessible name at all (axe button-name,
+    // critical). getByRole matches on the computed name.
+    for (const theme of THEMES) {
+      await gotoInTheme(page, "/dashboard/settings/admin", theme);
+      await expect(
+        page.getByRole("switch", { name: "Dev menu trigger" })
+      ).toBeVisible();
+      await page.waitForTimeout(600);
+      await expectNoBlockingViolations(page, `settings-admin-${theme}`);
+    }
+
+    // The dev menu's profile switches had the same shape: the row label
+    // sits in the <summary>, the switch below it had no name. Turn the
+    // menu on from the panel, open it, and expand both rows.
+    await gotoInTheme(page, "/dashboard/settings/admin", "light");
+    const devMenuSwitch = page.getByRole("switch", {
+      name: "Dev menu trigger",
+    });
+    const wasOn = (await devMenuSwitch.getAttribute("aria-checked")) === "true";
+    try {
+      if (!wasOn) {
+        await devMenuSwitch.click();
+        await expect(devMenuSwitch).toHaveAttribute("aria-checked", "true");
+      }
+      await page.getByRole("button", { name: "Open dev menu" }).click();
+      const menu = page.locator(".dev-menu-popover");
+      await expect(menu).toBeVisible();
+      for (const label of ["Privacy profile", "Accessibility profile"]) {
+        await menu
+          .locator("summary.dev-menu-config-summary", { hasText: label })
+          .click();
+        await expect(menu.getByRole("switch", { name: label })).toBeVisible();
+      }
+      // Scoped to the switches: this test pins their names. The rest of
+      // the dev menu (a developer surface) is not part of this gate yet.
+      await expectNoBlockingViolations(page, "dev-menu-switches", {
+        include: '.dev-menu-config-actions [role="switch"]',
+      });
+    } finally {
+      // The toggle persists server-side too; leave the suite's shared DB
+      // as it was.
+      if (!wasOn) {
+        await page.keyboard.press("Escape");
+        await gotoInTheme(page, "/dashboard/settings/admin", "light");
+        const toggle = page.getByRole("switch", { name: "Dev menu trigger" });
+        if ((await toggle.getAttribute("aria-checked")) === "true") {
+          await toggle.click();
+          await expect(toggle).toHaveAttribute("aria-checked", "false");
+        }
+      }
+    }
+  }
+);

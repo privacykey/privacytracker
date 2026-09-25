@@ -125,6 +125,11 @@ Going forward, changes are recorded here as they land.
   "Preview" labels, the accessibility count chip and the "over limit"
   profile pill meet the contrast minimum in light and dark mode.
 
+- Screen readers now announce the name of the "Dev menu trigger" switch
+  in Settings, Admin, and of the dev menu's Privacy profile and
+  Accessibility profile switches. They were announced as unnamed
+  switches.
+
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
