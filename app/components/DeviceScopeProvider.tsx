@@ -59,6 +59,13 @@ interface DeviceScopeValue {
    *  that would otherwise flash unscoped content should hold on this. */
   ready: boolean;
   refresh: () => void;
+  /**
+   * Ask for `audience` to be read. It is read on demand, not at mount:
+   * the provider mounts above AppChrome's flag hold, on every page, and
+   * only the picker's switch prompt uses the answer. The picker calls
+   * this once it has devices to pick from.
+   */
+  requestAudience: () => void;
   scope: DeviceScope;
   /**
    * Stable string identity for the current scope. Use as a React `key`
@@ -87,6 +94,9 @@ const FALLBACK: DeviceScopeValue = {
   devices: [],
   ready: true,
   refresh: () => {
+    /* no provider mounted */
+  },
+  requestAudience: () => {
     /* no provider mounted */
   },
   scope: SCOPE_ALL,
@@ -179,6 +189,9 @@ export function DeviceScopeStoryProvider({
       refresh: () => {
         /* nothing to refresh from */
       },
+      requestAudience: () => {
+        /* the story's audience is fixed */
+      },
       scope,
       scopeKey: scopeParam ?? "all",
       scopeParam,
@@ -209,10 +222,24 @@ export default function DeviceScopeProvider({
     "self" | "loved_one" | "guardian" | null
   >(null);
 
-  // Focus audience, read once per page load. Only the picker's
-  // switch prompt consumes it, and that prompt is not worth holding the
-  // tree for — a null audience simply means no prompt yet.
+  // Focus audience, read once per page load, and only when asked
+  // (`requestAudience`). Only the picker's switch prompt consumes it, and
+  // that prompt is not worth holding the tree for — a null audience
+  // simply means no prompt yet.
+  //
+  // It used to be read at mount. That was harmless while the provider
+  // mounted together with the page, but the provider now mounts above
+  // AppChrome's flag hold so the scope read starts early, and an eager
+  // read here became the first /api/focus request on every page, ahead
+  // of the page's own (welcome, onboarding, dashboard). On pages with no
+  // picker at all it was a wasted request, and when that read failed the
+  // page's own read succeeded and its "couldn't load" state never showed.
+  const [audienceWanted, setAudienceWanted] = useState(false);
+  const requestAudience = useCallback(() => setAudienceWanted(true), []);
   useEffect(() => {
+    if (!audienceWanted) {
+      return;
+    }
     let live = true;
     fetch("/api/focus")
       .then((res) => (res.ok ? res.json() : null))
@@ -229,7 +256,7 @@ export default function DeviceScopeProvider({
     return () => {
       live = false;
     };
-  }, [nonce]);
+  }, [nonce, audienceWanted]);
 
   useEffect(() => {
     let live = true;
@@ -329,13 +356,23 @@ export default function DeviceScopeProvider({
       devices,
       ready,
       refresh,
+      requestAudience,
       scope,
       scopeKey: scopeParam ?? "all",
       scopeParam,
       setAudience,
       setScope,
     };
-  }, [audience, devices, ready, refresh, scope, setAudience, setScope]);
+  }, [
+    audience,
+    devices,
+    ready,
+    refresh,
+    requestAudience,
+    scope,
+    setAudience,
+    setScope,
+  ]);
 
   return (
     <DeviceScopeContext.Provider value={value}>
