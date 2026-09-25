@@ -509,15 +509,16 @@ fn open_path_in_file_manager(dir: &std::path::Path) {
 
 /// Reveal the main window if hidden and navigate it to a relative
 /// path inside the Next sidecar. Shared by every "Go" menu entry so
-/// the surface + navigate behaviour stays consistent. `path` is
+/// the surface + navigate behaviour stays consistent. The reveal goes
+/// through window_lock, so a locked window asks for Touch ID / password
+/// first. `path` is
 /// passed through `JSON.stringify` so the JS literal it lands in
 /// can't be broken by an embedded quote — even though we control
 /// the routes today, this keeps the dispatch structurally safe if
 /// a future caller threads a query string through.
 fn navigate<R: Runtime>(app: &AppHandle<R>, path: &str) {
+    crate::window_lock::reveal(app);
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.set_focus();
         let encoded = serde_json::to_string(path).unwrap_or_else(|_| "\"/\"".into());
         let _ = window.eval(&format!("window.location.assign({encoded})"));
     }
@@ -529,15 +530,15 @@ fn navigate<R: Runtime>(app: &AppHandle<R>, path: &str) {
 pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
     match event.id().as_ref() {
         "menu.app.about" => {
-            // Surface the main window if it was idling in the tray, then
+            // Surface the main window if it was idling in the tray (through
+            // window_lock, so a locked window asks to unlock first), then
             // dispatch the same `about-modal:open` window event the
             // footer About link fires (see app/components/AboutModal.tsx).
             // The modal mounts globally via app/layout.tsx, so any page
             // the user happens to be on can show the dialog without us
             // needing to navigate away first.
+            crate::window_lock::reveal(app);
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
                 let _ = window.eval(
                     "window.dispatchEvent(new CustomEvent('about-modal:open'))",
                 );
@@ -550,10 +551,10 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // settings route. Using a relative path means we don't need
             // to thread the dynamic sidecar port through the menu
             // module — the webview is already on the localhost origin
-            // by the time the menu can fire.
+            // by the time the menu can fire. The reveal goes through
+            // window_lock, so a locked window asks to unlock first.
+            crate::window_lock::reveal(app);
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
                 let _ = window.eval(
                     "window.location.assign('/dashboard/settings')",
                 );
@@ -594,10 +595,9 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // and the 30-min scheduler keep ticking in the
             // background — this is the polite alternative to Cmd+Q
             // for users who want background syncing without a Dock
-            // icon hanging around.
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.hide();
-            }
+            // icon hanging around. Hiding locks the window again when
+            // unlock is required (window_lock).
+            crate::window_lock::hide(app);
         }
         "menu.view.toggle_devtools" => {
             // Toggle the inspector inline (same as the
@@ -653,10 +653,11 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // surfaces a toast / activity-log row on completion, so
             // there's nothing for us to render here. The IIFE swallows
             // network failures silently — the user sees the result via
-            // the Task Center.
+            // the Task Center. The window is revealed through window_lock, so
+            // a locked one asks to unlock first; the sync starts either
+            // way, as it does from the tray.
+            crate::window_lock::reveal(app);
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
                 let _ = window.eval(
                     "fetch('/api/sync/trigger', { method: 'POST' }).catch(() => {})",
                 );

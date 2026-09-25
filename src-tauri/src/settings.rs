@@ -13,14 +13,13 @@ use serde::Deserialize;
 
 /// Mirror of the JSON shape returned by `GET /api/settings/desktop`.
 ///
-/// Several fields here are deserialized eagerly even though the Rust shell
-/// doesn't act on them yet — `autostart`, `auto_lock_idle_minutes`, and
-/// `theme_override` are read by other call sites (the autostart plugin, the
-/// idle-lock timer, the webview appearance picker) but those pipes haven't
-/// been wired up in this binary. We keep the fields populated so the struct
-/// stays a faithful round-trip with the API; dead-code analysis is silenced
-/// at the struct level rather than per-field so the file stays compact.
-/// Drop the attribute (and individual fields) when each feature lands.
+/// `theme_override` is deserialized even though the Rust shell doesn't act
+/// on it: the webview applies it itself. We keep the field populated so the
+/// struct stays a faithful round-trip with the API; dead-code analysis is
+/// silenced at the struct level rather than per-field so the file stays
+/// compact. `require_unlock` and `auto_lock_idle_minutes` drive
+/// window_lock, and `autostart` the one-time LaunchAgent migration
+/// (autostart.rs).
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct DesktopSettings {

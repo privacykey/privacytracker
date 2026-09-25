@@ -11,9 +11,10 @@
 //      the Docker healthcheck does — the cheapest round-trip that proves
 //      the database opened cleanly.
 //   5. Point the main window at 127.0.0.1:<port> and show it — unless the
-//      process was started with --hidden (the autostart plugin passes this
-//      when "launch hidden in tray" is enabled) or desktop_require_unlock
-//      is set and Touch ID hasn't been cleared yet.
+//      process was started with --hidden (the LaunchAgent that starts it at
+//      login passes this) or "launch hidden in tray" is on. Showing goes
+//      through window_lock, which asks for Touch ID / password first when
+//      desktop_require_unlock is set, as it does on every later reveal.
 //   6. Install the tray icon + menu.
 //   7. Start the notification watcher thread (polls /api/notifications,
 //      updates the Dock badge, fires native notifications for new rows).
@@ -45,12 +46,16 @@ mod app_menu;
 mod zoom;
 #[cfg(target_os = "macos")]
 mod touch_id;
+mod window_lock;
+mod update_guard;
+mod autostart;
 
 use std::sync::Mutex;
 
 use once_cell::sync::OnceCell;
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
+use tauri_plugin_window_state::StateFlags;
 
 /// State that outlives any one window: the handle that stops the backend
 /// and the port it's listening on. Wrapped in a Mutex so the tray menu and
@@ -74,10 +79,10 @@ pub fn state() -> &'static AppState {
     STATE.get().expect("AppState not initialised")
 }
 
-/// True when the process was started by the autostart LaunchAgent with
-/// `--hidden` (i.e. the user enabled "launch hidden in tray"). The
-/// autostart plugin appends this flag to its launch plist when we call
-/// `autostart().enable_with_args(["--hidden"])`.
+/// True when the process was started with `--hidden`, which the autostart
+/// LaunchAgent always passes: a launch at login starts in the menu bar. The
+/// plugin writes the flag into the plist's ProgramArguments (see the
+/// `.plugin(tauri_plugin_autostart::init(...))` call below).
 fn launched_hidden() -> bool {
     std::env::args().any(|a| a == "--hidden")
 }
@@ -139,17 +144,29 @@ fn main() {
         // restart goes through RunEvent::ExitRequested below, so the
         // sidecar is shut down before the new version starts.
         .plugin(tauri_plugin_process::init())
-        // Passing Some(vec!["--hidden"]) means the LaunchAgent plist we
-        // generate when autostart is enabled will spawn us with that flag —
-        // letting the boot path below skip window.show().
+        // "Start at login" writes a LaunchAgent,
+        // ~/Library/LaunchAgents/privacytracker.plist, whose
+        // ProgramArguments carry "--hidden" so a login launch skips the
+        // boot reveal below. A LaunchAgent needs no permission. The
+        // AppleScript launcher used before drove System Events, which the
+        // signed app is not entitled to do, so it most likely never worked;
+        // autostart::migrate registers the LaunchAgent for users who had
+        // the setting on.
         .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::AppleScript,
+            MacosLauncher::LaunchAgent,
             Some(vec!["--hidden"]),
         ))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_deep_link::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Remembers size and position, but not visibility: restoring a
+        // window that was open at quit would show it before window_lock
+        // could ask to unlock it, and would ignore "launch hidden".
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
+                .build(),
+        )
         // tauri-plugin-log owns the global `log` facade. We point it at
         // three targets so you get the same visibility env_logger gave us
         // before:
@@ -182,6 +199,7 @@ fn main() {
             commands::set_dock_badge,
             commands::set_tray_visible,
             commands::reveal_main_window,
+            update_guard::install_verified_update,
             cfgutil::check_cfgutil,
             cfgutil::run_cfgutil_export,
             cfgutil::list_connected_devices,
@@ -283,15 +301,21 @@ fn main() {
             window.navigate(url)?;
 
             let hidden_boot = launched_hidden() || desktop_settings.launch_hidden;
-            let needs_unlock = desktop_settings.require_unlock;
 
-            // 5. Reveal the window iff we're not in a hidden-boot path.
-            //    Touch ID prompting happens lazily in reveal_main_window so
-            //    the tray icon and tray menu are interactive first.
-            if !hidden_boot && !needs_unlock {
-                window.show()?;
-                window.set_focus().ok();
+            // 5. Reveal the window unless we're on a hidden-boot path. The
+            //    reveal runs on its own thread, so a Touch ID prompt (when
+            //    desktop_require_unlock is on) doesn't hold up the tray and
+            //    menu set up below. Every later reveal goes through the same
+            //    gate, and auto-lock hides the window again after the idle
+            //    time the user chose.
+            window_lock::init(
+                desktop_settings.require_unlock,
+                desktop_settings.auto_lock_idle_minutes,
+            );
+            if !hidden_boot {
+                window_lock::reveal(app.handle());
             }
+            window_lock::spawn_auto_lock(app.handle().clone());
 
             // 5a. Restore the Web Inspector if the user had it open
             //     last quit. desktop_settings.devtools_open is read from
@@ -377,6 +401,10 @@ fn main() {
             //     navigation. No-op outside macOS.
             usb_watcher::start(app.handle().clone());
 
+            // 11. Move "Start at login" to the LaunchAgent for users who
+            //     turned it on under the old AppleScript launcher. Runs once.
+            autostart::migrate(app.handle());
+
             // Restore persisted Dock visibility choice. Read from the same
             // /api/settings endpoint the UI uses, so the source of truth
             // stays on the Node side.
@@ -387,13 +415,17 @@ fn main() {
 
             Ok(())
         })
-        .on_window_event(|window, event| {
+        .on_window_event(|window, event| match event {
             // Intercept the close button: hide instead of exit so the
-            // background scheduler keeps ticking from the tray.
-            if let WindowEvent::CloseRequested { api, .. } = event {
+            // background scheduler keeps ticking from the tray. Hiding
+            // locks the window again when unlock is required.
+            WindowEvent::CloseRequested { api, .. } => {
                 api.prevent_close();
-                window.hide().ok();
+                window_lock::hide(window);
             }
+            // Focus changes count as use of the window, for auto-lock.
+            WindowEvent::Focused(_) => window_lock::note_activity(),
+            _ => {}
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
