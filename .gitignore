@@ -117,6 +117,7 @@ storybook-static
 
 /scripts/verify-updater/target/
 /updater/
+/updater-stage/
 /latest.json
 /latest-v2.json
 /release-evidence.json

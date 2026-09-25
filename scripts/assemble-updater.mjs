@@ -1,10 +1,19 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   readReleaseMetadata,
   validateReleaseTag,
 } from "./release-metadata.mjs";
+import { assertEvidenceDigest, readBuildEvidence } from "./updater-archive.mjs";
 import { UPDATE_PLATFORMS, validateManifest } from "./updater-manifest.mjs";
 
 const metadata = readReleaseMetadata(process.cwd());
@@ -27,6 +36,34 @@ const manifest = {
   pub_date: new Date().toISOString(),
   platforms: {},
 };
+// Each build job packed its archive from the bundle it verified, signed it
+// and recorded its digest. The signature goes into the feed only when the
+// artifact and the draft asset are both exactly those bytes.
+const draft = mkdtempSync(path.join(tmpdir(), "privacytracker-draft-"));
+try {
+  for (const { triple, name } of Object.values(UPDATE_PLATFORMS)) {
+    const dir = path.join("updater", `updater-${triple}`);
+    const evidence = readBuildEvidence(dir, {
+      tag,
+      version: metadata.version,
+      triple,
+      commit: process.env.GITHUB_SHA,
+    });
+    assertEvidenceDigest(
+      path.join(dir, name),
+      evidence,
+      `The ${triple} build artifact`
+    );
+    gh("release", "download", tag, "--pattern", name, "--dir", draft);
+    assertEvidenceDigest(
+      path.join(draft, name),
+      evidence,
+      `The draft's ${name}`
+    );
+  }
+} finally {
+  rmSync(draft, { recursive: true, force: true });
+}
 for (const [platform, { triple, name }] of Object.entries(UPDATE_PLATFORMS)) {
   const archive = path.join("updater", `updater-${triple}`, name);
   const signature = `${archive}.sig`;
