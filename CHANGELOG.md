@@ -85,6 +85,13 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Desktop app: "Start at login" works in the signed app. It asked macOS's
+  System Events to add a login item, which the app has no permission to do,
+  so macOS most likely refused it silently. It now adds a LaunchAgent
+  (`~/Library/LaunchAgents/privacytracker.plist`), which needs no
+  permission. If you turned the setting on before, the first launch of this
+  version sets it up. Homebrew's `zap` now removes the LaunchAgent, the
+  app's log folder and its settings folder too.
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
@@ -1036,6 +1043,23 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- Desktop app: "Require Touch ID / password to open the window" now holds
+  every time the window opens. It used to be asked only for the window
+  shown at launch; the menu-bar icon, the global shortcut,
+  `privacytracker://` links and the menu bar opened it with no prompt.
+  Every one of those now asks first while the window is locked, and closing
+  or hiding the window locks it again. "Auto-lock after (minutes)" now
+  works: after that long without use (no keyboard or mouse input while the
+  window is focused, or that long in the background) the window hides and
+  locks. The page can no longer show, hide or close the window itself, and
+  the window no longer reopens at launch just because it was open at quit.
+- Desktop app: an update is installed only when the version inside the
+  signed download is newer than the one running. The version the update
+  feed states is not signed, so the app used to trust a number the signed
+  file did not back up. It now reads the version from the downloaded app
+  itself before installing, reads it again from the installed app, and
+  restarts only if both are newer; otherwise it says why and installs or
+  restarts nothing.
 - Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
   failing the dependency audit on every pull request:
   **two critical unauthenticated remote-code-execution issues** in Next.js
