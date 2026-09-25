@@ -554,7 +554,9 @@ jobs:
         # of the eleven tables an import can touch and the wire response
         # with its download headers. The two support bundles are machine
         # state, so they are recorded as a projection: the keys, the jobs,
-        # the rate limits, the flag overrides and the redacted errors. A
+        # the rate limits, the flag overrides and the redacted errors.
+        # package.json's version, which a bundle carries, is masked as
+        # <APP_VERSION> so a release bump does not fail this step. A
         # diff means a Node route, lib/audit-bundle.ts,
         # lib/audit-bundle-import.ts or lib/deployment-diagnostics.ts changed and
         # core/src/server/audit_bundle.rs or bundle_writes.rs has not been

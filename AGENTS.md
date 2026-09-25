@@ -13,7 +13,12 @@ released: v0.1.2 is the last release, and the next is v0.3.0, the first on
 the Rust backend. The draft's body is the CHANGELOG.md section above its
 `[//]: # (release-notes-end)` line, under GitHub's 125,000 characters. Do
 not auto-publish releases or bypass the macos-signing reviewer gate. `pnpm test:release` requires first building the
-small locked verifier in scripts/verify-updater.
+small locked verifier in scripts/verify-updater. The bump needs no parity
+re-recording: extractors write package.json's version as `<APP_VERSION>`
+and the Rust replays substitute it back (`extract-bundles-cases.mjs`,
+`extract-leftovers-cases.mjs`). `pnpm test:release` fails if any file under
+`core/tests/fixtures/` or `core/src/server/*.json` records the version as
+written.
 
 ## Commands
 
