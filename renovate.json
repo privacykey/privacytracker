@@ -21,6 +21,15 @@
       "versioningTemplate": "npm"
     },
     {
+      "description": "The Docker image builds pt-core with cargo-auditable (ARG CARGO_AUDITABLE_VERSION) so vulnerability scanners and the SBOM can see its Rust crates. Track it as the crates.io package, as the pnpm ARG above is tracked as npm, so it rides the grouped non-major PR instead of silently ageing.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^Dockerfile$/"],
+      "matchStrings": ["ARG CARGO_AUDITABLE_VERSION=(?<currentValue>.*)"],
+      "datasourceTemplate": "crate",
+      "packageNameTemplate": "cargo-auditable",
+      "versioningTemplate": "cargo"
+    },
+    {
       "description": "Track the exact Node runtime bundled into the desktop app.",
       "customType": "regex",
       "managerFilePatterns": ["/^\\.github/workflows/macos-release\\.yml$/"],
