@@ -9,6 +9,7 @@ import { useTranslations } from "next-intl";
  */
 import { useEffect, useMemo, useState } from "react";
 import { withAlpha } from "../../../lib/chart-colors";
+import { summariseBuckets } from "../../../lib/chart-text-alternatives";
 import type { TimelineData } from "../../../lib/stats-views-shared";
 import { useChartColors } from "../../../lib/use-chart-colors";
 import EChart from "./EChart";
@@ -82,6 +83,7 @@ function formatBucketLabel(bucket: string, kind: string): string {
 
 export default function PrivacyTimeline() {
   const tCharts = useTranslations("stats.charts");
+  const tA11y = useTranslations("chart_a11y");
   const [preset, setPreset] = useState<PresetKey>("90d");
   const [custom, setCustom] = useState<{ from: string; to: string }>({
     from: "",
@@ -217,6 +219,44 @@ export default function PrivacyTimeline() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator; including it forces a re-run on every render
   }, [data, colors]);
 
+  // Text alternative for the canvas: the total, then each bucket that had
+  // any change with its count per band (the stacked areas).
+  const ariaDescription = useMemo(() => {
+    if (!data) {
+      return "";
+    }
+    const labels = data.points.map((p) =>
+      formatBucketLabel(p.bucket, data.bucketType)
+    );
+    const bands = [
+      ["added", "timeline_band_added"],
+      ["removed", "timeline_band_removed"],
+      ["modified", "timeline_band_modified"],
+      ["policy", "timeline_band_policy"],
+      ["accessibilityAdded", "timeline_band_a11y_added"],
+      ["accessibilityRemoved", "timeline_band_a11y_removed"],
+    ] as const;
+    return summariseBuckets(
+      labels,
+      bands.map(([key, labelKey]) => ({
+        name: tCharts(labelKey),
+        values: data.points.map((p) => p[key] ?? 0),
+      }))
+    )
+      .map((b) =>
+        tA11y("timeline_bucket", {
+          bucket: b.label,
+          items: b.items
+            .map((item) =>
+              tA11y("timeline_item", { series: item.name, value: item.value })
+            )
+            .join(tA11y("list_separator")),
+        })
+      )
+      .join(" ");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is a stable next-intl translator
+  }, [data]);
+
   return (
     <div>
       <div
@@ -306,7 +346,12 @@ export default function PrivacyTimeline() {
         </div>
       )}
       {!error && data && data.total > 0 && (
-        <EChart height={320} option={option} />
+        <EChart
+          ariaDescription={ariaDescription}
+          ariaLabel={tA11y("timeline_label", { count: data.total })}
+          height={320}
+          option={option}
+        />
       )}
     </div>
   );

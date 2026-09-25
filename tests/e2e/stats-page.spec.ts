@@ -84,3 +84,38 @@ browserFlow(
     await expect(page.locator(".glass-card.stats-panel").first()).toBeVisible();
   }
 );
+
+browserFlow(
+  "stats page: every chart canvas has a text alternative",
+  async ({ page }) => {
+    await page.goto("/dashboard/stats");
+
+    // The canned fleet always fills the heatmap and the flow chart; wait
+    // for both, named by their localised text alternative.
+    const heatmap = page.getByRole("img", {
+      name: /^Heatmap of the data categories collected by/,
+    });
+    await expect(heatmap).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: /^Flow chart linking/ })
+    ).toBeVisible();
+
+    // A canvas is a picture to assistive technology, so each one must sit
+    // inside a role="img" that carries a name. Checked over every canvas
+    // on the page, so a chart added later without one fails here.
+    const canvases = page.locator("canvas");
+    await expect(canvases.first()).toBeAttached();
+    const unnamed = await canvases.evaluateAll(
+      (els) =>
+        els.filter((el) => {
+          const img = el.closest('[role="img"]');
+          return !img?.getAttribute("aria-label")?.trim();
+        }).length
+    );
+    expect(unnamed).toBe(0);
+
+    // The description restates the data, not just the chart's kind: the
+    // canned Instagram collects Location to track you.
+    await expect(heatmap).toHaveAccessibleDescription(/Instagram: .*Location/);
+  }
+);

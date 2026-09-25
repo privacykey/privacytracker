@@ -80,3 +80,48 @@ browserFlow(
     await expect(page.getByText("Location").first()).toBeVisible();
   }
 );
+
+browserFlow(
+  "compare apps: the category matrix is a table with row and column headers",
+  async ({ page, request }) => {
+    const appsRes = await request.get("/api/apps");
+    await expect(appsRes).toBeOK();
+    const [appA, appB] = (await appsRes.json()) as Array<{
+      id: string;
+      name: string;
+    }>;
+    await page.goto(`/dashboard/compare?a=id:${appA.id}&b=id:${appB.id}`);
+
+    // A screen reader reads the matrix as a table named for the two apps,
+    // not one flat run of text, so it can announce "Location, row header"
+    // and each app's column header as it moves across a row.
+    const table = page.getByRole("table", {
+      name: `Data categories collected by ${appA.name} and ${appB.name}`,
+    });
+    await expect(table).toBeVisible();
+    const headers = table.getByRole("columnheader");
+    await expect(headers.first()).toHaveText("Category");
+    await expect(
+      table.getByRole("columnheader", { name: appA.name, exact: true })
+    ).toBeVisible();
+    await expect(
+      table.getByRole("columnheader", { name: appB.name, exact: true })
+    ).toBeVisible();
+
+    const locationRow = table
+      .getByRole("row")
+      .filter({ has: page.getByRole("rowheader", { name: "Location" }) });
+    await expect(locationRow).toHaveCount(1);
+    // One rowheader plus one cell per app (no profile column: no profile
+    // is set in this spec).
+    await expect(locationRow.getByRole("cell")).toHaveCount(2);
+    const headerCount = await headers.count();
+    for (const row of await table.getByRole("row").all()) {
+      const width =
+        (await row.getByRole("rowheader").count()) +
+        (await row.getByRole("cell").count()) +
+        (await row.getByRole("columnheader").count());
+      expect(width, "every row spans every column").toBe(headerCount);
+    }
+  }
+);
