@@ -96,6 +96,39 @@ class SearchAccessBlockedError extends Error {
   }
 }
 
+/**
+ * `/api/search` failed before it could check a single name: every chunk
+ * answered with an error (5xx, or our own 429 before anything got
+ * through) or the request never reached the server. `status` is 0 for a
+ * transport failure. Nothing was matched, so nothing may be shown as
+ * "not in the App Store": the wizard stays on step 2 and offers a retry.
+ */
+class SearchRequestFailedError extends Error {
+  readonly status: number;
+  constructor(status: number) {
+    super(
+      status === 0
+        ? "/api/search could not be reached"
+        : `/api/search failed with HTTP ${status}`
+    );
+    this.name = "SearchRequestFailedError";
+    this.status = status;
+  }
+}
+
+/** The step-2 message for a search that failed outright. */
+function searchFailureKey(
+  status: number
+): "search_failed" | "search_rate_limited_retry" | "search_server_error" {
+  if (status === 0) {
+    return "search_failed";
+  }
+  if (status === 429) {
+    return "search_rate_limited_retry";
+  }
+  return "search_server_error";
+}
+
 interface ImportItemSnapshot {
   appName: string | null;
   editedQuery: string | null;
@@ -768,6 +801,17 @@ export function useOnboardWizard({
    * Settings → Deployment" link rendered next to the error copy.
    */
   const [searchBlocked, setSearchBlocked] = useState(false);
+  /**
+   * Set when the last step-2 search could not check some or all of the
+   * names (server error, rate limit, no connection). `all`: nothing was
+   * searched. `partial`: the names that did get an answer are in
+   * `searchResults`, and a retry searches only the rest. Drives the
+   * Retry button (and, for `partial`, "Review the N found") beside the
+   * step-2 error. Null when the error is not a retryable search failure.
+   */
+  const [searchRetry, setSearchRetry] = useState<"all" | "partial" | null>(
+    null
+  );
   /**
    * Error from a single-block re-search on step 3 (`handleBlockResearch`).
    * Kept separate from `searchError`, which only renders on step 2 —
@@ -2932,6 +2976,12 @@ export function useOnboardWizard({
       queuedRetryAfterMs?: number;
       bundleMatched: number;
       bundleLookupTotal: number;
+      /**
+       * Names whose chunk the server never answered (5xx, or no
+       * connection). They are left out of `results` entirely: a name
+       * nobody searched for must not come back as "not in the App Store".
+       */
+      failedNames: string[];
     }> => {
       const phase1Matches = new Map<string, AppCandidate>();
       const phase1NamesWithBundle: string[] = [];
@@ -3070,6 +3120,17 @@ export function useOnboardWizard({
 
       const phase2Results: SearchResult[] = [];
       let aborted = false;
+      // A name only counts as searched when the server answered its
+      // chunk. `failedNames` collects the chunks it didn't; the status of
+      // the last failure decides the step-2 message when nothing at all
+      // got through (0 = the request never reached the server).
+      const failedNames = new Set<string>();
+      let lastFailureStatus = 0;
+      let anyChunkAnswered = false;
+      const nothingSearchedYet = () =>
+        !anyChunkAnswered &&
+        phase1Matches.size === 0 &&
+        holdForQueuedLookup.size === 0;
 
       for (let i = 0; i < phase2Chunks.length; i++) {
         if (searchAbortRef.current?.signal.aborted) {
@@ -3077,6 +3138,7 @@ export function useOnboardWizard({
           break;
         }
         const chunk = phase2Chunks[i];
+        let transportFailed = false;
         const res = await fetch("/api/search", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3087,14 +3149,39 @@ export function useOnboardWizard({
             aborted = true;
             return null;
           }
-          throw err;
+          console.error("[wizard] /api/search could not be reached:", err);
+          transportFailed = true;
+          return null;
         });
-        if (aborted || !res) {
+        if (aborted) {
           break;
+        }
+        if (transportFailed || !res) {
+          for (const row of chunk) {
+            failedNames.add(row.name);
+          }
+          lastFailureStatus = 0;
+          setSearchProgress((prev) =>
+            prev ? { ...prev, currentBatch: i + 1 } : prev
+          );
+          continue;
         }
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
             throw new SearchAccessBlockedError(res.status);
+          }
+          if (res.status === 429 && nothingSearchedYet()) {
+            // Our own limiter refused the search before a single name
+            // was checked. Parking the whole batch in the replay queue
+            // would drop the user on step 3 with nothing but "waiting"
+            // rows; saying so on step 2 and offering Retry is clearer.
+            for (let j = i; j < phase2Chunks.length; j++) {
+              for (const row of phase2Chunks[j]) {
+                failedNames.add(row.name);
+              }
+            }
+            lastFailureStatus = 429;
+            break;
           }
           if (res.status === 429) {
             // Our own /api/search rate limit (60 req/min per client) —
@@ -3121,17 +3208,20 @@ export function useOnboardWizard({
             break;
           }
           console.error(`[wizard] /api/search failed with ${res.status}`);
-          setSearchError(
-            tStatus("search_endpoint_error_prefix") +
-              '"unmatched" in Import History — open Settings → Import history to retry.'
-          );
           // Continue to the next chunk anyway — partial progress is
           // better than throwing away the entire batch on a single 5xx.
+          // This chunk's names were never checked, so they are held back
+          // from the results rather than reported as unmatched.
+          for (const row of chunk) {
+            failedNames.add(row.name);
+          }
+          lastFailureStatus = res.status;
           setSearchProgress((prev) =>
             prev ? { ...prev, currentBatch: i + 1 } : prev
           );
           continue;
         }
+        anyChunkAnswered = true;
         const data = await res.json().catch(() => ({}));
         const chunkResults: SearchResult[] = data.results ?? [];
         phase2Results.push(...chunkResults);
@@ -3194,12 +3284,20 @@ export function useOnboardWizard({
       // carries every name Apple deferred plus every name we never
       // got to (loop bailed mid-stream on rate-limit / abort).
 
+      // Nothing got an answer: there is no partial result to show, and
+      // every name would otherwise land on step 3 as "not in the App
+      // Store". Fail the whole search instead.
+      if (failedNames.size > 0 && nothingSearchedYet()) {
+        throw new SearchRequestFailedError(lastFailureStatus);
+      }
+
       const phase2ByQuery = new Map<string, SearchResult>();
       for (const r of phase2Results) {
         phase2ByQuery.set(r.query, r);
       }
       const queuedNames = new Set(queuedByName.keys());
-      const results: SearchResult[] = names.map((name) => {
+      const answeredNames = names.filter((name) => !failedNames.has(name));
+      const results: SearchResult[] = answeredNames.map((name) => {
         const lower = name.toLowerCase();
         const sourceBundleId = bundleByLowerName.get(lower) ?? null;
         const sourceDeveloper = developerByLowerName.get(lower) ?? null;
@@ -3282,6 +3380,7 @@ export function useOnboardWizard({
             : undefined,
         bundleMatched: phase1Matches.size,
         bundleLookupTotal: phase1NamesWithBundle.length,
+        failedNames: names.filter((name) => failedNames.has(name)),
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps -- t* is stable; including it recreates the search function every render
     },
@@ -3435,6 +3534,7 @@ export function useOnboardWizard({
     setSearching(true);
     setSearchError("");
     setSearchBlocked(false);
+    setSearchRetry(null);
     // Fresh AbortController per run — `cancelSearch` reaches into this
     // ref to abort the in-flight chunk; `runMatchSearch` reads
     // `signal.aborted` between chunks to break the loop early.
@@ -3458,7 +3558,12 @@ export function useOnboardWizard({
         queuedRetryAfterMs,
         bundleMatched,
         bundleLookupTotal,
+        failedNames,
       } = await runMatchSearch(newNames, country);
+      // Names the server never answered for are not part of this import
+      // yet: they stay in the step-2 list, and Retry searches them again.
+      const failedSet = new Set(failedNames);
+      const searchedNames = newNames.filter((name) => !failedSet.has(name));
 
       // Tell the console how many names the server failed to match so
       // power users can see the list in devtools. The split between
@@ -3487,7 +3592,7 @@ export function useOnboardWizard({
       // couldn't process yet go in as `status='queued'` with the retry
       // deadline, so the history view has a full record of the batch from
       // the moment it starts instead of waiting for the replay to land.
-      const newImportId = await createImportRecord(newNames.length);
+      const newImportId = await createImportRecord(searchedNames.length);
       if (newImportId) {
         setImportId(newImportId);
         const idMap = await writeImportItems(
@@ -3496,11 +3601,12 @@ export function useOnboardWizard({
           autoSelected,
           queuedRows,
           queuedRetryAfterMs,
-          // Hand the full submitted list through so names that neither
-          // landed in `results` nor in the queued tail still get written as
+          // Hand the searched list through so names that neither landed
+          // in `results` nor in the queued tail still get written as
           // `unmatched` placeholders. Fixes the "total=N but itemCount=0"
-          // symptom when /api/search dies before returning anything usable.
-          newNames
+          // symptom. Names whose chunk failed are left out on purpose:
+          // they were never searched, and the retry records them.
+          searchedNames
         );
         setItemIdByQuery((prev) => {
           const merged = new Map(prev);
@@ -3578,6 +3684,20 @@ export function useOnboardWizard({
         );
       }
 
+      if (failedNames.length > 0) {
+        // Some chunks came back and some didn't. Stay on step 2: the
+        // answered names are kept (a retry skips them), and the rest are
+        // not shown anywhere as "not in the App Store".
+        setSearchRetry("partial");
+        setSearchError(
+          tStatus("search_partial_failed", {
+            failed: failedNames.length,
+            total: newNames.length,
+          })
+        );
+        return;
+      }
+
       setStep(3);
     } catch (error) {
       if (error instanceof SearchAccessBlockedError) {
@@ -3591,8 +3711,15 @@ export function useOnboardWizard({
         setSearchError(
           tStatus("search_access_blocked", { status: error.status })
         );
+      } else if (error instanceof SearchRequestFailedError) {
+        // Nothing could be checked (5xx, our own 429, or no connection).
+        // Same rule as the gate: stay on step 2 and say what happened.
+        console.error("[wizard] /api/search failed:", error.message);
+        setSearchRetry("all");
+        setSearchError(tStatus(searchFailureKey(error.status)));
       } else {
         console.error("[wizard] /api/search failed:", error);
+        setSearchRetry("all");
         setSearchError(tStatus("search_failed"));
       }
     } finally {
@@ -3611,6 +3738,17 @@ export function useOnboardWizard({
    */
   const cancelSearch = useCallback(() => {
     searchAbortRef.current?.abort();
+  }, []);
+
+  /**
+   * After a partial search failure, go on to step 3 with the names that
+   * did get an answer. The rest stay in the step-2 list; coming back and
+   * searching again picks them up.
+   */
+  const continueWithFoundMatches = useCallback(() => {
+    setSearchError("");
+    setSearchRetry(null);
+    setStep(3);
   }, []);
 
   /**
@@ -3921,6 +4059,7 @@ export function useOnboardWizard({
 
     setRematchingRegion(true);
     setSearchError("");
+    setBlockSearchError("");
     try {
       if (rematchCountry !== country || countryInferred) {
         await updateCountry(rematchCountry);
@@ -3942,12 +4081,20 @@ export function useOnboardWizard({
         autoSelected,
         queuedRows,
         queuedRetryAfterMs,
+        failedNames,
       } = await runMatchSearch(namesToSearch, rematchCountry);
       const freshByQuery = new Map(
         freshResults.map((result) => [result.query, result])
       );
+      // A name whose chunk failed was not searched in the new region, so
+      // it keeps the row (and the pick) it had rather than turning into
+      // "not in the App Store".
+      const failedSet = new Set(failedNames);
 
       const nextResults = searchResults.map((result) => {
+        if (failedSet.has(result.query)) {
+          return result;
+        }
         if (skippedQueries.has(result.query)) {
           return {
             ...result,
@@ -3977,12 +4124,23 @@ export function useOnboardWizard({
       for (const [query, candidate] of preservedManual) {
         nextSelected.set(query, candidate);
       }
+      for (const query of failedSet) {
+        const kept = selected.get(query);
+        if (kept) {
+          nextSelected.set(query, kept);
+        }
+      }
       for (const [query, candidate] of autoSelected) {
         nextSelected.set(query, candidate);
       }
 
       setSearchResults(nextResults);
       setSelected(nextSelected);
+      if (failedSet.size > 0) {
+        setBlockSearchError(
+          tStatus("rematch_partial_failed", { count: failedSet.size })
+        );
+      }
 
       if (importId) {
         const idMap = await writeImportItems(
@@ -4011,8 +4169,22 @@ export function useOnboardWizard({
         });
       }
     } catch (error) {
+      // Step 3 is where this runs, and step 3 shows `blockSearchError`
+      // (`searchError` only renders on step 2, so this used to be lost).
       console.error("[wizard] region rematch failed:", error);
-      setSearchError("Could not rematch this region. Try again in a moment.");
+      if (error instanceof SearchAccessBlockedError) {
+        setSearchBlocked(true);
+        setBlockSearchError(
+          tStatus("search_access_blocked", { status: error.status })
+        );
+      } else if (
+        error instanceof SearchRequestFailedError &&
+        error.status === 429
+      ) {
+        setBlockSearchError(tStatus("search_rate_limited_retry"));
+      } else {
+        setBlockSearchError(tStatus("rematch_failed"));
+      }
     } finally {
       setRematchingRegion(false);
     }
@@ -5274,6 +5446,7 @@ export function useOnboardWizard({
     setSearchError,
     searchBlocked,
     setSearchBlocked,
+    searchRetry,
     blockSearchError,
     setBlockSearchError,
     blockSearching,
@@ -5407,6 +5580,7 @@ export function useOnboardWizard({
     commitStep2Diff,
     handleSearch,
     cancelSearch,
+    continueWithFoundMatches,
     handleBlockResearch,
     handleBlockSkip,
     handleCancelQueuedMatches,

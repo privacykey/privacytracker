@@ -227,6 +227,15 @@ paint costs:
   mounts steady, since the bundle cache has a 30 s TTL and
   `clearFlagBundleCache()` drops it outright.
 
+While `AppChrome` holds the tree it is not blank: it paints a neutral
+shell (`app/components/LoadingShell.tsx`): the skip link, a nav skeleton
+with the brand link and grey bars on routes that render a nav, and an
+`aria-busy` page skeleton. Page loaders use the same skeletons for their
+own holds. Keep both free of anything a flag or a read decides; a
+skeleton that shows a flag-gated link reintroduces the paint-and-retract
+the hold exists to prevent. `DeviceScopeProvider` sits above the hold so
+the scope read runs alongside the flag read (`tests/e2e/loading-shell.spec.ts`).
+
 `useFlagValues*` return RAW values — required for tri-state flags such
 as `flag.detail.annotations_sidebar` and `flag.devopts.advanced_accordion`
 (`on | off | collapsed`), where a boolean read collapses `collapsed`
@@ -285,7 +294,9 @@ That decision is only defensible if the user is told, so `ScopeExportNote` rende
 
 **Bulk actions go the other way: they respect the scope and name it.** "Sync All" renders as "Sync {device}" when a scope is active — the server pages only in-scope apps, so a button claiming "All" would be lying about what it touches. The label comes from `useScopeLabel()`, which names the DEVICE rather than its owner ("Sync Mum's iPad" says what will be synced; "Sync Mum" does not) and is shared with the status chip and the export notes so the three cannot drift. Bulk-select actions need no scope naming: the user picked those apps explicitly and the bar shows the count. Fleet-wide background jobs in Settings (bulk App Store sync, Wayback backfill, policy sync) stay unscoped — they are install maintenance, not a view of the library.
 
-**Empty-install redirects must check the scope.** Both `AppsGridLoader` and `HomeLoader` bounce to `/onboard` on a zero-app read; both now require `!scopeParam` first. Scoped to a device that happens to have nothing on it, zero is legitimate, and bouncing would eject a user with a full library out to onboarding for picking a quiet phone.
+**Empty-install redirects must check the scope.** `AppsGridLoader`, `HomeLoader` and `ReviewQueueLoader` bounce to `/onboard` on a zero-app read; all three require `!scopeParam` first. Scoped to a device that happens to have nothing on it, zero is legitimate, and bouncing would eject a user with a full library out to onboarding for picking a quiet phone.
+
+**And they must tell a failed read from an empty one.** Only a read that SUCCEEDS with zero apps may bounce. A failed one renders a retryable error (`LoaderError`, or `LoaderRetry` in `HomeLoader`), never the redirect: mapping a non-OK response to `null` and then to `total ?? 0` sent a user with ten apps to "Add the apps from your iPhone" on one 500. `RequireAppsGate` follows the same rule, the grid also refuses to bounce when the custom-apps read failed (an install with only custom apps must reach the grid), and the root page sends a failed read to `/dashboard`, not `/welcome`. Pinned by `tests/e2e/loader-failures.spec.ts`.
 
 #### Device ownership (Phase 3)
 
