@@ -14,29 +14,6 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
-- The privacy policy page lists what the app contacts today. New or
-  corrected entries: the Wayback CDX index that label-history imports read
-  first; the Internet Archive lookup, Save Page Now request and fallback
-  read that follow each privacy-policy fetch; the desktop updater's
-  manifest and download from GitHub (only when you press Install &
-  restart); webhooks you add, which receive app names and change
-  summaries; bundle-identifier lookups from device and app-list imports;
-  the Compare page's top-apps list; the site icons the server fetches for
-  manual apps; and, on the AI cards, the app name, developer and policy
-  address that go with the policy text. The developer-policy card says
-  when fetches run and how the throttle and Disable policy scraping stop
-  them, "No user accounts" explains the admin-token sign-in on Docker and
-  network installs, and the update section says plainly that the daily
-  GitHub check has no switch in Settings yet. The "last updated" date
-  follows the page's language.
-- The Legal page lists every runtime npm dependency (17, up from 6),
-  among them `dompurify` under MPL-2.0 or Apache-2.0 and the Tauri packages
-  under MIT or Apache-2.0. The list is built from `package.json`, so a new
-  dependency without an entry fails the build, and
-  `tests/app/legal-dependencies.test.ts` checks each licence against the
-  package's own `package.json`. The `@tauri-apps/cli` entry now shows its
-  dual licence.
-
 - The Docker image runs the Rust server (Rust core Phase 6, the Docker
   cutover). `docker compose up --build -d` and the published image now run
   `pt-core` on Alpine: the image is about 56 MB where the Node one was
@@ -108,12 +85,6 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
-- A page that throws while it renders now shows a "This page stopped
-  working" card with Try again, Home and a link to report the problem,
-  instead of Next's bare "Application error: a client-side exception has
-  occurred". An error in the app's outer frame gets a plain full-page
-  version (English only, as it cannot rely on the translation files). The
-  report link fills in the page's path, never the error text.
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
