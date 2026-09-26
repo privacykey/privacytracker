@@ -14,6 +14,7 @@ import {
   categoryLabel,
   severityLabel,
 } from "@/lib/i18n-meta";
+import { LABEL_TRUST_RESEARCH_URL } from "@/lib/label-trust";
 import { CATEGORY_META, SEVERITY_CONFIG } from "@/lib/privacy-meta";
 
 // The page reads the stored storefront country from SQLite to build a
@@ -197,6 +198,9 @@ function resolveBackLink(
   return { href, label };
 }
 
+/** The seven reading rules under `help_definitions_page.label_trust.r<n>_*`. */
+const TRUST_RULES = [1, 2, 3, 4, 5, 6, 7] as const;
+
 export default function DefinitionsContent() {
   // Query params come from the URL on the client now (Rust-core Phase 0):
   // the page is static, so there is no server searchParams to await.
@@ -233,6 +237,10 @@ export default function DefinitionsContent() {
   const tCategory = useTranslations("category");
   const tCategoryDesc = useTranslations("category_descriptions");
   const tSeverity = useTranslations("severity");
+  // "What a label can't tell you" — the reading rules drawn from Alsahdi
+  // et al., PoPETs 2026 (lib/label-trust.ts holds the source URL). The App
+  // Detail trust card deep-links here as #label-trust.
+  const tTrust = useTranslations("help_definitions_page.label_trust");
 
   // Severity card-render data — pairs each SEVERITY_CONFIG entry with
   // its localised label + body so the JSX stays scannable. The body
@@ -393,6 +401,39 @@ export default function DefinitionsContent() {
                 target="_blank"
               >
                 {t("apple_apps_link")}
+              </a>
+            </p>
+          </section>
+
+          {/* ── What a label can't tell you (PoPETs 2026-0151) ────────── */}
+          <section className="help-section help-section-wide" id="label-trust">
+            <h2 className="help-section-title">{tSec("label_trust")}</h2>
+            <p className="help-section-copy">{tTrust("intro")}</p>
+            <ol className="definitions-rules">
+              {TRUST_RULES.map((n) => (
+                <li className="definitions-rule" key={n}>
+                  <div>
+                    <h3 className="definitions-rule-title">
+                      {tTrust(`r${n}_title`)}
+                    </h3>
+                    <p className="definitions-rule-copy">
+                      {tTrust(`r${n}_body`)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <p className="definitions-callout">{tTrust("push")}</p>
+            <p className="help-section-copy">{tTrust("card_note")}</p>
+            <p className="definitions-citation">
+              {tTrust("citation")}{" "}
+              <a
+                className="definitions-inline-link"
+                href={LABEL_TRUST_RESEARCH_URL}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {tTrust("citation_link")}
               </a>
             </p>
           </section>

@@ -57,6 +57,7 @@ const DETAIL_FLAG_KEYS = [
   "flag.detail.labels.cards",
   "flag.detail.labels.profile_mismatch_badges",
   "flag.detail.labels.no_details_warning",
+  "flag.detail.labels.trust_card",
   "flag.detail.policy.panel",
   "flag.detail.policy.ai_summary",
   "flag.detail.policy.lens_grid",
@@ -123,6 +124,8 @@ const ALL_ON_FLAGS: DetailFlagState = {
   labelsCards: true,
   labelsProfileMismatchBadges: true,
   labelsNoDetailsWarning: true,
+  // Guarded surface — a goal opts in; stays off when the resolver is down.
+  labelsTrustCard: false,
   policyPanel: true,
   policyAiSummary: true,
   policyLensGrid: true,
@@ -281,6 +284,7 @@ export default function AppDetailLoader() {
           v["flag.detail.labels.profile_mismatch_badges"] === "on",
         labelsNoDetailsWarning:
           v["flag.detail.labels.no_details_warning"] === "on",
+        labelsTrustCard: v["flag.detail.labels.trust_card"] === "on",
         policyPanel: v["flag.detail.policy.panel"] === "on",
         policyAiSummary: v["flag.detail.policy.ai_summary"] === "on",
         policyLensGrid: v["flag.detail.policy.lens_grid"] === "on",

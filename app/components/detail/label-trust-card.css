@@ -1,0 +1,114 @@
+/**
+ * "How much to trust this label" card (LabelTrustCard), at the top of the
+ * Privacy Labels tab. Each row carries a tone (watch / note / ok) as a
+ * left accent; the glyph and the title carry the same meaning without
+ * colour, so the accent is decoration, not signal.
+ */
+
+.label-trust {
+  padding: 14px 16px;
+  margin: 0 0 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.label-trust-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.label-trust-header-glyph {
+  font-size: 14px;
+}
+
+.label-trust-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.label-trust-intro {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
+
+.label-trust-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.label-trust-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 6px;
+}
+
+.label-trust-row--watch {
+  border-left-color: var(--orange, #d97706);
+}
+
+.label-trust-row--note {
+  border-left-color: var(--text-3);
+}
+
+.label-trust-row--ok {
+  border-left-color: var(--green, #1f8a4c);
+}
+
+.label-trust-glyph {
+  flex-shrink: 0;
+  width: 1.2em;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+  text-align: center;
+}
+
+.label-trust-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.label-trust-row-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.label-trust-row-body {
+  margin: 2px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.label-trust-row-action {
+  margin-top: 6px;
+}
+
+.label-trust-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.label-trust-footer-link {
+  color: var(--accent, #2563eb);
+  text-decoration: underline dotted;
+}

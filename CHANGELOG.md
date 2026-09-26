@@ -12,6 +12,24 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Added
+
+- A "How much to trust this label" card at the top of an app's Privacy
+  Labels tab, for the Monitor focus. It applies the findings of a 2026
+  study of 926,240 App Store apps (Alsahdi et al., PoPETs 2026) to the app
+  in front of you: how long the label has gone unchanged and whether that
+  predates Apple's privacy manifests, that a "Data Not Collected" label is
+  the one most often contradicted and later replaced, whether the
+  summarised privacy policy describes more tracking or sharing than the
+  label admits, and what the pricing model suggests about ad and analytics
+  SDKs. Every row says "worth a look", never "caught"; the study found the
+  gap is mostly uncertainty about third-party SDKs, not intent. The card is
+  behind `flag.detail.labels.trust_card` (off by default, on for the
+  Monitor goal, off under Just the basics) and links to a new "What a
+  label can't tell you" section on the label definitions help page, which
+  also notes that the developers interviewed asked for exactly the
+  in-app change alert privacytracker's bell provides.
+
 ### Changed
 
 - The Docker image runs the Rust server (Rust core Phase 6, the Docker

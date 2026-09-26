@@ -138,6 +138,8 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.detail.footer.import_provenance",
   "flag.detail.header.freshness_badge",
   "flag.detail.header.change_count_badge",
+  // LabelTrustCard mounts on the Privacy Labels tab when on.
+  "flag.detail.labels.trust_card",
   "flag.detail.header.a11y_count_chip",
   "flag.detail.labels.cards",
   "flag.detail.labels.profile_mismatch_badges",
