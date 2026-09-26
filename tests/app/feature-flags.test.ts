@@ -106,6 +106,8 @@ test("monitor goal turns on the comprehension bundle", () => {
   const c = focusCtx(["monitor"]);
   assert.equal(resolveFlag("flag.detail.policy.ai_summary", c), "on");
   assert.equal(resolveFlag("flag.detail.charts.category_trend", c), "on");
+  // The 'how much to trust this label' card follows the Monitor goal only.
+  assert.equal(resolveFlag("flag.detail.labels.trust_card", c), "on");
 });
 
 test("cleanup goal turns on the cleanup bundle", () => {
@@ -129,6 +131,7 @@ test("monitor + cleanup multi-select applies both bundles", () => {
 test("minimal strips the surface back", () => {
   const c = focusCtx(["minimal"]);
   assert.equal(resolveFlag("flag.page.compare", c), "off");
+  assert.equal(resolveFlag("flag.detail.labels.trust_card", c), "off");
   assert.equal(resolveFlag("flag.page.stats", c), "off");
   assert.equal(resolveFlag("flag.page.shortlist", c), "off");
 });
@@ -137,6 +140,12 @@ test("empty goal set leaves flags at their hard defaults (no overlay)", () => {
   const c = focusCtx([]);
   // ai_summary is off by default — no goal turns it on.
   assert.equal(resolveFlag("flag.detail.policy.ai_summary", c), "off");
+  // Same for the label trust card: cleanup alone does not surface it either.
+  assert.equal(resolveFlag("flag.detail.labels.trust_card", c), "off");
+  assert.equal(
+    resolveFlag("flag.detail.labels.trust_card", focusCtx(["cleanup"])),
+    "off"
+  );
   // compare is on by default and nothing subtracts it.
   assert.equal(resolveFlag("flag.page.compare", c), "on");
 });

@@ -4225,6 +4225,7 @@
       "how_developers_intro": "Every app's privacy label groups the data it collects into three buckets, based on <em>how</em> the data is handled rather than <em>what</em> the data is. Apple summarises these as:",
       "data_categories": "Data type categories developers may collect",
       "apple_own_apps": "Apple's own (built-in) apps",
+      "label_trust": "What a label can't tell you",
       "transparency_report": "Apple Transparency Report",
       "authoritative_sources": "Authoritative sources"
     },
@@ -4242,6 +4243,27 @@
     "app_store_story_link": "“Privacy on the App Store” ↗",
     "apple_apps_body": "Some apps on your device — Messages, Maps, Safari, Mail, Photos, Health, Wallet, and so on — are developed by Apple itself. Their privacy labels are published on a dedicated page alongside the associated feature-level privacy explainers.",
     "apple_apps_link": "Apple's privacy labels for its own apps ↗",
+    "label_trust": {
+      "intro": "Every label on this page is written by the developer, and Apple does not verify it. A 2026 study followed 926,240 App Store apps for four years and asked developers why they do or don't update. Seven things worth knowing before you trust one:",
+      "r1_title": "An old, unchanged label is the default state, not reassurance.",
+      "r1_body": "Fewer than 6% of apps changed their label in four years, and most that did changed it once. Labels are set on first submission and rarely revisited.",
+      "r2_title": "“Data Not Collected” deserves the most scrutiny, not the least.",
+      "r2_body": "It is the label developers reach for when forced to choose and unsure, and the one most often replaced later. In earlier work, 97% of apps carrying it had a policy describing collection.",
+      "r3_title": "Free with in-app purchases means expect ad and analytics SDKs.",
+      "r3_body": "Apps that earn as they go changed labels 47% more often, almost always to add advertising or analytics. Paid apps change theirs least.",
+      "r4_title": "A label that changed to disclose more is usually honesty catching up.",
+      "r4_body": "Most label changes add “Data Used to Track You”. Be warier of the app that never changed than of the one that did.",
+      "r5_title": "“Linked” versus “Not Linked” is a line developers themselves get wrong.",
+      "r5_body": "One change in ten just moved data between those two buckets. Don't build a hard personal rule on it.",
+      "r6_title": "The privacy policy is a second witness, not the truth.",
+      "r6_body": "Policies are written for lawyers, often shared across every app a developer ships, and sometimes generated. Where the two disagree, read the policy rather than assume either one.",
+      "r7_title": "Labels set before December 2023 predate privacy manifests.",
+      "r7_body": "Until Apple required SDK privacy manifests, developers had no structured way to know what their third-party libraries collected. Under-reporting from that era is usually uncertainty, not intent.",
+      "push": "Developers in the study said label changes should be pushed to users the next time they open the app, and that the store should do it. privacytracker's notification bell and webhooks are that alert, built outside the store: every change to a label you track is reported to you when it lands.",
+      "card_note": "When your focus includes “Monitor my apps for changes”, each app's Privacy Labels tab applies these rules to that app in a card called “How much to trust this label”.",
+      "citation": "Source: Alsahdi, Yan, Kodwani, Fassl, Kanich and Aviv, “Because I didn't touch these and even don't know why I should to change these”: Why App Developers Do (Not) Update Apple's Privacy Labels. Proceedings on Privacy Enhancing Technologies 2026(4). CC BY 4.0.",
+      "citation_link": "Read the paper ↗"
+    },
     "transparency_intro": "Apple publishes a semi-annual Transparency Report disclosing government and private-party requests for customer data, account preservation, account restriction, and device identifier queries. The report is broken down country-by-country.",
     "transparency_storefront_lead": "Your current storefront is",
     "transparency_storefront_settings_lead": ". You can change this in",
@@ -5942,6 +5964,50 @@
     "from_archive_suffix": " · reconstructed from the web archive",
     "show_details": "Show what changed",
     "hide_details": "Hide details"
+  },
+  "label_trust": {
+    "title": "How much to trust this label",
+    "intro": "Privacy labels are written by the developer, and Apple does not check them. These signals say how much weight this one can bear.",
+    "dnc": {
+      "title": "Declared as Data Not Collected",
+      "body": "Research finds this the least reliable label: 97% of apps carrying it had a privacy policy that described collection, and it is the label most often replaced later. Read it as a claim to check, not a clean bill of health."
+    },
+    "age": {
+      "changed_title": "Label last changed {date}",
+      "changed_body": "Fewer than 6% of apps ever change their label, and when they do it is usually to disclose more. A developer who updated is paying attention.",
+      "added_tracking": "This change added Data Used to Track You, the most common addition of all; it is usually honesty catching up rather than a new behaviour.",
+      "predates_manifests": "It also predates Apple's privacy manifests (December 2023), which gave developers their first structured view of what third-party SDKs collect.",
+      "unchanged_title": "Unchanged since {date}",
+      "unchanged_body": "Three quarters of apps never touch their label after the first submission, so an old, stable label is the default state, not evidence of stable practice.",
+      "since_tracking_title": "Unchanged since we started tracking it ({date})",
+      "since_tracking_body": "We can only see back to the day this app was added. Importing archive history on the Change History tab can show whether it changed before then.",
+      "open_history": "Open Change History",
+      "checking_title": "Checking older syncs…",
+      "checking_body": "{count, plural, one {# sync so far shows} other {# syncs so far show}} no label change; looking further back.",
+      "recent_title": "Unchanged across the last {count, plural, one {# sync} other {# syncs}}",
+      "recent_body": "That is as far back as this check looks. The Change History tab has the full timeline."
+    },
+    "policy": {
+      "mismatch_title": "The policy says more than the label",
+      "mismatch_body": "The developer's privacy policy raises {lenses} as a concern, while the label declares less than that. Developers in the study said outdated or shared policies explain most such gaps, so read the policy rather than assume the label is wrong.",
+      "consistent_title": "Policy and label tell the same story",
+      "consistent_body": "The summarised policy does not describe more tracking or sharing than the label admits. Policies are broad legal documents, so this is agreement, not proof.",
+      "no_summary_title": "Policy captured, not yet summarised",
+      "no_summary_body": "The policy is the second witness. Summarise it on the AI Policy tab to compare the developer's two disclosures.",
+      "none_title": "No privacy policy captured",
+      "none_body": "The policy is the second witness. Fetch it on the AI Policy tab to compare the developer's two disclosures.",
+      "open_policy": "Open AI Policy"
+    },
+    "money": {
+      "free_iap_title": "Free with in-app purchases",
+      "free_iap_body": "Apps that earn as they go changed their labels 47% more often than average, usually to add advertising or analytics. Expect ad and analytics SDKs whether or not the label lists them.",
+      "free_title": "Free, no in-app purchases",
+      "free_body": "Free apps usually earn from ads or data. If the label lists nothing under tracking, the policy is worth a read.",
+      "paid_title": "Paid up front",
+      "paid_body": "Paid apps change their labels least and have the least to disclose. This is the most stable combination the research found."
+    },
+    "learn_more": "What a label can't tell you",
+    "source_link": "Source study (PoPETs 2026) ↗"
   },
   "admin_login": {
     "title": "Sign in",

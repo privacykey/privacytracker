@@ -15640,6 +15640,78 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   gap: 18px;
 }
 
+/* "What a label can't tell you" — the section the App Detail trust card
+   deep-links to as /help/definitions#label-trust. */
+#label-trust {
+  scroll-margin-top: 80px;
+}
+
+.definitions-rules {
+  display: grid;
+  gap: 12px;
+  padding: 0;
+  margin: 0 0 16px;
+  list-style: none;
+  counter-reset: definitions-rule;
+}
+
+.definitions-rule {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.definitions-rule::before {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-2);
+  content: counter(definitions-rule);
+  counter-increment: definitions-rule;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.definitions-rule-title {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.definitions-rule-copy {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.definitions-callout {
+  padding: 12px 14px;
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-2);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent, #2563eb);
+  border-radius: 8px;
+}
+
+.definitions-citation {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
 @media (max-width: 640px) {
   .definitions-page {
     padding: 32px 16px 60px;

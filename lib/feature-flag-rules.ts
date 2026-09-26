@@ -163,6 +163,7 @@ export type FlagKey =
   | "flag.detail.labels.cards"
   | "flag.detail.labels.profile_mismatch_badges"
   | "flag.detail.labels.no_details_warning"
+  | "flag.detail.labels.trust_card"
 
   // ----- App Detail — timeline
   | "flag.detail.timeline.live_rows"
@@ -451,6 +452,10 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.detail.labels.cards": "on", // expandable label-type cards
   "flag.detail.labels.profile_mismatch_badges": "on", // mismatch chips on category cards
   "flag.detail.labels.no_details_warning": "on", // 'developer hasn't provided labels' warning
+  // 'How much to trust this label' card: label age, Data Not Collected,
+  // policy cross-check, monetisation (PoPETs 2026-0151). Off by default;
+  // the Monitor goal turns it on for the people auditing their own phone.
+  "flag.detail.labels.trust_card": "off",
 
   // App Detail — timeline
   "flag.detail.timeline.live_rows": "on", // live-sync rows
@@ -736,6 +741,7 @@ export const GOAL_RULES: Record<
     "flag.taskcenter.widget": "on", // already on by default; explicit
     "flag.detail.timeline.live_rows": "on", // explicit — tracking surface
     "flag.detail.timeline.wayback_rows": "on", // historical context for comprehension
+    "flag.detail.labels.trust_card": "on", // how much weight to give a self-declared label
   },
 
   // ----- cleanup: action — remove worst offenders, re-enable some guardian hides (was "declutter")
@@ -803,6 +809,7 @@ export const GOAL_RULES: Record<
     "flag.appgrid.card.risk_chips": "off", // no breakdown chips
     "flag.dashboard.profile_mismatch_section": "off", // hide entire section
     "flag.detail.labels.profile_mismatch_badges": "off", // and the per-card badges
+    "flag.detail.labels.trust_card": "off", // research-backed reading aid is chrome here
     "flag.dashboard.callout.declutter": "off", // hide all callouts
     "flag.dashboard.callout.guardian": "off",
     "flag.dashboard.callout.understand_declutter": "off",
