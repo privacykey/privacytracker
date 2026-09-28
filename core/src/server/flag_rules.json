@@ -66,6 +66,7 @@
     "flag.detail.labels.cards": "on",
     "flag.detail.labels.profile_mismatch_badges": "on",
     "flag.detail.labels.no_details_warning": "on",
+    "flag.detail.labels.trust_card": "off",
     "flag.detail.timeline.live_rows": "on",
     "flag.detail.timeline.wayback_rows": "on",
     "flag.detail.timeline.wayback_toggle": "on",
@@ -282,7 +283,8 @@
       "flag.notifications.bell": "on",
       "flag.taskcenter.widget": "on",
       "flag.detail.timeline.live_rows": "on",
-      "flag.detail.timeline.wayback_rows": "on"
+      "flag.detail.timeline.wayback_rows": "on",
+      "flag.detail.labels.trust_card": "on"
     },
     "cleanup": {
       "flag.dashboard.risk_section": "on",
@@ -337,6 +339,7 @@
       "flag.appgrid.card.risk_chips": "off",
       "flag.dashboard.profile_mismatch_section": "off",
       "flag.detail.labels.profile_mismatch_badges": "off",
+      "flag.detail.labels.trust_card": "off",
       "flag.dashboard.callout.declutter": "off",
       "flag.dashboard.callout.guardian": "off",
       "flag.dashboard.callout.understand_declutter": "off",
@@ -534,6 +537,7 @@
     "flag.detail.footer.import_provenance",
     "flag.detail.header.freshness_badge",
     "flag.detail.header.change_count_badge",
+    "flag.detail.labels.trust_card",
     "flag.detail.header.a11y_count_chip",
     "flag.detail.labels.cards",
     "flag.detail.labels.profile_mismatch_badges",

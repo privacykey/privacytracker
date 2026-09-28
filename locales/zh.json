@@ -4225,6 +4225,7 @@
       "how_developers_intro": "每个应用的隐私标签会根据数据的<em>处理方式</em>（而不是数据的<em>类型</em>）将其归入三个类别。Apple 将这三类总结如下：",
       "data_categories": "开发者可能收集的数据类型",
       "apple_own_apps": "Apple 自家（内置）应用",
+      "label_trust": "标签无法告诉您的事",
       "transparency_report": "Apple 透明度报告",
       "authoritative_sources": "权威来源"
     },
@@ -4242,6 +4243,27 @@
     "app_store_story_link": "「App Store 上的隐私」 ↗",
     "apple_apps_body": "你设备上的部分应用 — 例如「信息」「地图」「Safari 浏览器」「邮件」「照片」「健康」「钱包」等 — 由 Apple 自家开发。它们的隐私标签发布在专门页面，并附有相应的功能级隐私说明。",
     "apple_apps_link": "Apple 自家应用的隐私标签 ↗",
+    "label_trust": {
+      "intro": "本页的每一份标签都由开发者填写，Apple 并不核实。一项 2026 年的研究对 926,240 个 App Store 应用跟踪了四年，并询问开发者为何更新或不更新标签。在信任一份标签之前，有七件事值得了解：",
+      "r1_title": "长期未变的旧标签是默认状态，不是安心的理由。",
+      "r1_body": "四年间只有不到 6% 的应用更改过标签，而其中大多数只改过一次。标签在首次提交时设定，之后很少再被审视。",
+      "r2_title": "“不收集数据”最需要审视，而不是最不需要。",
+      "r2_body": "这是开发者被迫选择又拿不准时最常选的标签，也是日后最常被替换的标签。早前的研究中，97% 带有此标签的应用，其政策却描述了数据收集。",
+      "r3_title": "免费且含 App 内购买，意味着应预期存在广告和分析 SDK。",
+      "r3_body": "持续盈利的应用更改标签的频率高出 47%，几乎都是为了新增广告或分析。付费应用更改标签最少。",
+      "r4_title": "为披露更多而更改的标签，通常是坦诚补上了。",
+      "r4_body": "大多数标签更改都是新增“用于追踪您的数据”。相比改过的应用，更应警惕从未改过的应用。",
+      "r5_title": "“关联”与“未关联”之间的界线，连开发者自己也常分错。",
+      "r5_body": "每十次更改中就有一次只是把数据在这两栏之间挪动。不要据此设定硬性的个人规则。",
+      "r6_title": "隐私政策是第二个佐证，不是真相。",
+      "r6_body": "政策为律师而写，常常被开发者的所有应用共用，有时还是生成的。两者不一致时，请阅读政策，而不要直接认定哪一方正确。",
+      "r7_title": "2023 年 12 月之前设定的标签早于隐私清单。",
+      "r7_body": "在 Apple 要求 SDK 提供隐私清单之前，开发者没有结构化的方式了解第三方库收集了什么。那个时期的漏报通常源于不确定，而非有意。",
+      "push": "研究中的开发者表示，标签更改应在用户下次打开应用时推送给用户，而且应由商店来做。privacytracker 的通知铃铛和 Webhook 就是这种提醒，只是建在商店之外：您跟踪的标签一旦发生变化，就会在落地时报告给您。",
+      "card_note": "当您的关注点包含“监控我的应用变化”时，每个应用的“隐私标签”标签页会在一张名为“这份标签有多可信”的卡片中，把这些规则应用到该应用上。",
+      "citation": "来源：Alsahdi、Yan、Kodwani、Fassl、Kanich 与 Aviv，《“Because I didn't touch these and even don't know why I should to change these”: Why App Developers Do (Not) Update Apple's Privacy Labels》，Proceedings on Privacy Enhancing Technologies 2026(4)。CC BY 4.0。",
+      "citation_link": "阅读论文 ↗"
+    },
     "transparency_intro": "Apple 每半年发布一次透明度报告，披露政府和私人当事方对客户数据、账户保留、账户限制以及设备识别码查询的请求。报告按国家/地区分别列出。",
     "transparency_storefront_lead": "你当前的店面是",
     "transparency_storefront_settings_lead": "。可在",
@@ -5942,6 +5964,50 @@
     "from_archive_suffix": " · 由网络存档重建",
     "show_details": "查看变化详情",
     "hide_details": "隐藏详情"
+  },
+  "label_trust": {
+    "title": "这份标签有多可信",
+    "intro": "隐私标签由开发者自行填写，Apple 并不核实。以下信号说明这份标签能承担多大分量。",
+    "dnc": {
+      "title": "声明为“不收集数据”",
+      "body": "研究发现这是最不可靠的标签：97% 带有此标签的应用，其隐私政策却描述了数据收集，而且它也是日后最常被替换的标签。请把它当作一项待核实的说法，而不是清白证明。"
+    },
+    "age": {
+      "changed_title": "标签最近一次更改于 {date}",
+      "changed_body": "只有不到 6% 的应用曾更改过标签，而且更改通常是为了披露更多。愿意更新的开发者说明在关注这件事。",
+      "added_tracking": "这次更改新增了“用于追踪您的数据”，这是最常见的新增项；通常是坦诚补上了，而不是新的行为。",
+      "predates_manifests": "它还早于 Apple 的隐私清单（2023 年 12 月），在那之前开发者没有结构化的方式了解第三方 SDK 收集了什么。",
+      "unchanged_title": "自 {date} 起未变",
+      "unchanged_body": "四分之三的应用在首次提交后从不再碰标签，所以一份长期未变的旧标签是默认状态，并不能证明做法稳定。",
+      "since_tracking_title": "自我们开始跟踪（{date}）起未变",
+      "since_tracking_body": "我们只能看到此应用被添加当天之后的记录。在“变更历史”标签页导入存档历史，可以查看在此之前是否有过更改。",
+      "open_history": "打开变更历史",
+      "checking_title": "正在检查更早的同步…",
+      "checking_body": "{count, plural, other {目前 # 次同步}}均未见标签更改，正在继续向前查找。",
+      "recent_title": "最近 {count, plural, other {# 次同步}}中均未变",
+      "recent_body": "这项检查最多回溯到这里。完整时间线见“变更历史”标签页。"
+    },
+    "policy": {
+      "mismatch_title": "隐私政策说得比标签多",
+      "mismatch_body": "开发者的隐私政策在{lenses}方面被评为值得关注，而标签的声明少于此。研究中的开发者表示，此类差距大多源于政策过时或多个应用共用一份政策，所以请阅读政策，而不要直接认定标签有误。",
+      "consistent_title": "政策与标签说法一致",
+      "consistent_body": "摘要后的政策没有描述比标签承认的更多的追踪或共享。政策是宽泛的法律文件，因此这只是说法一致，不是证明。",
+      "no_summary_title": "已获取政策，尚未生成摘要",
+      "no_summary_body": "隐私政策是第二个佐证。在“AI 政策”标签页生成摘要，即可对比开发者的两份披露。",
+      "none_title": "尚未获取隐私政策",
+      "none_body": "隐私政策是第二个佐证。在“AI 政策”标签页获取政策，即可对比开发者的两份披露。",
+      "open_policy": "打开 AI 政策"
+    },
+    "money": {
+      "free_iap_title": "免费，含 App 内购买",
+      "free_iap_body": "持续盈利的应用更改标签的频率比平均高 47%，通常是为了新增广告或分析。无论标签是否列出，都应预期存在广告和分析 SDK。",
+      "free_title": "免费，无 App 内购买",
+      "free_body": "免费应用通常靠广告或数据盈利。如果标签在追踪一栏没有任何内容，值得读一读隐私政策。",
+      "paid_title": "一次性付费",
+      "paid_body": "付费应用更改标签最少，需要披露的也最少。这是研究发现最稳定的组合。"
+    },
+    "learn_more": "标签无法告诉您的事",
+    "source_link": "来源研究（PoPETs 2026）↗"
   },
   "admin_login": {
     "title": "登录",

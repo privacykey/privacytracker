@@ -431,10 +431,12 @@ mod tests {
         // Bumps whenever lib/feature-flag-rules.ts gains a key and
         // `just parity-settings-cases` is re-run; the `knows` line names
         // the most recent addition so the count change is traceable.
-        assert_eq!(r.keys().count(), 222);
+        assert_eq!(r.keys().count(), 223);
         assert_eq!(r.hard_default(KILL_SWITCH), "on");
         assert!(r.knows("flag.nav.device_scope"));
         assert!(r.knows("flag.detail.timeline.wayback_import"));
+        assert!(r.knows("flag.detail.labels.trust_card"));
+        assert_eq!(r.hard_default("flag.detail.labels.trust_card"), "off");
         assert!(!r.knows("flag.not.a.real.flag"));
         assert_eq!(
             r.parent_of("flag.detail.timeline.wayback_import"),
