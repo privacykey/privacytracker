@@ -287,6 +287,7 @@ export type FlagKey =
   | "flag.settings.admin.export.audit_pdf"
   | "flag.settings.admin.reset"
   | "flag.settings.admin.start_over"
+  | "flag.settings.admin.companion"
 
   // ----- Developer Options
   | "flag.devopts.visible"
@@ -585,6 +586,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.settings.admin.export.audit_pdf": "off", // deferred to v0.1.0; flag in registry only
   "flag.settings.admin.reset": "on", // delete-all-data
   "flag.settings.admin.start_over": "on", // start-over button (full wipe)
+  "flag.settings.admin.companion": "on", // Settings → Companion: pair the iPhone app
 
   // Developer Options
   "flag.devopts.visible": "on", // sidebar entry visibility

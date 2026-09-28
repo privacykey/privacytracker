@@ -1880,6 +1880,7 @@
         "flag.page.shortlist",
         "flag.page.stats",
         "flag.settings.admin.backup",
+        "flag.settings.admin.companion",
         "flag.settings.admin.export",
         "flag.settings.admin.export.audit_bundle",
         "flag.settings.admin.export.audit_pdf",
@@ -3544,6 +3545,15 @@
           },
           {
             "key": "flag.settings.admin.backup",
+            "surface": "settings",
+            "hardDefault": "on",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null,
+            "wired": true
+          },
+          {
+            "key": "flag.settings.admin.companion",
             "surface": "settings",
             "hardDefault": "on",
             "currentValue": "on",

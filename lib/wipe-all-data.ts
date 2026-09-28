@@ -25,6 +25,7 @@
 import { recordActivity } from "./activity";
 import { deleteBackupSigningKey } from "./backup";
 import { deleteAllBackupSnapshots } from "./backup-snapshots";
+import { replaceCompanionRegistry } from "./companion-gate";
 import db from "./db";
 import {
   SETTINGS_KEYS_KEPT_BY_WIPE,
@@ -59,6 +60,9 @@ export function wipeAllUserData(mode: WipeMode, startedAt: number): WipeResult {
     ).run(...SETTINGS_KEYS_KEPT_BY_WIPE);
   });
   wipe();
+  // The wipe emptied companion_tokens; the gate's in-memory copy must stop
+  // accepting those tokens in the same instant (lib/companion-gate.ts).
+  replaceCompanionRegistry([]);
 
   const result: WipeResult = {
     backupSnapshotsDeleted: deleteAllBackupSnapshots(),

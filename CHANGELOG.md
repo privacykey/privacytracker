@@ -14,6 +14,21 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- Settings → Companion pairs the privacytracker iPhone app with your
+  instance. Choose "Make a pairing code" and scan the QR code with the app.
+  A pairing is a read-only token that can read your app list, each app's
+  labels and history, and the change feed, and nothing else: no settings,
+  backups, exports or devices, and no changes. A code that isn't scanned
+  within 15 minutes stops working, every paired phone is listed with when
+  it was last used, and removing one ends its access at once. "Delete
+  everything" ends every pairing, and backups leave pairings out.
+- In the desktop app, "Allow phone connections" (off by default) lets a
+  paired phone on the same Wi-Fi reach this Mac. It opens a second,
+  encrypted listener on your local network that answers paired phones only
+  and serves nothing but what the pairing allows; the app's own server
+  stays on this Mac alone. The phone checks the listener's certificate
+  against the one in the pairing code. A Docker install is reached at its
+  own address instead.
 - A "How much to trust this label" card at the top of an app's Privacy
   Labels tab, for the Monitor focus. It applies the findings of a 2026
   study of 926,240 App Store apps (Alsahdi et al., PoPETs 2026) to the app

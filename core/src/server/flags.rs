@@ -434,6 +434,7 @@ mod tests {
         assert_eq!(r.keys().count(), 223);
         assert_eq!(r.hard_default(KILL_SWITCH), "on");
         assert!(r.knows("flag.nav.device_scope"));
+        assert!(r.knows("flag.settings.admin.companion"));
         assert!(r.knows("flag.detail.timeline.wayback_import"));
         assert!(r.knows("flag.detail.labels.trust_card"));
         assert_eq!(r.hard_default("flag.detail.labels.trust_card"), "off");

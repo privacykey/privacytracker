@@ -83,6 +83,12 @@ log = "0.4"
 # lockfile under axum, so this adds no new crate to the build. The features
 # are axum's own: NOT hyper-util's `server-auto`, which would switch on
 # HTTP/2 and add the h2 crate, where the server speaks HTTP/1 as Node's does.
+# The desktop app's Wi-Fi listener for paired phones (companion_lan.rs)
+# serves TLS with a self-signed certificate the phone pins. tokio-rustls and
+# the rustls it re-exports are already in the lockfile under reqwest, built
+# with the `ring` provider, so this adds no new crate to the build; the
+# default features would pull in aws-lc-rs, hence the explicit list.
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 hyper = { version = "1", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["http1", "server", "service", "tokio"] }
 tower = { version = "0.5", features = ["util"] }

@@ -181,6 +181,10 @@ pub async fn serve_with(
     // instrumentation.ts's boot writes and tickers. The boot writes land
     // before the first request is served, as they do in Node.
     sync_runner::start_background(state.clone(), stop.clone());
+    // The desktop app's Wi-Fi listener for paired phones: remembered per
+    // server so Settings can switch it, stopped with the server, and opened
+    // now if it was left on (companion_lan.rs).
+    super::companion_lan::attach(&state, stop.clone());
 
     let header_read_timeout = config.header_read_timeout.unwrap_or(HEADER_READ_TIMEOUT);
     let served = tokio::spawn(accept_loop(
@@ -216,6 +220,31 @@ async fn accept_loop(
     stop: CancellationToken,
     header_read_timeout: Duration,
 ) -> std::io::Result<()> {
+    accept_loop_with(listener, router, stop, header_read_timeout, None).await
+}
+
+/// [`accept_loop`] behind TLS: the desktop app's Wi-Fi listener for paired
+/// phones (companion_lan.rs). Each connection gets
+/// [`super::companion_lan::TLS_HANDSHAKE_TIMEOUT`] to finish its handshake
+/// before hyper's header-read timeout starts; one that fails or stalls is
+/// dropped without an answer.
+pub(crate) async fn accept_tls_loop(
+    listener: tokio::net::TcpListener,
+    router: axum::Router,
+    stop: CancellationToken,
+    header_read_timeout: Duration,
+    acceptor: tokio_rustls::TlsAcceptor,
+) -> std::io::Result<()> {
+    accept_loop_with(listener, router, stop, header_read_timeout, Some(acceptor)).await
+}
+
+async fn accept_loop_with(
+    listener: tokio::net::TcpListener,
+    router: axum::Router,
+    stop: CancellationToken,
+    header_read_timeout: Duration,
+    tls: Option<tokio_rustls::TlsAcceptor>,
+) -> std::io::Result<()> {
     use axum::extract::ConnectInfo;
     use hyper_util::rt::{TokioExecutor, TokioIo, TokioTimer};
     use hyper_util::server::conn::auto::Builder;
@@ -246,27 +275,46 @@ async fn accept_loop(
         ));
         let signal_tx = signal_tx.clone();
         let close_rx = close_rx.clone();
+        let tls = tls.clone();
         tokio::spawn(async move {
             let mut builder = Builder::new(TokioExecutor::new());
             builder
                 .http1()
                 .timer(TokioTimer::new())
                 .header_read_timeout(header_read_timeout);
-            let mut conn = std::pin::pin!(
-                builder.serve_connection_with_upgrades(TokioIo::new(stream), service)
-            );
-            // Fused, so once it has fired the loop polls only the connection.
-            let mut signalled = std::pin::pin!(signal_tx.closed().fuse());
-            loop {
-                tokio::select! {
-                    result = conn.as_mut() => {
-                        if let Err(e) = result {
-                            log::debug!("connection from {remote} ended: {e}");
+            // One body for the plain stream and the TLS one: the two are
+            // different types, so the connection is driven in a macro.
+            macro_rules! drive {
+                ($io:expr) => {{
+                    let mut conn =
+                        std::pin::pin!(builder.serve_connection_with_upgrades($io, service));
+                    // Fused, so once it has fired the loop polls only the connection.
+                    let mut signalled = std::pin::pin!(signal_tx.closed().fuse());
+                    loop {
+                        tokio::select! {
+                            result = conn.as_mut() => {
+                                if let Err(e) = result {
+                                    log::debug!("connection from {remote} ended: {e}");
+                                }
+                                break;
+                            }
+                            () = &mut signalled => conn.as_mut().graceful_shutdown(),
                         }
-                        break;
                     }
-                    () = &mut signalled => conn.as_mut().graceful_shutdown(),
-                }
+                }};
+            }
+            match tls {
+                None => drive!(TokioIo::new(stream)),
+                Some(acceptor) => match tokio::time::timeout(
+                    super::companion_lan::TLS_HANDSHAKE_TIMEOUT,
+                    acceptor.accept(stream),
+                )
+                .await
+                {
+                    Ok(Ok(tls_stream)) => drive!(TokioIo::new(tls_stream)),
+                    Ok(Err(e)) => log::debug!("TLS handshake from {remote} failed: {e}"),
+                    Err(_) => log::debug!("TLS handshake from {remote} timed out"),
+                },
             }
             drop(close_rx);
         });

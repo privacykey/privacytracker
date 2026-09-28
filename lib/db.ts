@@ -725,6 +725,23 @@ db.exec(`
     FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
   );
   CREATE INDEX IF NOT EXISTS idx_app_devices_device ON app_devices(device_id);
+
+  /* Companion pairings (lib/companion.ts): the read-only tokens the iOS
+     companion app sends as X-PrivacyTracker-Companion-Token. Only the
+     SHA-256 of a token is stored; the plaintext exists once, in the reply
+     that becomes the pairing QR code. first_used_at stays NULL until the
+     phone's first request, and a row still NULL past claim_expires_at no
+     longer authenticates. Revoking deletes the row. */
+  CREATE TABLE IF NOT EXISTS companion_tokens (
+    id               TEXT    PRIMARY KEY,
+    label            TEXT    NOT NULL,
+    token_hash       TEXT    NOT NULL UNIQUE,
+    scope            TEXT    NOT NULL DEFAULT 'read',
+    created_at       INTEGER NOT NULL,
+    claim_expires_at INTEGER NOT NULL,
+    first_used_at    INTEGER,
+    last_used_at     INTEGER
+  );
 `);
 
 // Run safe migrations for existing databases.

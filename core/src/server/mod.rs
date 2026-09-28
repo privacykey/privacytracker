@@ -26,6 +26,8 @@ mod bundle_writes;
 #[cfg(test)]
 mod bundles_tests;
 mod changelog;
+mod companion;
+mod companion_lan;
 #[cfg(test)]
 mod content_tests;
 mod csp_policy;
@@ -621,6 +623,23 @@ fn routes() -> Router<AppState> {
         // ported; every one but the app row degrades to a fallback rather
         // than failing the request. See routes_detail.rs.
         .route("/api/apps/{id}/detail", get(routes_detail::detail))
+        // Companion pairing (companion.rs): the read-only tokens the iOS
+        // app uses, the phone's own status check, and the desktop app's
+        // Wi-Fi listener switch (companion_lan.rs).
+        .route(
+            "/api/companion",
+            get(companion::list).put(companion::rename),
+        )
+        .route("/api/companion/pairings", post(companion::pair))
+        .route(
+            "/api/companion/pairings/{id}",
+            axum::routing::delete(companion::revoke),
+        )
+        .route("/api/companion/status", get(companion::status))
+        .route(
+            "/api/companion/lan",
+            get(companion::lan_get).put(companion::lan_put),
+        )
         // The settings-backed reads. Three coercion-heavy app_settings
         // views and the feature-flag resolver, whose rule tables are
         // generated from the Node source (flag_rules.json) rather than
@@ -773,6 +792,13 @@ fn layered(routes: Router<AppState>, state: AppState) -> Router {
         // The gate wraps every route, including the 404 fallback, mirroring
         // proxy.ts's matcher which runs before the router.
         .layer(axum::middleware::from_fn(gate::gate))
+        // Just outside the gate: a request carrying a companion token gets
+        // its verdict from the database here, for the gate's step 0.6 to act
+        // on after the host check (companion.rs).
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            companion::front,
+        ))
         // Outermost, so it runs first: the x-forwarded-* synthesis `next
         // start` performs on every request before anything reads the
         // headers. See forwarded.rs for why this is safe ahead of the gate.
@@ -781,6 +807,41 @@ fn layered(routes: Router<AppState>, state: AppState) -> Router {
             forwarded::inject,
         ))
         .with_state(state)
+}
+
+/// The desktop app's Wi-Fi listener (companion_lan.rs): the companion
+/// allowlist and nothing else, behind `companion::required` instead of the
+/// gate. There is no host allowlist to pass on a LAN address and no other
+/// credential to accept, and no page, bootstrap link or fallback site is
+/// served. The handlers are the main router's own.
+pub(crate) fn lan_router(state: AppState) -> Router {
+    let inner = Router::new()
+        .route("/api/companion/status", get(companion::status))
+        .route("/api/apps", get(routes_apps::apps))
+        .route("/api/apps/{id}/detail", get(routes_detail::detail))
+        .route("/api/apps/{id}/changelog", get(routes_app::app_changelog))
+        .route(
+            "/api/apps/{id}/since-install",
+            get(routes_app::since_install),
+        )
+        .route(
+            "/api/apps/{id}/history-stats",
+            get(routes_app::history_stats),
+        )
+        .route("/api/changelog", get(routes_stats::changelog))
+        .route("/api/triage", get(routes_stats::triage))
+        .fallback(companion::lan_not_found)
+        .layer(axum::middleware::from_fn(lifecycle::catch_panic))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            companion::required,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            forwarded::inject,
+        ))
+        .with_state(state);
+    front_door(inner)
 }
 
 /// Phase 6, batch 3a: what `next start` does before and around its router

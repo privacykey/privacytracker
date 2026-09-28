@@ -70,12 +70,14 @@ const APP_DATA_TABLES_TO_TRUNCATE: [&str; 22] = [
 ];
 /// `USER_DATA_TABLES_TO_TRUNCATE`'s tail: what only "Delete everything"
 /// empties after the app-data list.
-const USER_DATA_EXTRA_TABLES: [&str; 5] = [
+const USER_DATA_EXTRA_TABLES: [&str; 6] = [
     "app_devices",
     "devices",
     "feature_flag_overrides",
     "audit_log",
     "ai_debug_log",
+    // Phone pairings are credentials: a full wipe ends every one of them.
+    "companion_tokens",
 ];
 /// `SETTINGS_KEYS_KEPT_BY_WIPE`, and the statement that keeps them, as
 /// lib/wipe-all-data.ts spells it.

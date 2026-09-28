@@ -64,7 +64,8 @@
     "server-only": "^0.0.1",
     "tesseract.js": "^7.0.0",
     "tesseract.js-core": "^7.0.0",
-    "undici": "^7.29.1"
+    "undici": "^7.29.1",
+    "uqr": "^0.1.3"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

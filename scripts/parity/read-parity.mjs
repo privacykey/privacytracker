@@ -220,6 +220,11 @@ const BATCH_1 = [
   // Phase 4, batch 6: the update check's cache. Each server's own tick
   // fetches GitHub after boot, so the manifest blanks what that wrote.
   "/api/update-status",
+  // Companion pairing: the listing, the phone's status route (a 401 for
+  // the harness's admin token) and the desktop-only Wi-Fi listener.
+  "/api/companion",
+  "/api/companion/status",
+  "/api/companion/lan",
 ];
 
 /**
@@ -238,6 +243,11 @@ const BATCH_1 = [
 // on a 405 — and, like BATCH_1, a route is added here in the commit that
 // implements it, never inferred.
 const WRITE_ROUTES = [
+  // Companion pairing (lib/companion.ts, core/src/server/companion.rs).
+  "/api/companion",
+  "/api/companion/pairings",
+  "/api/companion/pairings/[id]",
+  "/api/companion/lan",
   "/api/date-format",
   "/api/locale",
   "/api/preferences",

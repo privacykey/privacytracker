@@ -173,6 +173,17 @@ export const TABLES_IN_INSERT_ORDER: readonly string[] = [
   "related_apps_observed",
 ];
 
+/**
+ * Tables a backup deliberately leaves out. `companion_tokens` holds phone
+ * pairings (lib/companion.ts): credentials for this install, not data about
+ * its apps. A backup restored somewhere else must not bring working
+ * pairings with it, and restoring one here leaves the current pairings as
+ * they are, because restore only empties the tables above.
+ */
+export const TABLES_EXCLUDED_FROM_BACKUP: readonly string[] = [
+  "companion_tokens",
+];
+
 export interface BackupTable {
   columns: string[];
   rows: Record<string, unknown>[];
