@@ -301,6 +301,12 @@ Going forward, changes are recorded here as they land.
   the selected device scope. It reads the full paginated app list, so the
   action is not limited to the six apps previewed on the dashboard.
 
+- On an app's page, in "What's changed since you last checked", the
+  coloured edge on a newly added entry now matches its severity badge: red
+  for Data Used to Track You and orange for Data Linked to You. The two
+  colours were swapped, so every such entry showed an edge that disagreed
+  with the badge beside it.
+
 - A bulk sync that resumes after a crash or a forced quit no longer counts
   the app it was working on at the time twice. On a 20-app library the
   Activity row read "20/21 synced", the Wayback import's summary said

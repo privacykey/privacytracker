@@ -12374,14 +12374,15 @@ body.review-rec-print-active .review-rec-print a {
   border-left-color: var(--blue);
 }
 
-/* Bump severity colour on the border when the entry touches sensitive data. */
+/* Bump severity colour on the border when the entry touches sensitive data.
+   Matches the severity badge and the chip below: track is red, linked orange. */
 .change-review-item.change-review-sev-track.change-review-item-added {
-  background: linear-gradient(90deg, rgba(255, 149, 0, 0.12), transparent 60%);
-  border-left-color: var(--orange);
-}
-.change-review-item.change-review-sev-linked.change-review-item-added {
   background: linear-gradient(90deg, rgba(255, 69, 58, 0.12), transparent 60%);
   border-left-color: var(--red);
+}
+.change-review-item.change-review-sev-linked.change-review-item-added {
+  background: linear-gradient(90deg, rgba(255, 149, 0, 0.12), transparent 60%);
+  border-left-color: var(--orange);
 }
 
 .change-review-icon {
