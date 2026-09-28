@@ -130,7 +130,7 @@ fn redirect(status: StatusCode, location: &str) -> Option<Response> {
 
 /// `request.nextUrl.pathname`: a `/_next/data/<build id>/<page>.json` URL
 /// reads as the page it asks for (`getNextPathnameInfo` with `parseData`).
-fn next_url_pathname(path: &str) -> String {
+pub(super) fn next_url_pathname(path: &str) -> String {
     if let Some(data) = path
         .strip_prefix("/_next/data/")
         .and_then(|rest| rest.strip_suffix(".json"))
@@ -173,6 +173,19 @@ pub async fn gate(req: Request, next: Next) -> Response {
             let canonical = target.split('?').next().unwrap_or("/");
             return with_csp(res, canonical);
         }
+    }
+
+    // ── Step 0.6: a companion token (companion.rs, proxy.ts step 0.6). The
+    // header decides the request on its own: GET on the companion allowlist
+    // with a valid token skips the desktop credential, the admin token and
+    // the origin check; the same header anywhere else is refused, whatever
+    // else rides along. `companion::front` looked the token up before the
+    // gate ran, since the gate has no database. ─────────────────────────
+    if req.headers().contains_key(super::companion::HEADER) {
+        if let Some(res) = super::companion::gate_refusal(&req) {
+            return with_csp(res, &path);
+        }
+        return with_csp(no_store(next.run(req).await), &path);
     }
 
     // ── Step 0.75 (desktop app only): the launch credential. Every /api

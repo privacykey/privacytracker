@@ -79,6 +79,18 @@ export async function register() {
       // Never fatal — diagnostics are observability, not correctness.
     }
 
+    // Companion pairing: load the valid phone-token hashes into the
+    // registry proxy.ts checks, and install the sink that records each
+    // token's use. proxy.ts cannot open SQLite itself (lib/companion-gate.ts).
+    try {
+      const { loadCompanionRegistry } = await import("./lib/companion");
+      loadCompanionRegistry();
+    } catch (e) {
+      console.error("[Companion] registry load failed:", e);
+      // The gate answers companion requests 503 until a companion route
+      // loads it; nothing else depends on it.
+    }
+
     // Round 3 PR 1: feature-flag migration. Runs first (synchronously, before
     // any background tickers are scheduled) so the resolver and downstream
     // tickers see consistent state. Idempotent — safe to retry. On failure

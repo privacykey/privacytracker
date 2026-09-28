@@ -430,6 +430,17 @@ export const RUNTIME_DEPENDENCY_NOTES: Record<string, DependencyNotes> = {
       npm: "https://www.npmjs.com/package/undici",
     },
   },
+  uqr: {
+    license: "MIT",
+    about:
+      "QR code encoder with no dependencies of its own, maintained by the UnJS project.",
+    usage:
+      "Draws the pairing code in Settings → Companion that the privacytracker iPhone app scans. The code is encoded and drawn in your browser; nothing is sent anywhere to make it.",
+    links: {
+      repo: "https://github.com/unjs/uqr",
+      npm: "https://www.npmjs.com/package/uqr",
+    },
+  },
 };
 
 /** Runtime dependencies without notes. Empty when the page is complete. */

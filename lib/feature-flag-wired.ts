@@ -53,6 +53,8 @@ export const WIRED_FLAGS: ReadonlySet<FlagKey> = new Set<FlagKey>([
   "flag.settings.admin.backup",
   "flag.settings.admin.export",
   "flag.settings.admin.reset",
+  // CompanionSection (Settings → Companion) mounts only when on.
+  "flag.settings.admin.companion",
   "flag.settings.admin.start_over",
 
   // Legal pages

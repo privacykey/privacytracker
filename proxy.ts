@@ -7,6 +7,11 @@ import {
   checkAdminTokenAttempt,
   TOO_MANY_FAILURES,
 } from "@/lib/admin-token-guard";
+import {
+  COMPANION_HEADER,
+  COMPANION_REFUSALS,
+  checkCompanionRequest,
+} from "@/lib/companion-gate";
 import { cspRouteKey } from "@/lib/csp-route-key";
 import {
   effectiveHostFromHeaders,
@@ -37,6 +42,10 @@ import { OCR_WORKER_CSP_DIRECTIVES, OCR_WORKER_PATH } from "@/lib/ocr-assets";
  *      malicious cross-origin page can't drive the local app. Bypass
  *      is granted when the configured AUDITOR_ADMIN_TOKEN header is
  *      supplied (for scripted callers).
+ *   5. Answer every request that carries a companion token (the iOS
+ *      companion app's read-only pairing, lib/companion-gate.ts) before the
+ *      admin-token and CSRF steps: GET on the companion allowlist with a
+ *      valid token passes, anything else carrying the header is refused.
  *
  * Trust note: host classification + network-exposure live in the dependency-
  * free `@/lib/deployment-trust` module so this file (which runs in the proxy
@@ -260,6 +269,37 @@ export function proxy(request: NextRequest) {
     const res = NextResponse.redirect(canonical, 308);
     res.headers.set("Cache-Control", "no-store");
     return attachSecurityHeaders(res, canonical.pathname);
+  }
+
+  // Step 0.6 — Companion token. AFTER the host allowlist and the slash
+  // redirect, BEFORE auth and CSRF: a phone paired through Settings →
+  // Companion sends X-PrivacyTracker-Companion-Token and nothing else, on an
+  // install that may require the admin token for everything. The header
+  // decides the request on its own: GET on the companion allowlist with a
+  // valid token passes; the same header on any other path or method is a
+  // 403 whatever else rides along, so a pairing code can never be combined
+  // with another credential to reach more. core/src/server/gate.rs mirrors
+  // this step (its verdict comes from companion.rs, which can reach SQLite).
+  const companionToken = request.headers.get(COMPANION_HEADER);
+  if (companionToken !== null) {
+    const check = checkCompanionRequest(method, pathname, companionToken);
+    if (check.kind !== "allowed") {
+      const refusal =
+        check.kind === "out_of_scope"
+          ? COMPANION_REFUSALS.outOfScope
+          : check.kind === "unavailable"
+            ? COMPANION_REFUSALS.unavailable
+            : COMPANION_REFUSALS.invalid;
+      const res = NextResponse.json(
+        { error: refusal.error },
+        { status: refusal.status }
+      );
+      res.headers.set("Cache-Control", "no-store");
+      return attachSecurityHeaders(res, pathname);
+    }
+    const res = NextResponse.next();
+    res.headers.set("Cache-Control", "no-store");
+    return attachSecurityHeaders(res, pathname);
   }
 
   // Browsers send CSP violation reports as anonymous POSTs (no custom

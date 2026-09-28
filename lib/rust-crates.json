@@ -271,6 +271,12 @@
       "repository": "https://github.com/tokio-rs/tokio"
     },
     {
+      "name": "tokio-rustls",
+      "version": "0.26.4",
+      "license": "MIT OR Apache-2.0",
+      "repository": "https://github.com/rustls/tokio-rustls"
+    },
+    {
       "name": "tokio-util",
       "version": "0.7.18",
       "license": "MIT",

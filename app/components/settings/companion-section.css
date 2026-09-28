@@ -1,0 +1,187 @@
+/**
+ * Settings → Companion (CompanionSection). Pairing states carry a glyph
+ * and a word as well as a colour, so the colour is never the only signal.
+ */
+
+.companion-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.companion-scope-note,
+.companion-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-3);
+}
+
+.companion-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--red);
+}
+
+.companion-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.companion-inline .settings-input {
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 360px;
+}
+
+.companion-block {
+  display: block;
+  margin-top: 4px;
+}
+
+.companion-subtitle {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.companion-lan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.companion-lan-status {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-3);
+  overflow-wrap: anywhere;
+}
+
+.companion-lan-status.is-on {
+  color: var(--text-2);
+}
+
+.companion-address {
+  max-width: 280px;
+}
+
+.companion-qr-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.companion-qr {
+  flex: 0 0 auto;
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+
+.companion-qr-copy {
+  display: flex;
+  flex: 1 1 240px;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.companion-qr-copy p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.companion-countdown {
+  font-variant-numeric: tabular-nums;
+}
+
+.companion-device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.companion-device {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.companion-device-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.companion-device-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.companion-device-meta {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.companion-state {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.companion-state--active {
+  color: var(--green);
+}
+
+.companion-state--waiting {
+  color: var(--text-2);
+}
+
+.companion-state--expired {
+  color: var(--text-3);
+}
+
+.companion-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.companion-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+}

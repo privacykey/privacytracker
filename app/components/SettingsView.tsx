@@ -29,6 +29,7 @@ import SettingsSidebar from "./SettingsSidebar";
 import AccessibilityLabelsSection from "./settings/AccessibilityLabelsSection";
 import AiSummariesSection from "./settings/AiSummariesSection";
 import BackupSection from "./settings/BackupSection";
+import CompanionSection from "./settings/CompanionSection";
 import DeleteImportModal from "./settings/DeleteImportModal";
 import DeploymentDiagnosticsSection from "./settings/DeploymentDiagnosticsSection";
 import DeveloperSection from "./settings/DeveloperSection";
@@ -303,6 +304,7 @@ export default function SettingsView({
     "flag.settings.admin.backup",
     "flag.settings.admin.export",
     "flag.settings.admin.reset",
+    "flag.settings.admin.companion",
     "flag.settings.admin.start_over",
     "flag.desktop.app_section",
     "flag.settings.admin.export.audit_pdf",
@@ -326,6 +328,8 @@ export default function SettingsView({
     flags["flag.settings.import.history"] === "on";
   const settingsAdminBackupOn = flags["flag.settings.admin.backup"] === "on";
   const settingsAdminExportOn = flags["flag.settings.admin.export"] === "on";
+  const settingsAdminCompanionOn =
+    flags["flag.settings.admin.companion"] === "on";
   // The audit-bundle export gate (`flag.settings.admin.export.audit_bundle`)
   // is resolved INSIDE AuditBundleExport itself rather than here — it
   // reads the same shared bundle, just closer to the button it governs.
@@ -2030,6 +2034,13 @@ export default function SettingsView({
               {/* Data Export */}
               {settingsAdminExportOn && (
                 <ExportDataSection auditPdfOn={settingsAdminExportAuditPdfOn} />
+              )}
+
+              {/* Companion — pair the iPhone app with a read-only token
+          (lib/companion.ts). Between Export Data and Developer Options, as
+          in the sidebar. */}
+              {settingsAdminCompanionOn && (
+                <CompanionSection showToast={showToast} />
               )}
 
               {/* Developer Options — AI call logging, the operational activity

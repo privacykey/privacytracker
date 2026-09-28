@@ -162,6 +162,12 @@ const SECTION_GROUPS: SectionGroup[] = [
         i18nKey: "export_data",
       },
       {
+        id: "companion",
+        label: "Companion",
+        icon: "📱",
+        i18nKey: "companion",
+      },
+      {
         id: "developer",
         label: "Developer Options",
         icon: "⚙",

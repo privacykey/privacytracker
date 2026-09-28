@@ -949,6 +949,27 @@ export const READS = [
     name: "rate-limit status",
     path: "/api/rate-limit/status",
   },
+
+  // -- companion pairing (lib/companion.ts). The phone-facing status route
+  //    answers a companion token only, and the harness sends the admin
+  //    token, so both sides return the same 401. The Wi-Fi listener is the
+  //    desktop app's alone; outside it both sides report it unsupported.
+  {
+    route: "/api/companion",
+    name: "companion pairings",
+    path: "/api/companion",
+  },
+  {
+    route: "/api/companion/status",
+    name: "companion status without a companion token",
+    path: "/api/companion/status",
+    allowErrorStatus: true,
+  },
+  {
+    route: "/api/companion/lan",
+    name: "companion wi-fi listener outside the desktop app",
+    path: "/api/companion/lan",
+  },
 ];
 
 // ── READS with a volatility transform ───────────────────────────────
@@ -1696,6 +1717,39 @@ export const MUTATIONS = [
     method: "DELETE",
     path: "/api/feature-flags/overrides",
     after: "/api/feature-flags",
+  },
+
+  // -- companion pairing. Renaming is compared with the listing after it;
+  //    a new pairing's id, token and clock are each side's own, so only its
+  //    status is; revoking one that does not exist is a 404 on both.
+  {
+    route: "/api/companion",
+    name: "rename the companion instance",
+    method: "PUT",
+    path: "/api/companion",
+    body: { instanceName: "  Parity   Mac  " },
+    after: "/api/companion",
+  },
+  {
+    route: "/api/companion/pairings",
+    name: "pair a phone",
+    method: "POST",
+    path: "/api/companion/pairings",
+    body: { label: "Parity phone" },
+    compareStatusOnly: true,
+  },
+  {
+    route: "/api/companion/pairings/[id]",
+    name: "revoke a missing pairing",
+    method: "DELETE",
+    path: "/api/companion/pairings/pt-missing-pairing",
+  },
+  {
+    route: "/api/companion/lan",
+    name: "switch on the wi-fi listener outside the desktop app",
+    method: "PUT",
+    path: "/api/companion/lan",
+    body: { enabled: true },
   },
 ];
 

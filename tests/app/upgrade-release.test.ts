@@ -7,7 +7,10 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
-import { TABLES_IN_INSERT_ORDER } from "../../lib/backup";
+import {
+  TABLES_EXCLUDED_FROM_BACKUP,
+  TABLES_IN_INSERT_ORDER,
+} from "../../lib/backup";
 import db from "../../lib/db";
 
 const fixtures = fileURLToPath(new URL("../fixtures/v0.1.2/", import.meta.url));
@@ -82,5 +85,8 @@ test("full backup table inventory covers every application table", () => {
   )
     .map(({ name }) => name)
     .sort();
-  assert.deepEqual([...TABLES_IN_INSERT_ORDER].sort(), actual);
+  assert.deepEqual(
+    [...TABLES_IN_INSERT_ORDER, ...TABLES_EXCLUDED_FROM_BACKUP].sort(),
+    actual
+  );
 });

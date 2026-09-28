@@ -49,7 +49,7 @@ fn fresh_open_creates_full_schema() {
     let conn = open_and_migrate(&path).expect("migrate");
 
     let tables = table_names(&conn);
-    assert_eq!(tables.len(), 28, "expected 28 tables, got {}", tables.len());
+    assert_eq!(tables.len(), 29, "expected 29 tables, got {}", tables.len());
     for expected in [
         "apps",
         "privacy_snapshots",

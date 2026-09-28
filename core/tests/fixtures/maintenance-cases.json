@@ -25115,6 +25115,10 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM companion_tokens",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
           "params": [
             "feature_flag_migration_version",
@@ -26280,6 +26284,10 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM companion_tokens",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
           "params": [
             "feature_flag_migration_version",
@@ -26885,6 +26893,10 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM companion_tokens",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
           "params": [
             "feature_flag_migration_version",
@@ -27141,6 +27153,10 @@
         },
         {
           "sql": "DELETE FROM ai_debug_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM companion_tokens",
           "params": []
         },
         {
@@ -27487,6 +27503,10 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM companion_tokens",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
           "params": [
             "feature_flag_migration_version",
@@ -27735,6 +27755,10 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM companion_tokens",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
           "params": [
             "feature_flag_migration_version",
@@ -27885,6 +27909,10 @@
           "params": []
         },
         {
+          "sql": "DELETE FROM companion_tokens",
+          "params": []
+        },
+        {
           "sql": "DELETE FROM app_settings WHERE key NOT IN (?, ?)",
           "params": [
             "feature_flag_migration_version",
@@ -28032,6 +28060,10 @@
         },
         {
           "sql": "DELETE FROM ai_debug_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM companion_tokens",
           "params": []
         },
         {
@@ -30262,6 +30294,10 @@
         },
         {
           "sql": "DELETE FROM ai_debug_log",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM companion_tokens",
           "params": []
         },
         {

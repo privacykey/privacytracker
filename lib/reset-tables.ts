@@ -52,6 +52,8 @@ export const USER_DATA_TABLES_TO_TRUNCATE = [
   "feature_flag_overrides",
   "audit_log",
   "ai_debug_log",
+  // Phone pairings are credentials: a full wipe ends every one of them.
+  "companion_tokens",
 ] as const;
 
 /**
