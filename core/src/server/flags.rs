@@ -436,6 +436,8 @@ mod tests {
         assert!(r.knows("flag.nav.device_scope"));
         assert!(r.knows("flag.settings.admin.companion"));
         assert!(r.knows("flag.detail.timeline.wayback_import"));
+        assert!(r.knows("flag.detail.labels.trust_card"));
+        assert_eq!(r.hard_default("flag.detail.labels.trust_card"), "off");
         assert!(!r.knows("flag.not.a.real.flag"));
         assert_eq!(
             r.parent_of("flag.detail.timeline.wayback_import"),

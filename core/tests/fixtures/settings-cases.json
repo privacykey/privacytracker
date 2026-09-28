@@ -1767,6 +1767,7 @@
         "flag.detail.labels.cards",
         "flag.detail.labels.no_details_warning",
         "flag.detail.labels.profile_mismatch_badges",
+        "flag.detail.labels.trust_card",
         "flag.detail.manual.changelog",
         "flag.detail.manual.current_version_metadata",
         "flag.detail.manual.edit_details",
@@ -2531,6 +2532,15 @@
             "hardDefault": "on",
             "currentValue": "on",
             "focusValue": "on",
+            "override": null,
+            "wired": true
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
+            "surface": "detail",
+            "hardDefault": "off",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3985,6 +3995,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.ai_summary",
             "currentValue": "on",
             "focusValue": "on",
@@ -4109,6 +4125,12 @@
           },
           {
             "key": "flag.dashboard.callout.understand_declutter",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -5045,6 +5067,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.ai_summary",
             "currentValue": "on",
             "focusValue": "on",
@@ -5552,6 +5580,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.ai_summary",
             "currentValue": "on",
             "focusValue": "on",
@@ -5697,6 +5731,12 @@
           },
           {
             "key": "flag.detail.annotations_sidebar",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -5946,6 +5986,12 @@
           },
           {
             "key": "flag.detail.annotations_sidebar",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -6633,6 +6679,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.ai_summary",
             "currentValue": "on",
             "focusValue": "on",
@@ -7236,6 +7288,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.ai_summary",
             "currentValue": "on",
             "focusValue": "on",
@@ -7479,6 +7537,12 @@
             "key": "flag.detail.annotations_sidebar",
             "currentValue": "off",
             "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -7818,6 +7882,12 @@
             "key": "flag.detail.annotations_sidebar",
             "currentValue": "off",
             "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -8575,6 +8645,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.ai_summary",
             "currentValue": "on",
             "focusValue": "on",
@@ -9196,6 +9272,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.ai_summary",
             "currentValue": "on",
             "focusValue": "on",
@@ -9346,6 +9428,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.ai_summary",
             "currentValue": "on",
             "focusValue": "on",
@@ -9429,6 +9517,12 @@
         "delta": [
           {
             "key": "flag.dashboard.callout.understand_only",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -9661,6 +9755,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.ai_summary",
             "currentValue": "on",
             "focusValue": "on",
@@ -9791,6 +9891,12 @@
           },
           {
             "key": "flag.dashboard.callout.understand_declutter",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
