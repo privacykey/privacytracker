@@ -110,3 +110,33 @@ test("an unfinished HTTP upload hits its deadline before the handler completes",
   });
   assert.equal(status, 408);
 });
+
+test("the preloader stamps the socket peer and drops any copy a client sent", async (t) => {
+  const seen: { header?: string; raw: string[] } = { raw: [] };
+  const server = http.createServer((req, res) => {
+    seen.header = req.headers["x-privacytracker-peer"] as string | undefined;
+    seen.raw = req.rawHeaders.filter(
+      (_, i, all) =>
+        i % 2 === 1 && all[i - 1].toLowerCase() === "x-privacytracker-peer"
+    );
+    res.end("ok");
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(async () => {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+  const address = server.address();
+  assert.ok(address && typeof address !== "string");
+  const res = await fetch(`http://127.0.0.1:${address.port}/`, {
+    headers: { "x-privacytracker-peer": "forged 203.0.113.7" },
+  });
+  await res.text();
+  const stamp = (globalThis as Record<symbol, unknown>)[
+    Symbol.for("privacytracker.peer-stamp")
+  ];
+  assert.equal(typeof stamp, "string");
+  assert.match(String(seen.header), /^\S+ (::ffff:)?127\.0\.0\.1$/);
+  assert.ok(String(seen.header).startsWith(`${stamp} `));
+  assert.deepEqual(seen.raw, []);
+});

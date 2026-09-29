@@ -45,6 +45,7 @@ export default function Step2EnterApps({
     cfgutilError,
     cfgutilExporting,
     commitStep2Diff,
+    continueWithFoundMatches,
     describeCfgutilDevice,
     describeCfgutilDeviceMeta,
     developerHints,
@@ -77,6 +78,8 @@ export default function Step2EnterApps({
     searchBlocked,
     searchError,
     searchProgress,
+    searchResults,
+    searchRetry,
     searching,
     selectedCfgutilDevice,
     selectedCfgutilEcid,
@@ -1142,17 +1145,48 @@ export default function Step2EnterApps({
                 gives us an exact, authoritative count. */}
 
           {searchError && (
-            <p style={{ color: "var(--red)", fontSize: 13, marginTop: 12 }}>
-              {searchError}
-              {searchBlocked && (
-                <>
-                  {" "}
-                  <Link href="/dashboard/settings/admin#deployment-diagnostics">
-                    {tStatus("search_access_blocked_link")}
-                  </Link>
-                </>
+            <div
+              className="onboard-search-error"
+              data-testid="onboard-search-error"
+              role="alert"
+            >
+              <p style={{ color: "var(--red)", fontSize: 13, margin: 0 }}>
+                {searchError}
+                {searchBlocked && (
+                  <>
+                    {" "}
+                    <Link href="/dashboard/settings/admin#deployment-diagnostics">
+                      {tStatus("search_access_blocked_link")}
+                    </Link>
+                  </>
+                )}
+              </p>
+              {/* A failed search keeps the list; Retry searches the names
+                  that got no answer (and only those, after a partial
+                  failure). "Review" goes on with what did come back. */}
+              {searchRetry && !searching && (
+                <div className="onboard-search-error-actions">
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    data-testid="onboard-search-retry"
+                    onClick={() => void handleSearch()}
+                    type="button"
+                  >
+                    {tStep2("search_retry")}
+                  </button>
+                  {searchRetry === "partial" && searchResults.length > 0 && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      data-testid="onboard-search-continue-found"
+                      onClick={continueWithFoundMatches}
+                      type="button"
+                    >
+                      {tStep2("search_continue_found")}
+                    </button>
+                  )}
+                </div>
               )}
-            </p>
+            </div>
           )}
 
           {/* Rate-limit banner above the "Find apps in App Store" CTA.

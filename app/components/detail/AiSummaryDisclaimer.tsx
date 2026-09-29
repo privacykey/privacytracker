@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { isSafeExternalHref } from "../../../lib/safe-href";
+import "./ai-summary-disclaimer.css";
 
 export default function AiSummaryDisclaimer({
   policyUrl,

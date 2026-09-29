@@ -16,6 +16,14 @@
  *   2. The Rust wiring: every @tauri-apps/plugin-* package the frontend
  *      depends on has its crate in Cargo.toml, is registered with
  *      .plugin(...) in main.rs, and is granted in the main capability.
+ *
+ * The install itself goes through the shell's `install_verified_update`
+ * command (src-tauri/src/update_guard.rs), because the version in the
+ * update manifest is not signed: the shell reads the version from the
+ * signed archive and from the installed bundle, and refuses anything not
+ * newer than the running app. So these also pin that nothing relaunches
+ * unless that command confirmed a newer version, and that the page is
+ * granted the plugin's `check` and nothing that installs.
  */
 
 import assert from "node:assert/strict";
@@ -31,17 +39,19 @@ const repoRoot = path.resolve(import.meta.dirname, "..", "..");
 const RESTART_NOT_ALLOWED = "process.restart not allowed. Plugin not found";
 // Newer than any real package.json version, so the downgrade guard passes.
 const NEWER = "99.0.0";
+const RUNNING = "0.3.0";
+const UPDATE_RID = 7;
 
 /**
- * Stands in for the Rust side of the updater and process plugins. Each
- * handler returns the command's result or a rejected promise, the way a
- * failing Tauri command reaches invoke().
+ * Stands in for the Rust side of the updater and process plugins and the
+ * shell's install command. Each handler returns the command's result or a
+ * rejected promise, the way a failing Tauri command reaches invoke().
  */
 function mockDesktop(
   t: TestContext,
   handlers: {
     check?: () => unknown;
-    install?: () => unknown;
+    install?: (args: Record<string, unknown>) => unknown;
     restart?: () => unknown;
   }
 ): string[] {
@@ -52,15 +62,22 @@ function mockDesktop(
     configurable: true,
     value: globalThis,
   });
-  mockIPC((cmd) => {
+  mockIPC((cmd, args) => {
     calls.push(cmd);
     switch (cmd) {
       case "plugin:updater|check":
         return handlers.check
           ? handlers.check()
-          : { rid: 1, currentVersion: "0.0.1", version: NEWER, body: "notes" };
-      case "plugin:updater|download_and_install":
-        return handlers.install?.();
+          : {
+              rid: UPDATE_RID,
+              currentVersion: RUNNING,
+              version: NEWER,
+              body: "notes",
+            };
+      case "install_verified_update":
+        return handlers.install
+          ? handlers.install((args ?? {}) as Record<string, unknown>)
+          : { installedVersion: NEWER, runningVersion: RUNNING };
       case "plugin:process|restart":
         return handlers.restart?.();
       default:
@@ -90,9 +107,85 @@ test("a relaunch rejected after the install reports installed, not a failed inst
   assert.equal(result.error, undefined);
   assert.deepEqual(calls, [
     "plugin:updater|check",
-    "plugin:updater|download_and_install",
+    "install_verified_update",
     "plugin:process|restart",
   ]);
+});
+
+test("the shell installs the update the check found", async (t) => {
+  let installArgs: Record<string, unknown> | undefined;
+  mockDesktop(t, {
+    install: (args) => {
+      installArgs = args;
+      return { installedVersion: NEWER, runningVersion: RUNNING };
+    },
+  });
+
+  const result = await checkAndInstall();
+
+  assert.equal(result.installed, true);
+  // The resource id check() returned, so the shell downloads the same
+  // update the page was offered.
+  assert.deepEqual(installArgs, { rid: UPDATE_RID });
+});
+
+test("an update the shell refuses as not newer is not installed and never relaunches", async (t) => {
+  // What update_guard.rs rejects with when the signed archive holds an
+  // older build than the manifest claims.
+  const refusal =
+    "The downloaded update is version 0.1.2, which is not newer than the version you are running (0.3.0). It was not installed.";
+  const calls = mockDesktop(t, { install: () => Promise.reject(refusal) });
+
+  const result = await checkAndInstall();
+
+  assert.equal(result.installed, false);
+  assert.equal(result.error, refusal);
+  assert.equal(result.relaunchError, undefined);
+  assert.ok(!calls.includes("plugin:process|restart"));
+});
+
+test("an installed version that is not newer never relaunches", async (t) => {
+  // The shell refuses this itself; the page checks its answer again
+  // because relaunching is the step that would start an older build.
+  for (const installedVersion of [RUNNING, "0.1.2", "0.3.0-rc.1"]) {
+    await t.test(installedVersion, async (st) => {
+      const calls = mockDesktop(st, {
+        install: () => ({ installedVersion, runningVersion: RUNNING }),
+      });
+
+      const result = await checkAndInstall();
+
+      assert.equal(result.installed, false);
+      assert.match(result.error ?? "", /did not restart/);
+      assert.ok(!calls.includes("plugin:process|restart"));
+    });
+  }
+});
+
+test("an answer without the installed version never relaunches", async (t) => {
+  const calls = mockDesktop(t, { install: () => null });
+
+  const result = await checkAndInstall();
+
+  assert.equal(result.installed, false);
+  assert.match(result.error ?? "", /did not restart/);
+  assert.ok(!calls.includes("plugin:process|restart"));
+});
+
+test("a manifest that doesn't claim a newer version downloads nothing", async (t) => {
+  const calls = mockDesktop(t, {
+    check: () => ({
+      rid: UPDATE_RID,
+      currentVersion: RUNNING,
+      version: "0.0.1",
+    }),
+  });
+
+  const result = await checkAndInstall();
+
+  assert.equal(result.installed, false);
+  assert.match(result.error ?? "", /not newer/);
+  assert.deepEqual(calls, ["plugin:updater|check"]);
 });
 
 test("a relaunch that goes through reports installed with nothing to fix", async (t) => {
@@ -108,6 +201,8 @@ test("a relaunch that goes through reports installed with nothing to fix", async
 });
 
 test("a failed download is a failed install and never relaunches", async (t) => {
+  // The shell's command downloads through the plugin, so a plugin error
+  // arrives from it verbatim.
   const failure = "Download request failed with status: 404 Not Found";
   const calls = mockDesktop(t, { install: () => Promise.reject(failure) });
 
@@ -174,6 +269,17 @@ test("every @tauri-apps/plugin-* package is registered and granted in the deskto
       `src-tauri/capabilities/main.json grants no ${name}:* permission`
     );
   }
+});
+
+test("the updater plugin is granted check and nothing that installs", () => {
+  // Installing goes through install_verified_update, which checks the
+  // version inside the signed archive. A grant of the plugin's download or
+  // install would let the page skip that check.
+  assert.deepEqual(
+    grantedPermissions().filter((p) => p.startsWith("updater:")),
+    ["updater:allow-check"]
+  );
+  assert.ok(grantedPermissions().includes("allow-install-verified-update"));
 });
 
 test("the process plugin is granted restart and nothing broader", () => {

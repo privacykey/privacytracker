@@ -46,7 +46,7 @@ export const DARK_CHART_COLORS = {
   red: "#ff453a",
   text: "#f0f0f5",
   text2: "#a0a0b0",
-  text3: "#8e8e93",
+  text3: "#9a9aa0",
   yellow: "#ffd60a",
 } as const;
 

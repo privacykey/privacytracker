@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { useFlagBundle } from "@/lib/use-flag-bundle";
 import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
+import { PageSkeleton } from "./LoadingShell";
 import RequireAppsGate from "./RequireAppsGate";
 import StatsView, { type StatsFlagState } from "./StatsView";
 
@@ -108,7 +109,7 @@ export default function StatsLoader() {
   }
 
   if (!(stats && flagValues)) {
-    return null;
+    return <PageSkeleton />;
   }
 
   const flags: StatsFlagState = {

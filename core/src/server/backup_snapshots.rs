@@ -89,6 +89,45 @@ pub(super) fn directory(env: &Env) -> PathBuf {
     env.data_dir.join("backups")
 }
 
+/// `deleteAllBackupSnapshots`: every regular file whose name starts with
+/// the snapshot prefix (an interrupted write's `.tmp-*` included), in name
+/// order; anything else in the folder stays. Returns how many went. A
+/// missing folder is zero; a file that will not go is logged and skipped,
+/// because the wipe this belongs to has already committed.
+pub(super) fn delete_all(env: &Env) -> usize {
+    let directory = directory(env);
+    let Ok(entries) = std::fs::read_dir(&directory) else {
+        return 0;
+    };
+    let mut names: Vec<String> = entries
+        .filter_map(|e| e.ok())
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|name| name.starts_with(SNAPSHOT_PREFIX))
+        .collect();
+    names.sort();
+    let mut deleted = 0;
+    for name in names {
+        let full = directory.join(&name);
+        match std::fs::symlink_metadata(&full) {
+            Ok(meta) if meta.is_file() => {}
+            Ok(_) => continue,
+            Err(e) => {
+                super::diag::log_warn(format!(
+                    "[backup] failed to delete snapshot {name}: {e}"
+                ));
+                continue;
+            }
+        }
+        match std::fs::remove_file(&full) {
+            Ok(()) => deleted += 1,
+            Err(e) => super::diag::log_warn(format!(
+                "[backup] failed to delete snapshot {name}: {e}"
+            )),
+        }
+    }
+    deleted
+}
+
 pub(super) fn payload(settings: Value) -> Result<Value> {
     payload_at(settings, &directory(&backup::env()))
 }

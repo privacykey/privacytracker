@@ -401,6 +401,81 @@ test("the desktop CSP allowance stays scoped to IPC, not the updater feed", () =
   assert.deepEqual(desktopRest, webRest);
 });
 
+// --- Screenshot OCR worker ---------------------------------------------------
+// The OCR worker (public/ocr/worker.min.js, lib/ocr-assets.ts) compiles the
+// Tesseract engine to WebAssembly, which a CSP only permits with
+// 'wasm-unsafe-eval'. A dedicated worker started from a same-origin URL runs
+// under the policy delivered with its own script, so that response alone
+// carries the keyword. core/src/server/csp_policy.rs pins the same.
+
+function cspAt(pathname: string, runtime?: string): string {
+  const previous = process.env.PRIVACYTRACKER_RUNTIME;
+  if (runtime === undefined) {
+    delete process.env.PRIVACYTRACKER_RUNTIME;
+  } else {
+    process.env.PRIVACYTRACKER_RUNTIME = runtime;
+  }
+  try {
+    const res = proxy(
+      new NextRequest(`http://127.0.0.1:3000${pathname}`, {
+        headers: { host: "127.0.0.1:3000" },
+      })
+    );
+    return res.headers.get("Content-Security-Policy") ?? "";
+  } finally {
+    if (previous === undefined) {
+      delete process.env.PRIVACYTRACKER_RUNTIME;
+    } else {
+      process.env.PRIVACYTRACKER_RUNTIME = previous;
+    }
+  }
+}
+
+test("the OCR worker script carries its own policy, the only one allowing WebAssembly", () => {
+  const expected =
+    "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; frame-ancestors 'none'; report-uri /api/csp-report";
+  assert.equal(cspAt("/ocr/worker.min.js"), expected);
+  // The worker needs no Tauri IPC, so the desktop build gets the same one.
+  assert.equal(cspAt("/ocr/worker.min.js", "desktop"), expected);
+
+  for (const pathname of [
+    "/",
+    "/onboard",
+    "/dashboard",
+    "/ocr/tesseract-core-simd-lstm.wasm.js",
+    "/ocr/eng.traineddata.gz",
+    "/ocr/worker.min.js.LICENSE.txt",
+    "/ocr/worker.min.jsx",
+    "/api/health",
+  ]) {
+    // (Outside a production build every page policy also carries
+    // 'unsafe-eval' for Next's dev tooling, so only the WebAssembly keyword
+    // is asserted here; the e2e security-headers spec checks the real build.)
+    const csp = cspAt(pathname);
+    assert.doesNotMatch(
+      csp,
+      /wasm-unsafe-eval/,
+      `${pathname} must not carry the worker's WebAssembly allowance`
+    );
+    assert.match(
+      csp,
+      /^default-src 'self'; /,
+      `${pathname} keeps the page policy`
+    );
+  }
+});
+
+test("pages start the OCR worker under their existing script-src, with no worker-src or blob: added", () => {
+  const csp = cspAt("/onboard");
+  assert.doesNotMatch(csp, /worker-src/);
+  const scriptSrc = csp
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("script-src "));
+  assert.ok(scriptSrc?.includes("'self'"), csp);
+  assert.doesNotMatch(scriptSrc ?? "", /blob:/);
+});
+
 test("proxy normalises a trailing slash with headers attached, not a bare 308", () => {
   // Next's own trailing-slash redirect fires inside the router before the
   // proxy runs and returns `resHeaders: null`, so it lands with zero security

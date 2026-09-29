@@ -1,7 +1,6 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import db from "../../../lib/db";
 import { getSetting } from "../../../lib/scheduler";
 import {
   adminTokenRequiredForRequest,
@@ -11,16 +10,22 @@ import {
   requestActorIp,
   requestHasValidAdminToken,
 } from "../../../lib/security";
+import { wipeAllUserData } from "../../../lib/wipe-all-data";
 
 /**
- * Reset wipes the entire DB. This is irreversible and the most destructive
- * action the app can perform. Defence-in-depth:
+ * Reset is "Delete everything" (lib/wipe-all-data.ts): every table of user
+ * data, devices included, the settings, the automatic backup snapshots and
+ * the backup signing key. `/api/admin/start-over` runs the same wipe; this
+ * route keeps its own guard and limit because it is also the E2E suite's
+ * per-spec reset. Irreversible and the most destructive action the app can
+ * perform. Defence-in-depth:
  *   - The global proxy already enforces same-origin for mutating requests.
  *   - Require the admin token when configured or when reached via LAN/domain.
  *   - Record every attempt (success and failure) in the audit log.
  *   - Rate limit so a same-origin bug can't be trivially looped.
  */
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   const actorIp = requestActorIp(request);
   const userAgent = request.headers.get("user-agent");
 
@@ -76,30 +81,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const resetAll = db.transaction(() => {
-    db.prepare("DELETE FROM notifications").run();
-    // Clear the import history too — `imports` cascades into `import_items`
-    // via FK, but we DELETE both explicitly so the behaviour is obvious to
-    // anyone reading this list. Reset is a clean-slate operation; leaving
-    // stale history rows around would show phantom "Removed" entries for
-    // apps that no longer exist in the fresh DB.
-    db.prepare("DELETE FROM import_items").run();
-    db.prepare("DELETE FROM imports").run();
-    // Manual apps are user-authored and independent of the scraped apps, but
-    // they're still privacy state — clean-slate means we drop these too.
-    db.prepare("DELETE FROM manual_apps").run();
-    db.prepare("DELETE FROM privacy_data_types").run();
-    db.prepare("DELETE FROM privacy_categories").run();
-    db.prepare("DELETE FROM privacy_purposes").run();
-    db.prepare("DELETE FROM privacy_snapshots").run();
-    db.prepare("DELETE FROM privacy_types").run();
-    db.prepare("DELETE FROM apps").run();
-    db.prepare("DELETE FROM app_settings").run();
-    // NB: intentionally NOT deleting audit_log — we want the trail to survive.
-  });
-
   try {
-    resetAll();
+    // Everything goes, the audit trail included; the audit row below is
+    // written after the wipe, so the log starts again with this reset.
+    wipeAllUserData("reset", startedAt);
     recordAudit({
       action: "reset.success",
       actorIp,

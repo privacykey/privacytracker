@@ -12,14 +12,15 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
-## [0.3.0] — 2026-09-25
+## [0.3.0] — 2026-09-29
 
 The first release since v0.1.2, and the first on the Rust server: neither
 the desktop app nor the Docker image runs Node any more. It also brings
 a device picker that knows whose device is whose, privacy-label history
-back to 2021, sign-in for Docker and a long list of fixes. v0.2.0 was
-prepared but never released; its changes are part of this release and
-listed below.
+back to 2021, sign-in for Docker, a locked-down desktop app, pairing for
+the iPhone companion app and a long list of fixes. v0.2.0 was prepared
+but never released; its changes are part of this release and listed
+below.
 
 ### Before you upgrade
 
@@ -33,7 +34,13 @@ listed below.
 - **Docker needs an access token.** Set `AUDITOR_ADMIN_TOKEN` in `.env`
   before you start it (for example `openssl rand -hex 32`). Compose will
   not start without it, even with the port published on localhost only,
-  and it is what you sign in with.
+  and it is what you sign in with. The `latest` image tag now means the
+  newest release, not the newest change on `main`.
+- **Tools that talk to the desktop app.** The app's local server now
+  refuses requests without a credential that changes every launch. A tool
+  you run yourself, such as an MCP server, reads it from `.desktop-token`
+  in the app's data directory and sends it in an
+  `X-PrivacyTracker-Desktop-Token` header.
 - **Older backups.** Backups made by v0.1.2 restore, but they never
   included devices, review history or activity, so those cannot come back
   from one. Keep the directory copy for a rollback.
@@ -55,16 +62,38 @@ listed below.
 - **Label history back to 2021.** The Wayback import now reaches captures
   from early 2021, each app's History tab can check the archive for that
   app alone, and the History tab pages back through older entries.
+- **How much to trust a label.** With the Monitor goal, each app's
+  Privacy Labels tab shows reasons to read its label with care: how long
+  it has gone unchanged, the known weakness of "Data Not Collected", and
+  where the privacy policy describes more than the label admits.
+- **A locked-down desktop app.** The app's local server needs a
+  credential that changes every launch, so other user accounts on the Mac
+  can no longer read your data through it. "Require Touch ID to open the
+  window" now applies every time the window opens, an update installs only
+  if the version inside its signed download is newer than yours, and start
+  at login now uses a LaunchAgent, which needs no extra permission.
 - **Safer by default.** Docker and network installs require sign-in for
-  everything private, the database is readable only by you, request sizes
-  are limited, CSV exports are safe to open in a spreadsheet, pages run
-  under a strict Content Security Policy, and outbound requests check the
-  addresses they connect to.
-- **Settings in four pages and a simpler first run.** Privacy-policy
-  changes no longer notify you by default; the History tab still records
-  them.
-- **Accessibility.** Colour contrast meets WCAG AA across the app, and
-  keyboard access works in the phone-width menu and the import steps.
+  everything private and limit repeated wrong sign-in attempts, the
+  database is readable only by you, request sizes are limited, CSV exports
+  are safe to open in a spreadsheet, pages run under a strict Content
+  Security Policy, and outbound requests check the addresses they connect
+  to.
+- **Screenshot import on your device.** The text reader now ships inside
+  the app, so reading app names from screenshots downloads nothing from
+  anywhere else and the images never leave your device.
+- **iPhone companion pairing.** Settings → Companion pairs the
+  privacytracker iPhone app with read-only access to your app list, labels
+  and history. On the desktop app, phone connections over Wi-Fi stay off
+  until you turn them on.
+- **Settings in four pages and a simpler first run.** Choosing the Monitor
+  goal turns on daily sync, and "Delete all data" now removes everything,
+  including devices and saved backups, once you type a confirmation.
+  Privacy-policy changes no longer notify you by default; the History tab
+  still records them.
+- **Accessibility.** Colour contrast meets WCAG AA across the app, links in
+  running text are underlined, charts and the compare view work with
+  screen readers, and keyboard access works in the phone-width menu and
+  the import steps.
 - **Fixes** to AI policy summaries, background tasks and recovery after a
   crash, the dashboard, onboarding, and the desktop app's menu bar actions
   and update banner.
@@ -81,7 +110,72 @@ Every change since v0.1.2 is listed in
 
 [//]: # (release-notes-end)
 
+### Added
+
+- Settings → Companion pairs the privacytracker iPhone app with your
+  instance. Choose "Make a pairing code" and scan the QR code with the app.
+  A pairing is a read-only token that can read your app list, each app's
+  labels and history, and the change feed, and nothing else: no settings,
+  backups, exports or devices, and no changes. A code that isn't scanned
+  within 15 minutes stops working, every paired phone is listed with when
+  it was last used, and removing one ends its access at once. "Delete
+  everything" ends every pairing, and backups leave pairings out.
+- In the desktop app, "Allow phone connections" (off by default) lets a
+  paired phone on the same Wi-Fi reach this Mac. It opens a second,
+  encrypted listener on your local network that answers paired phones only
+  and serves nothing but what the pairing allows; the app's own server
+  stays on this Mac alone. The phone checks the listener's certificate
+  against the one in the pairing code. A Docker install is reached at its
+  own address instead.
+- A "How much to trust this label" card at the top of an app's Privacy
+  Labels tab, for the Monitor focus. It applies the findings of a 2026
+  study of 926,240 App Store apps (Alsahdi et al., PoPETs 2026) to the app
+  in front of you: how long the label has gone unchanged and whether that
+  predates Apple's privacy manifests, that a "Data Not Collected" label is
+  the one most often contradicted and later replaced, whether the
+  summarised privacy policy describes more tracking or sharing than the
+  label admits, and what the pricing model suggests about ad and analytics
+  SDKs. Every row says "worth a look", never "caught"; the study found the
+  gap is mostly uncertainty about third-party SDKs, not intent. The card is
+  behind `flag.detail.labels.trust_card` (off by default, on for the
+  Monitor goal, off under Just the basics) and links to a new "What a
+  label can't tell you" section on the label definitions help page, which
+  also notes that the developers interviewed asked for exactly the
+  in-app change alert privacytracker's bell provides.
+
 ### Changed
+
+- Only releases are published to the Docker image
+  `ghcr.io/privacykey/privacytracker`. A release gets its version tag, and a
+  final release also `<major>.<minor>` and `latest`, so `latest` now means
+  the newest release; a prerelease such as `0.3.0-rc.1` gets its version tag
+  only. Builds of `main` (`edge`, `sha-<commit>`) and pull request previews
+  (`pr-<n>`) go to a separate, private package,
+  `ghcr.io/privacykey/privacytracker-edge`. The Caddy and Traefik examples
+  still default to `latest`, which no longer follows `main`.
+
+- The privacy policy page lists what the app contacts today. New or
+  corrected entries: the Wayback CDX index that label-history imports read
+  first; the Internet Archive lookup, Save Page Now request and fallback
+  read that follow each privacy-policy fetch; the desktop updater's
+  manifest and download from GitHub (only when you press Install &
+  restart); webhooks you add, which receive app names and change
+  summaries; bundle-identifier lookups from device and app-list imports;
+  the Compare page's top-apps list; the site icons the server fetches for
+  manual apps; and, on the AI cards, the app name, developer and policy
+  address that go with the policy text. The developer-policy card says
+  when fetches run and how the throttle and Disable policy scraping stop
+  them, "No user accounts" explains the admin-token sign-in on Docker and
+  network installs, and the update section says plainly that the daily
+  GitHub check has no switch in Settings yet. The "last updated" date
+  follows the page's language.
+- The Legal page lists every runtime npm dependency (17, up from 6),
+  among them `dompurify` under MPL-2.0 or Apache-2.0 and the Tauri packages
+  under MIT or Apache-2.0. The list is built from `package.json`, so a new
+  dependency without an entry fails the build, and
+  `tests/app/legal-dependencies.test.ts` checks each licence against the
+  package's own `package.json`. The `@tauri-apps/cli` entry now shows its
+  dual licence.
 
 - The Docker image runs the Rust server (Rust core Phase 6, the Docker
   cutover). `docker compose up --build -d` and the published image now run
@@ -94,9 +188,9 @@ Every change since v0.1.2 is listed in
   its request headers too slowly is still cut off after 60 seconds. One
   answer differs: an oversized upload from a client that is not signed in
   gets 401 instead of 413, because this server checks the token before it
-  reads a body. To go back to the Node server
-  until 1.0, set `PRIVACYTRACKER_BACKEND=node` in `.env` and rebuild; both
-  open the same volume. The image ships its notices under
+  reads a body. The Node server stays buildable
+  through this release: to go back to it, set `PRIVACYTRACKER_BACKEND=node`
+  in `.env` and rebuild; both open the same volume. The image ships its notices under
   `/app/third-party/`, and the binary is built so vulnerability scanners
   can see its Rust dependencies.
 
@@ -116,8 +210,8 @@ Every change since v0.1.2 is listed in
   rollback possible. For contributors, `just tauri-dev` and
   `just tauri-build` (and `pnpm tauri:dev` / `pnpm tauri:build`) now build
   this backend and need no Node sidecar; the Node build is
-  `just tauri-dev-node` / `just tauri-build-node`, kept as the rollback until
-  1.0, and the release workflow's `backend` input defaults to `rust`. A
+  `just tauri-dev-node` / `just tauri-build-node`, kept as the rollback
+  through this release, and the release workflow's `backend` input defaults to `rust`. A
   development build run from `target/` now serves the frontend `pnpm build`
   just wrote, not a copy an earlier bundle build left there. No version
   bump comes with this change.
@@ -151,15 +245,143 @@ Every change since v0.1.2 is listed in
   written once. Pinned by a plain-JS validator
   (`scripts/parity/diagnostics-envelope.mjs`) that both the parity harness
   and `tests/app/runtime-diagnostics.test.ts` hold the payload to.
+- Choosing "Monitor my apps" now turns on daily sync. The Monitor goal
+  promises to tell you when an app starts asking for more, but a new
+  install stayed on Manual sync until you found the optional "Let it watch
+  in the background" step, so nothing was checked. Saving a focus with
+  Monitor (on the welcome screen, in Settings, or anywhere else the focus
+  is saved) now sets the schedule to Daily if you have never picked one.
+  The first automatic sync runs a day later, not straight after the
+  import that just fetched every app. A schedule you chose yourself,
+  Manual included, is never changed, and turning Monitor off later leaves
+  the schedule as it is. The "Let it watch in the background" checklist
+  item then shows as done and says auto-sync is on, instead of asking you
+  to turn it on. Both servers behave the same.
 
 ### Fixed
+
+- Desktop app: "Start at login" works in the signed app. It asked macOS's
+  System Events to add a login item, which the app has no permission to do,
+  so macOS most likely refused it silently. It now adds a LaunchAgent
+  (`~/Library/LaunchAgents/privacytracker.plist`), which needs no
+  permission. If you turned the setting on before, the first launch of this
+  version sets it up. Homebrew's `zap` now removes the LaunchAgent, the
+  app's log folder and its settings folder too.
+- A page that throws while it renders now shows a "This page stopped
+  working" card with Try again, Home and a link to report the problem,
+  instead of Next's bare "Application error: a client-side exception has
+  occurred". An error in the app's outer frame gets a plain full-page
+  version (English only, as it cannot rely on the translation files). The
+  report link fills in the page's path, never the error text.
+- Screenshot import in onboarding works again. After choosing a screenshot
+  the wizard stayed on "Preparing screenshot scan…" and never finished,
+  because the app's Content Security Policy refused the OCR worker, which
+  would also have downloaded its engine and English model from public CDNs.
+  The worker, the engine and the model now ship with the app and are served
+  from its own origin under `/ocr/`, so scanning works offline and nothing
+  is fetched from a third party. Only the worker script's response allows
+  WebAssembly; no page does. A scan that cannot start now ends with an error
+  message instead of a spinner. Both the Node and the Rust server serve the
+  files, as do the Docker image and the desktop app, which also carry
+  `THIRD-PARTY-OCR.md` with the components' licences (and list them on the
+  Legal page). The files add about 14 MB to each build.
+- Onboarding no longer reports your apps as "not in the App Store" when the
+  App Store search itself failed. A server error, a rate limit hit before
+  any name was checked, or a lost connection now keeps you on the "Add
+  apps" step with the error and a Retry button, instead of moving on and
+  suggesting you save real apps as manual ones. If only part of a large
+  list got an answer, the answered names are kept, Retry searches just the
+  rest, and "Continue without them" goes on with what was found. Changing
+  the App Store region on the matches step keeps a row's previous match
+  when the new search fails, and apps still waiting on a paused search are
+  no longer counted as "didn't match".
+- A page that could not load your apps no longer sends you to onboarding.
+  When the apps list, the app count behind Settings, Stats and the Privacy
+  Map, or the review queue failed to load, the page treated the failure as
+  an empty install and showed "Add the apps from your iPhone" to someone
+  with a full library. These pages now say "This page couldn't load its
+  data" with a Try again button, and only an empty answer that loaded
+  successfully leads to onboarding. Opening the site root while the app
+  count cannot be read now goes to the dashboard instead of the welcome
+  page, and the review queue no longer sends you to onboarding when you
+  pick a device with nothing on it.
+- A slow server no longer leaves a blank page. Every page now shows its
+  outline straight away (a skip link, a placeholder navigation bar on pages
+  that have one, and grey placeholder blocks announced as loading to screen
+  readers) and swaps in the real page when its data arrives. The dashboard
+  and the apps list also start more of their reads at the same time, so
+  with each request taking 3 seconds the dashboard now appears in about 9
+  seconds instead of 13, and the apps list in about 6 instead of 10.
+- On phones the accessibility options button no longer covers the page's
+  own buttons. It floated over the bottom-right corner at every width and
+  sat on the end of the welcome page's Next button, onboarding's "Search
+  App Store" and "Other import options", and the delete button of the
+  first app card. On screens narrower than 480 pixels it now sits at the
+  end of the page, below the content, and the same panel also opens from
+  the top of every page: an "Accessibility" item in the navigation menu,
+  a button in the sample-data navigation bar, and a button above the
+  content on pages without a navigation bar (welcome, onboarding, help).
+  Closing the panel returns focus to whichever control opened it. Wider
+  screens keep the floating button, and "g then u" still opens the panel.
+- "Try with sample data" now has a way out. The demo showed no exit, and
+  every link in the navigation bar led to a page that sent a new user to
+  onboarding without saying why. The demo now shows a sample-data bar with
+  "Start with your own apps" (clears the demo and opens onboarding) and
+  "Back to welcome", and its navigation bar only links back into the demo
+  or to "Start with your own apps", which stays on screen while you
+  scroll. The `flag.dashboard.sample_data_banner` flag, which hid the only
+  exit by default, now controls just the extra "Clear samples" button.
+- In the apps grid's Select mode, screen readers now hear which apps are
+  selected. Each card is announced as a toggle button that is pressed or
+  not, Space toggles it as well as Enter, and the "N apps selected" line in
+  the bulk bar is announced each time it changes. Compare mode's cards are
+  announced the same way.
+
+- Links inside running text are underlined, so they no longer rely on
+  colour alone: on the privacy policy, Legal, AI disclosure, focus help and
+  "page not found" pages, and the source policy link under an AI summary.
+  Navigation, buttons and cards are unchanged.
+
+- Text that fell short of the WCAG AA contrast minimum, mostly in dark
+  mode, now meets it: the dashboard's "N mismatches" chips, the grid's
+  profile badges and Low and High risk pills, the selected sort tab, the
+  bulk bar's links, settings help text and labels on nested panels, the
+  selected privacy profile pills, the Import history pills, the focus
+  matrix's current values and the active language option. Light mode's
+  secondary text is a step darker, dark mode's tertiary text a step
+  lighter, and the "page not found" page and the Diagnostics status banner
+  now follow the light, dark and high contrast themes instead of fixed
+  colours.
+
+- Charts have a text alternative. Screen readers announce each Stats
+  chart (heatmap, flow chart, change timeline, policy fingerprint radar)
+  and an app's change timeline as an image with a name that says what it
+  shows, followed by its data in words: the categories each app collects
+  by how the data is used, the number of apps and categories for each
+  kind of use, the changes in each period, or each app's rating per policy
+  topic. Before, each chart was an unlabelled drawing.
+
+- The Compare page's category and accessibility matrices are now tables to
+  a screen reader, with a column header for each app and a row header for
+  each category or feature, instead of one long run of text.
+
+- On the Compare page, a picked app's Change and Clear buttons are no
+  longer inside the card's own button, where screen readers could not
+  reach them, and are at least 24 pixels square. The "Tracked" and
+  "Preview" labels, the accessibility count chip and the "over limit"
+  profile pill meet the contrast minimum in light and dark mode.
+
+- Screen readers now announce the name of the "Dev menu trigger" switch
+  in Settings, Admin, and of the dev menu's Privacy profile and
+  Accessibility profile switches. They were announced as unnamed
+  switches.
 
 - The Diagnostics error log on the Node server now lists the warnings and
   errors the server logs. In a production build it was always empty,
   whatever the server had logged, because the server wrote to one copy of
   the log and the page read another. The Rust server, which the desktop app
   and the Docker image run by default, always showed them. The Node server
-  stays available as the rollback build until 1.0.
+  stays available as the rollback build through this release.
 - A bulk sync started in the first seconds after the server starts is no
   longer "resumed" by that same server. Each start, the server looks for an
   App Store sync, policy sync or Wayback import that a previous run left
@@ -176,6 +398,12 @@ Every change since v0.1.2 is listed in
 - The stale-apps section now offers one action to sync every stale app in
   the selected device scope. It reads the full paginated app list, so the
   action is not limited to the six apps previewed on the dashboard.
+
+- On an app's page, in "What's changed since you last checked", the
+  coloured edge on a newly added entry now matches its severity badge: red
+  for Data Used to Track You and orange for Data Linked to You. The two
+  colours were swapped, so every such entry showed an edge that disagreed
+  with the badge beside it.
 
 - A bulk sync that resumes after a crash or a forced quit no longer counts
   the app it was working on at the time twice. On a 20-app library the
@@ -656,6 +884,31 @@ Every change since v0.1.2 is listed in
   open would make any `app_devices`-reading route (`/api/apps?meta=grid` is the
   first) differ for reasons of boot order rather than correctness. Measured at
   1 device and 22 links on a 22-app copy. Developer-facing only.
+- "Start over" and "Reset all data" are now one action, "Delete all data",
+  and it deletes what it says. Both used to promise a wipe of everything,
+  but neither removed your devices (their names, owners and the permission
+  you recorded for someone else's device) or the automatic backup
+  snapshots and backup signing key in the data folder, and "Reset all data"
+  also kept the activity log, feature overrides, bundle-import records and
+  the AI debug log. Settings now shows one button; its dialog lists what
+  will be deleted and enables "Delete everything" only after you type
+  DELETE, as restoring a backup asks for RESTORE. Only the schema, the
+  flag-migration marker and the runtime marker are kept, plus one activity
+  entry and one audit entry recording the wipe. `POST /api/reset` and
+  `POST /api/admin/start-over` run the same wipe, on both servers, and the
+  start-over route now refuses while a sync is running, as reset did.
+  Backup files you downloaded are not touched. Because the signing key is
+  gone, they restore as "untrusted": the restore dialogs in Settings and
+  onboarding now explain that and offer "Restore anyway" instead of
+  failing with a technical error.
+- Onboarding no longer creates a device when you only search for apps. A
+  typed list abandoned before Import used to leave a "Manual entry · date"
+  device with no apps in the device picker and Settings, and made the next
+  import ask "Whose device is this?". The device is now created when you
+  press Import, which also means the answer to "Whose device is this?" on
+  that screen is the one the device gets. `POST /api/imports/items`
+  accepts an optional `deviceId` for this, attached only to an import that
+  has no device yet and only if the device exists.
 
 ### Added
 
@@ -1105,6 +1358,59 @@ Every change since v0.1.2 is listed in
 
 ### Security
 
+- The desktop app now builds with rustls 0.23.45 (was 0.23.41), which
+  fixes RUSTSEC-2026-0285: TLS 1.3 handshake messages were accepted across
+  encryption-level boundaries. The desktop app's HTTPS connections go
+  through rustls: App Store pages, archive.org, privacy policy pages, AI
+  providers and the update feed. The Docker image already
+  had the fixed release. CI's `rust-check` job now runs `cargo audit` over
+  all three Rust lockfiles and fails on a published advisory.
+- Desktop app: "Require Touch ID / password to open the window" now holds
+  every time the window opens. It used to be asked only for the window
+  shown at launch; the menu-bar icon, the global shortcut,
+  `privacytracker://` links and the menu bar opened it with no prompt.
+  Every one of those now asks first while the window is locked, and closing
+  or hiding the window locks it again. "Auto-lock after (minutes)" now
+  works: after that long without use (no keyboard or mouse input while the
+  window is focused, or that long in the background) the window hides and
+  locks. The page can no longer show, hide or close the window itself, and
+  the window no longer reopens at launch just because it was open at quit.
+- Desktop app: an update is installed only when the version inside the
+  signed download is newer than the one running. The version the update
+  feed states is not signed, so the app used to trust a number the signed
+  file did not back up. It now reads the version from the downloaded app
+  itself before installing, reads it again from the installed app, and
+  restarts only if both are newer; otherwise it says why and installs or
+  restarts nothing.
+- The desktop update archive is signed only as the release build verified
+  it. Each macOS build job now packs the archive from the app bundle it has
+  just checked (signature, notarisation, contents), signs it there and
+  records its SHA-256; the release refuses a draft whose archive differs from
+  that record, and the draft may carry only the assets the release checks.
+  The release no longer signs a file downloaded back from the draft release.
+  The archive is packed without macOS metadata entries and checked to hold
+  only the signed app, and the updater signing key is no longer present
+  while the app is built.
+
+- The desktop app's local server now answers only to the app. Each launch
+  creates a new random credential; the server refuses any API request
+  without it, whatever `Origin` the request claims, so other programs and
+  other user accounts on the Mac can no longer read, change, restore or
+  reset the library through it. The app window receives the credential as
+  a cookie page scripts cannot read, through a one-time link it opens at
+  start, and the pages look and behave as before, with no sign-in. Local
+  tools running as your user (such as the MCP companion) can read the
+  current credential from `.desktop-token` in the app-data directory
+  (readable by your account only, replaced every launch, removed on quit)
+  and send it in an `X-PrivacyTracker-Desktop-Token` header. Web and Docker
+  installs are unchanged, and the Node rollback build of the desktop app
+  does not have this protection.
+
+- Restoring a backup now applies the settings deny-list to feature-flag overrides as well: a `flag.devopts.*` override is never restored, whoever signed the backup, and a backup restored as untrusted brings no quarantined overrides with it. Both backends.
+- The one-time redirect after importing a migration bundle only ever goes to a path inside the app: the server and the dashboard both refuse a target that starts with `//`, contains a backslash, a space or a control character, or resolves to another origin, and a backup restore never writes that redirect marker. Both backends.
+- The saved AI API key is only sent to the provider and base URL it was saved for. The AI connection test, model list and sample summary still accept the saved key in place of a typed one, but only when the request names the saved provider and the same base URL (the provider's default when none is saved); for any other endpoint the key must be typed again, and the request is refused with a 400 before anything is sent. Both backends.
+- Admin-token guessing is limited per client on every path that checks a token: the header or cookie on private pages and API calls, the sign-in form and the public token status endpoint. After 10 different wrong tokens from one client in 15 minutes, that client's token-bearing requests are answered 429 without the token being checked; other clients are unaffected, and a repeated stale cookie counts once. The client is the connecting address, or the address a trusted proxy reports under `PRIVACYTRACKER_TRUST_PROXY`, so sign-in attempts no longer share one bucket across every client. A global limit of 100 wrong tokens in 15 minutes still lets through a client whose token was accepted in the last 24 hours. Nothing changes while no admin token is configured. Both backends; see `docs/SECURE_DEPLOYMENT.md`.
+- Notification webhooks never let an app name add a link, a mention or formatting to a chat message. Slack payloads escape `&`, `<` and `>`; Discord and Teams payloads escape their Markdown and HTML characters; Discord payloads also break `@everyone` and `@here` and set `allowed_mentions` so no mention can ping anyone. The generic JSON format is unchanged. Both backends.
 - Upgraded Next.js 16.2.12 → 16.3.4, clearing three advisories that were
   failing the dependency audit on every pull request:
   **two critical unauthenticated remote-code-execution issues** in Next.js

@@ -36,6 +36,7 @@ import CompareAppsView from "./CompareAppsView";
 import AccessibilityPanel from "./detail/AccessibilityPanel";
 import AppHistoryImportCard from "./detail/AppHistoryImportCard";
 import ChangeReviewPanel from "./detail/ChangeReviewPanel";
+import LabelTrustCard from "./detail/LabelTrustCard";
 import PolicySummaryPanel from "./detail/PolicySummaryPanel";
 import PrivacyTypeSection from "./detail/PrivacyTypeSection";
 import type { App, RecentPolicyChangeHint } from "./detail/types";
@@ -140,6 +141,8 @@ export interface DetailFlagState {
   labelsCards: boolean;
   labelsNoDetailsWarning: boolean;
   labelsProfileMismatchBadges: boolean;
+  /** flag.detail.labels.trust_card — 'How much to trust this label' card. */
+  labelsTrustCard: boolean;
   policyAiSummary: boolean;
   policyAiSummaryDisclaimer: boolean;
   policyChangeStrip: boolean;
@@ -282,6 +285,8 @@ export default function AppDetailView({
     labelsProfileMismatchBadges:
       detailFlags?.labelsProfileMismatchBadges ?? true,
     labelsNoDetailsWarning: detailFlags?.labelsNoDetailsWarning ?? true,
+    // FALSE default — guarded surface, a goal opts in.
+    labelsTrustCard: detailFlags?.labelsTrustCard ?? false,
     policyPanel: detailFlags?.policyPanel ?? true,
     policyAiSummary: detailFlags?.policyAiSummary ?? true,
     policyLensGrid: detailFlags?.policyLensGrid ?? true,
@@ -1439,6 +1444,22 @@ export default function AppDetailView({
               releasedAt={app.versionUpdatedAt}
               version={app.currentVersion}
               whatsNew={app.whatsNew}
+            />
+          )}
+
+          {/* "How much to trust this label" — the reading aid for the
+              self-declared cards below. A goal opts in (Monitor); mounted
+              only when there is a label to weigh, so the empty states
+              keep the panel to themselves. */}
+          {f.labelsTrustCard && app.privacyTypes.length > 0 && (
+            <LabelTrustCard
+              app={app}
+              changelog={changelog}
+              changelogHasMore={changelogHasMore}
+              onOpenHistory={() => setTab("changelog")}
+              onOpenPolicy={
+                canShowPolicyTab ? () => setTab("policy") : undefined
+              }
             />
           )}
 

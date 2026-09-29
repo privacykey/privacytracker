@@ -30,8 +30,12 @@ export default function RestoreBackupModal({
   exportingBackup,
   handleExportBackup,
   dateMode,
+  restoreUntrusted,
 }: {
   restoreStage: BackupRestoreStage;
+  /** The server said this install did not make the file; the next confirm
+   *  sends the explicit opt-in (lib/use-backup.ts). */
+  restoreUntrusted: boolean;
   restorePreview: BackupRestorePreview | null;
   restoreConfirmText: string;
   setRestoreConfirmText: (next: string) => void;
@@ -129,6 +133,21 @@ export default function RestoreBackupModal({
                 {tModalRestore("warning_body")}
               </div>
 
+              {restoreUntrusted && (
+                <div
+                  className="modal-warning"
+                  data-testid="restore-untrusted"
+                  role="alert"
+                  style={{ marginTop: 12 }}
+                >
+                  <strong>
+                    <span aria-hidden="true">⚠ </span>
+                    {tModalRestore("untrusted_lead")}
+                  </strong>
+                  {tModalRestore("untrusted_body")}
+                </div>
+              )}
+
               <div className="destructive-backup-offer">
                 <div className="destructive-backup-copy">
                   {tBackupCard("download_current_before_restore")}
@@ -199,7 +218,9 @@ export default function RestoreBackupModal({
                 >
                   {restoreStage === "applying"
                     ? tModalRestore("restoring")
-                    : tModalRestore("confirm")}
+                    : restoreUntrusted
+                      ? tModalRestore("confirm_untrusted")
+                      : tModalRestore("confirm")}
                 </button>
               </div>
             </div>

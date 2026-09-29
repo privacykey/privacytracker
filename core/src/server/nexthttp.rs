@@ -251,6 +251,8 @@ pub(crate) fn content_type_for(name: &str) -> &'static str {
         "otf" => "font/otf",
         "eot" => "application/vnd.ms-fontobject",
         "wasm" => "application/wasm",
+        // The OCR model, `public/ocr/eng.traineddata.gz`.
+        "gz" => "application/gzip",
         "pdf" => "application/pdf",
         "mp4" => "video/mp4",
         _ => "application/octet-stream",
@@ -670,5 +672,33 @@ mod tests {
             Some("/a/b")
         );
         assert_eq!(repeated_slash_target("/a/b", None), None);
+    }
+
+    /// What Next's bundled `send` answers for the files `public/ocr/`
+    /// holds (`require("next/dist/compiled/send").mime.lookup`, with its
+    /// charset for the text types).
+    #[test]
+    fn ocr_asset_types_match_send() {
+        assert_eq!(
+            content_type_for("/ocr/worker.min.js"),
+            "application/javascript; charset=UTF-8"
+        );
+        assert_eq!(
+            content_type_for("/ocr/tesseract-core-simd-lstm.wasm.js"),
+            "application/javascript; charset=UTF-8"
+        );
+        assert_eq!(
+            content_type_for("/ocr/eng.traineddata.gz"),
+            "application/gzip"
+        );
+        assert_eq!(
+            content_type_for("/ocr/THIRD-PARTY-OCR.md"),
+            "text/markdown; charset=UTF-8"
+        );
+        assert_eq!(
+            content_type_for("/ocr/LICENSE-tesseract.js.txt"),
+            "text/plain; charset=UTF-8"
+        );
+        assert!(!compressible("application/gzip"));
     }
 }

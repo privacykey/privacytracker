@@ -33564,6 +33564,773 @@
         "type": "application/json",
         "retryAfter": null
       }
+    },
+    {
+      "name": "items add attaches the committed device",
+      "route": "/api/imports/items",
+      "method": "POST",
+      "param": null,
+      "pathname": "/api/imports/items",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.173.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"importId\":\"imp_fixture_a\",\"deviceId\":\" dev-new \",\"items\":[{\"query\":\"One\",\"status\":\"matched\"}]}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "imp_fixture_a",
+            1789387200000,
+            null,
+            "manual",
+            null,
+            0,
+            0,
+            0,
+            0,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, NULL, NULL, NULL, NULL, ?, ?, 0, NULL, NULL, NULL)",
+          "params": [
+            "dev-new",
+            "Manual entry",
+            1700000000000,
+            1700000000000
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "UPDATE imports SET device_id = ? WHERE id = ? AND device_id IS NULL AND EXISTS (SELECT 1 FROM devices WHERE id = ?)",
+          "params": [
+            "dev-new",
+            "imp_fixture_a",
+            "dev-new"
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO import_items (\n    id, import_id, query, edited_query, status, app_id, app_name, developer, url,\n    icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count\n  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti_000000000001",
+            "imp_fixture_a",
+            "One",
+            null,
+            "matched",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            1,
+            1,
+            0,
+            0,
+            "imp_fixture_a"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [],
+        "imports": [
+          {
+            "id": "imp_fixture_a",
+            "created_at": 1789387200000,
+            "completed_at": null,
+            "source": "manual",
+            "source_label": null,
+            "total": 1,
+            "matched": 1,
+            "unmatched": 0,
+            "imported": 0,
+            "device_id": "dev-new"
+          }
+        ],
+        "import_items": [
+          {
+            "id": "iti_000000000001",
+            "import_id": "imp_fixture_a",
+            "query": "One",
+            "edited_query": null,
+            "status": "matched",
+            "app_id": null,
+            "app_name": null,
+            "developer": null,
+            "url": null,
+            "icon_url": null,
+            "country": null,
+            "scrape_error": null,
+            "next_attempt_at": null,
+            "attempt_count": 0,
+            "removed_app_id": null
+          }
+        ],
+        "devices": [
+          {
+            "id": "dev-new",
+            "name": "Manual entry",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"items\":[{\"id\":\"iti_000000000001\",\"importId\":\"imp_fixture_a\",\"query\":\"One\",\"editedQuery\":null,\"status\":\"matched\",\"appId\":null,\"appName\":null,\"developer\":null,\"url\":null,\"iconUrl\":null,\"country\":null,\"scrapeError\":null,\"removedAppId\":null,\"nextAttemptAt\":null,\"attemptCount\":0}]}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "items add keeps the device an import already has",
+      "route": "/api/imports/items",
+      "method": "POST",
+      "param": null,
+      "pathname": "/api/imports/items",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.174.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"importId\":\"imp_fixture_a\",\"deviceId\":\"dev-new\",\"items\":[{\"query\":\"One\",\"status\":\"matched\"}]}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, NULL, NULL, NULL, NULL, ?, ?, 0, NULL, NULL, NULL)",
+          "params": [
+            "dev-old",
+            "Phone",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, NULL, NULL, NULL, NULL, ?, ?, 0, NULL, NULL, NULL)",
+          "params": [
+            "dev-new",
+            "Manual entry",
+            1700000000000,
+            1700000000000
+          ]
+        },
+        {
+          "sql": "INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "imp_fixture_a",
+            1789387200000,
+            null,
+            "manual",
+            null,
+            0,
+            0,
+            0,
+            0,
+            "dev-old"
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "UPDATE imports SET device_id = ? WHERE id = ? AND device_id IS NULL AND EXISTS (SELECT 1 FROM devices WHERE id = ?)",
+          "params": [
+            "dev-new",
+            "imp_fixture_a",
+            "dev-new"
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO import_items (\n    id, import_id, query, edited_query, status, app_id, app_name, developer, url,\n    icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count\n  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti_000000000001",
+            "imp_fixture_a",
+            "One",
+            null,
+            "matched",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            1,
+            1,
+            0,
+            0,
+            "imp_fixture_a"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [],
+        "imports": [
+          {
+            "id": "imp_fixture_a",
+            "created_at": 1789387200000,
+            "completed_at": null,
+            "source": "manual",
+            "source_label": null,
+            "total": 1,
+            "matched": 1,
+            "unmatched": 0,
+            "imported": 0,
+            "device_id": "dev-old"
+          }
+        ],
+        "import_items": [
+          {
+            "id": "iti_000000000001",
+            "import_id": "imp_fixture_a",
+            "query": "One",
+            "edited_query": null,
+            "status": "matched",
+            "app_id": null,
+            "app_name": null,
+            "developer": null,
+            "url": null,
+            "icon_url": null,
+            "country": null,
+            "scrape_error": null,
+            "next_attempt_at": null,
+            "attempt_count": 0,
+            "removed_app_id": null
+          }
+        ],
+        "devices": [
+          {
+            "id": "dev-old",
+            "name": "Phone",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          },
+          {
+            "id": "dev-new",
+            "name": "Manual entry",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"items\":[{\"id\":\"iti_000000000001\",\"importId\":\"imp_fixture_a\",\"query\":\"One\",\"editedQuery\":null,\"status\":\"matched\",\"appId\":null,\"appName\":null,\"developer\":null,\"url\":null,\"iconUrl\":null,\"country\":null,\"scrapeError\":null,\"removedAppId\":null,\"nextAttemptAt\":null,\"attemptCount\":0}]}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "items add ignores a device that does not exist",
+      "route": "/api/imports/items",
+      "method": "POST",
+      "param": null,
+      "pathname": "/api/imports/items",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.175.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"importId\":\"imp_fixture_a\",\"deviceId\":\"ghost\",\"items\":[{\"query\":\"One\",\"status\":\"matched\"}]}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "imp_fixture_a",
+            1789387200000,
+            null,
+            "manual",
+            null,
+            0,
+            0,
+            0,
+            0,
+            null
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "UPDATE imports SET device_id = ? WHERE id = ? AND device_id IS NULL AND EXISTS (SELECT 1 FROM devices WHERE id = ?)",
+          "params": [
+            "ghost",
+            "imp_fixture_a",
+            "ghost"
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO import_items (\n    id, import_id, query, edited_query, status, app_id, app_name, developer, url,\n    icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count\n  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti_000000000001",
+            "imp_fixture_a",
+            "One",
+            null,
+            "matched",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            1,
+            1,
+            0,
+            0,
+            "imp_fixture_a"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [],
+        "imports": [
+          {
+            "id": "imp_fixture_a",
+            "created_at": 1789387200000,
+            "completed_at": null,
+            "source": "manual",
+            "source_label": null,
+            "total": 1,
+            "matched": 1,
+            "unmatched": 0,
+            "imported": 0,
+            "device_id": null
+          }
+        ],
+        "import_items": [
+          {
+            "id": "iti_000000000001",
+            "import_id": "imp_fixture_a",
+            "query": "One",
+            "edited_query": null,
+            "status": "matched",
+            "app_id": null,
+            "app_name": null,
+            "developer": null,
+            "url": null,
+            "icon_url": null,
+            "country": null,
+            "scrape_error": null,
+            "next_attempt_at": null,
+            "attempt_count": 0,
+            "removed_app_id": null
+          }
+        ],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"items\":[{\"id\":\"iti_000000000001\",\"importId\":\"imp_fixture_a\",\"query\":\"One\",\"editedQuery\":null,\"status\":\"matched\",\"appId\":null,\"appName\":null,\"developer\":null,\"url\":null,\"iconUrl\":null,\"country\":null,\"scrapeError\":null,\"removedAppId\":null,\"nextAttemptAt\":null,\"attemptCount\":0}]}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "items add with a device for an unknown import",
+      "route": "/api/imports/items",
+      "method": "POST",
+      "param": null,
+      "pathname": "/api/imports/items",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.176.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"importId\":\"imp_missing\",\"deviceId\":\"dev-new\",\"items\":[{\"query\":\"One\",\"status\":\"matched\"}]}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, NULL, NULL, NULL, NULL, ?, ?, 0, NULL, NULL, NULL)",
+          "params": [
+            "dev-new",
+            "Manual entry",
+            1700000000000,
+            1700000000000
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "UPDATE imports SET device_id = ? WHERE id = ? AND device_id IS NULL AND EXISTS (SELECT 1 FROM devices WHERE id = ?)",
+          "params": [
+            "dev-new",
+            "imp_missing",
+            "dev-new"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [],
+        "imports": [],
+        "import_items": [],
+        "devices": [
+          {
+            "id": "dev-new",
+            "name": "Manual entry",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          }
+        ]
+      },
+      "expected": {
+        "status": 500,
+        "body": "{\"error\":\"Internal Server Error\"}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "items add ignores a device id that is not a string",
+      "route": "/api/imports/items",
+      "method": "POST",
+      "param": null,
+      "pathname": "/api/imports/items",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.177.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"importId\":\"imp_fixture_a\",\"deviceId\":7,\"items\":[{\"query\":\"One\",\"status\":\"matched\"}]}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO imports (id, created_at, completed_at, source, source_label, total, matched, unmatched, imported, device_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "imp_fixture_a",
+            1789387200000,
+            null,
+            "manual",
+            null,
+            0,
+            0,
+            0,
+            0,
+            null
+          ]
+        },
+        {
+          "sql": "INSERT INTO devices (id, name, ecid, model, ios_version, device_class, created_at, last_synced_at, is_unknown_placeholder, owner_label, owner_audience, permission_acknowledged_at) VALUES (?, ?, NULL, NULL, NULL, NULL, ?, ?, 0, NULL, NULL, NULL)",
+          "params": [
+            "dev-new",
+            "Manual entry",
+            1700000000000,
+            1700000000000
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "INSERT INTO import_items (\n    id, import_id, query, edited_query, status, app_id, app_name, developer, url,\n    icon_url, country, scrape_error, removed_app_id, next_attempt_at, attempt_count\n  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "iti_000000000001",
+            "imp_fixture_a",
+            "One",
+            null,
+            "matched",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            0
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "UPDATE imports\n     SET total = ?, matched = ?, unmatched = ?, imported = ?\n     WHERE id = ?",
+          "params": [
+            1,
+            1,
+            0,
+            0,
+            "imp_fixture_a"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [],
+        "imports": [
+          {
+            "id": "imp_fixture_a",
+            "created_at": 1789387200000,
+            "completed_at": null,
+            "source": "manual",
+            "source_label": null,
+            "total": 1,
+            "matched": 1,
+            "unmatched": 0,
+            "imported": 0,
+            "device_id": null
+          }
+        ],
+        "import_items": [
+          {
+            "id": "iti_000000000001",
+            "import_id": "imp_fixture_a",
+            "query": "One",
+            "edited_query": null,
+            "status": "matched",
+            "app_id": null,
+            "app_name": null,
+            "developer": null,
+            "url": null,
+            "icon_url": null,
+            "country": null,
+            "scrape_error": null,
+            "next_attempt_at": null,
+            "attempt_count": 0,
+            "removed_app_id": null
+          }
+        ],
+        "devices": [
+          {
+            "id": "dev-new",
+            "name": "Manual entry",
+            "ecid": null,
+            "model": null,
+            "ios_version": null,
+            "device_class": null,
+            "created_at": 1700000000000,
+            "last_synced_at": 1700000000000,
+            "is_unknown_placeholder": 0,
+            "owner_label": null,
+            "owner_audience": null,
+            "permission_acknowledged_at": null
+          }
+        ],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"items\":[{\"id\":\"iti_000000000001\",\"importId\":\"imp_fixture_a\",\"query\":\"One\",\"editedQuery\":null,\"status\":\"matched\",\"appId\":null,\"appName\":null,\"developer\":null,\"url\":null,\"iconUrl\":null,\"country\":null,\"scrapeError\":null,\"removedAppId\":null,\"nextAttemptAt\":null,\"attemptCount\":0}]}",
+        "type": "application/json",
+        "retryAfter": null
+      }
     }
   ]
 }

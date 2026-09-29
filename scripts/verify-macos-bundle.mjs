@@ -14,7 +14,7 @@ import { readReleaseMetadata } from "./release-metadata.mjs";
 
 // Which backend this bundle ships (Phase 6). `rust`, what releases ship
 // since the desktop cutover, serves the app from the binary itself and
-// bundles only the frontend; `node`, the rollback until 1.0, bundles the
+// bundles only the frontend; `node`, the rollback until v0.3.0 has shipped, bundles the
 // standalone tree and a Node binary. Everything above the backend split --
 // the version, the deployment target, the signature, the notarisation -- is
 // checked the same way for both.
@@ -102,6 +102,11 @@ if (backend === "rust") {
     ".next/server/app/index.html",
     ".next/server/app/_not-found.html",
     ".next/csp-hashes.json",
+    // Screenshot import's OCR worker, engine and model
+    // (scripts/stage-ocr-assets.mjs): without them that method cannot run.
+    "public/ocr/worker.min.js",
+    "public/ocr/tesseract-core-simd-lstm.wasm.js",
+    "public/ocr/eng.traineddata.gz",
   ]) {
     assert.ok(
       existsSync(path.join(site, required)),
@@ -132,6 +137,7 @@ if (backend === "rust") {
     "LICENSE",
     "V8-LICENSE",
     "THIRD-PARTY-RUST.md",
+    "THIRD-PARTY-OCR.md",
   ]) {
     const file = path.join(resources, "third-party", notice);
     assert.ok(existsSync(file), `the bundle is missing ${notice}`);

@@ -1,0 +1,19 @@
+/* "Delete all data" confirmation (ResetAppModal.tsx). The dialog chrome is
+   the global .modal-* set; this is only the list naming what the wipe
+   removes, so it reads as a list inside .modal-copy's paragraphs. */
+
+.reset-app-copy p {
+  margin: 0;
+}
+
+.reset-app-copy p + .reset-scope-list,
+.reset-scope-list + p {
+  margin-top: 8px;
+}
+
+.reset-scope-list {
+  display: grid;
+  gap: 4px;
+  padding-left: 20px;
+  margin: 0;
+}

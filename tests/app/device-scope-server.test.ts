@@ -213,6 +213,11 @@ test("a STORED scope does not narrow a bare request", () => {
 
 test("the param a stored scope serialises to reproduces it on the wire", () => {
   const { phone, tablet } = seedFleet();
+  // A third device keeps the subset a real subset: every device plus the
+  // unattached bucket collapses to "all", which serialises to no param at
+  // all. (This used to hold only because earlier tests' devices survived
+  // resetTestDb; the reset now deletes devices as the app's own does.)
+  createDevice({ name: "Old iPod", deviceClass: "iPod" });
   saveDeviceScope(subset([phone.id, tablet.id], true));
   const param = serialiseScopeParam(getDeviceScope());
   assert.ok(param);

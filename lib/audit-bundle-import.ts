@@ -61,6 +61,7 @@ import type { AuditBundle, BundleAnnotation, BundleApp } from "./audit-bundle";
 import { BUNDLE_VERSION } from "./audit-bundle";
 import db from "./db";
 import type { ProfilePresetKey } from "./privacy-profile";
+import { isSameOriginPath } from "./same-origin-path";
 import { getSetting, setSetting } from "./scheduler";
 import {
   sanitizePolicyUrl,
@@ -295,10 +296,12 @@ export function consumeMigrationFlowMarker(): {
     /* ignore */
   }
 
-  const target =
-    typeof parsed.targetPath === "string" && parsed.targetPath.startsWith("/")
-      ? parsed.targetPath
-      : "/dashboard/review-recommendations";
+  // Only a path that stays inside the app is handed out: the marker can
+  // also arrive through a restored backup, and the dashboard navigates
+  // to whatever this returns.
+  const target = isSameOriginPath(parsed.targetPath)
+    ? parsed.targetPath
+    : "/dashboard/review-recommendations";
   return {
     targetPath: target,
     recommenderName:

@@ -1,0 +1,67 @@
+/*
+ * Loading shell: the nav and page placeholders painted before the app's
+ * data arrives (LoadingShell.tsx). The nav skeleton reuses the global
+ * `.nav` chrome so the bar does not jump when the real nav replaces it;
+ * everything here is only the grey placeholder shapes.
+ */
+.loading-shell-bar {
+  display: block;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  border-radius: var(--r-md);
+  animation: loading-shell-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes loading-shell-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-shell-bar {
+    animation: none;
+  }
+}
+
+.nav-skeleton .nav-links {
+  gap: 12px;
+  align-items: center;
+}
+
+.nav-skeleton-link {
+  width: 64px;
+  height: 14px;
+}
+
+.nav-skeleton-action {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-full);
+}
+
+.loading-shell-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.loading-shell-title {
+  width: min(260px, 70%);
+  height: 30px;
+}
+
+.loading-shell-line {
+  width: min(420px, 90%);
+  height: 14px;
+  margin-bottom: 8px;
+}
+
+.loading-shell-card {
+  width: 100%;
+  height: 120px;
+  border-radius: var(--r-lg);
+}

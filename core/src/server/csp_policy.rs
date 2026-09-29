@@ -53,8 +53,27 @@ fn script_src(pathname: &str) -> String {
         .join(" ")
 }
 
+/// `OCR_WORKER_PATH` in `lib/ocr-assets.ts`: the script screenshot import's
+/// OCR worker runs, staged into `public/ocr/` by
+/// `scripts/stage-ocr-assets.mjs`.
+const OCR_WORKER_PATH: &str = "/ocr/worker.min.js";
+/// `OCR_WORKER_CSP_DIRECTIVES`: the worker's own policy. A dedicated worker
+/// started from a same-origin URL runs under the policy delivered with its
+/// script, and this one compiles the Tesseract engine to WebAssembly, which
+/// needs `'wasm-unsafe-eval'`. No page carries that keyword.
+const OCR_WORKER_CSP: &[&str] = &[
+    "default-src 'none'",
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "report-uri /api/csp-report",
+];
+
 /// `buildCsp(pathname)`.
 fn build(pathname: &str) -> String {
+    if pathname == OCR_WORKER_PATH {
+        return OCR_WORKER_CSP.join("; ");
+    }
     let desktop = crate::host_env::var("PRIVACYTRACKER_RUNTIME").is_ok_and(|v| v == "desktop");
     let connect = if desktop {
         format!("'self' {TAURI_IPC_SOURCES}")
@@ -111,5 +130,36 @@ mod tests {
         assert_eq!(route_key("/manual-apps/x", &routes), "/manual-apps/view");
         assert_eq!(route_key("/apps/1/2", &routes), "/_not-found");
         assert_eq!(route_key("/api/stats", &routes), "/_not-found");
+    }
+
+    /// The OCR worker's script gets its own policy, the only one that may
+    /// compile WebAssembly; every other path keeps the page policy, which
+    /// never does. `security-regression.test.ts` pins the same on Node.
+    #[test]
+    fn only_the_ocr_worker_may_compile_webassembly() {
+        let worker = build("/ocr/worker.min.js");
+        assert_eq!(
+            worker,
+            "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; \
+             frame-ancestors 'none'; report-uri /api/csp-report"
+        );
+        for path in [
+            "/",
+            "/onboard",
+            "/ocr/eng.traineddata.gz",
+            "/ocr/tesseract-core-simd-lstm.wasm.js",
+            "/ocr/worker.min.js.LICENSE.txt",
+            "/api/health",
+        ] {
+            let policy = build(path);
+            assert!(
+                !policy.contains("wasm-unsafe-eval"),
+                "{path} must not allow WebAssembly: {policy}"
+            );
+            assert!(
+                policy.starts_with("default-src 'self'; "),
+                "{path}: {policy}"
+            );
+        }
     }
 }

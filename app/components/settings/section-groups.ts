@@ -63,6 +63,7 @@ export const GROUP_SECTIONS: Record<SettingsGroup, readonly string[]> = {
     "backup",
     "wayback-import",
     "export-data",
+    "companion",
     "developer",
     "reset",
   ],

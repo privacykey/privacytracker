@@ -13,6 +13,7 @@ import {
 import { scrollPulse } from "../../lib/scroll-pulse";
 import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import InfoTooltip from "./InfoTooltip";
+import { PageSkeleton } from "./LoadingShell";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 
 // ── Types ─────────────────────────────────────────────────────────────
@@ -145,7 +146,7 @@ export default function PrivacyGroupedView({
   );
 
   if (status === "loading") {
-    return null;
+    return <PageSkeleton />;
   }
   if (status === "error") {
     return (

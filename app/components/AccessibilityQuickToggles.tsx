@@ -3,7 +3,15 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isDesktop, openMacAccessibilitySettings } from "../../lib/desktop";
+import {
+  A11Y_QUICK_CLOSE_EVENT,
+  A11Y_QUICK_OPEN_EVENT,
+  type A11yQuickOpenRequest,
+  firstFocusable,
+  publishA11yQuickTogglesState,
+} from "../../lib/use-a11y-quick-toggles";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
+import { A11yGlyph } from "./AccessibilityEntryButton";
 
 /**
  * Footer-pill accessibility quick-toggles. Sits next to the keyboard-hint
@@ -255,6 +263,39 @@ export default function AccessibilityQuickToggles() {
 
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+  // Who opened the panel when it was not this component's own trigger
+  // (a nav-drawer entry, the top-of-page entry, the "g then u"
+  // shortcut). Escape and ✕ return focus there, falling back to the
+  // opener's `fallback` and then to the trigger if it cannot take focus.
+  const openerRef = useRef<A11yQuickOpenRequest | null>(null);
+  const openRef = useRef(false);
+
+  // Every open/close goes through here, so the other entry points hear
+  // about it in the same event rather than an effect later: their
+  // aria-expanded and the nav's Escape handler read it straight away.
+  const setPanelOpen = useCallback((next: boolean) => {
+    openRef.current = next;
+    publishA11yQuickTogglesState({ open: next });
+    setOpen(next);
+  }, []);
+
+  const closeAndReturnFocus = useCallback(() => {
+    const request = openerRef.current;
+    openerRef.current = null;
+    setPanelOpen(false);
+    firstFocusable([
+      request?.opener,
+      request?.fallback,
+      triggerRef.current,
+    ])?.focus();
+  }, [setPanelOpen]);
+
+  // Tell the other entry points whether there is a panel at all.
+  useEffect(() => {
+    publishA11yQuickTogglesState({ available: true });
+    return () =>
+      publishA11yQuickTogglesState({ available: false, open: false });
+  }, []);
 
   // Load persisted state on mount. The pre-hydration script already applied
   // the attributes to <html>, so we're just syncing React state here — no
@@ -287,12 +328,19 @@ export default function AccessibilityQuickToggles() {
       if (triggerRef.current?.contains(target)) {
         return;
       }
-      setOpen(false);
+      // The entry that opened the panel toggles it on its own click.
+      if (openerRef.current?.opener?.contains(target)) {
+        return;
+      }
+      openerRef.current = null;
+      setPanelOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setOpen(false);
-        triggerRef.current?.focus();
+        // Claim this Escape, so an open nav drawer (whose own listener
+        // may run after this one) leaves itself open: one layer per key.
+        e.preventDefault();
+        closeAndReturnFocus();
       }
     };
     // `pointerdown` (not `mousedown`) so the popover closes on iOS
@@ -305,16 +353,30 @@ export default function AccessibilityQuickToggles() {
       window.removeEventListener("pointerdown", onClick);
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, closeAndReturnFocus, setPanelOpen]);
 
-  // Global keyboard shortcut bridge. The `g then u` sequence in
-  // KeyboardShortcuts.tsx dispatches this custom event so the shortcut
-  // catalogue doesn't need to import this component's state. When fired we
-  // open the popover and push focus to the close button so keyboard users
-  // land inside the dialog rather than on the trigger they can't see.
+  // Open requests from elsewhere (lib/use-a11y-quick-toggles.ts). The
+  // `g then u` sequence in KeyboardShortcuts.tsx dispatches this event so
+  // the shortcut catalogue doesn't need to import this component's state,
+  // and the phone entries (nav drawer, sample-mode nav, top of page)
+  // dispatch it with themselves as the `opener`. When fired we open the
+  // popover and push focus to the close button so keyboard users land
+  // inside the dialog rather than on a trigger they can't see; closing
+  // returns focus to the opener (for the shortcut: whatever had focus).
   useEffect(() => {
-    const onRequestOpen = () => {
-      setOpen(true);
+    const onRequestOpen = (event: Event) => {
+      const request = (event as CustomEvent<A11yQuickOpenRequest | undefined>)
+        .detail;
+      const active = document.activeElement;
+      openerRef.current = {
+        opener:
+          request?.opener ??
+          (active instanceof HTMLElement && active !== document.body
+            ? active
+            : null),
+        fallback: request?.fallback ?? null,
+      };
+      setPanelOpen(true);
       // Defer focus until after render so the popover node exists. We target
       // the first focusable inside the popover (the close button) rather
       // than the popover container itself.
@@ -325,11 +387,18 @@ export default function AccessibilityQuickToggles() {
         closeBtn?.focus();
       });
     };
-    window.addEventListener("a11y-quick-toggles:open", onRequestOpen);
-    return () => {
-      window.removeEventListener("a11y-quick-toggles:open", onRequestOpen);
+    const onRequestClose = () => {
+      if (openRef.current) {
+        closeAndReturnFocus();
+      }
     };
-  }, []);
+    window.addEventListener(A11Y_QUICK_OPEN_EVENT, onRequestOpen);
+    window.addEventListener(A11Y_QUICK_CLOSE_EVENT, onRequestClose);
+    return () => {
+      window.removeEventListener(A11Y_QUICK_OPEN_EVENT, onRequestOpen);
+      window.removeEventListener(A11Y_QUICK_CLOSE_EVENT, onRequestClose);
+    };
+  }, [closeAndReturnFocus, setPanelOpen]);
 
   // Step-in-either-direction scale controls. Replaces the single cycling
   // button with two buttons (smaller / larger) so users don't have to
@@ -440,32 +509,20 @@ export default function AccessibilityQuickToggles() {
           anyActive ? t("trigger_aria_active") : t("trigger_aria_idle")
         }
         className={`a11y-quick-trigger${anyActive ? " is-active" : ""}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          // Opened (or closed) from its own button: focus comes back here.
+          openerRef.current = null;
+          setPanelOpen(!openRef.current);
+        }}
         ref={triggerRef}
         title={t("trigger_title")}
         type="button"
       >
         {/* Matches the accessibility badge used in AppDetailView (detail-a11y-chip)
             — a circle with a person figure inside — so the footer trigger reads
-            as the same "accessibility surface" users already recognise. */}
-        <svg
-          aria-hidden="true"
-          className="a11y-quick-trigger-glyph"
-          fill="none"
-          height="18"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-          viewBox="0 0 24 24"
-          width="18"
-        >
-          <circle cx="12" cy="12" r="10" />
-          <circle cx="12" cy="7.2" fill="currentColor" r="1.4" />
-          <path d="M6.5 10.5h11" />
-          <path d="M12 10.5v4" />
-          <path d="M9 18l3-3.5L15 18" />
-        </svg>
+            as the same "accessibility surface" users already recognise. The
+            phone entries (AccessibilityEntryButton) share the same glyph. */}
+        <A11yGlyph className="a11y-quick-trigger-glyph" />
         {anyActive && (
           <span
             aria-hidden="true"
@@ -504,11 +561,13 @@ export default function AccessibilityQuickToggles() {
           tree or fencing Tab inside would defeat the point. The popover sits
           in DOM order directly after its trigger, so Tab/Shift+Tab walk in and
           out naturally without a trap. The keyboard contract is still
-          complete: Escape and the ✕ button close and restore focus to the
-          trigger; outside-click closes and leaves focus where the user
-          clicked; the `g u` shortcut path moves focus onto the ✕ button on
-          open (trigger-click opens keep focus on the trigger,
-          disclosure-style). */}
+          complete: Escape and the ✕ button close and restore focus to
+          whatever opened the panel (the trigger, a phone entry such as the
+          nav drawer's "Accessibility" item, or the element focused when
+          `g u` was pressed), falling back to the trigger; outside-click
+          closes and leaves focus where the user clicked; the `g u` and
+          phone-entry paths move focus onto the ✕ button on open
+          (trigger-click opens keep focus on the trigger, disclosure-style). */}
       {open && (
         <div
           aria-label={t("popover_aria")}
@@ -524,11 +583,10 @@ export default function AccessibilityQuickToggles() {
               aria-label={t("close_aria")}
               className="a11y-quick-popover-close"
               onClick={() => {
-                setOpen(false);
-                // Keyboard-close path: put focus back on the trigger, same as
-                // Escape — otherwise focus falls to <body> when this button
-                // unmounts.
-                triggerRef.current?.focus();
+                // Keyboard-close path: put focus back on whatever opened the
+                // panel (its trigger, or a phone entry), same as Escape —
+                // otherwise focus falls to <body> when this button unmounts.
+                closeAndReturnFocus();
               }}
               type="button"
             >

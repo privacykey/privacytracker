@@ -45,10 +45,9 @@ function focusAs(audience: Audience): void {
  *  fresh backup — the backup gate has its own file. */
 function setup(audience: Audience = "self"): void {
   resetTestDb();
-  // `devices` is deliberately NOT in the reset table list (the app's own
-  // /api/reset leaves it alone too), so rows survive between tests and
-  // the unique partial index on `ecid` rejects the next fixture. Clear
-  // it explicitly.
+  // resetTestDb empties `devices` too (as "Delete everything" does); kept
+  // explicit because the unique partial index on `ecid` would reject the
+  // next fixture if a device row ever survived.
   db.prepare("DELETE FROM devices").run();
   focusAs(audience);
   setOverride("flag.devopts.cfgutil_uninstall", "on");

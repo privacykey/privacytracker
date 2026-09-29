@@ -95,3 +95,36 @@ test("trailing-slash redirect preserves the query string and terminates", async 
   expect(followed.status()).toBe(200);
   expect(followed.url()).toContain("/dashboard/apps?q=test&sort=name");
 });
+
+// Screenshot import's OCR worker (lib/ocr-assets.ts) compiles the Tesseract
+// engine to WebAssembly. A dedicated worker runs under the policy delivered
+// with its own script, so that one response carries 'wasm-unsafe-eval' and
+// no page does. Held on both backends (core/src/server/csp_policy.rs).
+const OCR_WORKER_CSP =
+  "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; frame-ancestors 'none'; report-uri /api/csp-report";
+
+test("the OCR worker script carries its own policy with the full header set", async ({
+  request,
+}) => {
+  const res = await request.get("/ocr/worker.min.js", { maxRedirects: 0 });
+  expect(res.status()).toBe(200);
+  expect(res.headers()["content-type"]).toMatch(/^application\/javascript/);
+  assertAllHeaders(res.headers(), "GET /ocr/worker.min.js");
+  expect(res.headers()["content-security-policy"]).toBe(OCR_WORKER_CSP);
+});
+
+test("no page and no other OCR file allows WebAssembly or eval", async ({
+  request,
+}) => {
+  for (const path of [
+    ...PATHS,
+    "/onboard",
+    "/ocr/eng.traineddata.gz",
+    "/ocr/tesseract-core-simd-lstm.wasm.js",
+  ]) {
+    const res = await request.get(path, { maxRedirects: 0 });
+    const csp = res.headers()["content-security-policy"] ?? "";
+    expect(csp, `GET ${path}`).toMatch(/^default-src 'self'; /);
+    expect(csp, `GET ${path}`).not.toContain("unsafe-eval");
+  }
+});

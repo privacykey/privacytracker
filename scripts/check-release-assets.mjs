@@ -7,6 +7,7 @@ import {
   readReleaseMetadata,
   validateReleaseTag,
 } from "./release-metadata.mjs";
+import { assertEvidenceDigest, readBuildEvidence } from "./updater-archive.mjs";
 import { UPDATE_PLATFORMS, validateManifest } from "./updater-manifest.mjs";
 
 const metadata = readReleaseMetadata(process.cwd());
@@ -36,6 +37,27 @@ for (const name of expected) {
     throw new Error(`Missing or empty release asset: ${name}`);
   }
 }
+// Publication ships every asset on the draft, so the draft holds only what
+// this check covers.
+const unexpected = release.assets
+  .map((asset) => asset.name)
+  .filter((name) => !expected.includes(name));
+if (unexpected.length > 0) {
+  throw new Error(`Unexpected release asset: ${unexpected.join(", ")}`);
+}
+// What each build job recorded about the updater archive it packed from its
+// verified bundle and signed (the updater-* artifacts, downloaded here).
+const build = Object.fromEntries(
+  Object.values(UPDATE_PLATFORMS).map(({ triple, name }) => [
+    name,
+    readBuildEvidence(path.join("updater", `updater-${triple}`), {
+      tag,
+      version: metadata.version,
+      triple,
+      commit: process.env.GITHUB_SHA,
+    }),
+  ])
+);
 // Re-download the actual draft bytes, verify their updater signatures, and
 // leave a digest receipt for the maintainer's manual publication review.
 const dir = mkdtempSync(path.join(tmpdir(), "privacytracker-draft-check-"));
@@ -61,6 +83,7 @@ try {
   writeFileSync(key, metadata.pubkey);
   for (const [platform, { name }] of Object.entries(UPDATE_PLATFORMS)) {
     const archive = path.join(dir, name);
+    assertEvidenceDigest(archive, build[name], `The draft's ${name}`);
     writeFileSync(`${archive}.sig`, current.platforms[platform].signature);
     execFileSync(
       "scripts/verify-updater/target/debug/verify-privacytracker-updater",
@@ -78,11 +101,39 @@ try {
   );
   writeFileSync(
     "release-evidence.json",
-    `${JSON.stringify({ tag, commit: process.env.GITHUB_SHA ?? execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim(), verifiedAt: new Date().toISOString(), sha256: hashes }, null, 2)}\n`
+    `${JSON.stringify(
+      {
+        tag,
+        commit:
+          process.env.GITHUB_SHA ??
+          execFileSync("git", ["rev-parse", "HEAD"], {
+            encoding: "utf8",
+          }).trim(),
+        verifiedAt: new Date().toISOString(),
+        sha256: hashes,
+        // The updater archives as each build job packed and signed them.
+        // `sha256` above must match these.
+        build: Object.fromEntries(
+          Object.entries(build).map(([name, evidence]) => [
+            name,
+            {
+              target: evidence.target,
+              sha256: evidence.sha256,
+              size: evidence.size,
+              cdhash: evidence.cdhash,
+              commit: evidence.commit,
+              packedAt: evidence.packedAt,
+            },
+          ])
+        ),
+      },
+      null,
+      2
+    )}\n`
   );
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }
 console.log(
-  `Draft ${tag} has all six required assets; publication remains manual.`
+  `Draft ${tag} has exactly the six required assets, and its updater archives are the ones the builds verified and signed; publication remains manual.`
 );

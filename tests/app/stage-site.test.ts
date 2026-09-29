@@ -43,6 +43,7 @@ function build(extra: Record<string, string> = {}): Build {
     ".next/static/chunks/app.js": "console.log(1)",
     ".next/csp-hashes.json": '{"all":[],"routes":{"/":[]}}',
     "public/brand-icon.png": "PNG",
+    "public/ocr/worker.min.js": "importScripts()",
     ...extra,
   };
   for (const [rel, contents] of Object.entries(files)) {
@@ -68,6 +69,7 @@ test("stages what the core serves and nothing else", () => {
     ".next/static/chunks/app.js",
     ".next/csp-hashes.json",
     "public/brand-icon.png",
+    "public/ocr/worker.min.js",
   ]) {
     assert.ok(existsSync(path.join(into, rel)), `${rel} should be staged`);
   }
@@ -122,6 +124,16 @@ test("refuses a build it cannot serve, and a database", () => {
     /the not-found page/
   );
   rmSync(noFallback.root, { recursive: true, force: true });
+
+  // A bare `next build` skips scripts/stage-ocr-assets.mjs, and the bundle
+  // it made would install with screenshot import unable to start.
+  const noOcr = build();
+  rmSync(path.join(noOcr.root, "public/ocr"), { recursive: true });
+  assert.throws(
+    () => stageSite({ root: noOcr.root, into: noOcr.into }),
+    /the OCR worker/
+  );
+  rmSync(noOcr.root, { recursive: true, force: true });
 
   const withDb = build({ "public/privacy.db": "SQLite format 3" });
   assert.throws(

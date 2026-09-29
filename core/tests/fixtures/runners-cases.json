@@ -15502,6 +15502,1052 @@
         ]
       },
       "expected": null
+    },
+    {
+      "name": "scheduled check waits a day after the Monitor default",
+      "kind": "callback",
+      "delay": 15000,
+      "route": null,
+      "method": null,
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.57.4",
+        "user-agent": "runners-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "runtime_environment",
+            ""
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000222",
+            "Fixture Two",
+            "https://apps.apple.com/us/app/fixture/id555000222",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by, app_version, app_version_updated_at) VALUES (?, ?, ?, ?, 0, '[]', 'live', NULL, 'import', '1.0.0', 1767323045000)",
+          "params": [
+            "snap-two",
+            "555000222",
+            1789300800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_schedule",
+            "daily"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_schedule_default_at",
+            "1789470000000"
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "555000222",
+            "name": "Fixture Two",
+            "url": "https://apps.apple.com/us/app/fixture/id555000222",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "snap-two",
+            "app_id": "555000222",
+            "scraped_at": 1789300800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          }
+        ],
+        "imports": [],
+        "import_items": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          },
+          {
+            "key": "sync_schedule",
+            "value": "daily"
+          },
+          {
+            "key": "sync_schedule_default_at",
+            "value": "1789470000000"
+          }
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "scheduled check runs a day after the Monitor default",
+      "kind": "callback",
+      "delay": 15000,
+      "route": null,
+      "method": null,
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.58.4",
+        "user-agent": "runners-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "runtime_environment",
+            ""
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000222",
+            "Fixture Two",
+            "https://apps.apple.com/us/app/fixture/id555000222",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by, app_version, app_version_updated_at) VALUES (?, ?, ?, ?, 0, '[]', 'live', NULL, 'import', '1.0.0', 1767323045000)",
+          "params": [
+            "snap-two",
+            "555000222",
+            1789300800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_schedule",
+            "daily"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_schedule_default_at",
+            "1789300800000"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<!doctype html><html><head><meta property=\"og:title\" content=\"Fixture One on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Fixture Dev\"}}</script></head><body><a aria-label=\"Developer's Privacy Policy\" href=\"https://example.com/privacy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Fixture One\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"version\":\"1.0.0\",\"currentVersionReleaseDate\":\"2026-01-02T03:04:05Z\",\"releaseNotes\":\"Fixture release notes\",\"price\":0,\"currency\":\"USD\",\"formattedPrice\":\"Free\",\"primaryGenreId\":6002,\"primaryGenreName\":\"Utilities\",\"contentAdvisoryRating\":\"4+\"}]}"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<!doctype html><html><head><meta property=\"og:title\" content=\"Fixture Two on the App Store\"><meta property=\"og:image\" content=\"https://example.com/icon.png\"><script type=\"application/ld+json\">{\"author\":{\"@type\":\"Organization\",\"name\":\"Fixture Dev\"}}</script></head><body><a aria-label=\"Developer's Privacy Policy\" href=\"https://example.com/privacy\">Privacy Policy</a><script id=\"serialized-server-data\" type=\"application/json\">{\"data\":[{\"data\":{\"title\":\"Fixture Two\",\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]}}}}],\"userTokenHash\":\"fixture\"}</script></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "{\"resultCount\":1,\"results\":[{\"version\":\"1.0.0\",\"currentVersionReleaseDate\":\"2026-01-02T03:04:05Z\",\"releaseNotes\":\"Fixture release notes\",\"price\":0,\"currency\":\"USD\",\"formattedPrice\":\"Free\",\"primaryGenreId\":6002,\"primaryGenreName\":\"Utilities\",\"contentAdvisoryRating\":\"4+\"}]}"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=555000111&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        },
+        {
+          "url": "https://apps.apple.com/us/app/fixture/id555000222",
+          "headers": [
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Safari/605.1.15"
+            ]
+          ]
+        },
+        {
+          "url": "https://itunes.apple.com/lookup?id=555000222&country=us",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"scheduled\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"pending\"},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"pending\"}],\"totals\":{\"attempted\":0,\"succeeded\":0,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"scheduled\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000111\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"pending\"}],\"totals\":{\"attempted\":1,\"succeeded\":0,\"changes\":0,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        UPDATE apps\n           SET name = ?, url = ?, iconUrl = ?, developer = ?, privacyPolicyUrl = ?,\n               lastSynced = ?,\n               currentVersion = COALESCE(?, currentVersion),\n               versionUpdatedAt = COALESCE(?, versionUpdatedAt),\n               whatsNew = COALESCE(?, whatsNew),\n               hasPrivacyDetails = ?,\n               hasAccessibilityLabels = COALESCE(?, hasAccessibilityLabels),\n               priceAmount = COALESCE(?, priceAmount),\n               priceCurrency = COALESCE(?, priceCurrency),\n               priceFormatted = COALESCE(?, priceFormatted),\n               hasIap = COALESCE(?, hasIap),\n               genreId = COALESCE(?, genreId),\n               genreName = COALESCE(?, genreName),\n               ageRating = COALESCE(?, ageRating)\n         WHERE id = ?\n      ",
+          "params": [
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            "https://example.com/icon.png",
+            "Fixture Dev",
+            "https://example.com/privacy",
+            1789473600000,
+            "1.0.0",
+            1767323045000,
+            "Fixture release notes",
+            1,
+            null,
+            0,
+            "USD",
+            "Free",
+            null,
+            6002,
+            "Utilities",
+            "4+",
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "555000111_DATA_LINKED_TO_YOU",
+            "555000111",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You",
+            "Data Linked to You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "555000111_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "555000111_DATA_LINKED_TO_YOU",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed WHERE source_app_id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO privacy_snapshots\n        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n         source, wayback_snapshot_url, triggered_by,\n         app_version, app_version_updated_at)\n      VALUES (?, ?, ?, ?, ?, ?, 'live', NULL, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "555000111",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            1,
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]}]",
+            "scheduled",
+            "1.0.0",
+            1767323045000
+          ]
+        },
+        {
+          "sql": "UPDATE apps SET changeCount = changeCount + 1 WHERE id = ?",
+          "params": [
+            "555000111"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n        VALUES (?, ?, ?, ?, ?, 0, ?)\n      ",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "555000111",
+            "Fixture One",
+            "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]}]",
+            1789473600000,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO activity_log\n        (id, type, status, app_id, app_name, summary, detail,\n         started_at, ended_at, duration_ms)\n      VALUES (?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000005",
+            "resync",
+            "555000111",
+            "Fixture One",
+            "1 change detected",
+            "{\"changeCount\":1,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      DELETE FROM activity_log\n       WHERE id IN (\n         SELECT id FROM activity_log\n          ORDER BY started_at DESC\n          LIMIT -1 OFFSET 2000\n       )\n    ",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"scheduled\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"changed\",\"changesDetected\":true},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"pending\"}],\"totals\":{\"attempted\":1,\"succeeded\":1,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"scheduled\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000222\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"changed\",\"changesDetected\":true},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"in_progress\",\"startedAt\":1789473600000}],\"totals\":{\"attempted\":2,\"succeeded\":1,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "DELETE FROM privacy_types WHERE app_id = ?",
+          "params": [
+            "555000222"
+          ]
+        },
+        {
+          "sql": "\n        UPDATE apps\n           SET name = ?, url = ?, iconUrl = ?, developer = ?, privacyPolicyUrl = ?,\n               lastSynced = ?,\n               currentVersion = COALESCE(?, currentVersion),\n               versionUpdatedAt = COALESCE(?, versionUpdatedAt),\n               whatsNew = COALESCE(?, whatsNew),\n               hasPrivacyDetails = ?,\n               hasAccessibilityLabels = COALESCE(?, hasAccessibilityLabels),\n               priceAmount = COALESCE(?, priceAmount),\n               priceCurrency = COALESCE(?, priceCurrency),\n               priceFormatted = COALESCE(?, priceFormatted),\n               hasIap = COALESCE(?, hasIap),\n               genreId = COALESCE(?, genreId),\n               genreName = COALESCE(?, genreName),\n               ageRating = COALESCE(?, ageRating)\n         WHERE id = ?\n      ",
+          "params": [
+            "Fixture Two",
+            "https://apps.apple.com/us/app/fixture/id555000222",
+            "https://example.com/icon.png",
+            "Fixture Dev",
+            "https://example.com/privacy",
+            1789473600000,
+            "1.0.0",
+            1767323045000,
+            "Fixture release notes",
+            1,
+            null,
+            0,
+            "USD",
+            "Free",
+            null,
+            6002,
+            "Utilities",
+            "4+",
+            "555000222"
+          ]
+        },
+        {
+          "sql": "\n        INSERT INTO privacy_types (id, app_id, identifier, title, detail)\n        VALUES (?, ?, ?, ?, ?)\n      ",
+          "params": [
+            "555000222_DATA_LINKED_TO_YOU",
+            "555000222",
+            "DATA_LINKED_TO_YOU",
+            "Data Linked to You",
+            "Data Linked to You detail"
+          ]
+        },
+        {
+          "sql": "\n          INSERT OR IGNORE INTO privacy_categories (id, type_id, identifier, title)\n          VALUES (?, ?, ?, ?)\n        ",
+          "params": [
+            "555000222_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "555000222_DATA_LINKED_TO_YOU",
+            "CONTACT_INFO",
+            "Contact Info"
+          ]
+        },
+        {
+          "sql": "DELETE FROM related_apps_observed WHERE source_app_id = ?",
+          "params": [
+            "555000222"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO privacy_snapshots\n        (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n         source, wayback_snapshot_url, triggered_by,\n         app_version, app_version_updated_at)\n      VALUES (?, ?, ?, ?, ?, ?, 'live', NULL, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000007",
+            "555000222",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            0,
+            "[]",
+            "scheduled",
+            "1.0.0",
+            1767323045000
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO activity_log\n        (id, type, status, app_id, app_name, summary, detail,\n         started_at, ended_at, duration_ms)\n      VALUES (?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000008",
+            "resync",
+            "555000222",
+            "Fixture Two",
+            "No App Store label changes",
+            "{\"changeCount\":0,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      DELETE FROM activity_log\n       WHERE id IN (\n         SELECT id FROM activity_log\n          ORDER BY started_at DESC\n          LIMIT -1 OFFSET 2000\n       )\n    ",
+          "params": []
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_bulk_state",
+            "{\"version\":1,\"runId\":\"00000000-0000-4000-8000-000000000001\",\"startedAt\":1789473600000,\"initiator\":\"scheduled\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"changed\",\"changesDetected\":true},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"url\":\"https://apps.apple.com/us/app/fixture/id555000222\",\"status\":\"done\",\"startedAt\":1789473600000,\"finishedAt\":1789473600000,\"outcome\":\"succeeded\",\"changesDetected\":false}],\"totals\":{\"attempted\":2,\"succeeded\":2,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0}}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "last_auto_sync",
+            "1789473600000"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000009",
+            "scheduled_sync",
+            "ok",
+            null,
+            null,
+            "2/2 synced, 1 change",
+            "{\"mode\":\"bulk\",\"totals\":{\"attempted\":2,\"succeeded\":2,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000001\",\"rateLimited\":false}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "DELETE FROM app_settings WHERE key = ?",
+          "params": [
+            "sync_bulk_state"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_running",
+            "false"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": "https://example.com/icon.png",
+            "bundleId": null,
+            "developer": "Fixture Dev",
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789473600000,
+            "changeCount": 1,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "1.0.0",
+            "versionUpdatedAt": 1767323045000,
+            "whatsNew": "Fixture release notes",
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": null,
+            "priceAmount": 0,
+            "priceCurrency": "USD",
+            "priceFormatted": "Free",
+            "hasIap": null,
+            "genreId": 6002,
+            "genreName": "Utilities",
+            "ageRating": "4+",
+            "privacyPolicyUrl": "https://example.com/privacy"
+          },
+          {
+            "id": "555000222",
+            "name": "Fixture Two",
+            "url": "https://apps.apple.com/us/app/fixture/id555000222",
+            "iconUrl": "https://example.com/icon.png",
+            "bundleId": null,
+            "developer": "Fixture Dev",
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789473600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": "1.0.0",
+            "versionUpdatedAt": 1767323045000,
+            "whatsNew": "Fixture release notes",
+            "hasPrivacyDetails": 1,
+            "hasAccessibilityLabels": null,
+            "priceAmount": 0,
+            "priceCurrency": "USD",
+            "priceFormatted": "Free",
+            "hasIap": null,
+            "genreId": 6002,
+            "genreName": "Utilities",
+            "ageRating": "4+",
+            "privacyPolicyUrl": "https://example.com/privacy"
+          }
+        ],
+        "privacy_types": [
+          {
+            "id": "555000111_DATA_LINKED_TO_YOU",
+            "app_id": "555000111",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Data Linked to You detail"
+          },
+          {
+            "id": "555000222_DATA_LINKED_TO_YOU",
+            "app_id": "555000222",
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "detail": "Data Linked to You detail"
+          }
+        ],
+        "privacy_categories": [
+          {
+            "id": "555000111_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "purpose_id": null,
+            "type_id": "555000111_DATA_LINKED_TO_YOU",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          },
+          {
+            "id": "555000222_DATA_LINKED_TO_YOU_CONTACT_INFO",
+            "purpose_id": null,
+            "type_id": "555000222_DATA_LINKED_TO_YOU",
+            "identifier": "CONTACT_INFO",
+            "title": "Contact Info"
+          }
+        ],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "snap-two",
+            "app_id": "555000222",
+            "scraped_at": 1789300800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "555000111",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            "changes_detected": 1,
+            "changes_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "scheduled",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000007",
+            "app_id": "555000222",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "scheduled",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          }
+        ],
+        "imports": [],
+        "import_items": [],
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "change_summary": "[{\"type\":\"added\",\"description\":\"New privacy label: \\\"Data Linked to You\\\"\",\"details\":[\"Contact Info\"]}]",
+            "created_at": 1789473600000,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "type": "resync",
+            "status": "ok",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "summary": "1 change detected",
+            "detail": "{\"changeCount\":1,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000008",
+            "type": "resync",
+            "status": "ok",
+            "app_id": "555000222",
+            "app_name": "Fixture Two",
+            "summary": "No App Store label changes",
+            "detail": "{\"changeCount\":0,\"isNew\":false,\"hasPrivacyDetails\":1,\"versionChanged\":false,\"previousVersion\":null,\"currentVersion\":null,\"versionUpdatedAt\":null}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000009",
+            "type": "scheduled_sync",
+            "status": "ok",
+            "app_id": null,
+            "app_name": null,
+            "summary": "2/2 synced, 1 change",
+            "detail": "{\"mode\":\"bulk\",\"totals\":{\"attempted\":2,\"succeeded\":2,\"changes\":1,\"failed\":0,\"rateLimited\":0,\"skipped\":0},\"runId\":\"00000000-0000-4000-8000-000000000001\",\"rateLimited\":false}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          },
+          {
+            "key": "sync_schedule",
+            "value": "daily"
+          },
+          {
+            "key": "sync_schedule_default_at",
+            "value": "1789300800000"
+          },
+          {
+            "key": "last_auto_sync",
+            "value": "1789473600000"
+          },
+          {
+            "key": "sync_running",
+            "value": "false"
+          }
+        ]
+      },
+      "expected": null
+    },
+    {
+      "name": "scheduled check counts from a sync after the Monitor default",
+      "kind": "callback",
+      "delay": 15000,
+      "route": null,
+      "method": null,
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.59.4",
+        "user-agent": "runners-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "runtime_environment",
+            ""
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000222",
+            "Fixture Two",
+            "https://apps.apple.com/us/app/fixture/id555000222",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, wayback_snapshot_url, triggered_by, app_version, app_version_updated_at) VALUES (?, ?, ?, ?, 0, '[]', 'live', NULL, 'import', '1.0.0', 1767323045000)",
+          "params": [
+            "snap-two",
+            "555000222",
+            1789300800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_schedule",
+            "daily"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "sync_schedule_default_at",
+            "1789214400000"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "last_auto_sync",
+            "1789470000000"
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "555000222",
+            "name": "Fixture Two",
+            "url": "https://apps.apple.com/us/app/fixture/id555000222",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "snap-two",
+            "app_id": "555000222",
+            "scraped_at": 1789300800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "import",
+            "app_version": "1.0.0",
+            "app_version_updated_at": 1767323045000
+          }
+        ],
+        "imports": [],
+        "import_items": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          },
+          {
+            "key": "sync_schedule",
+            "value": "daily"
+          },
+          {
+            "key": "sync_schedule_default_at",
+            "value": "1789214400000"
+          },
+          {
+            "key": "last_auto_sync",
+            "value": "1789470000000"
+          }
+        ]
+      },
+      "expected": null
     }
   ]
 }

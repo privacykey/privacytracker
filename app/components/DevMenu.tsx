@@ -47,7 +47,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { FlagValue } from "../../lib/feature-flag-rules";
 import { getFlagUsage } from "../../lib/feature-flag-usage";
 import { useResolvedFlag } from "../../lib/use-flag-bundle";
@@ -300,6 +307,10 @@ function readInitialEnabled(): boolean {
 
 export default function DevMenu() {
   const tDev = useTranslations("dev_menu_panel");
+  // The profile switches' visible names are the row labels in each
+  // <summary>, so the switches point at them (WCAG 4.1.2).
+  const privacySwitchLabelId = useId();
+  const a11ySwitchLabelId = useId();
   // Shared with TaskCenter's footer link — same target page, same hint.
   const tDiagLink = useTranslations("diagnostics_link");
   // Shared `/api/feature-flags` bundle — the `useFlag` resolver hook is
@@ -1526,7 +1537,10 @@ export default function DevMenu() {
                     thresholds yet. */}
                 <details className="dev-menu-config-row">
                   <summary className="dev-menu-config-summary">
-                    <span className="dev-menu-config-label">
+                    <span
+                      className="dev-menu-config-label"
+                      id={privacySwitchLabelId}
+                    >
                       {tDev("config_privacy_profile")}
                     </span>
                     <span
@@ -1547,6 +1561,7 @@ export default function DevMenu() {
                   <div className="dev-menu-config-actions">
                     <button
                       aria-checked={!!profiles.privacyEnabled}
+                      aria-labelledby={privacySwitchLabelId}
                       className={`switch-toggle${profiles.privacyEnabled ? " is-on" : ""}`}
                       disabled={
                         profiles.privacyEnabled === null ||
@@ -1574,7 +1589,10 @@ export default function DevMenu() {
                 {/* Accessibility profile — same pattern as privacy. */}
                 <details className="dev-menu-config-row">
                   <summary className="dev-menu-config-summary">
-                    <span className="dev-menu-config-label">
+                    <span
+                      className="dev-menu-config-label"
+                      id={a11ySwitchLabelId}
+                    >
                       {tDev("config_a11y_profile")}
                     </span>
                     <span
@@ -1595,6 +1613,7 @@ export default function DevMenu() {
                   <div className="dev-menu-config-actions">
                     <button
                       aria-checked={!!profiles.accessibilityEnabled}
+                      aria-labelledby={a11ySwitchLabelId}
                       className={`switch-toggle${profiles.accessibilityEnabled ? " is-on" : ""}`}
                       disabled={
                         profiles.accessibilityEnabled === null ||

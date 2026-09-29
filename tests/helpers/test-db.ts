@@ -1,8 +1,8 @@
 import db from "../../lib/db";
-import { START_OVER_TABLES_TO_TRUNCATE } from "../../lib/reset-tables";
+import { USER_DATA_TABLES_TO_TRUNCATE } from "../../lib/reset-tables";
 
 export function resetTestDb(): void {
-  for (const table of START_OVER_TABLES_TO_TRUNCATE) {
+  for (const table of USER_DATA_TABLES_TO_TRUNCATE) {
     db.prepare(`DELETE FROM ${table}`).run();
   }
   db.prepare("DELETE FROM app_settings").run();

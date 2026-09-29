@@ -158,6 +158,30 @@ export function createImport(input: {
   return getImportRowOrThrow(id);
 }
 
+/**
+ * Attach a device to an import that has none yet. The onboarding wizard
+ * creates the device row only when the user commits the import (Step 3's
+ * Import button), long after the import record itself was created at
+ * search time; an abandoned session therefore leaves no device behind.
+ * `completeImport` links the imported apps to whatever device the import
+ * carries when it finishes.
+ *
+ * One statement, and a no-op unless the import exists, has no device yet,
+ * and the device exists: a device id that does not resolve would make the
+ * `app_devices` insert in `completeImport` fail its foreign key.
+ */
+export function attachDeviceToImport(
+  importId: string,
+  deviceId: string
+): boolean {
+  const result = db
+    .prepare(
+      "UPDATE imports SET device_id = ? WHERE id = ? AND device_id IS NULL AND EXISTS (SELECT 1 FROM devices WHERE id = ?)"
+    )
+    .run(deviceId, importId, deviceId);
+  return result.changes > 0;
+}
+
 interface AddImportItemInput {
   appId?: string | null;
   appName?: string | null;

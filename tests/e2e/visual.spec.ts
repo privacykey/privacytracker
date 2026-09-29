@@ -222,10 +222,11 @@ async function ensureDeviceFixture(request: APIRequestContext): Promise<void> {
         },
       });
     }
-    // Links are re-asserted only when the count is wrong. Other specs
-    // run /api/reset, which cascades app_devices away while leaving the
-    // device rows behind, so "the device exists" does not imply "its
-    // apps are still linked".
+    // Links are re-asserted only when the count is wrong: deleting an app
+    // cascades its app_devices rows away while the device row stays, so
+    // "the device exists" does not imply "its apps are still linked".
+    // (Other specs' /api/reset deletes the devices too; the create above
+    // covers that.)
     if (!existing || existing.appCount !== fixture.appCount) {
       await request.post("/api/device-sync/commit", {
         headers: sameOriginHeaders,

@@ -13,13 +13,21 @@
 // The checks mirror the Node smoke, because they are about the database
 // rather than the backend: a v0.1.2 database opens and migrates, a backup
 // exports with every table, a restore is trusted, and the data survives a
-// restart. Two are specific to this build: the pages come from inside the
-// bundle, and reads are allowed without a token, which is the desktop's
-// posture (loopback bind, no token anywhere).
+// restart. The rest are specific to this build: the pages come from inside
+// the bundle, and the API answers only to this launch's credential. Without
+// it every API call is a 401; with it (read from `.desktop-token`, as a
+// same-user tool reads it, or carried by the cookie the window's one-time
+// link sets) the call goes through. Every launch mints a new one.
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
-import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -47,8 +55,22 @@ async function stop() {
   }
 }
 
-/** Start the packaged app in its smoke mode and wait for the line it
- *  prints with its address. */
+/** This launch's credential, read the way a same-user tool reads it: from
+ *  `.desktop-token` in the data directory, which must be private. */
+function launchCredential() {
+  const file = path.join(dir, ".desktop-token");
+  assert.equal(
+    statSync(file).mode & 0o777,
+    0o600,
+    ".desktop-token is readable by this user only"
+  );
+  const credential = readFileSync(file, "utf8").trim();
+  assert.match(credential, /^[0-9a-f]{64}$/, "32 random bytes, hex-encoded");
+  return credential;
+}
+
+/** Start the packaged app in its smoke mode and wait for the lines it
+ *  prints with its address, its frontend and the window's one-time link. */
 async function start() {
   output = "";
   child = spawn(binary, ["--smoke-server", dir], {
@@ -70,8 +92,14 @@ async function start() {
     }
     const listening = output.match(/smoke server listening on (http:\S+)/);
     const site = output.match(/smoke server site (.+)/);
-    if (listening && site) {
-      return { base: listening[1], site: site[1].trim() };
+    const entry = output.match(/smoke server entry (http:\S+)/);
+    if (listening && site && entry) {
+      return {
+        base: listening[1],
+        site: site[1].trim(),
+        entry: entry[1],
+        credential: launchCredential(),
+      };
     }
     await delay(200);
   }
@@ -95,13 +123,15 @@ try {
     path.join(dir, "backup-signing.key")
   );
 
-  let { base, site } = await start();
+  let { base, site, entry, credential } = await start();
+  let authorised = { "x-privacytracker-desktop-token": credential };
 
   assert.ok(
     site.startsWith(path.join(app, "Contents/Resources")),
     `the app served ${site}, which is not inside its own bundle`
   );
 
+  // The page shells are public: the same static files for everyone.
   const page = await fetch(base);
   assert.equal(page.status, 200, "the staged frontend answers");
   assert.ok(
@@ -109,12 +139,62 @@ try {
     "pages carry the desktop CSP"
   );
 
-  // No admin token exists on the desktop: the loopback bind is the gate,
-  // and a read is expected to answer. (The Node smoke asserts a 401
-  // because it gives that server a token.)
-  assert.equal((await fetch(`${base}/api/apps`)).status, 200);
+  // The API is not: without this launch's credential every call is
+  // refused, public reads included, and a matching Origin is no substitute.
+  for (const apiPath of ["/api/apps", "/api/health", "/api/backup/export"]) {
+    assert.equal(
+      (await fetch(`${base}${apiPath}`)).status,
+      401,
+      `${apiPath} without the credential`
+    );
+  }
+  assert.equal(
+    (
+      await fetch(`${base}/api/reset`, {
+        method: "POST",
+        headers: { origin: base },
+      })
+    ).status,
+    401,
+    "a forged Origin is not a credential"
+  );
+  assert.equal(
+    (await fetch(`${base}/api/apps`, { headers: authorised })).status,
+    200,
+    "the credential from .desktop-token lets a read in"
+  );
 
-  const exported = await fetch(`${base}/api/backup/export`);
+  // The window's way in: the one-time link sets an HttpOnly session cookie
+  // and redirects to the start page, and works once.
+  assert.ok(
+    entry.startsWith(`${base}/api/desktop/bootstrap?nonce=`),
+    `unexpected entry URL ${entry}`
+  );
+  const signedIn = await fetch(entry, { redirect: "manual" });
+  assert.equal(signedIn.status, 303, "the link redirects");
+  assert.equal(signedIn.headers.get("location"), "/");
+  const setCookie = signedIn.headers.get("set-cookie") ?? "";
+  assert.match(
+    setCookie,
+    /HttpOnly/,
+    "the cookie is out of page scripts' reach"
+  );
+  assert.match(setCookie, /SameSite=Strict/);
+  const cookie = setCookie.split(";")[0];
+  assert.equal(
+    (await fetch(`${base}/api/apps`, { headers: { cookie } })).status,
+    200,
+    "the cookie lets the window's reads in"
+  );
+  assert.equal(
+    (await fetch(entry, { redirect: "manual" })).status,
+    403,
+    "the link works once"
+  );
+
+  const exported = await fetch(`${base}/api/backup/export`, {
+    headers: authorised,
+  });
   assert.equal(exported.status, 200);
   const backup = await exported.json();
   for (const table of [
@@ -131,20 +211,34 @@ try {
 
   const restored = await fetch(`${base}/api/backup/restore`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: base },
+    headers: { "content-type": "application/json", origin: base, cookie },
     body: JSON.stringify(backup),
   });
   assert.equal(restored.status, 200);
   assert.equal((await restored.json()).trust, "trusted");
 
   await stop();
-  ({ base } = await start());
-  const after = await fetch(`${base}/api/backup/export`);
+  const previous = credential;
+  ({ base, credential } = await start());
+  assert.notEqual(credential, previous, "every launch mints a new credential");
+  assert.equal(
+    (
+      await fetch(`${base}/api/apps`, {
+        headers: { "x-privacytracker-desktop-token": previous },
+      })
+    ).status,
+    401,
+    "the last launch's credential no longer works"
+  );
+  authorised = { "x-privacytracker-desktop-token": credential };
+  const after = await fetch(`${base}/api/backup/export`, {
+    headers: authorised,
+  });
   assert.equal(after.status, 200);
   assert.equal((await after.json()).tables.app_devices.rows.length, 1);
 
   console.log(
-    "Packaged Rust app passed legacy upgrade, staged frontend, authenticated restore and restart persistence."
+    "Packaged Rust app passed legacy upgrade, staged frontend, launch credential, authenticated restore and restart persistence."
   );
 } finally {
   await stop();

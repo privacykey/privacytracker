@@ -25,6 +25,10 @@
 //! peer address), and the gate reads `X-Forwarded-Host` only under
 //! `PRIVACYTRACKER_TRUST_PROXY` — where it then equals Host anyway. A
 //! caller-supplied header is kept untouched, exactly as `??=` keeps it.
+//!
+//! One header is this server's own: `x-privacytracker-peer`, the socket
+//! peer the admin-token guess limits count failures against. A copy the
+//! client sent is always removed before it is written.
 
 use std::net::SocketAddr;
 
@@ -49,6 +53,13 @@ pub async fn inject(State(state): State<AppState>, mut req: Request, next: Next)
         .map(|ConnectInfo(addr)| addr.ip().to_string());
 
     let headers = req.headers_mut();
+    // The socket peer, for the admin-token guess limits (token_guard.rs),
+    // as Node's request preloader stamps it: any copy the client sent is
+    // removed first, so only this layer ever writes it.
+    headers.remove(super::token_guard::PEER_HEADER);
+    if let Some(v) = peer.as_deref().and_then(|p| HeaderValue::from_str(p).ok()) {
+        headers.insert(super::token_guard::PEER_HEADER, v);
+    }
     if !headers.contains_key("x-forwarded-host") {
         headers.insert("x-forwarded-host", host);
     }
@@ -67,4 +78,64 @@ pub async fn inject(State(state): State<AppState>, mut req: Request, next: Next)
         }
     }
     next.run(req).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{body::Body, http::HeaderMap, routing::get, Router};
+    use std::sync::{Arc, Mutex};
+    use tower::ServiceExt;
+
+    /// What a handler behind `inject` sees as the peer header.
+    async fn peer_seen(connect: Option<SocketAddr>, sent: Option<&str>) -> Option<String> {
+        let state = AppState {
+            conn: Arc::new(Mutex::new(rusqlite::Connection::open_in_memory().unwrap())),
+            rate_limiter: Arc::new(super::super::ratelimit::RateLimiter::new()),
+            started_at: std::time::Instant::now(),
+            bound_port: 3000,
+        };
+        let app = Router::new()
+            .route(
+                "/",
+                get(|headers: HeaderMap| async move {
+                    headers
+                        .get(super::super::token_guard::PEER_HEADER)
+                        .map(|v| v.to_str().unwrap().to_string())
+                        .unwrap_or_default()
+                }),
+            )
+            .layer(axum::middleware::from_fn_with_state(state.clone(), inject))
+            .with_state(state);
+        let mut builder = axum::http::Request::builder().uri("/");
+        if let Some(value) = sent {
+            builder = builder.header(super::super::token_guard::PEER_HEADER, value);
+        }
+        let mut req = builder.body(Body::empty()).unwrap();
+        if let Some(addr) = connect {
+            req.extensions_mut().insert(ConnectInfo(addr));
+        }
+        let res = app.oneshot(req).await.unwrap();
+        let body = axum::body::to_bytes(res.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let text = String::from_utf8(body.to_vec()).unwrap();
+        (!text.is_empty()).then_some(text)
+    }
+
+    #[tokio::test]
+    async fn the_peer_header_is_the_socket_peer_and_never_the_clients() {
+        let peer: SocketAddr = "192.0.2.7:51000".parse().unwrap();
+        assert_eq!(
+            peer_seen(Some(peer), Some("203.0.113.9")).await.as_deref(),
+            Some("192.0.2.7")
+        );
+        assert_eq!(
+            peer_seen(Some(peer), None).await.as_deref(),
+            Some("192.0.2.7")
+        );
+        // No socket peer (never so on the server): a client's copy is still
+        // removed, so nothing is believed.
+        assert_eq!(peer_seen(None, Some("203.0.113.9")).await, None);
+    }
 }

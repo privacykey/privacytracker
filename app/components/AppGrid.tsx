@@ -1465,6 +1465,29 @@ export default function AppGrid({
     ]
   );
 
+  // In Select and Compare mode the card link is exposed as a toggle
+  // button (role="button" + aria-pressed), so it must answer Space the
+  // way a button does. Enter already reaches handleCardClick through the
+  // link's native click. Outside those modes the card is a plain link and
+  // Space keeps its default (scroll the page).
+  const handleCardKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLAnchorElement>, appId: string) => {
+      if (event.key !== " ") {
+        return;
+      }
+      if (pageMode === "select") {
+        event.preventDefault();
+        toggleBulkSelection(appId);
+        return;
+      }
+      if (compareMode) {
+        event.preventDefault();
+        toggleSelection(appId);
+      }
+    },
+    [compareMode, pageMode, toggleBulkSelection, toggleSelection]
+  );
+
   // ── Keyboard shortcuts for the compare flow ──────────────────────────
   //
   // Escape clears the selection and exits compareMode. Enter triggers a
@@ -2267,6 +2290,17 @@ export default function AppGrid({
               const selectionIndex = selectedIds.indexOf(app.id);
               const isSelected = selectionIndex >= 0;
               const isBulkSelected = bulkSelectedIds.includes(app.id);
+              // In Select and Compare mode a click toggles the card rather
+              // than opening the app, so the link is announced as a toggle
+              // button carrying its state. aria-pressed is not allowed on
+              // a link role, hence the role swap. Select mode wins, as in
+              // handleCardClick.
+              const cardToggle =
+                pageMode === "select"
+                  ? { pressed: isBulkSelected }
+                  : compareMode
+                    ? { pressed: isSelected }
+                    : null;
               // Coachmark tour spotlights live on the first card so the
               // tour selectors `[data-tour="app-card-first"]`, `…severity-
               // pill-first`, `…resync-button` resolve to a single
@@ -2289,16 +2323,24 @@ export default function AppGrid({
                   key={app.id}
                 >
                   <Link
-                    aria-pressed={compareMode ? isSelected : undefined}
+                    aria-pressed={cardToggle ? cardToggle.pressed : undefined}
                     className="app-card-link"
                     href={`/apps/${app.id}`}
                     onClick={(event) => handleCardClick(event, app.id)}
+                    onKeyDown={(event) => handleCardKeyDown(event, app.id)}
+                    role={cardToggle ? "button" : undefined}
                     title={
-                      compareMode
-                        ? isSelected
+                      pageMode === "select"
+                        ? isBulkSelected
                           ? tGrid("deselect_app_title", { name: app.name })
-                          : tGrid("select_compare_title", { name: app.name })
-                        : tGrid("open_app_shift_hint_title", { name: app.name })
+                          : tGrid("select_app_title", { name: app.name })
+                        : compareMode
+                          ? isSelected
+                            ? tGrid("deselect_app_title", { name: app.name })
+                            : tGrid("select_compare_title", { name: app.name })
+                          : tGrid("open_app_shift_hint_title", {
+                              name: app.name,
+                            })
                     }
                   >
                     <div className="app-card-icon-wrap">

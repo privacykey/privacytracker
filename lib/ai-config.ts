@@ -174,6 +174,51 @@ export function resolveDefaultBaseUrl(provider: AIProvider): string {
   return "";
 }
 
+/**
+ * The base URL a provider call is made against: a scheme added when none
+ * is given (`http` for a local endpoint, `https` otherwise), trailing
+ * slashes removed, and `/v1` appended to a bare host for the two
+ * OpenAI-compatible providers. Same rule as `normalizeBaseUrl` in
+ * lib/privacy-policy.ts, which builds the runtime config from settings.
+ */
+export function normalizeAiBaseUrl(
+  value: string,
+  provider: Exclude<AIProvider, "disabled">
+): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const defaultProtocol = provider === "custom" ? "http" : "https";
+  const withProtocol = /^https?:\/\//i.test(trimmed)
+    ? trimmed
+    : `${defaultProtocol}://${trimmed}`;
+  let normalized = withProtocol.replace(/\/+$/, "");
+
+  if (
+    (provider === "custom" || provider === "openai") &&
+    shouldAppendOpenAiPath(normalized)
+  ) {
+    normalized = `${normalized}/v1`;
+  }
+
+  return normalized;
+}
+
+function shouldAppendOpenAiPath(baseUrl: string): boolean {
+  if (/\/v1$/i.test(baseUrl)) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(baseUrl);
+    return parsed.pathname === "/" || parsed.pathname === "";
+  } catch {
+    return false;
+  }
+}
+
 export function resolveDefaultModel(provider: AIProvider): string {
   if (provider === "openai") {
     return "gpt-4.1-mini";

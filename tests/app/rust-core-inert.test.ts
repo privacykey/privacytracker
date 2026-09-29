@@ -5,7 +5,7 @@
  * artifact built, imported or ran it, which is what let the migration land in
  * reviewable pieces instead of on a long-lived branch. Since the cutovers the
  * desktop release and the Docker image are both built on the core. What
- * remains Node is the rollback, kept buildable until 1.0, and this test is
+ * remains Node is the rollback, kept buildable until v0.3.0 has shipped, and this test is
  * what keeps it Node:
  *
  * - the Next.js server itself (`app/`, `lib/`, `proxy.ts` and the rest),

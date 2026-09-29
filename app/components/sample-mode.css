@@ -1,0 +1,83 @@
+/*
+ * Sample mode (SampleModeView.tsx): the sample-data bar with the demo's
+ * exits, and the sample-mode nav. The nav reuses the global `.nav`
+ * chrome; only the chip and the exit button are styled here.
+ */
+.sample-data-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  margin-bottom: 24px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--orange) 14%, var(--bg-2));
+  border: 1px solid color-mix(in srgb, var(--orange) 55%, var(--border));
+  border-radius: var(--r-lg);
+}
+
+.sample-data-banner-text {
+  flex: 1 1 280px;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.sample-data-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sample-mode-nav-chip {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  background: color-mix(in srgb, var(--orange) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--orange) 55%, var(--border));
+  border-radius: var(--r-full);
+}
+
+.sample-mode-exit {
+  white-space: nowrap;
+}
+
+/* Phone-only entry to the accessibility panel (its floating button moves
+   to the end of the page below 480px). Sized like the nav's other icon
+   buttons. */
+.sample-mode-a11y {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  color: var(--text);
+  cursor: pointer;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-full);
+}
+
+.sample-mode-a11y:hover {
+  background: var(--surface-hover);
+}
+
+@media (max-width: 480px) {
+  .sample-mode-a11y {
+    display: inline-flex;
+  }
+}
+
+/* The chip is the first thing to give way on a narrow phone: the exit
+   button beside it is what the bar is for. */
+@media (max-width: 400px) {
+  .sample-mode-nav-chip {
+    display: none;
+  }
+}

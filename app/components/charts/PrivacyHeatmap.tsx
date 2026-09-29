@@ -24,6 +24,7 @@ import { useTranslations } from "next-intl";
  */
 import { useEffect, useMemo, useState } from "react";
 import { withAlpha } from "../../../lib/chart-colors";
+import { groupAppsBySeverity } from "../../../lib/chart-text-alternatives";
 import {
   type AppProfileFootprint,
   computeProfileMismatch,
@@ -166,6 +167,7 @@ function buildFootprintFromCells(
 
 export default function PrivacyHeatmap() {
   const tCharts = useTranslations("stats.charts");
+  const tA11y = useTranslations("chart_a11y");
   const [data, setData] = useState<MatrixData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<PrivacyProfile | null>(null);
@@ -319,10 +321,10 @@ export default function PrivacyHeatmap() {
       // ECharts treats per-cell `itemStyle.decal` as part of its `aria`
       // accessibility feature — the option is silently ignored unless
       // `aria.decal.show` is true. Without this, the per-tier decals set
-      // on each cell above never render. Gate on `shapesMode` so default
-      // mode stays untouched; `enabled: true` + `decal.show: true` flips
-      // the canvas into decal-honouring mode when the toggle is on.
-      aria: shapesMode ? { enabled: true, decal: { show: true } } : undefined,
+      // on each cell above never render. Gate the decals on `shapesMode`
+      // so default mode stays untouched. `aria` itself is always enabled
+      // (EChart pins its label to our text alternative).
+      aria: { decal: { show: shapesMode } },
       tooltip: {
         formatter: (p: any) => {
           const [x, y, , sev, mm] = p.value;
@@ -452,6 +454,43 @@ export default function PrivacyHeatmap() {
 
   const hiddenCount = data.apps.length - filteredApps.length;
 
+  // Text alternative for the canvas: the page of apps it plots, and for
+  // each app its categories grouped by severity (the cell colours).
+  const ariaLabel = [
+    tA11y("heatmap_label", { count: pageApps.length }),
+    totalPages > 1
+      ? tA11y("heatmap_page", {
+          start: pageStart + 1,
+          end: pageStart + pageApps.length,
+          total: filteredApps.length,
+        })
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const ariaDescription = groupAppsBySeverity(
+    pageApps,
+    data.categories,
+    data.cells,
+    data.severities
+  )
+    .map((app) =>
+      app.groups.length === 0
+        ? tA11y("matrix_app_empty", { app: app.name })
+        : tA11y("matrix_app", {
+            app: app.name,
+            groups: app.groups
+              .map((g) =>
+                tA11y("matrix_group", {
+                  severity: g.severity,
+                  categories: g.categories.join(tA11y("list_separator")),
+                })
+              )
+              .join(tA11y("group_separator")),
+          })
+    )
+    .join(" ");
+
   return (
     <div>
       <div className="heatmap-toolbar">
@@ -520,7 +559,12 @@ export default function PrivacyHeatmap() {
         </div>
       ) : (
         <>
-          <EChart height={height} option={option} />
+          <EChart
+            ariaDescription={ariaDescription}
+            ariaLabel={ariaLabel}
+            height={height}
+            option={option}
+          />
 
           {totalPages > 1 && (
             <div className="heatmap-pager">

@@ -1472,6 +1472,85 @@ for (const [route, field] of [
   });
 }
 
+// ── /api/migration-flow/consume: only paths inside the app ───────────
+// Appended last, as above. A marker whose target could leave the app is
+// consumed as usual and answered with the default target.
+{
+  const route = "/api/migration-flow/consume";
+  const method = "POST";
+  const marker = (targetPath) =>
+    setting(
+      "migration_flow_pending",
+      JSON.stringify({ recommenderName: "Bob", targetPath })
+    );
+  for (const [name, targetPath] of [
+    ["protocol-relative target", "//example.test/"],
+    ["triple-slash target", "///example.test/"],
+    ["backslash target", "/\\example.test/"],
+    ["tab inside the target", "/\t/example.test/"],
+    ["newline inside the target", "/\n/example.test/"],
+    ["space inside the target", "/ /example.test/"],
+    ["absolute url target", "https://example.test/"],
+    ["encoded slashes stay a path", "/%2F%2Fexample.test"],
+    ["query and fragment kept", "/dashboard/review-recommendations?a=1#b"],
+  ]) {
+    await run(`migration-flow ${name}`, {
+      route,
+      method,
+      setup: [marker(targetPath)],
+    });
+  }
+}
+
+// ── Appended last (each case's forwarded address comes from a counter, so
+// a case inserted above would shift every later case's headers). A focus
+// with the Monitor goal sets the sync schedule to daily only when none was
+// chosen (lib/scheduler.ts applyMonitorSyncDefault), and nothing reverts
+// it. The unchosen case is "focus manifest body" above. ──
+{
+  const route = "/api/focus";
+  const method = "POST";
+  const monitorFocus = {
+    audience: "self",
+    monitor: true,
+    cleanup: false,
+    minimal: false,
+    accessibility: false,
+  };
+  await run("focus monitor keeps an explicit manual schedule", {
+    route,
+    method,
+    setup: [setting("sync_schedule", "manual")],
+    json: monitorFocus,
+  });
+  await run("focus monitor keeps an explicit weekly schedule", {
+    route,
+    method,
+    setup: [setting("sync_schedule", "weekly")],
+    json: monitorFocus,
+  });
+  await run("focus monitor fills an empty schedule", {
+    route,
+    method,
+    setup: [setting("sync_schedule", "")],
+    json: monitorFocus,
+  });
+  await run("focus monitor off keeps the daily default", {
+    route,
+    method,
+    setup: [
+      setting("sync_schedule", "daily"),
+      setting("flag.focus.goal.monitor", "true"),
+    ],
+    json: { ...monitorFocus, monitor: false, cleanup: true },
+  });
+  await run("focus without monitor sets no schedule", {
+    route,
+    method,
+    json: { audience: "loved_one", cleanup: true },
+  });
+}
+
 writeFileSync(
   path.join(
     path.dirname(new URL(import.meta.url).pathname),

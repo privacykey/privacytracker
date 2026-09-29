@@ -4,16 +4,16 @@ import { NextResponse } from "next/server";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import { recordActivity } from "../../../../lib/activity";
 import {
-  type AIProvider,
+  normalizeAiBaseUrl,
   normalizeAiProvider,
   providerRequiresApiKey,
   resolveDefaultBaseUrl,
 } from "../../../../lib/ai-config";
+import { resolveSubmittedApiKey } from "../../../../lib/ai-submitted-key";
 import {
   type AiRuntimeConfig,
   summarizeSamplePrivacyPolicy,
 } from "../../../../lib/privacy-policy";
-import { getSetting } from "../../../../lib/scheduler";
 import {
   checkRateLimit,
   rateLimitKeyForRequest,
@@ -83,7 +83,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const apiKey = resolveSubmittedApiKey(body.apiKey);
+  const rawBaseUrl =
+    typeof body.baseUrl === "string" ? body.baseUrl.trim() : "";
+  const baseUrl = normalizeAiBaseUrl(
+    rawBaseUrl || resolveDefaultBaseUrl(provider),
+    provider
+  );
+  // The stored key only ever goes to the endpoint it was saved for.
+  const key = resolveSubmittedApiKey(body.apiKey, provider, baseUrl);
+  if (!key.ok) {
+    return NextResponse.json(
+      { ok: false, error: key.message },
+      { status: 400 }
+    );
+  }
+  const apiKey = key.apiKey;
   if (providerRequiresApiKey(provider) && !apiKey) {
     return NextResponse.json(
       { ok: false, error: "An API key is required to test this provider." },
@@ -91,12 +105,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const rawBaseUrl =
-    typeof body.baseUrl === "string" ? body.baseUrl.trim() : "";
-  const baseUrl = normalizeBaseUrl(
-    rawBaseUrl || resolveDefaultBaseUrl(provider),
-    provider
-  );
   const verdict = validateExternalUrl(baseUrl, {
     maxLength: 512,
     allowPrivateHosts: true,
@@ -182,55 +190,6 @@ export async function POST(request: Request) {
       },
       { status: 502 }
     );
-  }
-}
-
-function resolveSubmittedApiKey(raw: unknown): string {
-  const submitted = typeof raw === "string" ? raw.trim() : "";
-  if (submitted && submitted !== "__SET__") {
-    return submitted;
-  }
-  if (submitted === "__SET__") {
-    return getSetting("ai_api_key", "").trim();
-  }
-  return "";
-}
-
-function normalizeBaseUrl(
-  value: string,
-  provider: Exclude<AIProvider, "disabled">
-): string {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "";
-  }
-
-  const defaultProtocol = provider === "custom" ? "http" : "https";
-  const withProtocol = /^https?:\/\//i.test(trimmed)
-    ? trimmed
-    : `${defaultProtocol}://${trimmed}`;
-  let normalized = withProtocol.replace(/\/+$/, "");
-
-  if (
-    (provider === "custom" || provider === "openai") &&
-    shouldAppendOpenAiPath(normalized)
-  ) {
-    normalized = `${normalized}/v1`;
-  }
-
-  return normalized;
-}
-
-function shouldAppendOpenAiPath(baseUrl: string): boolean {
-  if (/\/v1$/i.test(baseUrl)) {
-    return false;
-  }
-
-  try {
-    const parsed = new URL(baseUrl);
-    return parsed.pathname === "/" || parsed.pathname === "";
-  } catch {
-    return false;
   }
 }
 

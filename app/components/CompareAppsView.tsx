@@ -1068,7 +1068,10 @@ function SlotCard(props: {
   };
 
   return (
-    <>
+    // The wrapper exists so the Change / Clear actions can sit over the
+    // card without being inside it: a button inside a button is invalid,
+    // and assistive technology hears only the outer one (WCAG 4.1.2).
+    <div className="compare-slot-card-wrap">
       <button
         aria-label={
           isPicked
@@ -1129,37 +1132,32 @@ function SlotCard(props: {
             </span>
           </span>
         )}
-        {isPicked && (
-          // Inline actions live above the card click target — stopPropagation
-          // so each acts on its own intent (Change reopens, Clear empties).
-          // Rendering them inside the parent <button> would nest interactive
-          // elements; instead they're absolutely positioned siblings of the
-          // card body. The parent <button> still handles "click anywhere
-          // else" to reopen the modal.
-          <span
-            className="compare-slot-card-actions"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="compare-slot-card-action"
-              onClick={() => setModalOpen(true)}
-              title={tCompare("slot_card_change_title")}
-              type="button"
-            >
-              {tCompare("slot_card_change_label")}
-            </button>
-            <button
-              aria-label={tCompare("slot_clear_aria", { label: props.label })}
-              className="compare-slot-card-action is-clear"
-              onClick={() => props.onChange(null)}
-              title={tCompare("slot_clear_title")}
-              type="button"
-            >
-              ✕
-            </button>
-          </span>
-        )}
       </button>
+      {isPicked && (
+        // Inline actions over the card's top-right corner. They are
+        // absolutely positioned siblings of the card <button>, not its
+        // children, so the controls never nest; the card itself still
+        // handles "click anywhere else" to reopen the modal.
+        <span className="compare-slot-card-actions">
+          <button
+            className="compare-slot-card-action"
+            onClick={() => setModalOpen(true)}
+            title={tCompare("slot_card_change_title")}
+            type="button"
+          >
+            {tCompare("slot_card_change_label")}
+          </button>
+          <button
+            aria-label={tCompare("slot_clear_aria", { label: props.label })}
+            className="compare-slot-card-action is-clear"
+            onClick={() => props.onChange(null)}
+            title={tCompare("slot_clear_title")}
+            type="button"
+          >
+            ✕
+          </button>
+        </span>
+      )}
 
       {modalOpen && (
         <div
@@ -1205,7 +1203,7 @@ function SlotCard(props: {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -2545,6 +2543,13 @@ function ComparisonTable({
   const profileA = profileCountFor(mapA);
   const profileB = profileCountFor(mapB);
   const hasActiveProfile = profileA !== null || profileB !== null;
+  // Extra column for the user's per-category preference when a profile is
+  // active; falls back to the old 3-column layout otherwise so
+  // tracked-only comparisons stay dense. The app columns are
+  // minmax(0, 1fr) so a long name wraps instead of widening one row.
+  const privacyTemplate = hasActiveProfile
+    ? "minmax(160px, 1.1fr) minmax(110px, 0.9fr) minmax(0, 1fr) minmax(0, 1fr)"
+    : "minmax(160px, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
 
   return (
     <div>
@@ -2620,29 +2625,31 @@ function ComparisonTable({
       )}
 
       {ordered.length > 0 && (
+        // An ARIA table (the SmallMultiples matrix on Stats is the model):
+        // each row is its own grid on one shared column template, rather
+        // than `display: contents` wrappers inside one grid, which some
+        // assistive technology drops from the tree along with their role.
+        // The fixed-minimum templates keep every row's columns aligned.
         <div
+          aria-label={tCompare("table_privacy_aria", { a: a.name, b: b.name })}
+          role="table"
           style={{
-            display: "grid",
-            // Extra column for the user's per-category preference when a
-            // profile is active; falls back to the old 3-column layout
-            // otherwise so tracked-only comparisons stay dense.
-            gridTemplateColumns: hasActiveProfile
-              ? "minmax(160px, 1.1fr) minmax(110px, 0.9fr) 1fr 1fr"
-              : "minmax(160px, 1fr) 1fr 1fr",
             border: "1px solid var(--border)",
             borderRadius: 10,
             overflow: "hidden",
             fontSize: 13,
           }}
         >
-          <CompareHeaderCell>{tCompare("header_category")}</CompareHeaderCell>
-          {hasActiveProfile && (
-            <CompareHeaderCell>
-              {tCompare("header_your_pref")}
-            </CompareHeaderCell>
-          )}
-          <CompareHeaderCell>{a.name}</CompareHeaderCell>
-          <CompareHeaderCell>{b.name}</CompareHeaderCell>
+          <CompareTableRow template={privacyTemplate}>
+            <CompareHeaderCell>{tCompare("header_category")}</CompareHeaderCell>
+            {hasActiveProfile && (
+              <CompareHeaderCell>
+                {tCompare("header_your_pref")}
+              </CompareHeaderCell>
+            )}
+            <CompareHeaderCell>{a.name}</CompareHeaderCell>
+            <CompareHeaderCell>{b.name}</CompareHeaderCell>
+          </CompareTableRow>
           {ordered.map((catId, i) => {
             const meta = CATEGORY_META[catId];
             const inA = mapA.get(catId);
@@ -2660,8 +2667,10 @@ function ComparisonTable({
             // used by AccessibilityFeatureIcon above and hoist this column's
             // icon resolver out.
             return (
-              <div key={catId} style={{ display: "contents" }}>
+              <CompareTableRow key={catId} template={privacyTemplate}>
+                {/* biome-ignore lint/a11y/useFocusableInteractive: static table row header, see CompareTableRow */}
                 <div
+                  role="rowheader"
                   style={{
                     ...cellStyle,
                     background: rowBg,
@@ -2671,7 +2680,7 @@ function ComparisonTable({
                     gap: 8,
                   }}
                 >
-                  <span>{meta?.icon ?? "•"}</span>
+                  <span aria-hidden="true">{meta?.icon ?? "•"}</span>
                   <span>{meta?.label ?? catId}</span>
                 </div>
                 {hasActiveProfile && (
@@ -2679,7 +2688,7 @@ function ComparisonTable({
                 )}
                 <SeverityCell allowed={allowed} bg={rowBg} cell={inA ?? null} />
                 <SeverityCell allowed={allowed} bg={rowBg} cell={inB ?? null} />
-              </div>
+              </CompareTableRow>
             );
           })}
         </div>
@@ -2775,6 +2784,7 @@ function ProfilePrefCell({
   if (!allowed) {
     return (
       <div
+        role="cell"
         style={{ ...cellStyle, background: bg, color: "var(--text-3)" }}
         title={tCompare("category_no_pref_title")}
       >
@@ -2785,6 +2795,7 @@ function ProfilePrefCell({
   const meta = TIER_META[allowed];
   return (
     <div
+      role="cell"
       style={{
         ...cellStyle,
         background: bg,
@@ -2987,11 +2998,16 @@ function SlotHeader({
             fontSize: 10,
             padding: "2px 8px",
             borderRadius: 999,
+            // Theme tokens, the label pulled toward --text: the old
+            // dark-only literals were 1.9:1 in light mode.
             background:
               slot.source === "library"
-                ? "rgba(10,132,255,0.18)"
-                : "rgba(191,90,242,0.18)",
-            color: slot.source === "library" ? "#5ea9ff" : "#d28bff",
+                ? "color-mix(in srgb, var(--blue) 18%, transparent)"
+                : "color-mix(in srgb, var(--purple) 18%, transparent)",
+            color:
+              slot.source === "library"
+                ? "color-mix(in srgb, var(--blue) 75%, var(--text))"
+                : "color-mix(in srgb, var(--purple) 60%, var(--text))",
           }}
         >
           {slot.source === "library"
@@ -3076,6 +3092,7 @@ function SeverityCell({
   if (!cell?.severity) {
     return (
       <div
+        role="cell"
         style={{
           ...cellStyle,
           background: bg,
@@ -3139,6 +3156,7 @@ function SeverityCell({
 
   return (
     <div
+      role="cell"
       style={{
         ...cellStyle,
         background: bg,
@@ -3158,6 +3176,7 @@ function SeverityCell({
         </span>
       )}
       <span
+        aria-hidden="true"
         style={{
           width: 8,
           height: 8,
@@ -3171,9 +3190,36 @@ function SeverityCell({
   );
 }
 
+/**
+ * One row of a compare matrix. The matrices are ARIA tables (role="table",
+ * "row", "columnheader", "rowheader", "cell"), laid out as one CSS grid
+ * per row on a shared column template.
+ *
+ * The useFocusableInteractive suppressions here and on the header cells:
+ * Biome counts row / columnheader / rowheader as widget roles, which they
+ * are only inside role="grid". In this static table they are structure,
+ * and a tab stop on each would bury the page's real controls.
+ */
+function CompareTableRow({
+  template,
+  children,
+}: {
+  template: string;
+  children: React.ReactNode;
+}) {
+  return (
+    // biome-ignore lint/a11y/useFocusableInteractive: static table row, see above
+    <div role="row" style={{ display: "grid", gridTemplateColumns: template }}>
+      {children}
+    </div>
+  );
+}
+
 function CompareHeaderCell({ children }: { children: React.ReactNode }) {
   return (
+    // biome-ignore lint/a11y/useFocusableInteractive: static table header, see CompareTableRow
     <div
+      role="columnheader"
       style={{
         ...cellStyle,
         background: "var(--bg-3)",
@@ -3193,6 +3239,9 @@ const cellStyle: React.CSSProperties = {
   padding: "10px 12px",
   borderBottom: "1px solid var(--border)",
 };
+
+// Column template for the accessibility matrix: feature, app A, app B.
+const A11Y_TABLE_TEMPLATE = "minmax(180px, 1fr) minmax(0, 1fr) minmax(0, 1fr)";
 
 // ── Accessibility comparison ──────────────────────────────────────────
 // A second flavour of the comparison grid. Rows are the canonical feature
@@ -3503,19 +3552,25 @@ function AccessibilityComparisonTable({
         )}
       </div>
 
+      {/* ARIA table, same structure as the privacy matrix (see
+          CompareTableRow). */}
       <div
+        aria-label={tCompare("table_a11y_aria", { a: a.name, b: b.name })}
+        role="table"
         style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(180px, 1fr) 1fr 1fr",
           border: "1px solid var(--border)",
           borderRadius: 10,
           overflow: "hidden",
           fontSize: 13,
         }}
       >
-        <CompareHeaderCell>{tCompare("header_a11y_feature")}</CompareHeaderCell>
-        <CompareHeaderCell>{a.name}</CompareHeaderCell>
-        <CompareHeaderCell>{b.name}</CompareHeaderCell>
+        <CompareTableRow template={A11Y_TABLE_TEMPLATE}>
+          <CompareHeaderCell>
+            {tCompare("header_a11y_feature")}
+          </CompareHeaderCell>
+          <CompareHeaderCell>{a.name}</CompareHeaderCell>
+          <CompareHeaderCell>{b.name}</CompareHeaderCell>
+        </CompareTableRow>
         {ordered.map((featureId, i) => {
           const canonical = CANONICAL_ACCESSIBILITY_FEATURES.find(
             (f) => f.identifier === featureId
@@ -3563,8 +3618,10 @@ function AccessibilityComparisonTable({
               }
             : {};
           return (
-            <div key={featureId} style={{ display: "contents" }}>
+            <CompareTableRow key={featureId} template={A11Y_TABLE_TEMPLATE}>
+              {/* biome-ignore lint/a11y/useFocusableInteractive: static table row header, see CompareTableRow */}
               <div
+                role="rowheader"
                 style={{
                   ...cellStyle,
                   background: rowBg,
@@ -3631,7 +3688,7 @@ function AccessibilityComparisonTable({
                 preferenceBorderStyle={prefRightmostCell}
                 preferenceMissing={!!preference && !inB}
               />
-            </div>
+            </CompareTableRow>
           );
         })}
       </div>
@@ -3819,11 +3876,16 @@ function AccessibilitySlotHeader({
             fontSize: 10,
             padding: "2px 8px",
             borderRadius: 999,
+            // Theme tokens, the label pulled toward --text: the old
+            // dark-only literals were 1.9:1 in light mode.
             background:
               slot.source === "library"
-                ? "rgba(10,132,255,0.18)"
-                : "rgba(191,90,242,0.18)",
-            color: slot.source === "library" ? "#5ea9ff" : "#d28bff",
+                ? "color-mix(in srgb, var(--blue) 18%, transparent)"
+                : "color-mix(in srgb, var(--purple) 18%, transparent)",
+            color:
+              slot.source === "library"
+                ? "color-mix(in srgb, var(--blue) 75%, var(--text))"
+                : "color-mix(in srgb, var(--purple) 60%, var(--text))",
           }}
         >
           {slot.source === "library"
@@ -3984,6 +4046,7 @@ function AccessibilityCell({
   if (!feature) {
     return (
       <div
+        role="cell"
         style={{
           ...cellStyle,
           background: bg,
@@ -4011,6 +4074,7 @@ function AccessibilityCell({
   }
   return (
     <div
+      role="cell"
       style={{
         ...cellStyle,
         background: bg,

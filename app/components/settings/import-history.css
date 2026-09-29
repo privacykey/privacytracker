@@ -134,14 +134,16 @@ button.import-history-stat.is-active {
   filter: brightness(1.12);
 }
 
+/* Tones read the theme tokens. The warn pill used to hard-code the dark
+   orange, which is 1.8:1 on its own tint in light mode. */
 .import-history-stat-ok {
-  color: var(--green, #30d158);
-  background: var(--green-dim, rgba(48, 209, 88, 0.18));
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 18%, transparent);
 }
 
 .import-history-stat-warn {
-  color: #ff9f0a;
-  background: rgba(255, 159, 10, 0.18);
+  color: var(--orange);
+  background: color-mix(in srgb, var(--orange) 18%, transparent);
 }
 
 .import-history-stat-mute {
@@ -153,8 +155,9 @@ button.import-history-stat.is-active {
    queued / retryable) so the user can scan a list of imports and spot the
    ones that actually failed. */
 .import-history-stat-bad {
-  color: var(--red, #ff453a);
-  background: rgba(255, 69, 58, 0.18);
+  /* Pulled toward --text: dark --red on its own 18% tint is 4.0:1. */
+  color: color-mix(in srgb, var(--red) 75%, var(--text));
+  background: color-mix(in srgb, var(--red) 18%, transparent);
 }
 
 /* Empty-state card shown inside an expanded import row when the item list

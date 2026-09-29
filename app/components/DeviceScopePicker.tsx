@@ -64,7 +64,16 @@ export default function DeviceScopePicker({
   const t = useTranslations("device_scope");
   // `ready` isn't read: `devices` is empty until the fetch lands, which
   // is the same signal and one fewer thing to keep in sync.
-  const { audience, devices, scope, setAudience, setScope } = useDeviceScope();
+  const { audience, devices, requestAudience, scope, setAudience, setScope } =
+    useDeviceScope();
+  // The switch prompt below needs the focus audience, which the provider
+  // reads only on request. Ask once there is a device to pick.
+  const hasDevices = devices.length > 0;
+  useEffect(() => {
+    if (hasDevices) {
+      requestAudience();
+    }
+  }, [hasDevices, requestAudience]);
   // Self-gated rather than gated by a prop from Nav: almost every page
   // renders `<Nav />` with no flags at all, so a prop would resolve to
   // its `true` default nearly everywhere and the flag would look wired

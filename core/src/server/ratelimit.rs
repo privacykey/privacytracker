@@ -151,6 +151,15 @@ fn client_ip(x_forwarded_for: Option<&str>, x_real_ip: Option<&str>) -> Option<S
     x_real_ip.map(|r| r.trim().to_lowercase())
 }
 
+/// `clientIpFromHeaders` for the admin-token guess limits (`token_guard`),
+/// which fall back to the socket peer rather than to `local`.
+pub(super) fn trusted_client_ip(
+    x_forwarded_for: Option<&str>,
+    x_real_ip: Option<&str>,
+) -> Option<String> {
+    client_ip(x_forwarded_for, x_real_ip)
+}
+
 /// `requestActorIp`: the trusted client address, else the literal
 /// `local` — an honest constant beats a spoofed address in the audit trail.
 pub fn actor_ip(x_forwarded_for: Option<&str>, x_real_ip: Option<&str>) -> String {

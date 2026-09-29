@@ -56,6 +56,7 @@ export default function OnboardWizard({
     setRestoreError,
     restoreConfirmText,
     setRestoreConfirmText,
+    restoreUntrusted,
     resetRestoreFlow,
     restoreModalCardRef,
     cancelModalCardRef,
@@ -162,6 +163,7 @@ export default function OnboardWizard({
             restoreModalCardRef={restoreModalCardRef}
             restorePreview={restorePreview}
             restoreStage={restoreStage}
+            restoreUntrusted={restoreUntrusted}
             setRestoreConfirmText={setRestoreConfirmText}
             setRestoreError={setRestoreError}
           />

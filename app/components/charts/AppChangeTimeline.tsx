@@ -36,6 +36,7 @@ import { useTranslations } from "next-intl";
  */
 import { useEffect, useMemo, useState } from "react";
 import { withAlpha } from "../../../lib/chart-colors";
+import { summariseBuckets } from "../../../lib/chart-text-alternatives";
 import type { TimelineData } from "../../../lib/stats-views-shared";
 import { useChartColors } from "../../../lib/use-chart-colors";
 import { useShapesMode } from "../../../lib/use-shapes-mode";
@@ -227,6 +228,7 @@ export default function AppChangeTimeline({
   showLegend?: boolean;
 }) {
   const tChart = useTranslations("app_change_timeline");
+  const tA11y = useTranslations("chart_a11y");
   // "All" default — the detail page is explicitly historical; users
   // arriving here almost always want to see the full span, and can
   // narrow the window via presets if they want to zoom in.
@@ -397,12 +399,12 @@ export default function AppChangeTimeline({
     return {
       // ECharts treats per-series `areaStyle.decal` as part of its `aria`
       // accessibility feature — the option is silently ignored unless
-      // `aria.decal.show` is true. Gate the whole `aria` block on shape
-      // mode so default-mode renders stay byte-identical to before this
-      // change (no behaviour shift for users who don't opt in). When
-      // shape mode is on, `enabled: true` + `decal.show: true` lights
-      // up the per-band `BAND_DECALS` patterns configured in `band()`.
-      aria: shapesMode ? { enabled: true, decal: { show: true } } : undefined,
+      // `aria.decal.show` is true. Gate the decals on shape mode so
+      // default-mode renders are unchanged; when it is on, the per-band
+      // `BAND_DECALS` patterns configured in `band()` light up. `aria`
+      // itself is always enabled (EChart pins its label to our text
+      // alternative).
+      aria: { decal: { show: shapesMode } },
       tooltip: {
         trigger: "axis",
         // `confine: true` keeps the tooltip inside the chart container
@@ -478,6 +480,45 @@ export default function AppChangeTimeline({
       ],
     };
   }, [data, showLegend, shapesMode, tChart, colors]);
+
+  // Text alternative for the canvas: each bucket that had anything, with
+  // its count per band and overlay line, as the chart plots them.
+  const ariaDescription = useMemo(() => {
+    if (!data) {
+      return "";
+    }
+    const labels = data.points.map((p) =>
+      formatBucketLabel(p.bucket, data.bucketType)
+    );
+    const series = [
+      ["added", "band_added"],
+      ["removed", "band_removed"],
+      ["modified", "band_modified"],
+      ["policy", "band_policy"],
+      ["accessibilityAdded", "band_a11y_added"],
+      ["accessibilityRemoved", "band_a11y_removed"],
+      ["syncs", "overlay_syncs"],
+      ["reviews", "overlay_reviews"],
+    ] as const;
+    return summariseBuckets(
+      labels,
+      series.map(([key, labelKey]) => ({
+        name: tChart(labelKey),
+        values: data.points.map((p) => p[key] ?? 0),
+      }))
+    )
+      .map((b) =>
+        tA11y("timeline_bucket", {
+          bucket: b.label,
+          items: b.items
+            .map((item) =>
+              tA11y("timeline_item", { series: item.name, value: item.value })
+            )
+            .join(tA11y("list_separator")),
+        })
+      )
+      .join(" ");
+  }, [data, tChart, tA11y]);
 
   return (
     <div
@@ -733,6 +774,8 @@ export default function AppChangeTimeline({
             data &&
             (data.total > 0 || totals.syncs > 0 || totals.reviews > 0) && (
               <EChart
+                ariaDescription={ariaDescription}
+                ariaLabel={tA11y("app_timeline_label", { count: data.total })}
                 className="app-change-timeline-chart"
                 height={220}
                 option={option}

@@ -38,7 +38,7 @@ pub fn build_report(base_url: &str) -> String {
     out.push_str(&format!("  Data dir:      {}\n", data_dir_display()));
 
     // Liveness probe.
-    let probe = match ureq::get(&format!("{base_url}/api/apps"))
+    let probe = match crate::backend::get(base_url, "/api/apps")
         .timeout(Duration::from_secs(3))
         .call()
     {
@@ -69,7 +69,7 @@ pub fn build_report(base_url: &str) -> String {
 }
 
 fn fetch_node_diagnostics(base_url: &str) -> Result<Value, Box<dyn std::error::Error>> {
-    let json: Value = ureq::get(&format!("{base_url}/api/desktop/diagnostics"))
+    let json: Value = crate::backend::get(base_url, "/api/desktop/diagnostics")
         .timeout(Duration::from_secs(5))
         .call()?
         .into_json()?;

@@ -74,7 +74,7 @@ tauri-dev:
     pnpm build
     pnpm run tauri:dev
 
-# The Node sidecar build is the rollback until 1.0. Needs a one-time
+# The Node sidecar build is the rollback until v0.3.0 has shipped. Needs a one-time
 # `just fetch-node-sidecar`.
 # Run the desktop app on the Node sidecar, with devtools
 [group("desktop")]

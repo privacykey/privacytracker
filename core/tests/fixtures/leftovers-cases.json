@@ -91,7 +91,7 @@
             ]
           ],
           "method": "POST",
-          "body": "{\"content\":\"✅ Webhook test from privacytracker\\nThis is a test message — your webhook is wired up correctly.\\nYou'll start seeing notification summaries here per your chosen frequency.\"}"
+          "body": "{\"content\":\"✅ Webhook test from privacytracker\\nThis is a test message — your webhook is wired up correctly.\\nYou'll start seeing notification summaries here per your chosen frequency.\",\"allowed_mentions\":{\"parse\":[]}}"
         }
       ],
       "stream": [],
@@ -2756,7 +2756,7 @@
             ]
           ],
           "method": "POST",
-          "body": "{\"content\":\"📱 Instagram: Now collects Location\\nNow collects Location\"}"
+          "body": "{\"content\":\"📱 Instagram: Now collects Location\\nNow collects Location\",\"allowed_mentions\":{\"parse\":[]}}"
         }
       ],
       "stream": [
@@ -5397,7 +5397,7 @@
             ]
           ],
           "method": "POST",
-          "body": "{\"@type\":\"MessageCard\",\"@context\":\"https://schema.org/extensions\",\"summary\":\"🌙 Daily privacytracker summary — 1 update\",\"themeColor\":\"0a84ff\",\"title\":\"🌙 Daily privacytracker summary — 1 update\",\"text\":\"• App 0: [{\\\"type\\\":\\\"added\\\",\\\"description\\\":\\\"Change 0\\\"}]\"}"
+          "body": "{\"@type\":\"MessageCard\",\"@context\":\"https://schema.org/extensions\",\"summary\":\"🌙 Daily privacytracker summary — 1 update\",\"themeColor\":\"0a84ff\",\"title\":\"🌙 Daily privacytracker summary — 1 update\",\"text\":\"• App 0: \\\\[{\\\"type\\\":\\\"added\\\",\\\"description\\\":\\\"Change 0\\\"}\\\\]\"}"
         }
       ],
       "stream": [
@@ -5623,7 +5623,7 @@
             ]
           ],
           "method": "POST",
-          "body": "{\"content\":\"🌙 Daily privacytracker summary — 12 updates\\n• App 0: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 1: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 2: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 3: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 4: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 5: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…\"}"
+          "body": "{\"content\":\"🌙 Daily privacytracker summary — 12 updates\\n• App 0: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 1: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 2: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 3: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 4: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\\n• App 5: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx…\",\"allowed_mentions\":{\"parse\":[]}}"
         }
       ],
       "stream": [
@@ -12416,6 +12416,958 @@
           "retry-after": "60"
         },
         "body": "{\"error\":\"Rate limit exceeded for preview. Try again shortly.\",\"retryAfterMs\":60000}"
+      }
+    },
+    {
+      "name": "seed notification escapes a hostile app name for slack",
+      "kind": "request",
+      "callback": null,
+      "route": "/api/dev/seed-notification",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.133.6",
+        "user-agent": "leftovers-oracle/1.0",
+        "x-auditor-admin-token": "leftovers-oracle-token"
+      },
+      "body": "{\"appId\":\"1001\",\"appName\":\"Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>\",\"changes\":[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]}",
+      "adminToken": "leftovers-oracle-token",
+      "env": {},
+      "now": 1789562097789,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/services/T1/B2/x3"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "slack"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://hooks.example.com/services/T1/B2/x3",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"text\":\"📱 Evil &lt;!channel&gt; @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l &gt; q &amp; &lt;@123&gt;: Now collects &lt;Location&gt; &amp; [Contacts](https://y.test)\\nNow collects &lt;Location&gt; &amp; [Contacts](https://y.test)\"}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "\n    INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n    VALUES (?, ?, ?, ?, ?, 0, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "1001",
+            "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]",
+            1789562097789,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            1789562097789,
+            "dev.seed_notification.success",
+            "10.0.133.6",
+            "leftovers-oracle/1.0",
+            "appId=1001 changes=1",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "1001",
+            "app_name": "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "change_summary": "[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]",
+            "created_at": 1789562097789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/services/T1/B2/x3"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "slack"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "created_at": 1789562097789,
+            "action": "dev.seed_notification.success",
+            "actor_ip": "10.0.133.6",
+            "user_agent": "leftovers-oracle/1.0",
+            "detail": "appId=1001 changes=1",
+            "success": 1
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "type": "application/json",
+        "headers": {
+          "cache-control": null,
+          "x-favicon-cache": null,
+          "retry-after": null
+        },
+        "body": "{\"ok\":true,\"appId\":\"1001\",\"appName\":\"Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>\",\"changes\":[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]}"
+      }
+    },
+    {
+      "name": "seed notification escapes a hostile app name for discord",
+      "kind": "request",
+      "callback": null,
+      "route": "/api/dev/seed-notification",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.134.6",
+        "user-agent": "leftovers-oracle/1.0",
+        "x-auditor-admin-token": "leftovers-oracle-token"
+      },
+      "body": "{\"appId\":\"1001\",\"appName\":\"Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>\",\"changes\":[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]}",
+      "adminToken": "leftovers-oracle-token",
+      "env": {},
+      "now": 1789562097789,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/services/T1/B2/x3"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "discord"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://hooks.example.com/services/T1/B2/x3",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"content\":\"📱 Evil \\\\<!channel\\\\> @​everyone @​here \\\\[Update now\\\\]\\\\(https://x.test\\\\) \\\\*b\\\\* \\\\_i\\\\_ \\\\~s\\\\~ \\\\`c\\\\` \\\\|\\\\|sp\\\\|\\\\| \\\\# h \\\\- l \\\\> q \\\\& \\\\<@123\\\\>: Now collects \\\\<Location\\\\> \\\\& \\\\[Contacts\\\\]\\\\(https://y.test\\\\)\\nNow collects \\\\<Location\\\\> \\\\& \\\\[Contacts\\\\]\\\\(https://y.test\\\\)\",\"allowed_mentions\":{\"parse\":[]}}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "\n    INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n    VALUES (?, ?, ?, ?, ?, 0, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "1001",
+            "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]",
+            1789562097789,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            1789562097789,
+            "dev.seed_notification.success",
+            "10.0.134.6",
+            "leftovers-oracle/1.0",
+            "appId=1001 changes=1",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "1001",
+            "app_name": "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "change_summary": "[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]",
+            "created_at": 1789562097789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/services/T1/B2/x3"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "discord"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "created_at": 1789562097789,
+            "action": "dev.seed_notification.success",
+            "actor_ip": "10.0.134.6",
+            "user_agent": "leftovers-oracle/1.0",
+            "detail": "appId=1001 changes=1",
+            "success": 1
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "type": "application/json",
+        "headers": {
+          "cache-control": null,
+          "x-favicon-cache": null,
+          "retry-after": null
+        },
+        "body": "{\"ok\":true,\"appId\":\"1001\",\"appName\":\"Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>\",\"changes\":[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]}"
+      }
+    },
+    {
+      "name": "seed notification escapes a hostile app name for teams",
+      "kind": "request",
+      "callback": null,
+      "route": "/api/dev/seed-notification",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.135.6",
+        "user-agent": "leftovers-oracle/1.0",
+        "x-auditor-admin-token": "leftovers-oracle-token"
+      },
+      "body": "{\"appId\":\"1001\",\"appName\":\"Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>\",\"changes\":[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]}",
+      "adminToken": "leftovers-oracle-token",
+      "env": {},
+      "now": 1789562097789,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/services/T1/B2/x3"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "teams"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://hooks.example.com/services/T1/B2/x3",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"@type\":\"MessageCard\",\"@context\":\"https://schema.org/extensions\",\"summary\":\"📱 Evil \\\\<!channel\\\\> @everyone @here \\\\[Update now\\\\]\\\\(https://x.test\\\\) \\\\*b\\\\* \\\\_i\\\\_ \\\\~s\\\\~ \\\\`c\\\\` \\\\|\\\\|sp\\\\|\\\\| \\\\# h \\\\- l \\\\> q \\\\& \\\\<@123\\\\>: Now collects \\\\<Location\\\\> \\\\& \\\\[Contacts\\\\]\\\\(https://y.test\\\\)\",\"themeColor\":\"0a84ff\",\"title\":\"📱 Evil \\\\<!channel\\\\> @everyone @here \\\\[Update now\\\\]\\\\(https://x.test\\\\) \\\\*b\\\\* \\\\_i\\\\_ \\\\~s\\\\~ \\\\`c\\\\` \\\\|\\\\|sp\\\\|\\\\| \\\\# h \\\\- l \\\\> q \\\\& \\\\<@123\\\\>: Now collects \\\\<Location\\\\> \\\\& \\\\[Contacts\\\\]\\\\(https://y.test\\\\)\",\"text\":\"Now collects \\\\<Location\\\\> \\\\& \\\\[Contacts\\\\]\\\\(https://y.test\\\\)\"}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "\n    INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n    VALUES (?, ?, ?, ?, ?, 0, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "1001",
+            "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]",
+            1789562097789,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            1789562097789,
+            "dev.seed_notification.success",
+            "10.0.135.6",
+            "leftovers-oracle/1.0",
+            "appId=1001 changes=1",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "1001",
+            "app_name": "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "change_summary": "[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]",
+            "created_at": 1789562097789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/services/T1/B2/x3"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "teams"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "created_at": 1789562097789,
+            "action": "dev.seed_notification.success",
+            "actor_ip": "10.0.135.6",
+            "user_agent": "leftovers-oracle/1.0",
+            "detail": "appId=1001 changes=1",
+            "success": 1
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "type": "application/json",
+        "headers": {
+          "cache-control": null,
+          "x-favicon-cache": null,
+          "retry-after": null
+        },
+        "body": "{\"ok\":true,\"appId\":\"1001\",\"appName\":\"Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>\",\"changes\":[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]}"
+      }
+    },
+    {
+      "name": "seed notification escapes a hostile app name for generic",
+      "kind": "request",
+      "callback": null,
+      "route": "/api/dev/seed-notification",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.136.6",
+        "user-agent": "leftovers-oracle/1.0",
+        "x-auditor-admin-token": "leftovers-oracle-token"
+      },
+      "body": "{\"appId\":\"1001\",\"appName\":\"Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>\",\"changes\":[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]}",
+      "adminToken": "leftovers-oracle-token",
+      "env": {},
+      "now": 1789562097789,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/services/T1/B2/x3"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "generic"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "immediate"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://hooks.example.com/services/T1/B2/x3",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"title\":\"📱 Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>: Now collects <Location> & [Contacts](https://y.test)\",\"text\":\"📱 Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>: Now collects <Location> & [Contacts](https://y.test)\\nNow collects <Location> & [Contacts](https://y.test)\",\"notifications\":[{\"appName\":\"Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>\",\"summary\":\"Now collects <Location> & [Contacts](https://y.test)\",\"createdAt\":1789562097789}]}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "\n    INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read, not_before)\n    VALUES (?, ?, ?, ?, ?, 0, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            "1001",
+            "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]",
+            1789562097789,
+            null
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            1789562097789,
+            "dev.seed_notification.success",
+            "10.0.136.6",
+            "leftovers-oracle/1.0",
+            "appId=1001 changes=1",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "notifications": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "app_id": "1001",
+            "app_name": "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "change_summary": "[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]",
+            "created_at": 1789562097789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/services/T1/B2/x3"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "generic"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "immediate"
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "created_at": 1789562097789,
+            "action": "dev.seed_notification.success",
+            "actor_ip": "10.0.136.6",
+            "user_agent": "leftovers-oracle/1.0",
+            "detail": "appId=1001 changes=1",
+            "success": 1
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "type": "application/json",
+        "headers": {
+          "cache-control": null,
+          "x-favicon-cache": null,
+          "retry-after": null
+        },
+        "body": "{\"ok\":true,\"appId\":\"1001\",\"appName\":\"Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>\",\"changes\":[{\"category\":\"privacy-label\",\"type\":\"added\",\"description\":\"Now collects <Location> & [Contacts](https://y.test)\"}]}"
+      }
+    },
+    {
+      "name": "summary tick escapes hostile app names for slack",
+      "kind": "callback",
+      "callback": "webhook-summary",
+      "route": null,
+      "method": "GET",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.137.6",
+        "user-agent": "leftovers-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "env": {},
+      "now": 1789562097789,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/services/T1/B2/x3"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "slack"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "daily_summary"
+          ]
+        },
+        {
+          "sql": "INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read) VALUES (?, ?, ?, ?, ?, 0)",
+          "params": [
+            "h-1",
+            "1001",
+            "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "@here <b>bold</b>",
+            1789558497789
+          ]
+        },
+        {
+          "sql": "INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read) VALUES (?, ?, ?, ?, ?, 0)",
+          "params": [
+            "h-2",
+            "1001",
+            "",
+            "[x](https://z.test)",
+            1789554897789
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://hooks.example.com/services/T1/B2/x3",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"text\":\"🌙 Daily privacytracker summary — 2 updates\\n• Evil &lt;!channel&gt; @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l &gt; q &amp; &lt;@123&gt;: @here &lt;b&gt;bold&lt;/b&gt;\\n• [x](https://z.test)\"}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_last_sent",
+            "1789562097789"
+          ]
+        }
+      ],
+      "rows": {
+        "notifications": [
+          {
+            "id": "h-1",
+            "app_id": "1001",
+            "app_name": "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "change_summary": "@here <b>bold</b>",
+            "created_at": 1789558497789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          },
+          {
+            "id": "h-2",
+            "app_id": "1001",
+            "app_name": "",
+            "change_summary": "[x](https://z.test)",
+            "created_at": 1789554897789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/services/T1/B2/x3"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "slack"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "daily_summary"
+          },
+          {
+            "key": "notification_webhook_last_sent",
+            "value": "1789562097789"
+          }
+        ],
+        "audit_log": []
+      },
+      "expected": {
+        "returned": 2
+      }
+    },
+    {
+      "name": "summary tick escapes hostile app names for discord",
+      "kind": "callback",
+      "callback": "webhook-summary",
+      "route": null,
+      "method": "GET",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.138.6",
+        "user-agent": "leftovers-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "env": {},
+      "now": 1789562097789,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/services/T1/B2/x3"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "discord"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "daily_summary"
+          ]
+        },
+        {
+          "sql": "INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read) VALUES (?, ?, ?, ?, ?, 0)",
+          "params": [
+            "h-1",
+            "1001",
+            "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "@here <b>bold</b>",
+            1789558497789
+          ]
+        },
+        {
+          "sql": "INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read) VALUES (?, ?, ?, ?, ?, 0)",
+          "params": [
+            "h-2",
+            "1001",
+            "",
+            "[x](https://z.test)",
+            1789554897789
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://hooks.example.com/services/T1/B2/x3",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"content\":\"🌙 Daily privacytracker summary — 2 updates\\n• Evil \\\\<!channel\\\\> @​everyone @​here \\\\[Update now\\\\]\\\\(https://x.test\\\\) \\\\*b\\\\* \\\\_i\\\\_ \\\\~s\\\\~ \\\\`c\\\\` \\\\|\\\\|sp\\\\|\\\\| \\\\# h \\\\- l \\\\> q \\\\& \\\\<@123\\\\>: @​here \\\\<b\\\\>bold\\\\</b\\\\>\\n• \\\\[x\\\\]\\\\(https://z.test\\\\)\",\"allowed_mentions\":{\"parse\":[]}}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_last_sent",
+            "1789562097789"
+          ]
+        }
+      ],
+      "rows": {
+        "notifications": [
+          {
+            "id": "h-1",
+            "app_id": "1001",
+            "app_name": "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "change_summary": "@here <b>bold</b>",
+            "created_at": 1789558497789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          },
+          {
+            "id": "h-2",
+            "app_id": "1001",
+            "app_name": "",
+            "change_summary": "[x](https://z.test)",
+            "created_at": 1789554897789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/services/T1/B2/x3"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "discord"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "daily_summary"
+          },
+          {
+            "key": "notification_webhook_last_sent",
+            "value": "1789562097789"
+          }
+        ],
+        "audit_log": []
+      },
+      "expected": {
+        "returned": 2
+      }
+    },
+    {
+      "name": "summary tick escapes hostile app names for teams",
+      "kind": "callback",
+      "callback": "webhook-summary",
+      "route": null,
+      "method": "GET",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.139.6",
+        "user-agent": "leftovers-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "env": {},
+      "now": 1789562097789,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_url",
+            "https://hooks.example.com/services/T1/B2/x3"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_format",
+            "teams"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_frequency",
+            "daily_summary"
+          ]
+        },
+        {
+          "sql": "INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read) VALUES (?, ?, ?, ?, ?, 0)",
+          "params": [
+            "h-1",
+            "1001",
+            "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "@here <b>bold</b>",
+            1789558497789
+          ]
+        },
+        {
+          "sql": "INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read) VALUES (?, ?, ?, ?, ?, 0)",
+          "params": [
+            "h-2",
+            "1001",
+            "",
+            "[x](https://z.test)",
+            1789554897789
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {},
+          "body": "ok"
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://hooks.example.com/services/T1/B2/x3",
+          "headers": [
+            [
+              "content-type",
+              "application/json"
+            ]
+          ],
+          "method": "POST",
+          "body": "{\"@type\":\"MessageCard\",\"@context\":\"https://schema.org/extensions\",\"summary\":\"🌙 Daily privacytracker summary — 2 updates\",\"themeColor\":\"0a84ff\",\"title\":\"🌙 Daily privacytracker summary — 2 updates\",\"text\":\"• Evil \\\\<!channel\\\\> @everyone @here \\\\[Update now\\\\]\\\\(https://x.test\\\\) \\\\*b\\\\* \\\\_i\\\\_ \\\\~s\\\\~ \\\\`c\\\\` \\\\|\\\\|sp\\\\|\\\\| \\\\# h \\\\- l \\\\> q \\\\& \\\\<@123\\\\>: @here \\\\<b\\\\>bold\\\\</b\\\\>\\n\\n• \\\\[x\\\\]\\\\(https://z.test\\\\)\"}"
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "notification_webhook_last_sent",
+            "1789562097789"
+          ]
+        }
+      ],
+      "rows": {
+        "notifications": [
+          {
+            "id": "h-1",
+            "app_id": "1001",
+            "app_name": "Evil <!channel> @everyone @here [Update now](https://x.test) *b* _i_ ~s~ `c` ||sp|| # h - l > q & <@123>",
+            "change_summary": "@here <b>bold</b>",
+            "created_at": 1789558497789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          },
+          {
+            "id": "h-2",
+            "app_id": "1001",
+            "app_name": "",
+            "change_summary": "[x](https://z.test)",
+            "created_at": 1789554897789,
+            "read": 0,
+            "stale": 0,
+            "not_before": null
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "notification_webhook_url",
+            "value": "https://hooks.example.com/services/T1/B2/x3"
+          },
+          {
+            "key": "notification_webhook_format",
+            "value": "teams"
+          },
+          {
+            "key": "notification_webhook_frequency",
+            "value": "daily_summary"
+          },
+          {
+            "key": "notification_webhook_last_sent",
+            "value": "1789562097789"
+          }
+        ],
+        "audit_log": []
+      },
+      "expected": {
+        "returned": 2
       }
     }
   ]

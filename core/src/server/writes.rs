@@ -55,6 +55,11 @@ use serde_json::{json, Map, Value};
 use std::sync::OnceLock;
 
 const SET_SETTING: &str = "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)";
+/// `applyMonitorSyncDefault` (lib/scheduler.ts): write only when the key has
+/// no row, or an empty one.
+const SET_SETTING_IF_UNCHOSEN: &str = "INSERT INTO app_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value WHERE value = ''";
+/// `MONITOR_DEFAULT_SYNC_SCHEDULE`.
+const MONITOR_DEFAULT_SYNC_SCHEDULE: &str = "daily";
 const SET_OVERRIDE: &str = "INSERT INTO feature_flag_overrides (flag_key, override_value, set_at, set_by, previous_focus, quarantined)\n     VALUES (?, ?, ?, 'user', ?, 0)\n     ON CONFLICT(flag_key) DO UPDATE SET\n       override_value = excluded.override_value,\n       set_at = excluded.set_at,\n       set_by = excluded.set_by,\n       previous_focus = excluded.previous_focus,\n       quarantined = 0";
 const CLEAR_OVERRIDE: &str = "DELETE FROM feature_flag_overrides WHERE flag_key = ?";
 const CLEAR_ALL_OVERRIDES: &str = "DELETE FROM feature_flag_overrides WHERE quarantined = 0";
@@ -2134,6 +2139,20 @@ fn focus(cx: &mut Cx, body: BodyOutcome) -> Response {
             // `childAgeBand ?? ""`: null clears; a string is stored as is.
             cx.set("guardian_child_age_band", band.as_str().unwrap_or(""))?;
         }
+        // `applyMonitorSyncDefault`: Monitor syncs daily unless a schedule
+        // was already chosen (any stored value but ""); never reverted.
+        // When it writes, it records when, which the schedule counts from.
+        if monitor
+            && cx.w.run(
+                SET_SETTING_IF_UNCHOSEN,
+                vec![json!("sync_schedule"), json!(MONITOR_DEFAULT_SYNC_SCHEDULE)],
+            )? > 0
+        {
+            cx.set(
+                super::routes_status::MONITOR_DEFAULT_AT_KEY,
+                &cx.now.to_string(),
+            )?;
+        }
         Ok(())
     })();
     if written.is_err() {
@@ -2596,9 +2615,11 @@ fn migration_flow_consume(cx: &mut Cx) -> Response {
     };
     // Always cleared after the read; the marker is one-shot.
     let _ = cx.set("migration_flow_pending", "");
+    // Only a path that stays inside the app is handed out: the dashboard
+    // navigates to it.
     let target = prop(&parsed, "targetPath")
         .and_then(Value::as_str)
-        .filter(|p| p.starts_with('/'))
+        .filter(|p| is_same_origin_path(p))
         .unwrap_or("/dashboard/review-recommendations");
     let recommender = prop(&parsed, "recommenderName")
         .and_then(Value::as_str)
@@ -2606,9 +2627,29 @@ fn migration_flow_consume(cx: &mut Cx) -> Response {
     json_ok(&json!({ "targetPath": target, "recommenderName": recommender }))
 }
 
+/// `isSameOriginPath` (lib/same-origin-path.ts): exactly one leading `/`,
+/// no backslash, no ASCII control character or space (a URL parser reads
+/// `\` as `/` and drops tabs and newlines, either of which can turn a
+/// path into a host), and resolving against a placeholder origin keeps
+/// that origin.
+pub(super) fn is_same_origin_path(path: &str) -> bool {
+    if !path.starts_with('/') || path.starts_with("//") {
+        return false;
+    }
+    if path.chars().any(|c| c <= ' ' || c == '\u{7f}' || c == '\\') {
+        return false;
+    }
+    const PLACEHOLDER: &str = "http://same-origin.invalid";
+    url::Url::parse(PLACEHOLDER)
+        .and_then(|base| base.join(path))
+        .is_ok_and(|resolved| resolved.origin().ascii_serialization() == PLACEHOLDER)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{array_index, js_entries, js_object_keys, match_profile_preset};
+    use super::{
+        array_index, is_same_origin_path, js_entries, js_object_keys, match_profile_preset,
+    };
     use serde_json::json;
 
     #[test]
@@ -2642,5 +2683,37 @@ mod tests {
         partial.remove("OTHER");
         assert_eq!(match_profile_preset(Some(&partial)), None);
         assert_eq!(match_profile_preset(None), None);
+    }
+
+    #[test]
+    fn migration_targets_must_stay_inside_the_app() {
+        for path in [
+            "/",
+            "/dashboard/review-recommendations",
+            "/dashboard?edit=layout#top",
+            "/%2F%2Fexample.test",
+            "/a/../b",
+            "/apps/caf\u{e9}",
+        ] {
+            assert!(is_same_origin_path(path), "{path:?}");
+        }
+        for path in [
+            "",
+            "dashboard",
+            "//example.test/",
+            "///example.test/",
+            "/\\example.test/",
+            "/dash\\board",
+            "/\t/example.test/",
+            "/\n/example.test/",
+            "/\r/example.test/",
+            "/ /example.test/",
+            "/\u{7f}",
+            "/\u{0}",
+            "https://example.test/",
+            "javascript:alert(1)",
+        ] {
+            assert!(!is_same_origin_path(path), "{path:?}");
+        }
     }
 }

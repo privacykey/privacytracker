@@ -729,3 +729,161 @@ browserFlow(
     }
   }
 );
+
+// ---------------------------------------------------------------------------
+// Spec: a failed search is a failure, not "not in the App Store"
+// ---------------------------------------------------------------------------
+//
+// A 5xx (or our own 429 before a single name was checked) used to advance
+// the wizard to step 3 with every row filed under "Not in the App Store",
+// "Sideloaded / enterprise" pre-selected and "Save N as manual apps" as the
+// only filled button. Nothing had been searched, so the wizard now stays
+// on step 2 with the error and a Retry that searches the same list again.
+
+async function expectStillOnStep2WithoutUnmatchedRows(page: Page) {
+  await expect(page.getByTestId("onboard-app-names")).toBeVisible();
+  await expect(page.locator(".search-result-item")).toHaveCount(0);
+  await expect(page.getByText("Not in the App Store")).toHaveCount(0);
+  await expect(page.getByText(/didn.t match the App Store/)).toHaveCount(0);
+}
+
+function fixtureResults(rows: string[]) {
+  return rows.map((query) => ({
+    query,
+    candidates: (FIXTURES[query] ?? []).map((c) => ({
+      ...c,
+      searchQuery: query,
+    })),
+  }));
+}
+
+for (const failure of [
+  {
+    name: "a 500",
+    status: 500,
+    headers: {} as Record<string, string>,
+    message: /The App Store search didn't work just now/,
+  },
+  {
+    name: "a 429 before any name was checked",
+    status: 429,
+    headers: { "Retry-After": "30" } as Record<string, string>,
+    message: /Searches are being limited right now/,
+  },
+]) {
+  browserFlow(
+    `${failure.name} from search stays on step 2, and Retry reaches the matches`,
+    async ({ page }) => {
+      let calls = 0;
+      await page.route("**/api/search", async (route) => {
+        calls++;
+        if (calls === 1) {
+          await route.fulfill({
+            status: failure.status,
+            headers: failure.headers,
+            contentType: "application/json",
+            body: JSON.stringify({ error: "Simulated failure" }),
+          });
+          return;
+        }
+        const body = route.request().postDataJSON() as {
+          rows?: Array<{ name?: string }>;
+        };
+        const rows = (body.rows ?? []).map((row) => (row.name ?? "").trim());
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ results: fixtureResults(rows) }),
+        });
+      });
+      await openWizardToTextEntry(page);
+
+      await page.getByTestId("onboard-app-names").fill("Clock\nMaps");
+      await page.getByTestId("imported-apps-add").click();
+      await page.getByTestId("onboard-search").click();
+
+      const error = page.getByTestId("onboard-search-error");
+      await expect(error).toBeVisible();
+      await expect(error).toContainText(failure.message);
+      await expectStillOnStep2WithoutUnmatchedRows(page);
+      // Nothing came back, so there is nothing to go on with.
+      await expect(
+        page.getByTestId("onboard-search-continue-found")
+      ).toHaveCount(0);
+
+      await page.getByTestId("onboard-search-retry").click();
+      await expect(page.locator(".search-result-item")).toHaveCount(2);
+      await expect(page.getByTestId("onboard-confirm-import")).toBeEnabled();
+      await expect(page.getByText("Not in the App Store")).toHaveCount(0);
+      expect(calls).toBe(2);
+    }
+  );
+}
+
+browserFlow(
+  "partial search failure keeps the answered names and retries only the rest",
+  async ({ page }) => {
+    // 51 names: the wizard searches in chunks of 50, so the second request
+    // carries only the last name. That request fails the first time.
+    const names = Array.from({ length: 50 }, (_, i) => `Filler App ${i + 1}`);
+    names.push("Clock");
+    const requested: string[][] = [];
+    await page.route("**/api/search", async (route) => {
+      const body = route.request().postDataJSON() as {
+        rows?: Array<{ name?: string }>;
+      };
+      const rows = (body.rows ?? []).map((row) => (row.name ?? "").trim());
+      requested.push(rows);
+      if (rows.includes("Clock") && requested.length <= 2) {
+        await route.fulfill({
+          status: 503,
+          contentType: "application/json",
+          body: JSON.stringify({ error: "Simulated outage" }),
+        });
+        return;
+      }
+      const results = rows.map((query, i) =>
+        FIXTURES[query]
+          ? fixtureResults([query])[0]
+          : {
+              query,
+              candidates: [
+                {
+                  appleId: `77000${i}`,
+                  name: query,
+                  developer: "Filler Co",
+                  iconUrl:
+                    "https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/filler.png/100x100bb.jpg",
+                  url: `https://apps.apple.com/us/app/filler/id77000${i}`,
+                  bundleId: `com.example.filler${i}`,
+                  searchQuery: query,
+                },
+              ],
+            }
+      );
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ results }),
+      });
+    });
+    await openWizardToTextEntry(page);
+
+    await page.getByTestId("onboard-app-names").fill(names.join("\n"));
+    await page.getByTestId("imported-apps-add").click();
+    await page.getByTestId("onboard-search").click();
+
+    const error = page.getByTestId("onboard-search-error");
+    await expect(error).toContainText("didn't answer for 1 of your 51 apps");
+    await expectStillOnStep2WithoutUnmatchedRows(page);
+    await expect(
+      page.getByTestId("onboard-search-continue-found")
+    ).toBeVisible();
+
+    // Retry asks only for the name that got no answer.
+    await page.getByTestId("onboard-search-retry").click();
+    await expect(page.locator(".search-result-item")).toHaveCount(51);
+    expect(requested.at(-1)).toEqual(["Clock"]);
+    await expect(page.getByText("Not in the App Store")).toHaveCount(0);
+  }
+);

@@ -1038,6 +1038,48 @@ try {
       settle: true,
     });
   }
+
+  // ── Appended last (each case's forwarded address comes from a counter,
+  // so a case inserted above would shift every later case's headers).
+  // The Monitor default (lib/scheduler.ts applyMonitorSyncDefault) records
+  // when it turned daily sync on, and a schedule that has never synced
+  // counts its first day from then instead of being due at once. ──
+  {
+    const fleet = [
+      app(F1, "Fixture One"),
+      app(F2, "Fixture Two"),
+      liveSnapshot("snap-two", F2, now - 2 * DAY),
+    ];
+    await run("scheduled check waits a day after the Monitor default", {
+      kind: "callback",
+      delay: 15_000,
+      setup: [
+        ...fleet,
+        setting("sync_schedule", "daily"),
+        setting("sync_schedule_default_at", String(now - 3600_000)),
+      ],
+    });
+    await run("scheduled check runs a day after the Monitor default", {
+      kind: "callback",
+      delay: 15_000,
+      setup: [
+        ...fleet,
+        setting("sync_schedule", "daily"),
+        setting("sync_schedule_default_at", String(now - 2 * DAY)),
+      ],
+      replies: [...scrapeOf("Fixture One"), ...scrapeOf("Fixture Two")],
+    });
+    await run("scheduled check counts from a sync after the Monitor default", {
+      kind: "callback",
+      delay: 15_000,
+      setup: [
+        ...fleet,
+        setting("sync_schedule", "daily"),
+        setting("sync_schedule_default_at", String(now - 3 * DAY)),
+        setting("last_auto_sync", String(now - 3600_000)),
+      ],
+    });
+  }
 } finally {
   db.close();
   rmSync(dir, { recursive: true, force: true });

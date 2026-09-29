@@ -21,6 +21,7 @@ import { useTranslations } from "next-intl";
  *     Clicking the same node (or empty canvas) clears the lock.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { summariseSeverityFlow } from "../../../lib/chart-text-alternatives";
 import type { MatrixData } from "../../../lib/stats-views-shared";
 import { useChartColors, useChartTheme } from "../../../lib/use-chart-colors";
 import EChart from "./EChart";
@@ -97,6 +98,7 @@ function prettyKind(t: SankeyT, nodeName: string): string {
 
 export default function PrivacySankey() {
   const tSankey = useTranslations("privacy_sankey");
+  const tA11y = useTranslations("chart_a11y");
   const [data, setData] = useState<MatrixData | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Name of the currently locked node (e.g. "app:1234"). When set, we bake
@@ -163,9 +165,9 @@ export default function PrivacySankey() {
     [labelsByName]
   );
 
-  const { option, hiddenCount } = useMemo(() => {
+  const { option, hiddenCount, shownApps } = useMemo(() => {
     if (!data) {
-      return { option: {}, hiddenCount: 0 };
+      return { option: {}, hiddenCount: 0, shownApps: [] };
     }
     const t = CHART_THEME[theme];
     const sevColor: Record<string, string> = {
@@ -362,6 +364,7 @@ export default function PrivacySankey() {
 
     return {
       hiddenCount: hidden,
+      shownApps: shown,
       option: {
         tooltip: {
           trigger: "item",
@@ -474,9 +477,34 @@ export default function PrivacySankey() {
 
   const lockedLabel = lockedNode ? prettyLabel(lockedNode) : null;
 
+  // Text alternative for the canvas: how many of the plotted apps reach
+  // each severity node, and which categories flow out of it.
+  const flows = summariseSeverityFlow(
+    shownApps,
+    data.categories,
+    data.cells,
+    data.severities
+  );
+  const usedCategories = new Set(flows.flatMap((f) => f.categories));
+  const ariaLabel = tA11y("sankey_label", {
+    apps: shownApps.length,
+    categories: usedCategories.size,
+  });
+  const ariaDescription = flows
+    .map((f) =>
+      tA11y("sankey_severity", {
+        severity: f.severity,
+        apps: f.appCount,
+        categories: f.categories.join(tA11y("list_separator")),
+      })
+    )
+    .join(" ");
+
   return (
     <div>
       <EChart
+        ariaDescription={ariaDescription}
+        ariaLabel={ariaLabel}
         height={Math.max(400, 24 + data.categories.length * 22)}
         onClick={handleChartClick}
         option={option}

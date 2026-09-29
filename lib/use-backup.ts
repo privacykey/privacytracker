@@ -57,6 +57,11 @@ export function useBackup({ showToast }: { showToast: (msg: string) => void }) {
   >(null);
   const [restoreError, setRestoreError] = useState<string>("");
   const [restoreConfirmText, setRestoreConfirmText] = useState("");
+  // The server refused the file as not made by this install (409
+  // `untrusted_backup`): a file from another computer, or one exported
+  // before "Delete all data" deleted the signing key. The dialog then says
+  // so and the next confirm sends the explicit opt-in.
+  const [restoreUntrusted, setRestoreUntrusted] = useState(false);
   const [backupSnapshotSettings, setBackupSnapshotSettings] =
     useState<BackupSnapshotSettings>(DEFAULT_BACKUP_SNAPSHOT_SETTINGS);
   const [backupSnapshotDirectory, setBackupSnapshotDirectory] = useState("");
@@ -226,6 +231,7 @@ export function useBackup({ showToast }: { showToast: (msg: string) => void }) {
     setPendingRestoreFilename(null);
     setRestoreError("");
     setRestoreConfirmText("");
+    setRestoreUntrusted(false);
   };
 
   /**
@@ -238,6 +244,7 @@ export function useBackup({ showToast }: { showToast: (msg: string) => void }) {
     setRestoreStage("previewing");
     setPendingRestoreFilename(file.name);
     setRestoreConfirmText("");
+    setRestoreUntrusted(false);
     try {
       const text = await file.text();
       let previewBody: unknown;
@@ -292,16 +299,32 @@ export function useBackup({ showToast }: { showToast: (msg: string) => void }) {
     try {
       const res = await fetch("/api/backup/restore", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(restoreUntrusted ? { "x-allow-untrusted-backup": "1" } : {}),
+        },
         body: pendingRestorePayload,
       });
       if (!res.ok) {
         let msg = "Restore failed";
+        let code: unknown = null;
         try {
           const body = await res.json();
           msg = body?.error || msg;
+          code = body?.code;
         } catch {
           /* no-op */
+        }
+        if (
+          res.status === 409 &&
+          code === "untrusted_backup" &&
+          !restoreUntrusted
+        ) {
+          // Nothing was written. Say why in the dialog and let the user
+          // confirm again with the explicit opt-in.
+          setRestoreUntrusted(true);
+          setRestoreStage("confirm");
+          return;
         }
         setRestoreError(msg);
         setRestoreStage("confirm");
@@ -357,6 +380,7 @@ export function useBackup({ showToast }: { showToast: (msg: string) => void }) {
     setRestoreError,
     restoreConfirmText,
     setRestoreConfirmText,
+    restoreUntrusted,
     backupSnapshotSettings,
     setBackupSnapshotSettings,
     backupSnapshotDirectory,

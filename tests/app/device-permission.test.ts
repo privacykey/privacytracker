@@ -34,8 +34,8 @@ function focusAs(audience: Audience): void {
 
 function setup(audience: Audience): void {
   resetTestDb();
-  // `devices` survives the reset (as it does /api/reset); clear it or the
-  // unique ECID index rejects the next fixture.
+  // resetTestDb empties `devices` too; kept explicit because the unique
+  // ECID index would reject the next fixture if a device row survived.
   db.prepare("DELETE FROM devices").run();
   focusAs(audience);
   setOverride("flag.devopts.cfgutil_uninstall", "on");

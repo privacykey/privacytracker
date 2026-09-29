@@ -4,6 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  A11Y_QUICK_PANEL_SELECTOR,
+  isA11yQuickTogglesOpen,
+} from "@/lib/use-a11y-quick-toggles";
+import AccessibilityEntryButton from "./AccessibilityEntryButton";
 import BrandWordmark from "./BrandWordmark";
 import DeviceScopePicker from "./DeviceScopePicker";
 import NotificationBell from "./NotificationBell";
@@ -186,6 +191,14 @@ export default function Nav({ appCount, flags }: NavProps) {
       if (drawer?.querySelector('[aria-expanded="true"]')) {
         return;
       }
+      // Same for the accessibility panel opened from the drawer's
+      // "Accessibility" item: this Escape closes the panel (its handler
+      // claims the event, or is still to run) and focus returns to that
+      // item in the open drawer. Read from the bridge, not the DOM, which
+      // may not have re-rendered yet.
+      if (event.defaultPrevented || isA11yQuickTogglesOpen()) {
+        return;
+      }
       setMenuOpen(false);
       // The closed drawer is inert, and an inert element can't keep
       // focus, so the browser would drop it to <body>. Hand it back to
@@ -200,6 +213,12 @@ export default function Nav({ appCount, flags }: NavProps) {
         return;
       }
       if (triggerRef.current?.contains(target)) {
+        return;
+      }
+      // The accessibility panel opened from the drawer floats over it.
+      // Working in the panel must not close the drawer: Escape and ✕
+      // return focus to the drawer item that opened it.
+      if ((target as Element).closest?.(A11Y_QUICK_PANEL_SELECTOR)) {
         return;
       }
       setMenuOpen(false);
@@ -391,6 +410,20 @@ export default function Nav({ appCount, flags }: NavProps) {
               </Link>
             );
           })}
+          {/* The accessibility quick-toggles, reachable from the top of
+              the page. On a phone the panel's own button sits at the end
+              of the page (so it never covers a control), a long way from
+              where someone who needs larger text starts. Same panel, not
+              a copy: Escape and ✕ return focus here, or to the menu
+              button if the drawer has closed meanwhile. While the panel
+              is open the Escape handler above leaves the drawer open for
+              it (one layer per Escape, as with the device picker). */}
+          <AccessibilityEntryButton
+            className="nav-drawer-link nav-drawer-a11y"
+            fallbackRef={triggerRef}
+            role="menuitem"
+            testId="nav-drawer-a11y"
+          />
         </div>
       )}
     </nav>

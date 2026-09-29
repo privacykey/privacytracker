@@ -4,6 +4,7 @@ import {
   cpSync,
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -411,6 +412,40 @@ test("release preparation compares against the last tag, not an untagged version
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("parity fixtures do not record the app version, so a release bump needs no re-recording", () => {
+  // `pnpm release:prepare` changes package.json's version and nothing
+  // under core/. The core-parity job re-runs every extractor and diffs its
+  // output, and the Rust replays read the version from package.json, so a
+  // fixture that records it as written fails that job on the release PR.
+  // Extractors mask it as `<APP_VERSION>` and the Rust replay substitutes
+  // it back (extract-bundles-cases.mjs and bundles_tests.rs).
+  const { version } = readReleaseMetadata(root);
+  const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // The whole version, not part of a longer one or of an address.
+  const literal = new RegExp(`(?<![0-9.])${escaped}(?![0-9]|\\.[0-9])`);
+  const outputs = ["core/tests/fixtures", "core/src/server"].flatMap((dir) =>
+    readdirSync(path.join(root, dir))
+      .filter((name) => name.endsWith(".json"))
+      .map((name) => `${dir}/${name}`)
+  );
+  assert.ok(
+    outputs.includes("core/tests/fixtures/bundles-cases.json"),
+    "the scan found the extractor outputs"
+  );
+  const found = outputs.flatMap((file) =>
+    readFileSync(path.join(root, file), "utf8")
+      .split("\n")
+      .flatMap((line, index) =>
+        literal.test(line) ? [`${file}:${index + 1}`] : []
+      )
+  );
+  assert.deepEqual(
+    found,
+    [],
+    `These parity fixtures record ${version}, so the next release bump breaks core-parity. Mask it as <APP_VERSION> in the extractor and substitute it back in the Rust replay. If it is canned data that happens to equal the version, change that data in the extractor.`
+  );
 });
 
 test("Mach-O minimum OS parsing ignores SDK and linker tool versions", () => {

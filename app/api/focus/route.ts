@@ -5,6 +5,9 @@
  * focus model. Writes the five `flag.focus.*` keys atomically. Per docs §4.5
  * the migration in instrumentation.ts handles the legacy `user_intent` key
  * on first boot; new flows never touch it.
+ *
+ * A focus with the Monitor goal also sets the sync schedule to daily when
+ * the user has never chosen one (`applyMonitorSyncDefault`).
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -22,7 +25,11 @@ import {
   isFocusWorkflow,
 } from "@/lib/focus-workflow";
 import { requestBodyErrorResponse } from "@/lib/request-body";
-import { getSetting, setSetting } from "@/lib/scheduler";
+import {
+  applyMonitorSyncDefault,
+  getSetting,
+  setSetting,
+} from "@/lib/scheduler";
 import { readBoundedJson } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
@@ -158,6 +165,12 @@ export async function POST(request: NextRequest) {
     });
     if (childAgeBand !== undefined) {
       setSetting("guardian_child_age_band", childAgeBand ?? "");
+    }
+    // Monitor watches for changes, so it syncs daily unless the user has
+    // already picked a schedule (lib/scheduler.ts). Never reverted when
+    // Monitor is turned off.
+    if (monitor) {
+      applyMonitorSyncDefault();
     }
   } catch (e) {
     console.error("[/api/focus] write failed:", e);

@@ -163,6 +163,7 @@ export type FlagKey =
   | "flag.detail.labels.cards"
   | "flag.detail.labels.profile_mismatch_badges"
   | "flag.detail.labels.no_details_warning"
+  | "flag.detail.labels.trust_card"
 
   // ----- App Detail — timeline
   | "flag.detail.timeline.live_rows"
@@ -286,6 +287,7 @@ export type FlagKey =
   | "flag.settings.admin.export.audit_pdf"
   | "flag.settings.admin.reset"
   | "flag.settings.admin.start_over"
+  | "flag.settings.admin.companion"
 
   // ----- Developer Options
   | "flag.devopts.visible"
@@ -415,7 +417,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.dashboard.stale_section": "on", // stale apps list
   "flag.dashboard.activity_section": "on", // 'this week's activity'
   "flag.dashboard.risk_tier_legend": "collapsed", // reference details, expandable
-  "flag.dashboard.sample_data_banner": "off", // only on while sample apps present
+  "flag.dashboard.sample_data_banner": "off", // "Clear samples" in the sample-mode bar (the bar and its exits always show)
   "flag.dashboard.background_mode_wizard": "on", // Tauri-only callout — runtime-gated on isDesktop()
   "flag.dashboard.task_list": "on", // audience-aware tasks panel at the top of HomeView
   "flag.dashboard.task_journey": "on", // journey-strip rendering of the tasks panel (off = legacy flat list)
@@ -451,6 +453,10 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.detail.labels.cards": "on", // expandable label-type cards
   "flag.detail.labels.profile_mismatch_badges": "on", // mismatch chips on category cards
   "flag.detail.labels.no_details_warning": "on", // 'developer hasn't provided labels' warning
+  // 'How much to trust this label' card: label age, Data Not Collected,
+  // policy cross-check, monetisation (PoPETs 2026-0151). Off by default;
+  // the Monitor goal turns it on for the people auditing their own phone.
+  "flag.detail.labels.trust_card": "off",
 
   // App Detail — timeline
   "flag.detail.timeline.live_rows": "on", // live-sync rows
@@ -580,6 +586,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.settings.admin.export.audit_pdf": "off", // deferred to v0.1.0; flag in registry only
   "flag.settings.admin.reset": "on", // delete-all-data
   "flag.settings.admin.start_over": "on", // start-over button (full wipe)
+  "flag.settings.admin.companion": "on", // Settings → Companion: pair the iPhone app
 
   // Developer Options
   "flag.devopts.visible": "on", // sidebar entry visibility
@@ -736,6 +743,7 @@ export const GOAL_RULES: Record<
     "flag.taskcenter.widget": "on", // already on by default; explicit
     "flag.detail.timeline.live_rows": "on", // explicit — tracking surface
     "flag.detail.timeline.wayback_rows": "on", // historical context for comprehension
+    "flag.detail.labels.trust_card": "on", // how much weight to give a self-declared label
   },
 
   // ----- cleanup: action — remove worst offenders, re-enable some guardian hides (was "declutter")
@@ -803,6 +811,7 @@ export const GOAL_RULES: Record<
     "flag.appgrid.card.risk_chips": "off", // no breakdown chips
     "flag.dashboard.profile_mismatch_section": "off", // hide entire section
     "flag.detail.labels.profile_mismatch_badges": "off", // and the per-card badges
+    "flag.detail.labels.trust_card": "off", // research-backed reading aid is chrome here
     "flag.dashboard.callout.declutter": "off", // hide all callouts
     "flag.dashboard.callout.guardian": "off",
     "flag.dashboard.callout.understand_declutter": "off",
