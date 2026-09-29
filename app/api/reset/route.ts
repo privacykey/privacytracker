@@ -35,12 +35,13 @@ export async function POST(request: Request) {
   // primary guardrails are same-origin + the optional admin token; the
   // rate limit is defence-in-depth. The limit is sized for the E2E
   // suite, one server resetting before most specs: 30/10min was outgrown
-  // once the suite reached about 33 resets a run, so 60 leaves room for
-  // it to grow without weakening either primary guardrail. Keep
-  // core/src/server/writes.rs in step.
+  // once the suite reached about 33 resets a run, and 60 once it reached
+  // about 62 (2026-09-29, with the label-trust and companion specs), so
+  // 120 leaves room for it to grow without weakening either primary
+  // guardrail. Keep core/src/server/writes.rs in step.
   const rate = checkRateLimit({
     key: rateLimitKeyForRequest(request, "reset"),
-    limit: 60,
+    limit: 120,
     windowMs: 10 * 60_000,
   });
   if (!rate.allowed) {
