@@ -218,7 +218,7 @@ export default function HelpFocusContent() {
                 <strong>Keep it minimal</strong> — a deliberately quiet view.
                 Hides the extras — Compare, Privacy Map, Manual Apps, the Task
                 Center, and most of the chrome — so you get a quick health
-                check, not a deep dive.
+                check without the detailed tools.
               </li>
             </ul>
           </section>
@@ -233,13 +233,13 @@ export default function HelpFocusContent() {
                 {tSec("accessibility")}
               </h2>
               <p className="legal-license-blurb">
-                Sits on top of any goal combination above and elevates
-                accessibility-related surfaces independently.
+                Works alongside any goal combination above and shows
+                accessibility tools independently.
               </p>
             </header>
             <p>
               Tick <strong>I also need accessibility info for my apps</strong>.
-              This elevates the accessibility panel on app detail pages, turns
+              This shows the accessibility panel on app detail pages, turns
               on the accessibility filter row in the app grid, auto-shows the
               accessibility-profile setup step in onboarding, and enables the
               accessibility-changes notification type. It works alongside any
