@@ -7,10 +7,10 @@ and CI fails if it is out of date.
 Only normal dependencies are listed: build dependencies run at compile
 time and their own code does not ship, and dev dependencies are tests.
 
-342 crates, by licence:
+344 crates, by licence:
 
 - MIT OR Apache-2.0: 155
-- MIT: 63
+- MIT: 65
 - Apache-2.0 OR MIT: 36
 - MIT/Apache-2.0: 18
 - Unicode-3.0: 18
@@ -190,12 +190,14 @@ time and their own code does not ship, and dev dependencies are tests.
 | markup5ever | 0.38.0 | MIT OR Apache-2.0 | https://github.com/servo/html5ever |
 | matchit | 0.8.4 | MIT AND BSD-3-Clause | https://github.com/ibraheemdev/matchit |
 | memchr | 2.8.3 | Unlicense OR MIT | https://github.com/BurntSushi/memchr |
+| memoffset | 0.9.1 | MIT | https://github.com/Gilnaa/memoffset |
 | mime | 0.3.17 | MIT OR Apache-2.0 | https://github.com/hyperium/mime |
 | minisign-verify | 0.2.5 | MIT | https://github.com/jedisct1/rust-minisign-verify |
 | miniz_oxide | 0.8.9 | MIT OR Zlib OR Apache-2.0 | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide |
 | mio | 1.2.1 | MIT | https://github.com/tokio-rs/mio |
 | muda | 0.19.3 | Apache-2.0 OR MIT | https://github.com/tauri-apps/muda |
 | new_debug_unreachable | 1.0.6 | MIT | https://github.com/mbrubeck/rust-debug-unreachable |
+| nix | 0.31.3 | MIT | https://github.com/nix-rust/nix |
 | notify-rust | 4.18.0 | MIT OR Apache-2.0 | https://github.com/hoodie/notify-rust |
 | num_threads | 0.1.7 | MIT OR Apache-2.0 | https://github.com/jhpratt/num_threads |
 | num-conv | 0.2.2 | MIT OR Apache-2.0 | https://github.com/jhpratt/num-conv |

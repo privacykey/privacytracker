@@ -10,10 +10,10 @@ targets that do.
 Only normal dependencies are listed: build dependencies run at compile
 time and their own code does not ship, and dev dependencies are tests.
 
-142 crates, by licence:
+144 crates, by licence:
 
 - MIT OR Apache-2.0: 65
-- MIT: 25
+- MIT: 27
 - Unicode-3.0: 18
 - Apache-2.0 OR MIT: 8
 - BSD-3-Clause: 3
@@ -104,9 +104,11 @@ time and their own code does not ship, and dev dependencies are tests.
 | lru-slab | 0.1.3 | MIT OR Apache-2.0 OR Zlib | https://github.com/Ralith/lru-slab |
 | matchit | 0.8.4 | MIT AND BSD-3-Clause | https://github.com/ibraheemdev/matchit |
 | memchr | 2.8.3 | Unlicense OR MIT | https://github.com/BurntSushi/memchr |
+| memoffset | 0.9.1 | MIT | https://github.com/Gilnaa/memoffset |
 | mime | 0.3.17 | MIT OR Apache-2.0 | https://github.com/hyperium/mime |
 | miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide |
 | mio | 1.2.3 | MIT | https://github.com/tokio-rs/mio |
+| nix | 0.31.3 | MIT | https://github.com/nix-rust/nix |
 | once_cell | 1.21.4 | MIT OR Apache-2.0 | https://github.com/matklad/once_cell |
 | percent-encoding | 2.3.2 | MIT OR Apache-2.0 | https://github.com/servo/rust-url/ |
 | pin-project-lite | 0.2.17 | Apache-2.0 OR MIT | https://github.com/taiki-e/pin-project-lite |
