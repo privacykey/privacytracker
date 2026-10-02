@@ -23,11 +23,11 @@
     }
   },
   "verdict": {
-    "safe_label": "Marked safe",
-    "safe_short": "Safe",
-    "safe_desc": "Keeping this app — you're comfortable with what it does and how it handles your data.",
+    "safe_label": "Keeping app",
+    "safe_short": "Keep",
+    "safe_desc": "Keep this app and accept its current mismatch with your preferences. New collection or a changed privacy profile asks for a new decision.",
     "replace_label": "Looking for replacement",
-    "replace_short": "Replace",
+    "replace_short": "Plan replacement",
     "replace_desc": "You want a less invasive alternative. Use the Compare view to find candidates and add them to your shortlist.",
     "uninstall_label": "Marked to remove",
     "uninstall_short": "Remove",
@@ -63,7 +63,8 @@
     "error_load": "Failed to load",
     "error_save": "Failed to save",
     "error_clear": "Failed to clear",
-    "error_dismiss": "Failed to dismiss"
+    "error_dismiss": "Failed to dismiss",
+    "keep_accept": "Keep & accept current concern"
   },
   "review_rec": {
     "_comment": "Strings for the /dashboard/review-recommendations review-and-act wizard. Sub-blocks mirror the visual structure: hero, gate, stepper labels, then one block per step (review/compare/action/backup/act), modals, and the printable checklist.",
@@ -442,8 +443,8 @@
       "subtext": "Finds the apps that take the most, with help to remove them."
     },
     "minimal": {
-      "label": "Just the basics",
-      "subtext": "A pared-down audit surface — no extras."
+      "label": "Keep it simple",
+      "subtext": "Less dashboard detail. Your goals and their tools stay enabled."
     },
     "accessibility": {
       "label": "I also need accessibility info for my apps",
@@ -485,7 +486,7 @@
       },
       "help": {
         "title": "Help a friend",
-        "body": "Looking through someone else's apps? We'll help you gather what you find so you can share it or talk it over."
+        "body": "Review their apps once, save your recommendations and hand over a report they can use."
       },
       "guardian": {
         "title": "Looking after a child",
@@ -3148,7 +3149,9 @@
           "age_rating_callout": "\"Apps rated above your child's age range\" notice for the guardian focus."
         }
       },
-      "edit_cards_aria": "Editable dashboard cards"
+      "edit_cards_aria": "Editable dashboard cards",
+      "keep_fixed": "Keep layout fixed",
+      "keep_fixed_hint": "Off: changing focus reorders the cards, including a custom order. Hidden cards stay hidden. Turning this off takes effect at your next focus change."
     },
     "glance": {
       "apps_tracked": "Apps tracked",
@@ -3434,17 +3437,17 @@
     },
     "actions": {
       "uninstall": "Remove",
-      "safe": "Keep",
-      "replace": "Replace",
+      "safe": "Keep & accept",
+      "replace": "Plan replacement",
       "note": "Note",
-      "skip": "Skip for now",
+      "skip": "Decide later · 7 days",
       "undo": "Undo",
       "exit": "Exit",
       "uninstall_hint": "← / 1",
       "safe_hint": "→ / 2",
       "replace_hint": "↑ / 3",
       "note_hint": "↓ / n",
-      "skip_hint": "s — advance without setting a verdict",
+      "skip_hint": "s — bring this decision back to the dashboard in 7 days",
       "undo_hint": "u",
       "exit_hint": "Esc",
       "close_title": "Close review queue (Esc)",
@@ -3495,7 +3498,7 @@
       "select_all": "Select all visible",
       "select_all_n": "Select all {count, plural, one {# app} other {# apps}} visible",
       "clear": "Clear selection",
-      "mark_safe": "Mark safe",
+      "mark_safe": "Keep & accept current concerns",
       "mark_replace": "Mark replace",
       "mark_uninstall": "Mark uninstall",
       "confirm_title": "Apply to {count, plural, one {# app} other {# apps}}?",
@@ -3515,7 +3518,11 @@
       "guardian": "your child"
     },
     "imported_rec_chip": "{name} says {verdict}",
-    "imported_rec_chip_anon": "A recommender says {verdict}"
+    "imported_rec_chip_anon": "A recommender says {verdict}",
+    "decisions_loading": "Loading your saved decisions…",
+    "decisions_error": "Could not load saved decisions. Retry before starting the review.",
+    "decisions_retry": "Retry",
+    "saving_reminder": "Saving your reminder…"
   },
   "policy_rating": {
     "favorable": "Favorable",
@@ -6077,5 +6084,57 @@
     "home": "Home",
     "report": "Report this problem on GitHub",
     "report_note": "Opens a bug report form with this page's address filled in. You can check and change everything before you send it."
+  },
+  "focus_overview": {
+    "title": "Your apps, your next steps",
+    "intent_both": "Monitor what changes and work through the apps you want to clean up.",
+    "intent_cleanup": "Understand the concern, then choose what to keep, compare or remove.",
+    "intent_monitor": "See what changed across the apps you track.",
+    "intent_review": "Review your apps and decide what works for you.",
+    "all_apps": "All {count} apps",
+    "tracked_apps": "Apps tracked",
+    "pending": "Apps with unreviewed changes",
+    "since_visit": "+{count} changed since your last visit",
+    "replacement_plans": "Replacement plans",
+    "due": "{count, plural, one {# decision is ready to revisit.} other {# decisions are ready to revisit.}}",
+    "app_changes": "{count, plural, one {# change to review} other {# changes to review}}",
+    "find_compare": "Find & compare alternatives",
+    "review_app": "Review & decide",
+    "view_app": "View app",
+    "guided_cleanup": "Start guided cleanup",
+    "handoff": "Prepare a report to share",
+    "handoff_hint": "A snapshot of this review. Your saved review stays here; private notes stay out of the report.",
+    "first_visit_hint": "Since-last-visit counts apply to this browser and selected device view.",
+    "audience": {
+      "self": "For me",
+      "loved_one": "Helping someone",
+      "guardian": "For a child"
+    },
+    "goal": {
+      "monitor": "Monitor changes",
+      "cleanup": "Clean up",
+      "minimal": "Simple view",
+      "accessibility": "Accessibility"
+    },
+    "decision": {
+      "review": "Ready to review",
+      "kept": "Keeping · current concern accepted",
+      "replace": "Planning a replacement",
+      "uninstall": "Planned removal",
+      "later": "Decide later"
+    }
+  },
+  "focus_review": {
+    "accepted": "You are keeping this app and accepting its current mismatch with your preferences. We will ask again if its collection changes or you change your privacy profile. Policy and accessibility alerts remain independent.",
+    "keep_hint": "Keeping an app is your choice; it does not certify the app as safe. Select Keep again to accept the current concern.",
+    "replace_hint": "Find an alternative and compare how it handles your data before deciding whether to remove this app.",
+    "find_compare": "Find & compare an alternative",
+    "remind_in": "Remind me in",
+    "days": "{count, plural, one {# day} other {# days}}",
+    "saving": "Saving…",
+    "later": "Decide later",
+    "scheduled": "Saved. This decision will return to your dashboard on {date}.",
+    "cancel": "Cancel reminder",
+    "error": "Could not save or load the decision. Please try again."
   }
 }

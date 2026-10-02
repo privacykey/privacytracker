@@ -445,7 +445,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.appgrid.card.delete_button": "on", // per-card delete
   "flag.appgrid.card.verdict_pill": "on", // per-card user verdict pill (Safe/Replace/Uninstall)
   "flag.appgrid.empty_state": "on", // empty/filter-miss CTA
-  "flag.appgrid.review_queue.enabled": "on", // master — Tinder-style verdict carousel
+  "flag.appgrid.review_queue.enabled": "off", // master — Tinder-style verdict carousel
   "flag.appgrid.review_queue.bulk_select": "on", // bulk-mark mode toggle
   "flag.appgrid.review_queue.cfgutil_uninstall": "off", // Tauri-only end-of-session offer; opt-in
 
@@ -515,7 +515,7 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.detail.header.freshness_badge": "on", // 'last synced N days ago'
   "flag.detail.header.change_count_badge": "on", // red 'N changes'
   "flag.detail.footer.import_provenance": "on", // 'imported via … on DATE'
-  "flag.detail.tabs.compare": "on", // compare tab visibility
+  "flag.detail.tabs.compare": "off", // compare tab visibility
   "flag.detail.annotations_sidebar": "collapsed", // right-rail notes — collapsed for self; loved_one expands; guardian/minimal hide
   "flag.dashboard.annotation_banner": "off", // off until a bundle import populates annotations
   "flag.appgrid.card.annotation_highlight": "off", // off-by-default; loved_one + post-import users see gold border
@@ -641,11 +641,11 @@ export const HARD_DEFAULTS: Record<FlagKey, FlagValue> = {
   "flag.taskcenter.polling": "on", // 4s polling
 
   // Secondary pages
-  "flag.page.compare": "on", // /dashboard/compare
+  "flag.page.compare": "off", // /dashboard/compare
   "flag.page.manual_apps": "on", // /dashboard/manual-apps
   "flag.page.privacy_map": "on", // /dashboard/privacy
   "flag.page.stats": "on", // /dashboard/stats
-  "flag.page.shortlist": "on", // /dashboard/shortlist
+  "flag.page.shortlist": "off", // /dashboard/shortlist
   "flag.help.label_definitions": "on", // /help/definitions
   "flag.help.export_guide": "on", // /help/export-app-list
   "flag.about.ai_disclosure": "on", // /dashboard/about/ai-disclosure
@@ -672,6 +672,8 @@ export const AUDIENCE_RULES: Record<
 
   // ----- loved_one: recommender — elevate sharing, exporting, comparing
   loved_one: {
+    "flag.appgrid.review_queue.enabled": "on",
+    "flag.page.shortlist": "on",
     "flag.global.social_share": "on", // share modal — recommenders share findings
     "flag.shortlist.actions.print": "on", // print recommendations to hand over
     "flag.shortlist.actions.export": "on", // export to share
@@ -691,6 +693,8 @@ export const AUDIENCE_RULES: Record<
 
   // ----- guardian: carer — trim power-user surfaces by default
   guardian: {
+    "flag.appgrid.review_queue.enabled": "on",
+    "flag.dashboard.callout.guardian": "on",
     "flag.global.keyboard_shortcuts": "off", // carers rarely know keyboard shortcuts
     "flag.global.info_tooltips": "off", // less hover help needed in simpler workflow
     "flag.global.label_hints": "off", // animated label hints muted for carer workflow
@@ -725,7 +729,7 @@ export const AUDIENCE_RULES: Record<
 //
 // Multiple goal tiles can be active (e.g. monitor AND cleanup). Goals are
 // applied in the order [monitor, cleanup, minimal] — minimal ("Keep it
-// minimal") is mutually exclusive with the others so it never coexists, but
+// minimal") changes presentation alongside the selected goals;
 // the order is fixed for determinism. `goal.accessibility` is a separate
 // modifier — see ACCESSIBILITY_RULES below.
 
@@ -748,6 +752,8 @@ export const GOAL_RULES: Record<
 
   // ----- cleanup: action — remove worst offenders, re-enable some guardian hides (was "declutter")
   cleanup: {
+    "flag.appgrid.review_queue.enabled": "on",
+    "flag.page.shortlist": "on",
     "flag.dashboard.risk_section": "on", // already on; declutter emphasises (component reads goals)
     "flag.dashboard.callout.declutter": "on", // declutter-specific callout
     "flag.dashboard.callout.understand_only": "off", // suppress the understand-only callout when declutter is also on
@@ -773,66 +779,21 @@ export const GOAL_RULES: Record<
     "flag.detail.tabs.compare": "on", // compare tab back on
   },
 
-  // ----- minimal: simplest surface — strict superset of guardian hides, plus more
+  // Minimal reduces dashboard density and diagnostic chrome, never goals,
+  // notifications, review actions, comparison or the tools those goals enable.
   minimal: {
-    // Mirror guardian's hide list (minimal applies after audience layer — explicit re-state for self/loved_one users picking minimal)
-    "flag.global.keyboard_shortcuts": "off", // hide power-user nav
-    "flag.global.info_tooltips": "off", // less chrome
-    "flag.global.label_hints": "off", // less chrome
-    "flag.global.about_modal": "off", // about dialog is non-essential
-    "flag.global.live_text_modal": "off", // hide unless actively needed
-    "flag.devopts.visible": "off", // dev opts hidden
-    "flag.devopts.ai.debug_logging": "off",
-    "flag.settings.ai.debug_logging": "off",
-    "flag.settings.policies.wayback_import": "off",
-    "flag.desktop.app_section": "off",
-    "flag.page.compare": "off",
-    "flag.page.privacy_map": "off",
-    "flag.page.manual_apps": "off",
-    "flag.page.stats": "off", // simpler than guardian — stats page off entirely
-    "flag.page.shortlist": "off", // shortlist hidden too
-    "flag.taskcenter.widget": "off",
-    "flag.notifications.resume.enabled": "off",
+    "flag.global.info_tooltips": "off",
+    "flag.global.label_hints": "off",
+    "flag.devopts.visible": "off",
     "flag.detail.policy.run_log_strip": "off",
     "flag.detail.policy.run_log_details": "off",
     "flag.detail.policy.chunk_notes": "off",
-    "flag.detail.policy.fallback_references": "off", // less chrome on policy tab
-    "flag.detail.policy.lens_grid": "off", // simpler policy presentation
-    "flag.detail.policy.change_strip": "off",
-    // Minimal-specific extras (beyond guardian)
-    "flag.notifications.bell.polling": "off", // manual refresh only
-    "flag.detail.timeline.wayback_rows": "off", // hide wayback by default
-    "flag.detail.timeline.wayback_toggle": "off", // toggle hidden too
-    "flag.detail.timeline.wayback_import": "off", // and the per-app import control
-    "flag.detail.a11y.preference_highlights": "off", // teal borders considered chrome
-    "flag.appgrid.card.profile_badge": "off", // hide mismatch visualisation
-    "flag.appgrid.card.change_dot": "off", // no pulsing indicators
-    "flag.appgrid.card.freshness_chip": "off", // no freshness chip
-    "flag.appgrid.card.risk_chips": "off", // no breakdown chips
-    "flag.dashboard.profile_mismatch_section": "off", // hide entire section
-    "flag.detail.labels.profile_mismatch_badges": "off", // and the per-card badges
-    "flag.detail.labels.trust_card": "off", // research-backed reading aid is chrome here
-    "flag.dashboard.callout.declutter": "off", // hide all callouts
-    "flag.dashboard.callout.guardian": "off",
-    "flag.dashboard.callout.understand_declutter": "off",
-    "flag.dashboard.callout.understand_only": "off",
-    "flag.dashboard.activity_section": "off", // less context
-    "flag.dashboard.glance_section": "off", // hide glance grid
-    "flag.dashboard.risk_tier_legend": "off", // hide legend
-    "flag.detail.charts.category_trend": "off", // no charts
-    "flag.detail.charts.trend_presets": "off",
-    "flag.detail.charts.trend_legend": "off",
-    "flag.detail.timeline.review_rows": "off", // hide audit trail
-    "flag.detail.timeline.review_snapshot_chips": "off",
-    "flag.detail.timeline.trigger_pills": "off", // less metadata
+    "flag.appgrid.card.risk_chips": "off",
+    "flag.dashboard.activity_section": "off",
+    "flag.dashboard.glance_section": "off",
+    "flag.dashboard.risk_tier_legend": "off",
+    "flag.detail.timeline.trigger_pills": "off",
     "flag.detail.timeline.version_chip": "off",
-    "flag.detail.timeline.matches_live_sync_badge": "off",
-    "flag.detail.annotations_sidebar": "off", // hidden under minimal
-    "flag.dashboard.annotation_banner": "off", // ditto
-    "flag.appgrid.card.annotation_highlight": "off", // ditto
-    "flag.devopts.feature_flag_presets": "off", // simpler surface — no preset workflow
-    "flag.appgrid.review_queue.enabled": "off", // simpler grid; bulk verdict UI hidden
-    "flag.appgrid.review_queue.bulk_select": "off",
   },
 };
 
@@ -862,6 +823,7 @@ export const ACCESSIBILITY_RULES: Partial<Record<FlagKey, FlagValue>> = {
 // Cycles are forbidden; the registry checks at startup.
 
 export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
+  "flag.appgrid.actions.compare_mode": "flag.page.compare",
   // Timeline sub-flags depend on parent rows
   "flag.detail.timeline.wayback_toggle": "flag.detail.timeline.wayback_rows",
   "flag.detail.timeline.wayback_import": "flag.detail.timeline.wayback_rows",
@@ -1083,17 +1045,14 @@ export function activeGoalsFrom(input: {
   accessibility: boolean;
 }): Set<PrimaryGoal | Modifier> {
   const goals = new Set<PrimaryGoal | Modifier>();
+  if (input.monitor) {
+    goals.add("monitor");
+  }
+  if (input.cleanup) {
+    goals.add("cleanup");
+  }
   if (input.minimal) {
-    goals.add("minimal"); // "Keep it minimal" — mutually exclusive with the goal tiles; caller validates
-  } else {
-    if (input.monitor) {
-      goals.add("monitor");
-    }
-    if (input.cleanup) {
-      goals.add("cleanup");
-    }
-    // No silent default: selecting no goal tiles is a valid empty state
-    // (resolves to the hard-default baseline surface).
+    goals.add("minimal");
   }
   if (input.accessibility) {
     goals.add("accessibility");

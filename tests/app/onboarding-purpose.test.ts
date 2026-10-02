@@ -68,7 +68,7 @@ test("loved_one audience (Help tile) opts into the audit-bundle handoff", () => 
       cleanup: true,
       minimal: false,
       accessibility: false,
-      workflow: "custom",
+      workflow: "other_handoff",
       taskOptIns: ["remove_apps_from_phone", "export_audit_bundle"],
     }
   );
@@ -101,7 +101,7 @@ test("accessibility layers onto any selection without changing goals", () => {
   assert.deepEqual(resolved.taskOptIns, ["remove_apps_from_phone"]);
 });
 
-test("minimal stays mutually exclusive with monitor and cleanup", () => {
+test("minimal retains goals, tools and follow-up tasks", () => {
   const resolved = resolvePurposeSelection({
     ...BASE,
     monitor: true,
@@ -110,11 +110,14 @@ test("minimal stays mutually exclusive with monitor and cleanup", () => {
     accessibility: true,
   });
   assert.equal(resolved.minimal, true);
-  assert.equal(resolved.monitor, false);
-  assert.equal(resolved.cleanup, false);
+  assert.equal(resolved.monitor, true);
+  assert.equal(resolved.cleanup, true);
   assert.equal(resolved.accessibility, true);
   assert.equal(resolved.workflow, "custom");
-  assert.deepEqual(resolved.taskOptIns, []);
+  assert.deepEqual(resolved.taskOptIns, [
+    "remove_apps_from_phone",
+    "setup_background_mode",
+  ]);
 });
 
 test("empty selection is a valid baseline with no opt-ins", () => {

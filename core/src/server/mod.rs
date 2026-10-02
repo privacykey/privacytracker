@@ -13,6 +13,7 @@
 
 mod activity_log;
 mod analysis;
+mod focus_review;
 mod apps;
 mod audit_bundle;
 pub mod auth;

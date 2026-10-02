@@ -68,6 +68,7 @@ export interface TriageData {
   highRiskCount: number;
   lastSyncedAt: number;
   moderateRiskCount: number;
+  overview?: import("./focus-review").FocusOverviewData;
   /** True when nothing in the list calls for action right now. */
   quiet: boolean;
   recentActivity: RecentActivityEntry[];

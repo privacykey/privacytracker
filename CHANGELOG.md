@@ -12,6 +12,20 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Focus and dashboard
+
+- Keep Monitor and Cleanup selected while using the simpler view. Comparison,
+  shortlist and guided cleanup follow the chosen focus; individual overrides
+  still take priority.
+- Show an overview of your goals and apps, full counts of unreviewed changes,
+  changes since your last visit in this browser, and actions for the next decision.
+- Keep an app while accepting its current concern, compare alternatives before
+  removal, or return to a decision in 1, 7 or 30 days. New collection or a changed
+  privacy profile reopens an accepted concern; policy and accessibility alerts
+  remain independent. Helping someone defaults to a saved review and report handoff.
+- Reorder dashboard cards when focus changes, preserving hidden choices. Turn
+  on **Keep layout fixed** in either layout editor to preserve your arrangement.
+
 ### Security
 
 - Replace manual network-interface pointer traversal with an owning Rust

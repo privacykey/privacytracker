@@ -27,7 +27,7 @@ test.beforeEach(async ({ request }) => {
     data: {
       audience: "self",
       monitor: true,
-      cleanup: false,
+      cleanup: true,
       minimal: false,
       accessibility: false,
     },
@@ -151,7 +151,7 @@ browserFlow(
       data: {
         audience: "self",
         monitor: true,
-        cleanup: false,
+        cleanup: true,
         minimal: false,
         accessibility: false,
       },

@@ -4,10 +4,7 @@
 //! Three details here are easy to get wrong and none of them is visible in the
 //! response shape:
 //!
-//!   1. **Mutual exclusion is applied on READ.** `activeGoalsFrom` only adds
-//!      monitor/cleanup in the `else` branch of `if (minimal)`, so a database
-//!      holding minimal=true AND monitor=true reports `monitor: false`. A port
-//!      that echoes the stored settings diverges on exactly that row.
+//!   1. Minimal retains the stored Monitor and Cleanup goals.
 //!   2. **`audience` and `audienceSet` read the same key with different
 //!      fallbacks.** `audience` is `stored || "self"`; `audienceSet` is
 //!      `stored !== ""`. A stored empty string yields
@@ -56,15 +53,15 @@ struct FocusBody {
 }
 
 /// Port of `inferFocusWorkflow`. Note `accessibility` is deliberately NOT
-/// considered, and `minimal` short-circuits to "custom".
+/// considered; Minimal affects presentation only.
 pub(super) fn infer_focus_workflow(
     audience: &str,
     monitor: bool,
     cleanup: bool,
-    minimal: bool,
+    _minimal: bool,
 ) -> &'static str {
-    if minimal {
-        return "custom";
+    if audience == "loved_one" {
+        return "other_handoff";
     }
     if audience == "self" {
         if monitor && !cleanup {
@@ -106,9 +103,9 @@ pub async fn focus(State(state): State<AppState>) -> Response {
     let minimal = get("flag.focus.goal.minimal", "") == "true";
     let accessibility = get("flag.focus.goal.accessibility", "") == "true";
 
-    // activeGoalsFrom: minimal SUPPRESSES monitor/cleanup.
-    let monitor = !minimal && raw_monitor;
-    let cleanup = !minimal && raw_cleanup;
+    // Minimal only changes presentation.
+    let monitor = raw_monitor;
+    let cleanup = raw_cleanup;
 
     // `aiConfigured` is a two-way emptiness/disabled test, not a provider
     // normalisation — an unrecognised provider string counts as configured.
@@ -148,20 +145,10 @@ pub async fn focus(State(state): State<AppState>) -> Response {
 mod tests {
     use super::*;
 
-    /// The suppression rule, extracted so it can be asserted directly. This
-    /// is the one line a naive "echo the stored settings" port gets wrong.
-    fn effective_goal(minimal: bool, raw: bool) -> bool {
-        !minimal && raw
-    }
-
     #[test]
-    fn minimal_suppresses_the_goal_tiles() {
-        // Stored monitor=true is reported FALSE while minimal is set.
-        assert!(!effective_goal(true, true));
-        assert!(!effective_goal(true, false));
-        // With minimal off the stored value passes through unchanged.
-        assert!(effective_goal(false, true));
-        assert!(!effective_goal(false, false));
+    fn minimal_retains_the_goal_tiles() {
+        let goals = super::super::flags::Goals::from_stored(true, true, true, false);
+        assert!(goals.monitor && goals.cleanup && goals.minimal);
     }
 
     #[test]
@@ -177,17 +164,20 @@ mod tests {
         // Both goals, or neither, is ambiguous → custom.
         assert_eq!(infer_focus_workflow("self", true, true, false), "custom");
         assert_eq!(infer_focus_workflow("self", false, false, false), "custom");
-        // Non-self audiences always collapse to custom.
+        // Helping someone defaults to handoff; guardian keeps its own audience.
         assert_eq!(
             infer_focus_workflow("guardian", true, false, false),
             "custom"
         );
         assert_eq!(
             infer_focus_workflow("loved_one", true, false, false),
-            "custom"
+            "other_handoff"
         );
-        // minimal short-circuits before anything else.
-        assert_eq!(infer_focus_workflow("self", true, false, true), "custom");
+        // Minimal retains the selected job.
+        assert_eq!(
+            infer_focus_workflow("self", true, false, true),
+            "self_monitor"
+        );
     }
 
     #[test]
