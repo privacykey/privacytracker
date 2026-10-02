@@ -69,6 +69,16 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- "Data Not Collected" is shown as the developer's disclosure, like every
+  other label, rather than as a pass. Compare no longer paints the slot green
+  with a check mark: it names the label in a neutral chip beside the link to
+  the privacy policy, whose tooltip now says to compare the two. The risk
+  legend, the Minimal tooltip on the apps grid, the stats heatmap ("Not
+  declared", "Hide apps that declare no data") and its screen-reader summary
+  say what the label declares instead of stating that no data is collected.
+  An app whose label couldn't be read no longer suggests it "may collect no
+  data".
+
 - Only releases are published to the Docker image
   `ghcr.io/privacykey/privacytracker`. A release gets its version tag, and a
   final release also `<major>.<minor>` and `latest`, so `latest` now means
@@ -833,6 +843,12 @@ Going forward, changes are recorded here as they land.
   that screen is the one the device gets. `POST /api/imports/items`
   accepts an optional `deviceId` for this, attached only to an import that
   has no device yet and only if the device exists.
+- The dashboard's "How we score risk" legend appears again. Its flag,
+  `flag.dashboard.risk_tier_legend`, has three values and defaults to
+  `collapsed` (shown, closed), but the dashboard read it as on or off, so
+  the default counted as off and the legend never rendered. It now shows
+  closed by default, starts open when the flag is set to `on` in Developer
+  Options, and stays hidden for `off` and for a "Keep it minimal" focus.
 
 ### Added
 

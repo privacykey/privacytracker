@@ -220,8 +220,9 @@ export interface DashboardFlagState {
   reviewSection: boolean;
   /** Risk-section watchlist block. */
   riskSection: boolean;
-  /** Collapsible risk-tier reference legend. */
-  riskTierLegend: boolean;
+  /** Collapsible risk-tier reference legend. Tri-state: "collapsed" (the
+   *  default) shows it closed, "on" shows it open, "off" hides it. */
+  riskTierLegend: "on" | "off" | "collapsed";
   /** Stale apps (not synced in 30+ days). */
   staleSection: boolean;
   /** Audience-aware "tasks worth trying" panel at the very top. Off
@@ -504,7 +505,7 @@ export default function HomeView({
   const showProfileMismatch = flags?.profileMismatchSection ?? true;
   const showStale = flags?.staleSection ?? true;
   const showActivity = flags?.activitySection ?? true;
-  const showRiskTierLegend = flags?.riskTierLegend ?? true;
+  const riskTierLegend = flags?.riskTierLegend ?? "collapsed";
   const showTaskList = flags?.taskList ?? true;
   const showBackgroundModeWizard = flags?.backgroundModeWizard ?? false;
   const showLayoutEditorLink = flags?.layoutEditorVisible ?? true;
@@ -642,7 +643,9 @@ export default function HomeView({
         <ActivitySection activity={triage.recentActivity} />
       ) : null,
     risk_tier_legend: () =>
-      showRiskTierLegend ? <RiskTierLegend id="risk-tiers" /> : null,
+      riskTierLegend === "off" ? null : (
+        <RiskTierLegend id="risk-tiers" open={riskTierLegend === "on"} />
+      ),
   };
 
   return editMode ? (
@@ -1379,7 +1382,7 @@ function ManualAppsBanner({
   );
 }
 
-function RiskTierLegend({ id }: { id: string }) {
+function RiskTierLegend({ id, open }: { id: string; open: boolean }) {
   // i18n — legend chrome from `dashboard.risk_tier_legend.*`, the four
   // tier explainer cards from `dashboard.risk_tiers.${key}_{rule|meaning|example}`,
   // and the pill labels themselves from the shared `risk.*_label`
@@ -1389,7 +1392,10 @@ function RiskTierLegend({ id }: { id: string }) {
   const tRisk = useTranslations("risk");
   return (
     <section className="home-section home-section-legend" id={id}>
-      <details className="risk-tier-legend">
+      {/* `open` only sets the starting state; the reader can still
+          toggle it, and React leaves the attribute alone until the flag
+          itself changes. */}
+      <details className="risk-tier-legend" open={open}>
         <summary className="risk-tier-legend-summary">
           <span className="risk-tier-legend-kicker">{t("kicker")}</span>
           <span className="risk-tier-legend-hint">{t("hint")}</span>

@@ -21122,11 +21122,6 @@ html[data-theme-override="light"]
     background 0.15s;
 }
 
-.compare-slot-header-ok {
-  background: color-mix(in srgb, var(--green, #28b463) 8%, var(--surface));
-  border-color: color-mix(in srgb, var(--green, #28b463) 45%, var(--border));
-}
-
 .compare-slot-header-warn {
   background: color-mix(in srgb, var(--yellow, #ffd60a) 9%, var(--surface));
   border-color: color-mix(in srgb, var(--yellow, #ffd60a) 50%, var(--border));
@@ -21168,10 +21163,12 @@ html[data-theme-override="light"]
   border-radius: 999px;
 }
 
-.compare-slot-chip-ok {
-  color: var(--green, #28b463);
-  background: color-mix(in srgb, var(--green, #28b463) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--green, #28b463) 45%, transparent);
+/* Data Not Collected, named as the developer's disclosure: neutral, like the
+   other labels, never a green pass. */
+.compare-slot-chip-declared {
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
 }
 
 .compare-slot-chip-warn {
