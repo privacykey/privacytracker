@@ -617,14 +617,12 @@ export default function VerdictPicker({
         </div>
 
         {errorBlock}
-        {!compact && (
-          <ReviewNextStep
-            appId={appId}
-            key={`${appId}:${state.user?.updatedAt ?? 0}`}
-            onChange={() => onChange?.(state.user?.verdict ?? null)}
-            verdict={state.user?.verdict ?? null}
-          />
-        )}
+        <ReviewNextStep
+          appId={appId}
+          key={`${appId}:${state.user?.updatedAt ?? 0}`}
+          onChange={() => onChange?.(state.user?.verdict ?? null)}
+          verdict={state.user?.verdict ?? null}
+        />
       </section>
     );
   }
@@ -726,14 +724,12 @@ export default function VerdictPicker({
         </div>
 
         {errorBlock}
-        {!compact && (
-          <ReviewNextStep
-            appId={appId}
-            key={`${appId}:${state.user?.updatedAt ?? 0}`}
-            onChange={() => onChange?.(state.user?.verdict ?? null)}
-            verdict={state.user?.verdict ?? null}
-          />
-        )}
+        <ReviewNextStep
+          appId={appId}
+          key={`${appId}:${state.user?.updatedAt ?? 0}`}
+          onChange={() => onChange?.(state.user?.verdict ?? null)}
+          verdict={state.user?.verdict ?? null}
+        />
       </section>
     );
   }
@@ -816,14 +812,12 @@ export default function VerdictPicker({
       )}
 
       {errorBlock}
-      {!compact && (
-        <ReviewNextStep
-          appId={appId}
-          key={`${appId}:${state.user?.updatedAt ?? 0}`}
-          onChange={() => onChange?.(state.user?.verdict ?? null)}
-          verdict={state.user?.verdict ?? null}
-        />
-      )}
+      <ReviewNextStep
+        appId={appId}
+        key={`${appId}:${state.user?.updatedAt ?? 0}`}
+        onChange={() => onChange?.(state.user?.verdict ?? null)}
+        verdict={state.user?.verdict ?? null}
+      />
     </section>
   );
 }
