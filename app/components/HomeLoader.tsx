@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { type DashboardLayout, DEFAULT_LAYOUT } from "@/lib/dashboard-layout";
 import { describePurpose } from "@/lib/onboarding-purpose";
 import { isSameOriginPath } from "@/lib/same-origin-path";
-import { useFlagBundle, useFlagBundleStatus } from "@/lib/use-flag-bundle";
+import { useFlagBundleStatus, useFlagValues } from "@/lib/use-flag-bundle";
 import BundleImportProvenanceBanner from "./BundleImportProvenanceBanner";
 import CoachmarkTour from "./CoachmarkTour";
 import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
@@ -41,9 +41,19 @@ import TaskList from "./TaskList";
  *
  * FLAGS FAIL OPEN. The page's resolver catch produced `undefined`, and
  * HomeView / Nav apply their own `?? true` / `?? false` defaults to an
- * undefined flag state. useFlagBundle fails CLOSED, so on failedToLoad
- * this passes `undefined` — never a bundle of falses, which would render
- * an empty dashboard and a link-less nav.
+ * undefined flag state. A failed bundle read leaves every key unset, so
+ * on failedToLoad this passes `undefined` — never a bundle of falses,
+ * which would render an empty dashboard and a link-less nav.
+ *
+ * RAW READ. The keys are read raw (useFlagValues) and coerced with
+ * `=== "on"` here, key by key, because one of them is tri-state:
+ * `flag.dashboard.risk_tier_legend` defaults to "collapsed", which a
+ * boolean read turns into false. That hid the "How we score risk" legend
+ * for every focus. It is passed through raw, as AppDetailLoader does for
+ * the annotations rail. useFlagValues rather than the hard-default
+ * seeded hook, because the HELD MOUNT below waits on its `null`; a
+ * seeded value would paint the legend for a minimal focus and then take
+ * it away.
  *
  * HELD MOUNT. `layout` seeds useDashboardLayoutSaver's useState and never
  * re-syncs — mounting HomeView in edit mode with DEFAULT_LAYOUT after a
@@ -101,6 +111,7 @@ const DASHBOARD_FLAG_KEYS = [
   "flag.onboarding.coachmark_tour",
 ] as const;
 
+type DashboardFlagKey = (typeof DASHBOARD_FLAG_KEYS)[number];
 type HomeProps = Parameters<typeof HomeView>[0];
 type NavFlags = Parameters<typeof Nav>[0]["flags"];
 type TourGoals = Parameters<typeof CoachmarkTour>[0]["goals"];
@@ -166,9 +177,9 @@ export default function HomeLoader() {
     HomeProps["ageRatingFlagged"] | undefined
   >(undefined);
 
-  const bundle = useFlagBundle(DASHBOARD_FLAG_KEYS);
+  const flagValues = useFlagValues(DASHBOARD_FLAG_KEYS);
   const { failedToLoad } = useFlagBundleStatus();
-  const flagsSettled = bundle !== null || failedToLoad;
+  const flagsSettled = flagValues !== null || failedToLoad;
   const { ready: scopeReady, scopeParam } = useDeviceScope();
 
   // Wave 1 — every read the page did before deciding whether to render.
@@ -293,7 +304,7 @@ export default function HomeLoader() {
   }, [sampleMode, router, scopeReady, scopeParam, editLayoutRequested, retry]);
 
   const ageRatingCalloutOn =
-    !failedToLoad && bundle?.["flag.dashboard.callout.age_rating"] === true;
+    !failedToLoad && flagValues?.["flag.dashboard.callout.age_rating"] === "on";
 
   // Wave 2 — gated on the resolved flag, exactly as the page gated the
   // full-table scan behind it. It no longer waits for wave 1 as well:
@@ -356,53 +367,57 @@ export default function HomeLoader() {
     );
   }
 
-  const v = failedToLoad ? null : bundle;
+  const v = failedToLoad ? null : flagValues;
+  const on = (key: DashboardFlagKey) => v?.[key] === "on";
   const flags: DashboardFlagState | undefined = v
     ? {
         callout: {
-          age_rating: v["flag.dashboard.callout.age_rating"],
-          declutter: v["flag.dashboard.callout.declutter"],
-          guardian: v["flag.dashboard.callout.guardian"],
-          understand_declutter:
-            v["flag.dashboard.callout.understand_declutter"],
-          understand_only: v["flag.dashboard.callout.understand_only"],
+          age_rating: on("flag.dashboard.callout.age_rating"),
+          declutter: on("flag.dashboard.callout.declutter"),
+          guardian: on("flag.dashboard.callout.guardian"),
+          understand_declutter: on(
+            "flag.dashboard.callout.understand_declutter"
+          ),
+          understand_only: on("flag.dashboard.callout.understand_only"),
         },
-        focusStrip: v["flag.dashboard.focus_strip"],
-        heroQuiet: v["flag.dashboard.hero.quiet_state"],
-        heroAttention: v["flag.dashboard.hero.attention_state"],
-        manualAppsBanner: v["flag.dashboard.manual_apps_banner"],
-        riskSection: v["flag.dashboard.risk_section"],
-        glanceSection: v["flag.dashboard.glance_section"],
-        reviewSection: v["flag.dashboard.review_section"],
-        profileMismatchSection: v["flag.dashboard.profile_mismatch_section"],
-        staleSection: v["flag.dashboard.stale_section"],
-        activitySection: v["flag.dashboard.activity_section"],
-        riskTierLegend: v["flag.dashboard.risk_tier_legend"],
-        backgroundModeWizard: v["flag.dashboard.background_mode_wizard"],
-        taskList: v["flag.dashboard.task_list"],
-        layoutEditorVisible: v["flag.dashboard.layout_editor.visible"],
+        focusStrip: on("flag.dashboard.focus_strip"),
+        heroQuiet: on("flag.dashboard.hero.quiet_state"),
+        heroAttention: on("flag.dashboard.hero.attention_state"),
+        manualAppsBanner: on("flag.dashboard.manual_apps_banner"),
+        riskSection: on("flag.dashboard.risk_section"),
+        glanceSection: on("flag.dashboard.glance_section"),
+        reviewSection: on("flag.dashboard.review_section"),
+        profileMismatchSection: on("flag.dashboard.profile_mismatch_section"),
+        staleSection: on("flag.dashboard.stale_section"),
+        activitySection: on("flag.dashboard.activity_section"),
+        // Tri-state, passed raw (see RAW READ above). A key the server
+        // did not return falls back to the hard default.
+        riskTierLegend: v["flag.dashboard.risk_tier_legend"] ?? "collapsed",
+        backgroundModeWizard: on("flag.dashboard.background_mode_wizard"),
+        taskList: on("flag.dashboard.task_list"),
+        layoutEditorVisible: on("flag.dashboard.layout_editor.visible"),
       }
     : undefined;
   const navFlags: NavFlags = v
     ? {
-        appCountBadge: v["flag.nav.app_count_badge"],
-        notificationBell: v["flag.nav.notification_bell"],
-        notificationBellPolling: v["flag.notifications.bell.polling"],
-        taskCenterTrigger: v["flag.nav.task_center_trigger"],
-        taskListIcon: v["flag.nav.task_list_icon"],
-        mobileDrawer: v["flag.nav.mobile_drawer"],
-        pagePrivacyMap: v["flag.page.privacy_map"],
-        pageStats: v["flag.page.stats"],
-        pageShortlist: v["flag.page.shortlist"],
+        appCountBadge: on("flag.nav.app_count_badge"),
+        notificationBell: on("flag.nav.notification_bell"),
+        notificationBellPolling: on("flag.notifications.bell.polling"),
+        taskCenterTrigger: on("flag.nav.task_center_trigger"),
+        taskListIcon: on("flag.nav.task_list_icon"),
+        mobileDrawer: on("flag.nav.mobile_drawer"),
+        pagePrivacyMap: on("flag.page.privacy_map"),
+        pageStats: on("flag.page.stats"),
+        pageShortlist: on("flag.page.shortlist"),
       }
     : undefined;
-  const taskJourneyVariant: "journey" | "list" = v?.[
+  const taskJourneyVariant: "journey" | "list" = on(
     "flag.dashboard.task_journey"
-  ]
+  )
     ? "journey"
     : "list";
   // The page's catch resolved this to false; a failed bundle does too.
-  const tourEnabled = v?.["flag.onboarding.coachmark_tour"] === true;
+  const tourEnabled = on("flag.onboarding.coachmark_tour");
 
   const { focus } = data;
   const focusSummary: FocusSummary | null = focus?.audienceSet
