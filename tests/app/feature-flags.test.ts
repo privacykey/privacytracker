@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { FlagKey, FlagValue } from "../../lib/feature-flag-rules";
+import {
+  FLAG_DEPENDENCIES,
+  type FlagKey,
+  type FlagValue,
+  isTriStateFlag,
+  parentHidesDependents,
+} from "../../lib/feature-flag-rules";
 import { type ResolverContext, resolveFlag } from "../../lib/feature-flags";
 
 function ctx(
@@ -91,6 +97,119 @@ test("age-rating callout chains off the master via FLAG_DEPENDENCIES", () => {
   assert.equal(
     resolveFlag("flag.dashboard.callout.age_rating", guardianCtx(overrides)),
     "off"
+  );
+});
+
+test("a 'collapsed' two-state parent still turns its dependents off", () => {
+  // Dev Options can set any flag to 'collapsed'. Clients read a two-state
+  // flag at 'collapsed' as off, so the callout must follow the master.
+  const overrides = new Map([
+    ["flag.guardian.age_rating", "collapsed"] as const,
+  ]);
+  assert.equal(
+    resolveFlag("flag.dashboard.callout.age_rating", guardianCtx(overrides)),
+    "off"
+  );
+});
+
+// ── dependencies on a tri-state parent ────────────────────────────────
+
+test("parentHidesDependents: 'collapsed' hides only under a two-state parent", () => {
+  assert.equal(isTriStateFlag("flag.detail.a11y.panel"), true);
+  assert.equal(isTriStateFlag("flag.detail.policy.run_log_strip"), true);
+  assert.equal(isTriStateFlag("flag.guardian.age_rating"), false);
+  for (const parent of [
+    "flag.detail.a11y.panel",
+    "flag.detail.policy.run_log_strip",
+  ] as const) {
+    assert.equal(parentHidesDependents(parent, "on"), false);
+    assert.equal(parentHidesDependents(parent, "collapsed"), false);
+    assert.equal(parentHidesDependents(parent, "off"), true);
+  }
+  assert.equal(parentHidesDependents("flag.guardian.age_rating", "on"), false);
+  assert.equal(
+    parentHidesDependents("flag.guardian.age_rating", "collapsed"),
+    true
+  );
+  assert.equal(parentHidesDependents("flag.guardian.age_rating", "off"), true);
+});
+
+test("every tri-state dependency parent is one of the two the rule was decided for", () => {
+  // The dependency rule was changed for these two edges after checking
+  // what their dependents show. A new tri-state parent needs the same
+  // check before it joins the list.
+  const triStateParents = Object.entries(FLAG_DEPENDENCIES)
+    .filter(([, parent]) => isTriStateFlag(parent as FlagKey))
+    .map(([child, parent]) => `${child} -> ${parent}`)
+    .sort();
+  assert.deepEqual(triStateParents, [
+    "flag.detail.a11y.preference_highlights -> flag.detail.a11y.panel",
+    "flag.detail.policy.run_log_details -> flag.detail.policy.run_log_strip",
+  ]);
+});
+
+test("a 'collapsed' accessibility panel keeps the preference highlights on", () => {
+  // Without the accessibility modifier the panel stays at its 'collapsed'
+  // default: the tab shows, so the preferences saved in Settings must
+  // still highlight. It used to resolve 'off' here.
+  for (const goals of [[], ["monitor"], ["cleanup"], ["minimal"]] as const) {
+    const c = focusCtx([...goals]);
+    assert.equal(resolveFlag("flag.detail.a11y.panel", c), "collapsed");
+    assert.equal(
+      resolveFlag("flag.detail.a11y.preference_highlights", c),
+      "on",
+      `goals: ${goals.join("+") || "none"}`
+    );
+  }
+  // The modifier expands the panel; the highlights stay on.
+  const a11y = focusCtx(["accessibility"]);
+  assert.equal(resolveFlag("flag.detail.a11y.panel", a11y), "on");
+  assert.equal(
+    resolveFlag("flag.detail.a11y.preference_highlights", a11y),
+    "on"
+  );
+  // An 'off' panel hides the tab, and the highlights with it.
+  const off = focusCtx(
+    ["monitor"],
+    new Map([["flag.detail.a11y.panel", "off"] as const])
+  );
+  assert.equal(
+    resolveFlag("flag.detail.a11y.preference_highlights", off),
+    "off"
+  );
+});
+
+test("a 'collapsed' run-log strip keeps its full trace at 'collapsed'", () => {
+  // The strip shows at its default, so the trace inside it shows too,
+  // closed. It used to resolve 'off' for every focus.
+  const c = focusCtx(["monitor"]);
+  assert.equal(resolveFlag("flag.detail.policy.run_log_strip", c), "collapsed");
+  assert.equal(
+    resolveFlag("flag.detail.policy.run_log_details", c),
+    "collapsed"
+  );
+  // Minimal and guardian turn both off with their own rules.
+  assert.equal(
+    resolveFlag("flag.detail.policy.run_log_details", focusCtx(["minimal"])),
+    "off"
+  );
+  assert.equal(
+    resolveFlag("flag.detail.policy.run_log_details", guardianCtx()),
+    "off"
+  );
+  // An 'off' strip takes the trace with it, and an override on the trace
+  // still beats that.
+  const stripOff = new Map<FlagKey, FlagValue>([
+    ["flag.detail.policy.run_log_strip", "off"],
+  ]);
+  assert.equal(
+    resolveFlag("flag.detail.policy.run_log_details", focusCtx([], stripOff)),
+    "off"
+  );
+  stripOff.set("flag.detail.policy.run_log_details", "on");
+  assert.equal(
+    resolveFlag("flag.detail.policy.run_log_details", focusCtx([], stripOff)),
+    "on"
   );
 });
 

@@ -814,13 +814,44 @@ export const ACCESSIBILITY_RULES: Partial<Record<FlagKey, FlagValue>> = {
 };
 
 // ============================================================================
-// FLAG_DEPENDENCIES — child auto-off when parent is off/collapsed
+// FLAG_DEPENDENCIES — child auto-off when its parent is hidden
 // ============================================================================
 //
-// If a parent resolves to anything other than 'on', the dependent flag is
-// treated as 'off' regardless of its own resolution. User overrides on the
-// dependent flag still win — the dependency only suppresses defaults.
+// If a parent is hidden (`parentHidesDependents` below), the dependent flag
+// is treated as 'off' regardless of its own resolution. User overrides on
+// the dependent flag still win — the dependency only suppresses defaults.
 // Cycles are forbidden; the registry checks at startup.
+
+/**
+ * Tri-state flags are the ones whose hard default is 'collapsed': 'on'
+ * shows the surface expanded, 'collapsed' shows it not expanded, 'off'
+ * hides it. Clients read them raw (`!== "off"` to decide whether to
+ * render). Every other flag is two-state, and clients read anything but
+ * 'on' as off.
+ */
+export function isTriStateFlag(key: FlagKey): boolean {
+  return HARD_DEFAULTS[key] === "collapsed";
+}
+
+/**
+ * Whether a parent resolved to `value` turns its dependents 'off' (step 6
+ * of `computeFlag`). It does exactly when the parent itself is hidden:
+ * 'off' for a tri-state parent, anything but 'on' for a two-state one. A
+ * 'collapsed' tri-state parent is on screen, so its dependents keep their
+ * own value. `flag.detail.a11y.panel` and
+ * `flag.detail.policy.run_log_strip` are the tri-state parents today;
+ * under the old `!== "on"` test their dependents (the accessibility
+ * preference highlights and the run log's full trace) were off for every
+ * focus that left the parent at its 'collapsed' default.
+ *
+ * `core/src/server/flags.rs` (`parent_hides_dependents`) mirrors this.
+ */
+export function parentHidesDependents(
+  parent: FlagKey,
+  value: FlagValue
+): boolean {
+  return isTriStateFlag(parent) ? value === "off" : value !== "on";
+}
 
 export const FLAG_DEPENDENCIES: Partial<Record<FlagKey, FlagKey>> = {
   "flag.appgrid.actions.compare_mode": "flag.page.compare",

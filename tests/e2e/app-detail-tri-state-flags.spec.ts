@@ -23,10 +23,15 @@ import {
  *   - "on" (an override): rendered; a <details> starts open;
  *   - "off" (an override, or GOAL_RULES.minimal): not rendered.
  *
- * The resolver turns a dependent flag "off" while its parent is not
- * "on". `run_log_details` hangs off `run_log_strip`, so under the
- * default focus the strip shows without its full trace, and an "on"
- * strip brings the trace back closed.
+ * Two dependents hang off these flags: `run_log_details` off
+ * `run_log_strip`, and `a11y.preference_highlights` off `a11y.panel`.
+ * The resolver turns a dependent "off" only while its parent is hidden,
+ * and a tri-state parent at "collapsed" is shown
+ * (`parentHidesDependents`). So under the default focus the strip
+ * carries its full trace, closed, and the Accessibility tab highlights
+ * the features a saved accessibility profile asks for. Before that
+ * rule, any parent short of "on" turned its dependents off, and both
+ * were missing without an override or the accessibility modifier.
  *
  * Chunk notes are not driven here: they need a multi-chunk AI summary,
  * which no route can create without a model. They use the same read
@@ -45,7 +50,19 @@ const browserFlow = process.env.CODEX_SANDBOX ? test.skip : test;
 const A11Y_PANEL = "flag.detail.a11y.panel";
 const RUN_LOG_STRIP = "flag.detail.policy.run_log_strip";
 const RUN_LOG_DETAILS = "flag.detail.policy.run_log_details";
-const OVERRIDDEN = [A11Y_PANEL, RUN_LOG_STRIP, RUN_LOG_DETAILS];
+
+/**
+ * The overrides the current test has set, so cleanup deletes only those.
+ * The per-key DELETE route allows 30 calls a minute and the whole suite
+ * shares that budget: clearing every key around every test spent all 30
+ * here and left the specs after this one with 429s.
+ */
+const overridden = new Set<string>();
+
+const A11Y_HIGHLIGHTS = "flag.detail.a11y.preference_highlights";
+
+/** Two features, so the profile key card shows both tiers. */
+const A11Y_PROFILE = { voiceover: "required", dark_interface: "nice" };
 
 /** Focus payload shape accepted by POST /api/focus. */
 interface FocusPayload {
@@ -95,6 +112,9 @@ async function setOverride(
   key: string,
   value: "on" | "off"
 ) {
+  // Recorded before the write, so a POST that lands but fails its check
+  // is still cleaned up.
+  overridden.add(key);
   await expect(
     await request.post("/api/feature-flags/overrides", {
       headers: sameOriginHeaders,
@@ -104,14 +124,28 @@ async function setOverride(
 }
 
 async function clearOverrides(request: APIRequestContext) {
-  for (const key of OVERRIDDEN) {
+  for (const key of overridden) {
     await expect(
       await request.delete(
         `/api/feature-flags/overrides/${encodeURIComponent(key)}`,
         { headers: sameOriginHeaders }
       )
     ).toBeOK();
+    overridden.delete(key);
   }
+}
+
+/** Save an accessibility profile, or clear it with `null`. */
+async function setA11yProfile(
+  request: APIRequestContext,
+  profile: Record<string, string> | null
+) {
+  await expect(
+    await request.put("/api/accessibility-profile", {
+      headers: sameOriginHeaders,
+      data: { profile },
+    })
+  ).toBeOK();
 }
 
 /**
@@ -148,6 +182,8 @@ async function openPolicyTab(page: Page) {
 test.beforeAll(async ({ request }) => {
   // One reset and one seed for the file: both routes are rate limited and
   // the whole suite shares their budget, and nothing below removes an app.
+  // The reset also clears any override an earlier spec left, which is why
+  // each test only has to undo its own.
   await expect(
     await request.post("/api/reset", { headers: sameOriginHeaders })
   ).toBeOK();
@@ -179,11 +215,11 @@ test.beforeAll(async ({ request }) => {
 
 test.beforeEach(async ({ request }) => {
   await setFocus(request, MONITOR_FOCUS);
-  await clearOverrides(request);
 });
 
 test.afterEach(async ({ request }) => {
   await clearOverrides(request);
+  await setA11yProfile(request, null);
   await setFocus(request, MONITOR_FOCUS);
 });
 
@@ -220,36 +256,81 @@ browserFlow(
 );
 
 browserFlow(
-  "the default 'collapsed' strip renders the last run, without its trace",
+  "a saved accessibility profile is highlighted under the default 'collapsed' panel",
   async ({ page, request }) => {
-    expect(await resolved(request, RUN_LOG_STRIP)).toBe("collapsed");
-    // Its parent is not "on", so the resolver turns it off.
-    expect(await resolved(request, RUN_LOG_DETAILS)).toBe("off");
+    await setA11yProfile(request, A11Y_PROFILE);
+    // No accessibility modifier: the panel stays "collapsed", which is
+    // shown, so the highlights that depend on it stay on.
+    expect(await resolved(request, A11Y_PANEL)).toBe("collapsed");
+    expect(await resolved(request, A11Y_HIGHLIGHTS)).toBe("on");
 
-    const strip = await openPolicyTab(page);
-    await expect(strip).toBeVisible();
-    await expect(strip).toContainText("needs-config");
-    await expect(strip.locator("details")).toHaveCount(0);
+    await openDetail(page);
+    await page.locator("#tab-accessibility").click();
+    const panel = page.locator("#tabpanel-accessibility");
+    await expect(panel.locator(".a11y-profile-key")).toBeVisible();
+    await expect(
+      panel.locator(".a11y-feature-row.has-preference.pref-required")
+    ).toHaveCount(1);
+    await expect(
+      panel.locator(".a11y-feature-row.has-preference.pref-nice")
+    ).toHaveCount(1);
   }
 );
 
 browserFlow(
-  "an 'on' strip shows the trace closed, and an 'on' trace starts open",
+  "an 'off' highlights override shows the tab without the profile",
   async ({ page, request }) => {
-    await setOverride(request, RUN_LOG_STRIP, "on");
+    await setA11yProfile(request, A11Y_PROFILE);
+    await setOverride(request, A11Y_HIGHLIGHTS, "off");
+    expect(await resolved(request, A11Y_HIGHLIGHTS)).toBe("off");
+
+    await openDetail(page);
+    await page.locator("#tab-accessibility").click();
+    const panel = page.locator("#tabpanel-accessibility");
+    // The summary card is on screen, so the missing key card is the flag
+    // and not a half-drawn tab.
+    await expect(panel.locator(".a11y-summary-card")).toBeVisible();
+    await expect(panel.locator(".a11y-profile-key")).toHaveCount(0);
+    await expect(panel.locator(".a11y-feature-row.has-preference")).toHaveCount(
+      0
+    );
+  }
+);
+
+browserFlow(
+  "the default 'collapsed' strip renders the last run, with its trace closed",
+  async ({ page, request }) => {
+    expect(await resolved(request, RUN_LOG_STRIP)).toBe("collapsed");
+    // A "collapsed" parent is shown, so the trace keeps its own default.
     expect(await resolved(request, RUN_LOG_DETAILS)).toBe("collapsed");
 
-    let strip = await openPolicyTab(page);
+    const strip = await openPolicyTab(page);
+    await expect(strip).toBeVisible();
+    await expect(strip).toContainText("needs-config");
     const details = strip.locator("details");
     await expect(details).toHaveJSProperty("open", false);
     // Collapsed, not inert: the reader can still expand it.
     await details.locator("summary").click();
     await expect(details).toHaveJSProperty("open", true);
+  }
+);
 
+browserFlow(
+  "an 'on' trace starts open, and an 'off' strip takes the trace with it",
+  async ({ page, request }) => {
     await setOverride(request, RUN_LOG_DETAILS, "on");
     expect(await resolved(request, RUN_LOG_DETAILS)).toBe("on");
-    strip = await openPolicyTab(page);
+    let strip = await openPolicyTab(page);
     await expect(strip.locator("details")).toHaveJSProperty("open", true);
+
+    await clearOverrides(request);
+    await setOverride(request, RUN_LOG_STRIP, "off");
+    expect(await resolved(request, RUN_LOG_DETAILS)).toBe("off");
+    strip = await openPolicyTab(page);
+    await expect(
+      page.locator('.policy-summary-panel .policy-summary-note[role="note"]')
+    ).toBeVisible();
+    await expect(strip).toHaveCount(0);
   }
 );
 

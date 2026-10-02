@@ -2413,8 +2413,8 @@
             "key": "flag.detail.a11y.preference_highlights",
             "surface": "detail",
             "hardDefault": "on",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null,
             "wired": true
           },
@@ -2701,8 +2701,8 @@
             "key": "flag.detail.policy.run_log_details",
             "surface": "detail",
             "hardDefault": "collapsed",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "collapsed",
+            "focusValue": "collapsed",
             "override": null,
             "wired": true
           },
@@ -4419,6 +4419,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.run_log_strip",
             "currentValue": "off",
             "focusValue": "off",
@@ -4557,6 +4563,12 @@
             "key": "flag.detail.policy.lens_grid",
             "currentValue": "on",
             "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null
           },
           {
@@ -4711,12 +4723,6 @@
             "override": null
           },
           {
-            "key": "flag.detail.a11y.preference_highlights",
-            "currentValue": "on",
-            "focusValue": "on",
-            "override": null
-          },
-          {
             "key": "flag.notifications.types.accessibility_changes",
             "currentValue": "on",
             "focusValue": "on",
@@ -4756,12 +4762,6 @@
           },
           {
             "key": "flag.detail.a11y.panel",
-            "currentValue": "on",
-            "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.detail.a11y.preference_highlights",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -4871,9 +4871,9 @@
             "override": null
           },
           {
-            "key": "flag.detail.a11y.preference_highlights",
-            "currentValue": "on",
-            "focusValue": "on",
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null
           },
           {
@@ -5932,6 +5932,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.run_log_strip",
             "currentValue": "off",
             "focusValue": "off",
@@ -6149,12 +6155,6 @@
             "override": null
           },
           {
-            "key": "flag.detail.a11y.preference_highlights",
-            "currentValue": "on",
-            "focusValue": "on",
-            "override": null
-          },
-          {
             "key": "flag.detail.annotations_sidebar",
             "currentValue": "on",
             "focusValue": "on",
@@ -6356,12 +6356,6 @@
           },
           {
             "key": "flag.detail.a11y.panel",
-            "currentValue": "on",
-            "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.detail.a11y.preference_highlights",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -6633,15 +6627,15 @@
             "override": null
           },
           {
-            "key": "flag.detail.a11y.preference_highlights",
+            "key": "flag.detail.annotations_sidebar",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.detail.annotations_sidebar",
-            "currentValue": "on",
-            "focusValue": "on",
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null
           },
           {
@@ -7095,6 +7089,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.run_log_strip",
             "currentValue": "off",
             "focusValue": "off",
@@ -7282,6 +7282,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.run_log_strip",
             "currentValue": "off",
             "focusValue": "off",
@@ -7454,6 +7460,12 @@
             "key": "flag.detail.policy.lens_grid",
             "currentValue": "on",
             "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null
           },
           {
@@ -7753,6 +7765,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.run_log_strip",
             "currentValue": "off",
             "focusValue": "off",
@@ -7994,6 +8012,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.run_log_strip",
             "currentValue": "off",
             "focusValue": "off",
@@ -8157,13 +8181,13 @@
             "override": null
           },
           {
-            "key": "flag.detail.a11y.preference_highlights",
-            "currentValue": "on",
-            "focusValue": "on",
+            "key": "flag.detail.annotations_sidebar",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null
           },
           {
-            "key": "flag.detail.annotations_sidebar",
+            "key": "flag.detail.policy.run_log_details",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -8339,12 +8363,6 @@
             "override": null
           },
           {
-            "key": "flag.detail.a11y.preference_highlights",
-            "currentValue": "on",
-            "focusValue": "on",
-            "override": null
-          },
-          {
             "key": "flag.detail.annotations_sidebar",
             "currentValue": "off",
             "focusValue": "off",
@@ -8384,6 +8402,12 @@
             "key": "flag.detail.policy.lens_grid",
             "currentValue": "on",
             "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null
           },
           {
@@ -8557,13 +8581,13 @@
             "override": null
           },
           {
-            "key": "flag.detail.a11y.preference_highlights",
-            "currentValue": "on",
-            "focusValue": "on",
+            "key": "flag.detail.annotations_sidebar",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null
           },
           {
-            "key": "flag.detail.annotations_sidebar",
+            "key": "flag.detail.policy.run_log_details",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -8783,6 +8807,12 @@
             "key": "flag.detail.policy.lens_grid",
             "currentValue": "on",
             "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null
           },
           {
@@ -9099,12 +9129,6 @@
             "override": null
           },
           {
-            "key": "flag.detail.a11y.preference_highlights",
-            "currentValue": "on",
-            "focusValue": "on",
-            "override": null
-          },
-          {
             "key": "flag.detail.policy.ai_summary_disclaimer",
             "currentValue": "on",
             "focusValue": "on",
@@ -9126,12 +9150,6 @@
             "key": "flag.detail.policy.highlights",
             "currentValue": "on",
             "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.detail.policy.run_log_details",
-            "currentValue": "collapsed",
-            "focusValue": "collapsed",
             "override": null
           },
           {
@@ -9244,7 +9262,7 @@
       },
       {
         "name": "override: parent set to a value that is not on/off",
-        "why": "override_value is an unchecked cast — it is echoed verbatim, and `parentValue !== 'on'` still collapses the dependents",
+        "why": "override_value is an unchecked cast — it is echoed verbatim, and a two-state parent at anything but 'on' still collapses the dependents",
         "audience": "self",
         "goals": {},
         "runtime": null,
@@ -9542,6 +9560,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
             "key": "flag.detail.policy.run_log_strip",
             "currentValue": "off",
             "focusValue": "off",
@@ -9659,6 +9683,274 @@
             "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
+            "override": null
+          }
+        ]
+      },
+      {
+        "name": "override: tri-state parents off",
+        "why": "step 6 — an 'off' tri-state parent collapses its dependents",
+        "audience": "self",
+        "goals": {
+          "monitor": true
+        },
+        "runtime": null,
+        "overrides": [
+          [
+            "flag.detail.policy.run_log_strip",
+            "off"
+          ],
+          [
+            "flag.detail.a11y.panel",
+            "off"
+          ]
+        ],
+        "throws": null,
+        "delta": [
+          {
+            "key": "flag.dashboard.callout.understand_only",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.a11y.panel",
+            "currentValue": "off",
+            "focusValue": "collapsed",
+            "override": "off"
+          },
+          {
+            "key": "flag.detail.a11y.preference_highlights",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.ai_summary",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.ai_summary_disclaimer",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.change_strip",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.chunk_notes",
+            "currentValue": "collapsed",
+            "focusValue": "collapsed",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.highlights",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.lens_grid",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.run_log_details",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.run_log_strip",
+            "currentValue": "off",
+            "focusValue": "collapsed",
+            "override": "off"
+          }
+        ]
+      },
+      {
+        "name": "override: tri-state parents collapsed under the accessibility modifier",
+        "why": "step 6 — a 'collapsed' tri-state parent is shown, so its dependents keep their values even when a rule had set the parent 'on'",
+        "audience": "self",
+        "goals": {
+          "accessibility": true
+        },
+        "runtime": null,
+        "overrides": [
+          [
+            "flag.detail.policy.run_log_strip",
+            "collapsed"
+          ],
+          [
+            "flag.detail.a11y.panel",
+            "collapsed"
+          ]
+        ],
+        "throws": null,
+        "delta": [
+          {
+            "key": "flag.appgrid.filter.accessibility",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.a11y.panel",
+            "currentValue": "collapsed",
+            "focusValue": "on",
+            "override": "collapsed"
+          },
+          {
+            "key": "flag.detail.policy.run_log_strip",
+            "currentValue": "collapsed",
+            "focusValue": "collapsed",
+            "override": "collapsed"
+          },
+          {
+            "key": "flag.notifications.types.accessibility_changes",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.onboarding.accessibility_profile_setup",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          }
+        ]
+      },
+      {
+        "name": "override: tri-state parents set to a value that is not on/off",
+        "why": "step 6 — on a tri-state parent only 'off' hides, so an unchecked value leaves the dependents alone",
+        "audience": "self",
+        "goals": {},
+        "runtime": null,
+        "overrides": [
+          [
+            "flag.detail.policy.run_log_strip",
+            "banana"
+          ],
+          [
+            "flag.detail.a11y.panel",
+            "banana"
+          ]
+        ],
+        "throws": null,
+        "delta": [
+          {
+            "key": "flag.detail.a11y.panel",
+            "currentValue": "banana",
+            "focusValue": "collapsed",
+            "override": "banana"
+          },
+          {
+            "key": "flag.detail.policy.run_log_strip",
+            "currentValue": "banana",
+            "focusValue": "collapsed",
+            "override": "banana"
+          }
+        ]
+      },
+      {
+        "name": "override: two-state parent collapsed",
+        "why": "step 6 — a two-state parent at 'collapsed' is read as off by clients, so its dependents still collapse",
+        "audience": "self",
+        "goals": {
+          "monitor": true
+        },
+        "runtime": null,
+        "overrides": [
+          [
+            "flag.detail.timeline.wayback_rows",
+            "collapsed"
+          ]
+        ],
+        "throws": null,
+        "delta": [
+          {
+            "key": "flag.dashboard.callout.understand_only",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.ai_summary",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.ai_summary_disclaimer",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.change_strip",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.chunk_notes",
+            "currentValue": "collapsed",
+            "focusValue": "collapsed",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.highlights",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.policy.lens_grid",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.timeline.matches_live_sync_badge",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.detail.timeline.wayback_import",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.detail.timeline.wayback_rows",
+            "currentValue": "collapsed",
+            "focusValue": "on",
+            "override": "collapsed"
+          },
+          {
+            "key": "flag.detail.timeline.wayback_toggle",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null
           }
         ]

@@ -686,7 +686,10 @@ What the port had to get right, none of it visible in the response shape:
 - **Resolver order.** Goal rules apply in the fixed order monitor, cleanup,
   minimal — not storage order. The runtime rule (step 5) runs before the
   override (step 7), so an override off beats the forced on. The dependency
-  parent is resolved through the whole chain, its own override included. The
+  parent is resolved through the whole chain, its own override included, and
+  then judged by its kind: a tri-state parent (hard default `collapsed`)
+  turns its dependents off only at `off`, a two-state one at anything but
+  `on` (`parent_hides_dependents`). The
   kill switch short-circuits BEFORE the override, so its own row reports
   `currentValue: "on"` while `override: "off"`; and `focusValue` copies
   `killSwitchOff` unchanged, so stripping that override does not turn the
@@ -694,7 +697,8 @@ What the port had to get right, none of it visible in the response shape:
   throw and the route answers 500 `{error:"Failed to list flags"}` — unless
   the garbage names an `Object.prototype` property, in which case the lookup
   finds a function and no rule applies. `override_value` is an unchecked
-  cast: `"banana"` is echoed and still fails the parent's `!== "on"`.
+  cast: `"banana"` is echoed, still hides a two-state parent's dependents and
+  leaves a tri-state parent's alone.
 - **`reconcileLayout`.** A canonical card missing from the stored order is
   slotted after its nearest preceding canonical neighbour that is already
   placed — and with none, `unshift`ed to the FRONT. So `order: ["hero"]`
