@@ -93,6 +93,11 @@ hyper = { version = "1", features = ["http1", "server"] }
 hyper-util = { version = "0.1", features = ["http1", "server", "service", "tokio"] }
 tower = { version = "0.5", features = ["util"] }
 
+[target.'cfg(unix)'.dependencies]
+# Safe, owning interface enumeration: no application-owned getifaddrs
+# pointers or manual freeifaddrs lifecycle in the companion LAN listener.
+nix = { version = "0.31.3", default-features = false, features = ["net"] }
+
 [profile.release]
 # Nothing perf-sensitive yet; keep debug builds fast and release small.
 opt-level = 2

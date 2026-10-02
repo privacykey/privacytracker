@@ -1,9 +1,9 @@
 {
   "target": "aarch64-apple-darwin",
-  "crates": 342,
+  "crates": 344,
   "licenses": {
     "MIT OR Apache-2.0": 155,
-    "MIT": 63,
+    "MIT": 65,
     "Apache-2.0 OR MIT": 36,
     "MIT/Apache-2.0": 18,
     "Unicode-3.0": 18,
@@ -119,6 +119,12 @@
       "version": "0.4.33",
       "license": "MIT OR Apache-2.0",
       "repository": "https://github.com/rust-lang/log"
+    },
+    {
+      "name": "nix",
+      "version": "0.31.3",
+      "license": "MIT",
+      "repository": "https://github.com/nix-rust/nix"
     },
     {
       "name": "objc2",

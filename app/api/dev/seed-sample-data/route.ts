@@ -504,11 +504,12 @@ export async function POST(request: Request) {
     requireAdminToken: "configured",
     rateLimit: {
       keyPrefix: "dev.seed_sample_data",
-      // The full E2E suite now seeds from more than 30 test cases in one
-      // ten-minute run. Keep headroom for new cases while still stopping a
-      // runaway loop. A configured admin token and same-origin check guard
-      // the actual library write; keep this cap aligned with the Rust route.
-      limit: 60,
+      // The full E2E suite seeds from about 62 test cases in one ten-minute
+      // run (2026-09-29), past the old cap of 60. Keep headroom for new
+      // cases while still stopping a runaway loop. A configured admin token
+      // and same-origin check guard the actual library write; keep this cap
+      // aligned with the Rust route.
+      limit: 120,
       windowMs: 10 * 60_000,
       message: "Rate limit exceeded for dev sample seeding. Try again later.",
     },
