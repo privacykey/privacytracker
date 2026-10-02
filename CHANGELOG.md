@@ -811,6 +811,12 @@ Going forward, changes are recorded here as they land.
   that screen is the one the device gets. `POST /api/imports/items`
   accepts an optional `deviceId` for this, attached only to an import that
   has no device yet and only if the device exists.
+- The dashboard's "How we score risk" legend appears again. Its flag,
+  `flag.dashboard.risk_tier_legend`, has three values and defaults to
+  `collapsed` (shown, closed), but the dashboard read it as on or off, so
+  the default counted as off and the legend never rendered. It now shows
+  closed by default, starts open when the flag is set to `on` in Developer
+  Options, and stays hidden for `off` and for a "Keep it minimal" focus.
 
 ### Added
 
