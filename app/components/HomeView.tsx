@@ -71,7 +71,9 @@ import {
   useRovingRadioGroup,
 } from "../../lib/use-roving-radiogroup";
 import BackgroundModeCallout from "./BackgroundModeCallout";
+import { DashboardLayoutLock } from "./DashboardLayoutLock";
 import { withScopeParam } from "./DeviceScopeProvider";
+import { FocusGoalLabels, FocusOverview } from "./FocusOverview";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { useTaskCenter } from "./TaskCenter";
 import Toast from "./Toast";
@@ -218,8 +220,9 @@ export interface DashboardFlagState {
   reviewSection: boolean;
   /** Risk-section watchlist block. */
   riskSection: boolean;
-  /** Collapsible risk-tier reference legend. */
-  riskTierLegend: boolean;
+  /** Collapsible risk-tier reference legend. Tri-state: "collapsed" (the
+   *  default) shows it closed, "on" shows it open, "off" hides it. */
+  riskTierLegend: "on" | "off" | "collapsed";
   /** Stale apps (not synced in 30+ days). */
   staleSection: boolean;
   /** Audience-aware "tasks worth trying" panel at the very top. Off
@@ -235,8 +238,14 @@ export interface DashboardFlagState {
  * archetype prop.
  */
 export interface FocusSummary {
+  accessibility?: boolean;
+  audience?: "self" | "loved_one" | "guardian";
+  cleanup?: boolean;
+  minimal?: boolean;
+  monitor?: boolean;
   purpose: PrimaryPurpose;
   understandDeclutter: boolean;
+  workflow?: string;
 }
 
 export default function HomeView({
@@ -496,7 +505,7 @@ export default function HomeView({
   const showProfileMismatch = flags?.profileMismatchSection ?? true;
   const showStale = flags?.staleSection ?? true;
   const showActivity = flags?.activitySection ?? true;
-  const showRiskTierLegend = flags?.riskTierLegend ?? true;
+  const riskTierLegend = flags?.riskTierLegend ?? "collapsed";
   const showTaskList = flags?.taskList ?? true;
   const showBackgroundModeWizard = flags?.backgroundModeWizard ?? false;
   const showLayoutEditorLink = flags?.layoutEditorVisible ?? true;
@@ -534,7 +543,7 @@ export default function HomeView({
     review_cta: () => reviewCtaSlot ?? null,
     focus_strip: () =>
       showFocusStrip && focusSummary ? (
-        <FocusStrip purpose={focusSummary.purpose} />
+        <FocusStrip focus={focusSummary} purpose={focusSummary.purpose} />
       ) : null,
     // Tauri-only — the component itself runtime-gates on `isDesktop()`,
     // and the parent only passes `backgroundCalloutVisible=true` when
@@ -570,15 +579,26 @@ export default function HomeView({
     // is enabled.
     hero: () =>
       showHeroQuiet || showHeroAttention ? (
-        <Hero
-          headsUps={headsUps}
-          onSyncAll={syncAllStale}
-          syncing={syncingAll}
-          triage={triage}
-        />
+        triage.overview ? (
+          <FocusOverview
+            data={triage.overview}
+            focus={focusSummary}
+            onSyncAll={syncAllStale}
+            scopeParam={scopeParam}
+            syncing={syncingAll}
+            total={triage.totalApps}
+          />
+        ) : (
+          <Hero
+            headsUps={headsUps}
+            onSyncAll={syncAllStale}
+            syncing={syncingAll}
+            triage={triage}
+          />
+        )
       ) : null,
     cleanup_callout: () =>
-      showCleanupCallout ? (
+      showCleanupCallout && !triage.overview ? (
         <CleanupCallout count={triage.highRiskCount} />
       ) : null,
     family_callout: () =>
@@ -623,7 +643,9 @@ export default function HomeView({
         <ActivitySection activity={triage.recentActivity} />
       ) : null,
     risk_tier_legend: () =>
-      showRiskTierLegend ? <RiskTierLegend id="risk-tiers" /> : null,
+      riskTierLegend === "off" ? null : (
+        <RiskTierLegend id="risk-tiers" open={riskTierLegend === "on"} />
+      ),
   };
 
   return editMode ? (
@@ -829,6 +851,11 @@ function EditModeToolbar({
         )}
       </div>
 
+      <DashboardLayoutLock
+        disabled={saver.savingState === "saving"}
+        fixed={!!saver.layout.keepFixed}
+        onChange={saver.toggleKeepFixed}
+      />
       <div
         aria-label={t("preset_aria_group")}
         className="home-edit-toolbar-presets"
@@ -853,6 +880,7 @@ function EditModeToolbar({
                 }`}
                 data-preset={presetKey}
                 data-severity={meta.severityCls}
+                disabled={saver.savingState === "saving"}
                 onClick={() => saver.applyPreset(presetKey)}
                 role="radio"
                 tabIndex={rovingTabIndex(
@@ -915,6 +943,9 @@ function EditModeToolbar({
         </button>
         <button
           className="btn btn-primary btn-sm"
+          disabled={
+            saver.savingState === "saving" || saver.savingState === "error"
+          }
           onClick={exitEditMode}
           type="button"
         >
@@ -1101,7 +1132,13 @@ const FOCUS_STRIP_ICONS: Record<PrimaryPurpose, string> = {
   custom: "⚙️",
 };
 
-function FocusStrip({ purpose }: { purpose: PrimaryPurpose }) {
+function FocusStrip({
+  purpose,
+  focus,
+}: {
+  purpose: PrimaryPurpose;
+  focus: FocusSummary;
+}) {
   // Chrome copy from `dashboard.focus_strip.*`; the value is the /welcome
   // purpose title from `focus_purpose.primary.<purpose>.title`, so the strip
   // speaks the same vocabulary as the onboarding + settings editor.
@@ -1115,7 +1152,11 @@ function FocusStrip({ purpose }: { purpose: PrimaryPurpose }) {
       <div className="focus-strip-body">
         <div className="focus-strip-label">{t("label")}</div>
         <div className="focus-strip-value">
-          {tPurpose(`primary.${purpose}.title`)}
+          {focus.audience ? (
+            <FocusGoalLabels focus={focus} />
+          ) : (
+            tPurpose(`primary.${purpose}.title`)
+          )}
         </div>
       </div>
       <Link className="focus-strip-change" href="/dashboard/settings/you#focus">
@@ -1341,7 +1382,7 @@ function ManualAppsBanner({
   );
 }
 
-function RiskTierLegend({ id }: { id: string }) {
+function RiskTierLegend({ id, open }: { id: string; open: boolean }) {
   // i18n — legend chrome from `dashboard.risk_tier_legend.*`, the four
   // tier explainer cards from `dashboard.risk_tiers.${key}_{rule|meaning|example}`,
   // and the pill labels themselves from the shared `risk.*_label`
@@ -1351,7 +1392,10 @@ function RiskTierLegend({ id }: { id: string }) {
   const tRisk = useTranslations("risk");
   return (
     <section className="home-section home-section-legend" id={id}>
-      <details className="risk-tier-legend">
+      {/* `open` only sets the starting state; the reader can still
+          toggle it, and React leaves the attribute alone until the flag
+          itself changes. */}
+      <details className="risk-tier-legend" open={open}>
         <summary className="risk-tier-legend-summary">
           <span className="risk-tier-legend-kicker">{t("kicker")}</span>
           <span className="risk-tier-legend-hint">{t("hint")}</span>

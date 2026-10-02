@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { isScopeAll } from "@/lib/device-scope";
 import { scopeFromRequest } from "@/lib/device-scope-server";
+import { getReviewDecisions } from "@/lib/focus-review";
 import { getMismatchedApps } from "@/lib/privacy-profile-server";
 import { checkRateLimit, rateLimitKeyForRequest } from "@/lib/security";
 
@@ -31,8 +32,17 @@ export async function GET(request: Request) {
   }
   try {
     const scope = scopeFromRequest(request.url);
+    const selected = isScopeAll(scope) ? undefined : scope;
+    const decisions =
+      new URL(request.url).searchParams.get("unresolved") === "1"
+        ? getReviewDecisions(selected)
+        : null;
+    const hidden = new Set([
+      ...(decisions?.acceptedAppIds ?? []),
+      ...(decisions?.deferredAppIds ?? []),
+    ]);
     return NextResponse.json({
-      apps: getMismatchedApps(isScopeAll(scope) ? undefined : scope),
+      apps: getMismatchedApps(selected).filter((app) => !hidden.has(app.appId)),
     });
   } catch (error) {
     console.warn("[privacy-profile/mismatches] failed:", error);

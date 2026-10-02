@@ -414,7 +414,14 @@ async function run(name, spec = {}) {
     }
     const rows = {};
     for (const table of TABLES) {
-      rows[table] = db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all();
+      // Tables over 100 rows are recorded as count, first three and last
+      // three, the same abbreviation the Rust replay's shared dump() uses
+      // (and the maintenance and imports oracles record).
+      const all = db.prepare(`SELECT * FROM ${table} ORDER BY rowid`).all();
+      rows[table] =
+        all.length > 100
+          ? { count: all.length, head: all.slice(0, 3), tail: all.slice(-3) }
+          : all;
     }
     cases.push({
       name,
@@ -539,10 +546,10 @@ try {
     search: "?source=canned",
     presented: "not-the-token",
   });
-  await run("the sixty-first seed in ten minutes is refused", {
+  await run("the hundred-and-twenty-first seed in ten minutes is refused", {
     search: "?source=canned",
     setup: CANNED_IDS.map((id) => app(id)),
-    repeat: 61,
+    repeat: 121,
   });
 
   // ── the live walk: the chart request ─────────────────────────────

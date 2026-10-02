@@ -5,6 +5,7 @@ import { type Annotation, listAnnotations } from "@/lib/annotations";
 import { isScopeAll } from "@/lib/device-scope";
 import { getScopedAppIds, scopeFromRequest } from "@/lib/device-scope-server";
 import { getDeviceEcidsForApps } from "@/lib/devices";
+import { getReviewDecisions } from "@/lib/focus-review";
 import type { AppProfileBadge } from "@/lib/privacy-profile";
 import { getProfileBadgesByApp } from "@/lib/privacy-profile-server";
 import { getAllApps } from "@/lib/scraper";
@@ -71,6 +72,16 @@ export async function GET(request: Request) {
   const countOnly = new URL(request.url).searchParams.get("count") === "1";
   const requested = scopeFromRequest(request.url);
   const scope = isScopeAll(requested) ? undefined : requested;
+  if (new URL(request.url).searchParams.get("decisions") === "1") {
+    try {
+      return NextResponse.json(getReviewDecisions(scope));
+    } catch {
+      return NextResponse.json(
+        { error: "Could not load review decisions" },
+        { status: 500 }
+      );
+    }
+  }
 
   const safe = <T>(fn: () => T, fallback: T, label: string): T => {
     try {

@@ -23,11 +23,11 @@
     }
   },
   "verdict": {
-    "safe_label": "标记为安全",
-    "safe_short": "安全",
-    "safe_desc": "保留此应用 — 你对它的功能和数据处理方式感到放心。",
+    "safe_label": "保留应用",
+    "safe_short": "保留",
+    "safe_desc": "保留此应用并接受当前与偏好不符的问题。数据收集或隐私偏好变化时需重新决定。",
     "replace_label": "寻找替代",
-    "replace_short": "替代",
+    "replace_short": "计划替换",
     "replace_desc": "你想找一个侵入性更小的替代品。使用对比视图找到候选并加入候选清单。",
     "uninstall_label": "标记为移除",
     "uninstall_short": "移除",
@@ -63,7 +63,8 @@
     "error_load": "加载失败",
     "error_save": "保存失败",
     "error_clear": "清除失败",
-    "error_dismiss": "忽略失败"
+    "error_dismiss": "忽略失败",
+    "keep_accept": "保留并接受当前问题"
   },
   "review_rec": {
     "_comment": "审阅与处理向导（/dashboard/review-recommendations）的字符串。子区块对应视觉结构：hero、受众屏蔽提示、步骤标签、各步骤（review/compare/action/backup/act）、模态框、可打印清单。",
@@ -314,7 +315,7 @@
     "high_desc": "在其他应用和网站上追踪你，或收集敏感数据的应用。",
     "moderate_desc": "将相当数量的数据与你的身份关联的应用。",
     "low_desc": "收集少量可识别数据的应用。",
-    "minimal_desc": "不收集关联数据或追踪数据的应用。",
+    "minimal_desc": "标签声明不收集关联数据或追踪数据的应用。",
     "unknown_desc": "开发者尚未填写隐私标签 — Apple 将在下次更新时要求填写。",
     "no_apps_with_level": "没有{level}应用"
   },
@@ -442,8 +443,8 @@
       "subtext": "找出占用最多的应用，并协助删除。"
     },
     "minimal": {
-      "label": "只显示基本信息",
-      "subtext": "精简的审查界面 — 没有附加内容。"
+      "label": "保持简洁",
+      "subtext": "减少仪表板细节，保留目标及相关工具。"
     },
     "accessibility": {
       "label": "我还需要应用的无障碍信息",
@@ -485,7 +486,7 @@
       },
       "help": {
         "title": "帮助朋友",
-        "body": "在查看别人的应用？我们会帮你整理发现的内容，方便你分享或一起讨论。"
+        "body": "检查对方的应用，保存建议，并交付可使用的报告。"
       },
       "guardian": {
         "title": "照看孩子",
@@ -1981,7 +1982,7 @@
       "loading": "正在加载…",
       "no_apps_tracked": "尚未跟踪任何应用。",
       "no_apps_match": "没有应用符合当前筛选条件。",
-      "filter_hide_no_data": "隐藏未收集任何数据的应用",
+      "filter_hide_no_data": "隐藏声明不收集数据的应用",
       "filter_off_profile_only": "仅显示不符合档案的应用",
       "filter_show_profile_rows": "在每一行显示隐私档案",
       "filter_show_profile_title": "高亮超出隐私档案的单元格",
@@ -1998,7 +1999,7 @@
       "no_pref_aria": "未设置偏好",
       "severity_legend_aria": "严重程度颜色图例",
       "tooltip_category": "类别",
-      "tooltip_not_collected": "未收集",
+      "tooltip_not_collected": "未声明",
       "tooltip_your_preference": "你的偏好",
       "tooltip_no_preference": "无偏好",
       "tooltip_hover_inspect": "悬停以查看",
@@ -2288,7 +2289,7 @@
     "neither_filled_labels": "双方开发者都还未填写隐私标签",
     "no_details_provided_title": "{name}：Apple 显示「未提供详情」。开发者在下次提交更新时将被要求提供隐私详情。",
     "no_details_chip_title": "Apple 显示「未提供详情」 — 开发者尚未提交隐私标签",
-    "policy_link_review_pref": "通过阅读开发者隐私政策来确认",
+    "policy_link_review_pref": "将标签与开发者的隐私政策对照查看",
     "policy_link_review_no_labels": "缺少 Apple 标签 — 隐私政策是权威来源",
     "header_a11y_feature": "无障碍功能",
     "table_privacy_aria": "{a} 与 {b} 收集的数据类别",
@@ -3042,8 +3043,8 @@
       "low_meaning": "应用收集了一些内容 — 通常是诊断、可选使用统计或单个关联类别 — 但未构建完整的画像。",
       "low_example": "常见于轻量级实用工具、计算器或参考类应用，它们收集崩溃日志或可选分析数据。",
       "minimal_rule": "开发者声明完全不收集任何数据。",
-      "minimal_meaning": "Apple 的隐私标签显示为空。应用未声明收集任何内容，无论是关联的还是未关联的。",
-      "minimal_example": "常见于单机离线游戏、简单参考工具以及部分注重隐私的实用程序。"
+      "minimal_meaning": "标签未列出应用收集的任何数据，无论是关联的还是未关联的。和所有标签一样，这是开发者自己的声明，请与隐私政策对照查看。",
+      "minimal_example": "离线游戏和简单工具会这样声明，一些隐私政策中描述了数据收集的应用也会这样声明。"
     },
     "layout_footer": {
       "customize": "自定义仪表板…",
@@ -3148,7 +3149,9 @@
           "age_rating_callout": "面向监护人关注的「应用分级高于孩子年龄段」提示。"
         }
       },
-      "edit_cards_aria": "可编辑的仪表板卡片"
+      "edit_cards_aria": "可编辑的仪表板卡片",
+      "keep_fixed": "固定布局",
+      "keep_fixed_hint": "关闭时，更改关注目标会重新排列卡片，包括自定义顺序。隐藏的卡片保持隐藏。关闭后将在下次更改目标时生效。"
     },
     "glance": {
       "apps_tracked": "跟踪的应用",
@@ -3434,17 +3437,17 @@
     },
     "actions": {
       "uninstall": "移除",
-      "safe": "保留",
-      "replace": "替换",
+      "safe": "保留并接受",
+      "replace": "计划替换",
       "note": "备注",
-      "skip": "暂时跳过",
+      "skip": "稍后决定 · 7 天",
       "undo": "撤销",
       "exit": "退出",
       "uninstall_hint": "← / 1",
       "safe_hint": "→ / 2",
       "replace_hint": "↑ / 3",
       "note_hint": "↓ / n",
-      "skip_hint": "s — 不做决定直接前进",
+      "skip_hint": "s — 7 天后在仪表板再次显示此决定",
       "undo_hint": "u",
       "exit_hint": "Esc",
       "close_title": "关闭审阅队列 (Esc)",
@@ -3495,7 +3498,7 @@
       "select_all": "选择全部可见",
       "select_all_n": "选择全部 {count, plural, other {# 个}}可见应用",
       "clear": "清除选择",
-      "mark_safe": "标记为保留",
+      "mark_safe": "保留并接受当前隐私问题",
       "mark_replace": "标记为替换",
       "mark_uninstall": "标记为移除",
       "confirm_title": "应用于 {count, plural, other {# 个应用}}？",
@@ -3515,7 +3518,11 @@
       "guardian": "你的孩子"
     },
     "imported_rec_chip": "{name} 建议「{verdict}」",
-    "imported_rec_chip_anon": "有人建议「{verdict}」"
+    "imported_rec_chip_anon": "有人建议「{verdict}」",
+    "decisions_loading": "正在加载已保存的决定…",
+    "decisions_error": "无法加载已保存的决定，请重试后再开始检查。",
+    "decisions_retry": "重试",
+    "saving_reminder": "正在保存提醒…"
   },
   "policy_rating": {
     "favorable": "良好",
@@ -3753,7 +3760,7 @@
     "heatmap_page": "第 {start} 至 {end} 个应用，共 {total} 个。",
     "matrix_app": "{app}：{groups}。",
     "matrix_group": "{severity}：{categories}",
-    "matrix_app_empty": "{app}：未收集数据。",
+    "matrix_app_empty": "{app}：标签声明不收集数据。",
     "sankey_label": "流向图：将 {apps} 个应用与其数据用途及 {categories} 个数据类别相连。",
     "sankey_severity": "{severity}：{apps} 个应用，涉及{categories}。",
     "timeline_label": "隐私变更随时间变化的堆叠面积图：所选时段内共 {count} 项变更。",
@@ -3800,7 +3807,7 @@
     "no_details_title": "未提供详情",
     "no_details_body": "开发者在下次提交应用更新时，将被要求提供隐私详情。",
     "no_labels_title": "未找到隐私标签",
-    "no_labels_body": "这个应用可能不收集数据，或者 App Store 页面格式发生了变化。",
+    "no_labels_body": "无法从这个应用的 App Store 页面读取隐私标签。页面格式可能已经改变，请到 App Store 查看标签。",
     "remove_modal": {
       "badge": "移除应用",
       "title": "从 privacytracker 中移除 {name}？",
@@ -6077,5 +6084,57 @@
     "home": "首页",
     "report": "在 GitHub 上报告此问题",
     "report_note": "将打开一个已填入此页面地址的错误报告表单。发送前你可以检查并修改所有内容。"
+  },
+  "focus_overview": {
+    "title": "你的应用与下一步",
+    "intent_both": "关注变化，逐步清理应用。",
+    "intent_cleanup": "先了解问题，再决定保留、比较或移除。",
+    "intent_monitor": "查看所关注应用的变化。",
+    "intent_review": "检查应用，决定哪些适合你。",
+    "all_apps": "全部 {count} 个应用",
+    "tracked_apps": "已跟踪应用",
+    "pending": "有未检查变化的应用",
+    "since_visit": "自上次访问后新增 {count} 个变化应用",
+    "replacement_plans": "替换计划",
+    "due": "{count} 个决定可以重新考虑。",
+    "app_changes": "{count} 个待检查变化",
+    "find_compare": "查找并比较替代应用",
+    "review_app": "检查并决定",
+    "view_app": "查看应用",
+    "guided_cleanup": "开始引导清理",
+    "handoff": "准备分享报告",
+    "handoff_hint": "报告是本次检查的快照。检查记录保留在此，私人笔记不会导出。",
+    "first_visit_hint": "上次访问计数仅适用于此浏览器及所选设备视图。",
+    "audience": {
+      "self": "为我自己",
+      "loved_one": "帮助他人",
+      "guardian": "为孩子"
+    },
+    "goal": {
+      "monitor": "关注变化",
+      "cleanup": "清理",
+      "minimal": "简洁视图",
+      "accessibility": "无障碍"
+    },
+    "decision": {
+      "review": "待检查",
+      "kept": "保留 · 已接受当前问题",
+      "replace": "计划替换",
+      "uninstall": "计划移除",
+      "later": "稍后决定"
+    }
+  },
+  "focus_review": {
+    "accepted": "你选择保留应用并接受当前与偏好不符的问题。若数据收集发生变化或你修改隐私偏好，我们会再次提示。隐私政策和无障碍提醒保持独立。",
+    "keep_hint": "保留应用是你的选择，并不代表应用安全。再次选择保留可接受当前问题。",
+    "replace_hint": "先查找替代应用并比较其数据处理方式，再决定是否移除此应用。",
+    "find_compare": "查找并比较替代应用",
+    "remind_in": "提醒间隔",
+    "days": "{count} 天",
+    "saving": "保存中…",
+    "later": "稍后决定",
+    "scheduled": "已保存。此决定将于 {date} 重新出现在仪表板。",
+    "cancel": "取消提醒",
+    "error": "无法保存或读取决定，请重试。"
   }
 }

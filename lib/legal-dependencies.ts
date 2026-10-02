@@ -294,7 +294,7 @@ export const RUNTIME_DEPENDENCY_NOTES: Record<string, DependencyNotes> = {
   "better-sqlite3": {
     license: "MIT",
     about:
-      "Synchronous, zero-config SQLite binding for Node, built against N-API.",
+      "Synchronous SQLite binding for Node that needs no configuration, built against N-API.",
     usage:
       "The Node server's persistence layer. The singleton database in lib/db.ts runs on it: apps, privacy_types, privacy_categories, privacy_snapshots, notifications, app_settings and the rest. We set journal_mode=WAL, busy_timeout=5000 and foreign_keys=ON on open. The Rust backend uses its own SQLite binding, listed under Rust crates.",
     links: {

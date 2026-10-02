@@ -1981,8 +1981,8 @@
             "key": "flag.appgrid.actions.compare_mode",
             "surface": "appgrid",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -2170,8 +2170,8 @@
             "key": "flag.appgrid.review_queue.bulk_select",
             "surface": "appgrid",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -2187,9 +2187,9 @@
           {
             "key": "flag.appgrid.review_queue.enabled",
             "surface": "appgrid",
-            "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "hardDefault": "off",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -2808,9 +2808,9 @@
           {
             "key": "flag.detail.tabs.compare",
             "surface": "detail",
-            "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "hardDefault": "off",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3501,9 +3501,9 @@
           {
             "key": "flag.page.compare",
             "surface": "page",
-            "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "hardDefault": "off",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3528,9 +3528,9 @@
           {
             "key": "flag.page.shortlist",
             "surface": "page",
-            "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "hardDefault": "off",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3754,8 +3754,8 @@
             "key": "flag.shortlist.actions.export",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3763,8 +3763,8 @@
             "key": "flag.shortlist.actions.preview",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3772,8 +3772,8 @@
             "key": "flag.shortlist.actions.print",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3781,8 +3781,8 @@
             "key": "flag.shortlist.actions.remove",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3790,8 +3790,8 @@
             "key": "flag.shortlist.actions.reset",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3799,8 +3799,8 @@
             "key": "flag.shortlist.actions.share",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3808,8 +3808,8 @@
             "key": "flag.shortlist.actions.undo",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3817,8 +3817,8 @@
             "key": "flag.shortlist.detailed_view",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3826,8 +3826,8 @@
             "key": "flag.shortlist.installed_grouping",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3835,8 +3835,8 @@
             "key": "flag.shortlist.live_badge_prefetch",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -3844,8 +3844,8 @@
             "key": "flag.shortlist.profile_mismatch_pill",
             "surface": "shortlist",
             "hardDefault": "on",
-            "currentValue": "on",
-            "focusValue": "on",
+            "currentValue": "off",
+            "focusValue": "off",
             "override": null,
             "wired": true
           },
@@ -4050,6 +4050,24 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.dashboard.callout.declutter",
             "currentValue": "on",
             "focusValue": "on",
@@ -4098,7 +4116,91 @@
             "override": null
           },
           {
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.onboarding.privacy_profile_setup",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -4117,6 +4219,24 @@
         "overrides": [],
         "throws": null,
         "delta": [
+          {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
           {
             "key": "flag.dashboard.callout.declutter",
             "currentValue": "on",
@@ -4172,7 +4292,91 @@
             "override": null
           },
           {
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.onboarding.privacy_profile_setup",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -4191,37 +4395,7 @@
         "throws": null,
         "delta": [
           {
-            "key": "flag.appgrid.card.change_dot",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.freshness_chip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.profile_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.appgrid.card.risk_chips",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.review_queue.bulk_select",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.review_queue.enabled",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -4239,73 +4413,13 @@
             "override": null
           },
           {
-            "key": "flag.dashboard.profile_mismatch_section",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.dashboard.risk_tier_legend",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
           },
           {
-            "key": "flag.detail.annotations_sidebar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.category_trend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_legend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_presets",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.labels.profile_mismatch_badges",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.policy.fallback_references",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.detail.policy.run_log_strip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.matches_live_sync_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_snapshot_chips",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -4323,37 +4437,7 @@
             "override": null
           },
           {
-            "key": "flag.detail.timeline.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_toggle",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.devopts.feature_flag_presets",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.devopts.visible",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.global.about_modal",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -4365,217 +4449,7 @@
             "override": null
           },
           {
-            "key": "flag.global.keyboard_shortcuts",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.global.label_hints",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.global.live_text_modal",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.bell.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.resume.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.manual_apps",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.privacy_map",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.shortlist",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.stats",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.settings.policies.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.export",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.preview",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.print",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.remove",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.reset",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.share",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.undo",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.detailed_view",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.installed_grouping",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.live_badge_prefetch",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.profile_mismatch_pill",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.off_profile_card",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.recent_changes.filter",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.accessibility_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.category_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.heatmap",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.radar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.sankey",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.small_multiples",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.timeline",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.auto_dismiss",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.resume_cards",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.widget",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -4596,21 +4470,9 @@
         "throws": null,
         "delta": [
           {
-            "key": "flag.appgrid.card.change_dot",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.freshness_chip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.profile_badge",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -4621,14 +4483,14 @@
           },
           {
             "key": "flag.appgrid.review_queue.bulk_select",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.appgrid.review_queue.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -4638,13 +4500,19 @@
             "override": null
           },
           {
-            "key": "flag.dashboard.glance_section",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.dashboard.callout.declutter",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.dashboard.profile_mismatch_section",
+            "key": "flag.dashboard.callout.understand_declutter",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.dashboard.glance_section",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -4656,39 +4524,39 @@
             "override": null
           },
           {
-            "key": "flag.detail.annotations_sidebar",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.detail.labels.trust_card",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.detail.charts.category_trend",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.detail.policy.ai_summary",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.detail.charts.trend_legend",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.detail.policy.ai_summary_disclaimer",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.detail.charts.trend_presets",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.detail.policy.change_strip",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.detail.labels.profile_mismatch_badges",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.detail.policy.highlights",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.detail.policy.fallback_references",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.detail.policy.lens_grid",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -4698,21 +4566,9 @@
             "override": null
           },
           {
-            "key": "flag.detail.timeline.matches_live_sync_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_snapshot_chips",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -4728,37 +4584,7 @@
             "override": null
           },
           {
-            "key": "flag.detail.timeline.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_toggle",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.devopts.feature_flag_presets",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.devopts.visible",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.global.about_modal",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -4770,219 +4596,93 @@
             "override": null
           },
           {
-            "key": "flag.global.keyboard_shortcuts",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.global.label_hints",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
           },
           {
-            "key": "flag.global.live_text_modal",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.bell.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.resume.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.onboarding.privacy_profile_setup",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.manual_apps",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.privacy_map",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.page.shortlist",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.stats",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.settings.policies.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.export",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.preview",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.print",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.remove",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.reset",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.share",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.undo",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.detailed_view",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.installed_grouping",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.live_badge_prefetch",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.profile_mismatch_pill",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.off_profile_card",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.recent_changes.filter",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.accessibility_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.category_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.heatmap",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.radar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.sankey",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.small_multiples",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.timeline",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.auto_dismiss",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.resume_cards",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.widget",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           }
         ]
@@ -5135,24 +4835,6 @@
         "throws": null,
         "delta": [
           {
-            "key": "flag.appgrid.card.change_dot",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.freshness_chip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.profile_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.appgrid.card.risk_chips",
             "currentValue": "off",
             "focusValue": "off",
@@ -5165,18 +4847,6 @@
             "override": null
           },
           {
-            "key": "flag.appgrid.review_queue.bulk_select",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.review_queue.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.dashboard.activity_section",
             "currentValue": "off",
             "focusValue": "off",
@@ -5184,12 +4854,6 @@
           },
           {
             "key": "flag.dashboard.glance_section",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.dashboard.profile_mismatch_section",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -5213,61 +4877,7 @@
             "override": null
           },
           {
-            "key": "flag.detail.annotations_sidebar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.category_trend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_legend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_presets",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.labels.profile_mismatch_badges",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.policy.fallback_references",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.detail.policy.run_log_strip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.matches_live_sync_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_snapshot_chips",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -5285,37 +4895,7 @@
             "override": null
           },
           {
-            "key": "flag.detail.timeline.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_toggle",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.devopts.feature_flag_presets",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.devopts.visible",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.global.about_modal",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -5327,31 +4907,7 @@
             "override": null
           },
           {
-            "key": "flag.global.keyboard_shortcuts",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.global.label_hints",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.global.live_text_modal",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.bell.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.resume.enabled",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -5366,192 +4922,6 @@
             "key": "flag.onboarding.accessibility_profile_setup",
             "currentValue": "on",
             "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.manual_apps",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.privacy_map",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.shortlist",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.stats",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.settings.policies.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.export",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.preview",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.print",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.remove",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.reset",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.share",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.undo",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.detailed_view",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.installed_grouping",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.live_badge_prefetch",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.profile_mismatch_pill",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.off_profile_card",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.recent_changes.filter",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.accessibility_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.category_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.heatmap",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.radar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.sankey",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.small_multiples",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.timeline",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.auto_dismiss",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.resume_cards",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.widget",
-            "currentValue": "off",
-            "focusValue": "off",
             "override": null
           }
         ]
@@ -5639,7 +5009,25 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.appgrid.card.annotation_highlight",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -5652,6 +5040,12 @@
           },
           {
             "key": "flag.detail.annotations_sidebar",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.tabs.compare",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -5687,6 +5081,18 @@
             "override": null
           },
           {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.settings.admin.export.audit_bundle",
             "currentValue": "on",
             "focusValue": "on",
@@ -5694,6 +5100,72 @@
           },
           {
             "key": "flag.settings.admin.export.audit_pdf",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -5712,7 +5184,25 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.appgrid.card.annotation_highlight",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -5778,6 +5268,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.devopts.feature_flag_presets",
             "currentValue": "off",
             "focusValue": "off",
@@ -5808,6 +5304,18 @@
             "override": null
           },
           {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.settings.admin.export.audit_bundle",
             "currentValue": "on",
             "focusValue": "on",
@@ -5815,6 +5323,72 @@
           },
           {
             "key": "flag.settings.admin.export.audit_pdf",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -5833,7 +5407,25 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.appgrid.card.annotation_highlight",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -5899,6 +5491,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.devopts.feature_flag_presets",
             "currentValue": "off",
             "focusValue": "off",
@@ -5935,6 +5533,18 @@
             "override": null
           },
           {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.settings.admin.export.audit_bundle",
             "currentValue": "on",
             "focusValue": "on",
@@ -5942,6 +5552,72 @@
           },
           {
             "key": "flag.settings.admin.export.audit_pdf",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -5961,7 +5637,25 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.appgrid.card.annotation_highlight",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -6033,6 +5727,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.devopts.feature_flag_presets",
             "currentValue": "off",
             "focusValue": "off",
@@ -6069,6 +5769,18 @@
             "override": null
           },
           {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.settings.admin.export.audit_bundle",
             "currentValue": "on",
             "focusValue": "on",
@@ -6076,6 +5788,72 @@
           },
           {
             "key": "flag.settings.admin.export.audit_pdf",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -6094,21 +5872,15 @@
         "throws": null,
         "delta": [
           {
-            "key": "flag.appgrid.card.change_dot",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.appgrid.card.freshness_chip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.profile_badge",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.appgrid.card.annotation_highlight",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -6119,14 +5891,14 @@
           },
           {
             "key": "flag.appgrid.review_queue.bulk_select",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.appgrid.review_queue.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -6136,13 +5908,13 @@
             "override": null
           },
           {
-            "key": "flag.dashboard.glance_section",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.dashboard.annotation_banner",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.dashboard.profile_mismatch_section",
+            "key": "flag.dashboard.glance_section",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -6155,38 +5927,8 @@
           },
           {
             "key": "flag.detail.annotations_sidebar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.category_trend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_legend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_presets",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.labels.profile_mismatch_badges",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.policy.fallback_references",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -6196,21 +5938,9 @@
             "override": null
           },
           {
-            "key": "flag.detail.timeline.matches_live_sync_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_snapshot_chips",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -6221,24 +5951,6 @@
           },
           {
             "key": "flag.detail.timeline.version_chip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_toggle",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -6256,31 +5968,13 @@
             "override": null
           },
           {
-            "key": "flag.global.about_modal",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.global.info_tooltips",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
           },
           {
-            "key": "flag.global.keyboard_shortcuts",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.global.label_hints",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.global.live_text_modal",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -6298,21 +5992,9 @@
             "override": null
           },
           {
-            "key": "flag.notifications.bell.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.notifications.quiet_hours",
             "currentValue": "on",
             "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.resume.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
             "override": null
           },
           {
@@ -6323,32 +6005,14 @@
           },
           {
             "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.manual_apps",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.privacy_map",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.page.shortlist",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.stats",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -6364,159 +6028,69 @@
             "override": null
           },
           {
-            "key": "flag.settings.policies.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.shortlist.actions.export",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.preview",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.print",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.remove",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.reset",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.share",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.undo",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.detailed_view",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.installed_grouping",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.live_badge_prefetch",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.profile_mismatch_pill",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.off_profile_card",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.recent_changes.filter",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.accessibility_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.category_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.heatmap",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.radar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.sankey",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.small_multiples",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.timeline",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.auto_dismiss",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.resume_cards",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.widget",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           }
         ]
@@ -6533,6 +6107,12 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.appgrid.card.annotation_highlight",
             "currentValue": "on",
             "focusValue": "on",
@@ -6540,6 +6120,18 @@
           },
           {
             "key": "flag.appgrid.filter.accessibility",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -6564,6 +6156,12 @@
           },
           {
             "key": "flag.detail.annotations_sidebar",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.tabs.compare",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -6611,6 +6209,18 @@
             "override": null
           },
           {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.settings.admin.export.audit_bundle",
             "currentValue": "on",
             "focusValue": "on",
@@ -6618,6 +6228,72 @@
           },
           {
             "key": "flag.settings.admin.export.audit_pdf",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -6637,6 +6313,12 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.appgrid.card.annotation_highlight",
             "currentValue": "on",
             "focusValue": "on",
@@ -6644,6 +6326,18 @@
           },
           {
             "key": "flag.appgrid.filter.accessibility",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -6721,6 +6415,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.devopts.feature_flag_presets",
             "currentValue": "off",
             "focusValue": "off",
@@ -6763,6 +6463,18 @@
             "override": null
           },
           {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.settings.admin.export.audit_bundle",
             "currentValue": "on",
             "focusValue": "on",
@@ -6770,6 +6482,72 @@
           },
           {
             "key": "flag.settings.admin.export.audit_pdf",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -6789,21 +6567,15 @@
         "throws": null,
         "delta": [
           {
-            "key": "flag.appgrid.card.change_dot",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.appgrid.card.freshness_chip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.profile_badge",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.appgrid.card.annotation_highlight",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -6820,14 +6592,14 @@
           },
           {
             "key": "flag.appgrid.review_queue.bulk_select",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.appgrid.review_queue.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -6837,13 +6609,13 @@
             "override": null
           },
           {
-            "key": "flag.dashboard.glance_section",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.dashboard.annotation_banner",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.dashboard.profile_mismatch_section",
+            "key": "flag.dashboard.glance_section",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -6868,38 +6640,8 @@
           },
           {
             "key": "flag.detail.annotations_sidebar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.category_trend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_legend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_presets",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.labels.profile_mismatch_badges",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.policy.fallback_references",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -6909,21 +6651,9 @@
             "override": null
           },
           {
-            "key": "flag.detail.timeline.matches_live_sync_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_snapshot_chips",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -6934,24 +6664,6 @@
           },
           {
             "key": "flag.detail.timeline.version_chip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_toggle",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -6969,31 +6681,13 @@
             "override": null
           },
           {
-            "key": "flag.global.about_modal",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.global.info_tooltips",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
           },
           {
-            "key": "flag.global.keyboard_shortcuts",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.global.label_hints",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.global.live_text_modal",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -7011,21 +6705,9 @@
             "override": null
           },
           {
-            "key": "flag.notifications.bell.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.notifications.quiet_hours",
             "currentValue": "on",
             "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.resume.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
             "override": null
           },
           {
@@ -7048,32 +6730,14 @@
           },
           {
             "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.manual_apps",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.privacy_map",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.page.shortlist",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.stats",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -7089,159 +6753,69 @@
             "override": null
           },
           {
-            "key": "flag.settings.policies.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.shortlist.actions.export",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.preview",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.print",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.remove",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.reset",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.share",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.actions.undo",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.detailed_view",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.installed_grouping",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.live_badge_prefetch",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.shortlist.profile_mismatch_pill",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.off_profile_card",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.recent_changes.filter",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.accessibility_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.category_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.heatmap",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.radar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.sankey",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.small_multiples",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.timeline",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.auto_dismiss",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.polling",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.resume_cards",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.taskcenter.widget",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           }
         ]
@@ -7258,7 +6832,25 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.appgrid.card.annotation_highlight",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -7330,6 +6922,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.devopts.feature_flag_presets",
             "currentValue": "off",
             "focusValue": "off",
@@ -7366,6 +6964,18 @@
             "override": null
           },
           {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.settings.admin.export.audit_bundle",
             "currentValue": "on",
             "focusValue": "on",
@@ -7373,6 +6983,72 @@
           },
           {
             "key": "flag.settings.admin.export.audit_pdf",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -7389,7 +7065,25 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.dashboard.callout.age_rating",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.dashboard.callout.guardian",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -7461,12 +7155,6 @@
             "override": null
           },
           {
-            "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.page.manual_apps",
             "currentValue": "off",
             "focusValue": "off",
@@ -7522,7 +7210,25 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.dashboard.callout.age_rating",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.dashboard.callout.guardian",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -7642,12 +7348,6 @@
             "override": null
           },
           {
-            "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.page.manual_apps",
             "currentValue": "off",
             "focusValue": "off",
@@ -7679,6 +7379,24 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.dashboard.callout.age_rating",
             "currentValue": "on",
             "focusValue": "on",
@@ -7686,6 +7404,12 @@
           },
           {
             "key": "flag.dashboard.callout.declutter",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.dashboard.callout.guardian",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -7740,6 +7464,12 @@
           },
           {
             "key": "flag.detail.policy.safety_summary",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.detail.tabs.compare",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -7805,6 +7535,12 @@
             "override": null
           },
           {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.page.manual_apps",
             "currentValue": "off",
             "focusValue": "off",
@@ -7817,9 +7553,81 @@
             "override": null
           },
           {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.settings.policies.wayback_import",
             "currentValue": "off",
             "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -7861,6 +7669,24 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.dashboard.callout.age_rating",
             "currentValue": "on",
             "focusValue": "on",
@@ -7868,6 +7694,12 @@
           },
           {
             "key": "flag.dashboard.callout.declutter",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.dashboard.callout.guardian",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -7933,6 +7765,12 @@
             "override": null
           },
           {
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.timeline.wayback_import",
             "currentValue": "off",
             "focusValue": "off",
@@ -7993,6 +7831,12 @@
             "override": null
           },
           {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.page.manual_apps",
             "currentValue": "off",
             "focusValue": "off",
@@ -8005,9 +7849,81 @@
             "override": null
           },
           {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.settings.policies.wayback_import",
             "currentValue": "off",
             "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           }
         ]
@@ -8024,24 +7940,6 @@
         "throws": null,
         "delta": [
           {
-            "key": "flag.appgrid.card.change_dot",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.freshness_chip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.profile_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.appgrid.card.risk_chips",
             "currentValue": "off",
             "focusValue": "off",
@@ -8049,14 +7947,14 @@
           },
           {
             "key": "flag.appgrid.review_queue.bulk_select",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.appgrid.review_queue.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -8072,13 +7970,13 @@
             "override": null
           },
           {
-            "key": "flag.dashboard.glance_section",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.dashboard.callout.guardian",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.dashboard.profile_mismatch_section",
+            "key": "flag.dashboard.glance_section",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -8096,55 +7994,7 @@
             "override": null
           },
           {
-            "key": "flag.detail.charts.category_trend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_legend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_presets",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.labels.profile_mismatch_badges",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.policy.fallback_references",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.detail.policy.run_log_strip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.matches_live_sync_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_snapshot_chips",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -8168,18 +8018,6 @@
             "override": null
           },
           {
-            "key": "flag.detail.timeline.wayback_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_toggle",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.devopts.feature_flag_presets",
             "currentValue": "off",
             "focusValue": "off",
@@ -8187,12 +8025,6 @@
           },
           {
             "key": "flag.devopts.visible",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.global.about_modal",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -8216,21 +8048,9 @@
             "override": null
           },
           {
-            "key": "flag.global.live_text_modal",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.guardian.age_rating",
             "currentValue": "on",
             "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.bell.polling",
-            "currentValue": "off",
-            "focusValue": "off",
             "override": null
           },
           {
@@ -8241,12 +8061,6 @@
           },
           {
             "key": "flag.notifications.resume.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.compare",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -8264,145 +8078,7 @@
             "override": null
           },
           {
-            "key": "flag.page.shortlist",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.stats",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.settings.policies.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.export",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.preview",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.print",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.remove",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.reset",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.share",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.undo",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.detailed_view",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.installed_grouping",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.live_badge_prefetch",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.profile_mismatch_pill",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.off_profile_card",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.recent_changes.filter",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.accessibility_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.category_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.heatmap",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.radar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.sankey",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.small_multiples",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.timeline",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -8451,7 +8127,25 @@
             "override": null
           },
           {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.dashboard.callout.age_rating",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.dashboard.callout.guardian",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -8544,12 +8238,6 @@
             "key": "flag.onboarding.accessibility_profile_setup",
             "currentValue": "on",
             "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
             "override": null
           },
           {
@@ -8615,7 +8303,25 @@
             "override": null
           },
           {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.dashboard.callout.age_rating",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.dashboard.callout.guardian",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -8759,12 +8465,6 @@
             "override": null
           },
           {
-            "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.page.manual_apps",
             "currentValue": "off",
             "focusValue": "off",
@@ -8797,24 +8497,6 @@
         "throws": null,
         "delta": [
           {
-            "key": "flag.appgrid.card.change_dot",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.freshness_chip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.appgrid.card.profile_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.appgrid.card.risk_chips",
             "currentValue": "off",
             "focusValue": "off",
@@ -8828,14 +8510,14 @@
           },
           {
             "key": "flag.appgrid.review_queue.bulk_select",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
             "key": "flag.appgrid.review_queue.enabled",
-            "currentValue": "off",
-            "focusValue": "off",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
@@ -8851,13 +8533,13 @@
             "override": null
           },
           {
-            "key": "flag.dashboard.glance_section",
-            "currentValue": "off",
-            "focusValue": "off",
+            "key": "flag.dashboard.callout.guardian",
+            "currentValue": "on",
+            "focusValue": "on",
             "override": null
           },
           {
-            "key": "flag.dashboard.profile_mismatch_section",
+            "key": "flag.dashboard.glance_section",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -8887,55 +8569,7 @@
             "override": null
           },
           {
-            "key": "flag.detail.charts.category_trend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_legend",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.charts.trend_presets",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.labels.profile_mismatch_badges",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.policy.fallback_references",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.detail.policy.run_log_strip",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.matches_live_sync_badge",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.review_snapshot_chips",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -8959,18 +8593,6 @@
             "override": null
           },
           {
-            "key": "flag.detail.timeline.wayback_rows",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.detail.timeline.wayback_toggle",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.devopts.feature_flag_presets",
             "currentValue": "off",
             "focusValue": "off",
@@ -8978,12 +8600,6 @@
           },
           {
             "key": "flag.devopts.visible",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.global.about_modal",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -9007,21 +8623,9 @@
             "override": null
           },
           {
-            "key": "flag.global.live_text_modal",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.guardian.age_rating",
             "currentValue": "on",
             "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.notifications.bell.polling",
-            "currentValue": "off",
-            "focusValue": "off",
             "override": null
           },
           {
@@ -9049,12 +8653,6 @@
             "override": null
           },
           {
-            "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.page.manual_apps",
             "currentValue": "off",
             "focusValue": "off",
@@ -9067,145 +8665,7 @@
             "override": null
           },
           {
-            "key": "flag.page.shortlist",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.page.stats",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
             "key": "flag.settings.policies.wayback_import",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.export",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.preview",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.print",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.remove",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.reset",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.share",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.actions.undo",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.detailed_view",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.installed_grouping",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.live_badge_prefetch",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.shortlist.profile_mismatch_pill",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.off_profile_card",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.recent_changes.filter",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.accessibility_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.category_bars",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.compare",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.heatmap",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.radar",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.sankey",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.small_multiples",
-            "currentValue": "off",
-            "focusValue": "off",
-            "override": null
-          },
-          {
-            "key": "flag.stats.viz.timeline",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -9248,7 +8708,25 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.dashboard.callout.age_rating",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.dashboard.callout.guardian",
             "currentValue": "on",
             "focusValue": "on",
             "override": null
@@ -9377,12 +8855,6 @@
             "key": "flag.onboarding.method.configurator",
             "currentValue": "on",
             "focusValue": "on",
-            "override": null
-          },
-          {
-            "key": "flag.page.compare",
-            "currentValue": "off",
-            "focusValue": "off",
             "override": null
           },
           {
@@ -9615,6 +9087,18 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.detail.a11y.preference_highlights",
             "currentValue": "on",
             "focusValue": "on",
@@ -9667,6 +9151,72 @@
             "currentValue": "on",
             "focusValue": "on",
             "override": "off"
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
           }
         ]
       },
@@ -9884,6 +9434,24 @@
         "throws": null,
         "delta": [
           {
+            "key": "flag.appgrid.actions.compare_mode",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.bulk_select",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.appgrid.review_queue.enabled",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.dashboard.callout.declutter",
             "currentValue": "on",
             "focusValue": "on",
@@ -10004,7 +9572,91 @@
             "override": null
           },
           {
+            "key": "flag.detail.tabs.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
             "key": "flag.onboarding.privacy_profile_setup",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.compare",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.page.shortlist",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.export",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.preview",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.print",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.remove",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.reset",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.share",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.actions.undo",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.detailed_view",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.installed_grouping",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.live_badge_prefetch",
+            "currentValue": "on",
+            "focusValue": "on",
+            "override": null
+          },
+          {
+            "key": "flag.shortlist.profile_mismatch_pill",
             "currentValue": "on",
             "focusValue": "on",
             "override": null

@@ -77,22 +77,80 @@ scoped_route!(
     |c, s, _q, _now| stats::summary(c, s, _now),
     None
 );
-scoped_route!(
-    triage,
-    "triage.read",
-    |c, s, _q, now| analysis::triage(c, s, now),
-    Some(analysis::empty_triage())
-);
+pub async fn triage(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Query(q): Query<Params>,
+) -> Response {
+    if let Some(r) = rate_gate(&state, &headers, "triage.read", 120, 60_000) {
+        return r;
+    }
+    let wants_overview = get(&q, "overview") == Some("1");
+    let result = (|| -> stats::Result<Value> {
+        let conn = state.db();
+        let scope = Scope::from_request(&conn, get(&q, "devices"));
+        let now = super::now_ms();
+        let mut result = analysis::triage(&conn, &scope, now)?;
+        if wants_overview {
+            let since = get(&q, "since")
+                .and_then(|s| s.parse::<i64>().ok())
+                .filter(|n| *n > 0 && *n <= now);
+            result["overview"] = super::focus_review::overview(&conn, &scope, since, now)?;
+            if let Some(apps) = result["higherRisk"].as_array_mut() {
+                let mut visible = Vec::new();
+                for app in apps.iter() {
+                    let id = stats::text(&app["id"]);
+                    if !super::focus_review::accepted(&conn, id)?
+                        && !super::focus_review::deferred(&conn, id)?
+                            .is_some_and(|until| until > now)
+                    {
+                        visible.push(app.clone());
+                    }
+                }
+                *apps = visible;
+            }
+        }
+        Ok(result)
+    })();
+    respond(
+        result,
+        "/api/triage",
+        if wants_overview {
+            None
+        } else {
+            Some(analysis::empty_triage())
+        },
+    )
+}
+
 scoped_route!(
     review_queue,
     "review-queue.list",
-    |c, s, q, now| review::queue(c, s, get(q, "count") == Some("1"), now),
+    |c, s, q, now| if get(q, "decisions") == Some("1") {
+        Ok(super::focus_review::decisions(c, s, now)?)
+    } else {
+        review::queue(c, s, get(q, "count") == Some("1"), now)
+    },
     None
 );
 scoped_route!(
     mismatches,
     "privacy-profile.mismatches",
-    |c, s, _q, _now| Ok(json!({"apps":grid_meta::mismatched_apps(c,s)?})),
+    |c, s, q, now| {
+        let mut apps = grid_meta::mismatched_apps(c, s)?;
+        if get(q, "unresolved") == Some("1") {
+            let decisions = super::focus_review::decisions(c, s, now)?;
+            let hidden: std::collections::HashSet<&str> = decisions["acceptedAppIds"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .chain(decisions["deferredAppIds"].as_array().unwrap().iter())
+                .filter_map(Value::as_str)
+                .collect();
+            apps.retain(|a| !hidden.contains(stats::text(&a["appId"])));
+        }
+        Ok(json!({"apps":apps}))
+    },
     Some(json!({"apps":[]}))
 );
 pub async fn age_summary(State(state): State<AppState>, headers: HeaderMap) -> Response {

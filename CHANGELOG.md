@@ -12,6 +12,28 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Focus and dashboard
+
+- Keep Monitor and Cleanup selected while using the simpler view. Comparison,
+  shortlist and guided cleanup follow the chosen focus; individual overrides
+  still take priority.
+- Show an overview of your goals and apps, full counts of unreviewed changes,
+  changes since your last visit in this browser, and actions for the next decision.
+- Keep an app while accepting its current concern, compare alternatives before
+  removal, or return to a decision in 1, 7 or 30 days. New collection or a changed
+  privacy profile reopens an accepted concern; policy and accessibility alerts
+  remain independent. Helping someone defaults to a saved review and report handoff.
+- Reorder dashboard cards when focus changes, preserving hidden choices. Turn
+  on **Keep layout fixed** in either layout editor to preserve your arrangement.
+
+### Security
+
+- Replace manual network-interface pointer traversal with an owning Rust
+  iterator when finding addresses for paired phones.
+- Patch Next.js, DOMPurify and affected build-tool dependencies. The Linux
+  desktop's upstream GLib iterator warning and Storybook's elliptic warning
+  remain tracked in [Dependency security](docs/DEPENDENCY-SECURITY.md).
+
 ### Added
 
 - Settings → Companion pairs the privacytracker iPhone app with your
@@ -46,6 +68,16 @@ Going forward, changes are recorded here as they land.
   in-app change alert privacytracker's bell provides.
 
 ### Changed
+
+- "Data Not Collected" is shown as the developer's disclosure, like every
+  other label, rather than as a pass. Compare no longer paints the slot green
+  with a check mark: it names the label in a neutral chip beside the link to
+  the privacy policy, whose tooltip now says to compare the two. The risk
+  legend, the Minimal tooltip on the apps grid, the stats heatmap ("Not
+  declared", "Hide apps that declare no data") and its screen-reader summary
+  say what the label declares instead of stating that no data is collected.
+  An app whose label couldn't be read no longer suggests it "may collect no
+  data".
 
 - Only releases are published to the Docker image
   `ghcr.io/privacykey/privacytracker`. A release gets its version tag, and a
@@ -821,6 +853,12 @@ Going forward, changes are recorded here as they land.
   that screen is the one the device gets. `POST /api/imports/items`
   accepts an optional `deviceId` for this, attached only to an import that
   has no device yet and only if the device exists.
+- The dashboard's "How we score risk" legend appears again. Its flag,
+  `flag.dashboard.risk_tier_legend`, has three values and defaults to
+  `collapsed` (shown, closed), but the dashboard read it as on or off, so
+  the default counted as off and the legend never rendered. It now shows
+  closed by default, starts open when the flag is set to `on` in Developer
+  Options, and stays hidden for `off` and for a "Keep it minimal" focus.
 
 ### Added
 

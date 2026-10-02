@@ -155,8 +155,7 @@ pub fn rules() -> &'static FlagRules {
     })
 }
 
-/// `FocusState.goals` after `activeGoalsFrom`: `minimal` suppresses the
-/// two goal tiles; `accessibility` is independent of all three.
+/// Minimal and accessibility are presentation modifiers that retain both goal tiles.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Goals {
     pub monitor: bool,
@@ -170,8 +169,8 @@ impl Goals {
     /// applied to the `/api/focus` body.
     pub fn from_stored(monitor: bool, cleanup: bool, minimal: bool, accessibility: bool) -> Self {
         Goals {
-            monitor: !minimal && monitor,
-            cleanup: !minimal && cleanup,
+            monitor,
+            cleanup,
             minimal,
             accessibility,
         }
@@ -431,7 +430,7 @@ mod tests {
         // Bumps whenever lib/feature-flag-rules.ts gains a key and
         // `just parity-settings-cases` is re-run; the `knows` line names
         // the most recent addition so the count change is traceable.
-        assert_eq!(r.keys().count(), 223);
+        assert_eq!(r.keys().count(), 224);
         assert_eq!(r.hard_default(KILL_SWITCH), "on");
         assert!(r.knows("flag.nav.device_scope"));
         assert!(r.knows("flag.settings.admin.companion"));

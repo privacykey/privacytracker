@@ -68,6 +68,11 @@ test("dashboard edit mode waits for a successful layout read", async ({
     },
   });
   await expect(focus).toBeOK();
+  // Apply the chosen layout after the focus change has reordered it.
+  await request.post("/api/dashboard/layout/preset", {
+    headers: sameOriginHeaders,
+    data: { preset: "minimal" },
+  });
   const seed = await request.post("/api/dev/seed-sample-data?source=canned", {
     headers: sameOriginHeaders,
   });

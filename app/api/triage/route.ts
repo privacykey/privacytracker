@@ -3,6 +3,11 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { isScopeAll } from "@/lib/device-scope";
 import { scopeFromRequest } from "@/lib/device-scope-server";
+import {
+  deferredUntil,
+  getFocusOverview,
+  hasAcceptedConcern,
+} from "@/lib/focus-review";
 import { checkRateLimit, rateLimitKeyForRequest } from "@/lib/security";
 import { getTriageData, type TriageData } from "@/lib/triage";
 
@@ -50,11 +55,41 @@ export async function GET(request: Request) {
     // `?devices=` narrows the dashboard to one or more devices. Absent,
     // this is the whole fleet exactly as before.
     const scope = scopeFromRequest(request.url);
-    return NextResponse.json(
-      getTriageData(isScopeAll(scope) ? undefined : scope)
-    );
+    const selected = isScopeAll(scope) ? undefined : scope;
+    const params = new URL(request.url).searchParams;
+    const since = Number(params.get("since"));
+    const triage = getTriageData(selected);
+    if (params.get("overview") === "1") {
+      triage.higherRisk = triage.higherRisk.filter(
+        (app) =>
+          !hasAcceptedConcern(app.id) &&
+          (deferredUntil(app.id) ?? 0) <= Date.now()
+      );
+    }
+    return NextResponse.json({
+      ...triage,
+      ...(params.get("overview") === "1"
+        ? {
+            overview: getFocusOverview(
+              selected,
+              params.has("since") &&
+                Number.isSafeInteger(since) &&
+                since > 0 &&
+                since <= Date.now()
+                ? since
+                : undefined
+            ),
+          }
+        : {}),
+    });
   } catch (error) {
     console.warn("[triage] getTriageData failed:", error);
+    if (new URL(request.url).searchParams.get("overview") === "1") {
+      return NextResponse.json(
+        { error: "Could not load dashboard" },
+        { status: 500 }
+      );
+    }
     return NextResponse.json(EMPTY);
   }
 }

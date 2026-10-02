@@ -441,7 +441,7 @@ fn seed_routes() -> Vec<RouteSpec> {
         guard: Guard::Mutation(GuardOptions {
             action: "dev.seed_sample_data",
             key_prefix: "dev.seed_sample_data",
-            limit: 60,
+            limit: 120,
             window_ms: 10 * 60_000,
             message: Some("Rate limit exceeded for dev sample seeding. Try again later."),
             admin: AdminRule::Configured,
@@ -734,7 +734,7 @@ fn maintenance_routes() -> Vec<RouteSpec> {
             Guard::Inline(InlineGuard {
                 prefix: "reset",
                 // Sized for the E2E suite; see app/api/reset/route.ts.
-                limit: 60,
+                limit: 120,
                 window_ms: 10 * 60_000,
                 message: "Rate limit exceeded for reset. Try again later.",
                 rate_audit: Some("reset.rate_limited"),
@@ -2083,8 +2083,8 @@ fn focus(cx: &mut Cx, body: BodyOutcome) -> Response {
         return bad("audience must be one of: self, loved_one, guardian");
     };
     let flag = |key: &str| prop(&body, key).is_some_and(truthy);
-    let mut monitor = flag("monitor");
-    let mut cleanup = flag("cleanup");
+    let monitor = flag("monitor");
+    let cleanup = flag("cleanup");
     let minimal = flag("minimal");
     let accessibility = flag("accessibility");
     let workflow = match prop(&body, "workflow") {
@@ -2096,10 +2096,6 @@ fn focus(cx: &mut Cx, body: BodyOutcome) -> Response {
             }
         },
     };
-    if minimal {
-        monitor = false;
-        cleanup = false;
-    }
     let final_workflow =
         workflow.unwrap_or_else(|| infer_focus_workflow(audience, monitor, cleanup, minimal));
     let child_age_band = prop(&body, "childAgeBand");
@@ -2116,6 +2112,29 @@ fn focus(cx: &mut Cx, body: BodyOutcome) -> Response {
                 .map_err(|e| e.to_string())?;
         cx.w.mark("BEGIN");
         let body = (|| -> Result<(), String> {
+            let changed = cx.get("flag.focus.audience", "self") != audience
+                || [
+                    ("monitor", monitor),
+                    ("cleanup", cleanup),
+                    ("minimal", minimal),
+                    ("accessibility", accessibility),
+                ]
+                .iter()
+                .any(|(key, value)| {
+                    (cx.get(&format!("flag.focus.goal.{key}"), "") == "true") != *value
+                });
+            if changed {
+                let layout = super::layout::layout_for_focus(
+                    read_layout(cx.w.conn).map_err(|e| e.to_string())?,
+                    audience,
+                    monitor,
+                    cleanup,
+                );
+                cx.set(
+                    "dashboard.layout",
+                    &serde_json::to_string(&layout).map_err(|e| e.to_string())?,
+                )?;
+            }
             cx.set("flag.focus.audience", audience)?;
             cx.set("flag.focus.goal.monitor", &monitor.to_string())?;
             cx.set("flag.focus.goal.cleanup", &cleanup.to_string())?;
@@ -2494,9 +2513,12 @@ fn layout_response(layout: &Layout) -> Response {
 }
 
 fn apply_layout_preset(cx: &mut Cx, key: &str) -> Response {
-    let Some((_, layout)) = presets().into_iter().find(|(k, _)| *k == key) else {
+    let Some((_, mut layout)) = presets().into_iter().find(|(k, _)| *k == key) else {
         return internal_error();
     };
+    layout.keep_fixed = read_layout(cx.w.conn)
+        .map(|l| l.keep_fixed)
+        .unwrap_or(false);
     if save_layout_with_log(cx, &layout).is_err() {
         return internal_error();
     }

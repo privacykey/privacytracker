@@ -132,7 +132,7 @@ test("minimal strips the surface back", () => {
   const c = focusCtx(["minimal"]);
   assert.equal(resolveFlag("flag.page.compare", c), "off");
   assert.equal(resolveFlag("flag.detail.labels.trust_card", c), "off");
-  assert.equal(resolveFlag("flag.page.stats", c), "off");
+  assert.equal(resolveFlag("flag.page.stats", c), "on");
   assert.equal(resolveFlag("flag.page.shortlist", c), "off");
 });
 
@@ -146,8 +146,8 @@ test("empty goal set leaves flags at their hard defaults (no overlay)", () => {
     resolveFlag("flag.detail.labels.trust_card", focusCtx(["cleanup"])),
     "off"
   );
-  // compare is on by default and nothing subtracts it.
-  assert.equal(resolveFlag("flag.page.compare", c), "on");
+  // Comparison follows Cleanup or Helping someone.
+  assert.equal(resolveFlag("flag.page.compare", c), "off");
 });
 
 test("a user override beats the goal rule (feature-toggle contract)", () => {

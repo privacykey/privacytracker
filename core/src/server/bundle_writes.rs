@@ -100,12 +100,12 @@ fn focus_and_workflow(cx: &Cx) -> (String, String) {
         return (audience, workflow);
     }
     let goal = |key: &str| cx.get(key, "") == "true";
-    // `activeGoalsFrom`: minimal suppresses the two tiles.
+    // `activeGoalsFrom`: minimal retains the two tiles.
     let minimal = goal("flag.focus.goal.minimal");
     let inferred = infer_focus_workflow(
         &audience,
-        !minimal && goal("flag.focus.goal.monitor"),
-        !minimal && goal("flag.focus.goal.cleanup"),
+        goal("flag.focus.goal.monitor"),
+        goal("flag.focus.goal.cleanup"),
         minimal,
     );
     (audience, inferred.to_string())
@@ -124,16 +124,20 @@ fn export(cx: &mut Cx, body: BodyOutcome) -> Response {
     };
     let (audience, workflow) = focus_and_workflow(cx);
 
-    // The flag, or a workflow that is preparing a handoff. A client hides
-    // the button; this is the gate.
+    // A handoff supplies a default; explicit overrides and the kill switch win.
     let flag = flags::context_from_db(cx.w.conn)
         .map_err(|e| e.to_string())
         .and_then(|ctx| {
-            flags::resolve_flag("flag.settings.admin.export.audit_bundle", &ctx)
+            let key = "flag.settings.admin.export.audit_bundle";
+            let handoff_default = !ctx.kill_switch_off
+                && !ctx.overrides.contains_key(key)
+                && workflow == "other_handoff";
+            flags::resolve_flag(key, &ctx)
+                .map(|value| value == "on" || handoff_default)
                 .map_err(|e| format!("{e:?}"))
         });
     match flag {
-        Ok(value) if value == "on" || workflow == "other_handoff" => {}
+        Ok(true) => {}
         Ok(_) => {
             return json_error(
                 StatusCode::FORBIDDEN,

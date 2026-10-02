@@ -154,12 +154,36 @@ test("the tri-state set is non-empty (the guard below has something to guard)", 
 });
 
 /**
- * String literals passed to the hooks that coerce a flag to
- * `value === "on"`, plus `RequireFlagGate`'s `flag=` prop.
+ * The literal flag keys one hook call reads.
  *
- * Matches the literal arguments only — a variable or prop-supplied key
- * can't be resolved statically, which is fine: the call sites that carry
- * a hardcoded key are the ones a person writes by hand and gets wrong.
+ * Most loaders don't write the keys inline: they pass a module-level
+ * `const DASHBOARD_FLAG_KEYS = [...] as const`. A bare identifier
+ * argument is therefore resolved to that array in the same file.
+ * Without this the scan saw nothing at those call sites, which is how
+ * HomeLoader read `flag.dashboard.risk_tier_legend` (hard default
+ * `"collapsed"`) through `useFlagBundle` and hid the dashboard's risk
+ * legend for every focus. A key that arrives as a prop or a parameter
+ * still can't be resolved, and is skipped.
+ */
+function callSiteKeys(argument: string, text: string): string[] {
+  const identifier = /^\s*([A-Za-z_$][\w$]*)\s*$/.exec(argument)?.[1];
+  const source = identifier
+    ? (new RegExp(
+        String.raw`\bconst\s+${identifier}\b[^=]*=\s*\[([\s\S]*?)\]`
+      ).exec(text)?.[1] ?? "")
+    : argument;
+  return [...source.matchAll(/["'](flag\.[^"']+)["']/g)].map(
+    (literal) => literal[1]
+  );
+}
+
+/**
+ * Flag keys passed to the hooks that coerce a flag to `value === "on"`,
+ * plus `RequireFlagGate`'s `flag=` prop.
+ *
+ * Inline literals and same-file `const` arrays are both resolved (see
+ * `callSiteKeys`). The call sites that carry a hardcoded key are the
+ * ones a person writes by hand and gets wrong.
  */
 function booleanHookKeys(text: string): string[] {
   const keys: string[] = [];
@@ -167,9 +191,7 @@ function booleanHookKeys(text: string): string[] {
     /\b(?:useFlagBundle|useResolvedFlag)\s*\(([\s\S]{0,600}?)\)/g
   );
   for (const call of callSites) {
-    for (const literal of call[1].matchAll(/["'](flag\.[^"']+)["']/g)) {
-      keys.push(literal[1]);
-    }
+    keys.push(...callSiteKeys(call[1], text));
   }
   for (const gate of text.matchAll(/\bflag=["'](flag\.[^"']+)["']/g)) {
     keys.push(gate[1]);
@@ -184,9 +206,7 @@ function rawHookKeys(text: string): string[] {
     /\b(?:useFlagValues|useFlagValuesWithDefaults)\s*\(([\s\S]{0,2000}?)\)/g
   );
   for (const call of callSites) {
-    for (const literal of call[1].matchAll(/["'](flag\.[^"']+)["']/g)) {
-      keys.push(literal[1]);
-    }
+    keys.push(...callSiteKeys(call[1], text));
   }
   return keys;
 }
@@ -242,6 +262,11 @@ test("the key scan finds the migrated call sites", () => {
     "flag.devopts.advanced_accordion",
     "flag.settings.policies.wayback_import",
     "flag.onboarding.method.import_audit_bundle",
+    // These two reach a hook only through a const array passed by name
+    // (HomeLoader's DASHBOARD_FLAG_KEYS, AppDetailLoader's
+    // DETAIL_FLAG_KEYS), so they pin the identifier resolution.
+    "flag.dashboard.stale_section",
+    "flag.detail.policy.chunk_notes",
   ]) {
     assert.ok(found.has(key), `expected the scan to see ${key}`);
   }
