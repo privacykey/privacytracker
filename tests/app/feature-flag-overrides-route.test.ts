@@ -35,11 +35,10 @@ test("feature-toggle override round-trips through the API (write → resolve →
   const prior = new Map(focusKeys.map((k) => [k, getSetting(k, "")]));
   const KEY = "flag.page.compare";
   try {
-    // Clean baseline focus: self + no goals → compare resolves to its
-    // hard default ("on") with no override.
+    // Cleanup focus enables comparison with no override.
     setSetting("flag.focus.audience", "self");
     setSetting("flag.focus.goal.monitor", "false");
-    setSetting("flag.focus.goal.cleanup", "false");
+    setSetting("flag.focus.goal.cleanup", "true");
     setSetting("flag.focus.goal.minimal", "false");
     setSetting("flag.focus.goal.accessibility", "false");
 

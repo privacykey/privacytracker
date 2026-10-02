@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type DashboardLayout, DEFAULT_LAYOUT } from "@/lib/dashboard-layout";
 import { describePurpose } from "@/lib/onboarding-purpose";
 import { isSameOriginPath } from "@/lib/same-origin-path";
@@ -158,6 +158,12 @@ export default function HomeLoader() {
   const sampleMode = searchParams.get("sample") === "1";
   const editLayoutRequested = searchParams.get("edit") === "layout";
 
+  const visits = useRef(
+    new Map<
+      string,
+      { since: number | null; recorded: boolean; startedAt: number }
+    >()
+  );
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -185,18 +191,46 @@ export default function HomeLoader() {
     }
     let live = true;
     setFailed(false);
+    const visitKey = `privacytracker.dashboard.visit.${scopeParam ?? "all"}`;
+    if (!visits.current.has(visitKey)) {
+      let since: number | null = null;
+      try {
+        const value = Number(localStorage.getItem(visitKey));
+        if (Number.isSafeInteger(value) && value > 0 && value <= Date.now()) {
+          since = value;
+        }
+      } catch {
+        /* Storage is optional. */
+      }
+      visits.current.set(visitKey, {
+        since,
+        recorded: false,
+        startedAt: Date.now(),
+      });
+    }
+    const visit = visits.current.get(visitKey)!;
     Promise.all([
       // Three of these describe "your apps" and so follow the device
       // scope: the triage blob (every dashboard count), the off-profile
       // list, and the review CTA's number. The other six are install-wide
       // settings and are deliberately left unscoped.
-      requiredJson(withScopeParam("/api/triage", scopeParam)),
+      requiredJson(
+        withScopeParam(
+          `/api/triage?overview=1${visit.since ? `&since=${visit.since}` : ""}`,
+          scopeParam
+        )
+      ),
       requiredJson("/api/focus"),
       json("/api/manual-apps"),
       json("/api/preferences"),
       (editLayoutRequested ? requiredJson : json)("/api/dashboard/layout"),
       json("/api/settings"),
-      json(withScopeParam("/api/privacy-profile/mismatches", scopeParam)),
+      json(
+        withScopeParam(
+          "/api/privacy-profile/mismatches?unresolved=1",
+          scopeParam
+        )
+      ),
       json("/api/import/audit-bundle/recent"),
       json(withScopeParam("/api/review-queue?count=1", scopeParam)),
     ])
@@ -260,6 +294,14 @@ export default function HomeLoader() {
             return;
           }
 
+          if (!visit.recorded) {
+            try {
+              localStorage.setItem(visitKey, String(visit.startedAt));
+            } catch {
+              /* Keep the dashboard usable without storage. */
+            }
+            visit.recorded = true;
+          }
           setData({
             triage,
             focus: focus ?? null,
@@ -416,6 +458,12 @@ export default function HomeLoader() {
           workflow: focus.workflow,
         }).primary,
         understandDeclutter: focus.monitor && focus.cleanup,
+        audience: focus.audience,
+        monitor: focus.monitor,
+        cleanup: focus.cleanup,
+        minimal: focus.minimal,
+        accessibility: focus.accessibility,
+        workflow: focus.workflow,
       }
     : null;
   // getActiveFocus() defaulted to self regardless of audienceSet, so the
@@ -459,7 +507,7 @@ export default function HomeLoader() {
         mismatchedApps={data.mismatchedApps}
         onSyncComplete={() => setRetry((value) => value + 1)}
         reviewCtaSlot={
-          data.reviewableCount > 0 ? (
+          !data.triage.overview && data.reviewableCount > 0 ? (
             <ReviewCtaBanner count={data.reviewableCount} />
           ) : null
         }

@@ -670,6 +670,19 @@ export default function AppGrid({
   // exits the other to keep card-click semantics unambiguous.
   const [pageMode, setPageMode] = useState<"grid" | "select">("grid");
   const [queueOpen, setQueueOpen] = useState(false);
+  const openedFromDashboard = useRef(false);
+  useEffect(() => {
+    if (
+      !openedFromDashboard.current &&
+      searchParams?.get("mode") === "queue" &&
+      f.reviewQueueEnabled &&
+      !fleetIncomplete &&
+      apps.length > 0
+    ) {
+      openedFromDashboard.current = true;
+      setQueueOpen(true);
+    }
+  }, [searchParams, f.reviewQueueEnabled, fleetIncomplete, apps.length]);
   const [bulkSelectedIds, setBulkSelectedIds] = useState<string[]>([]);
   // Snapshot of verdicts at the moment Select mode was entered — drives
   // the per-app rollback set surfaced by the BulkSelectBar's Undo toast.

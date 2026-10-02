@@ -24,7 +24,7 @@ test.beforeEach(async ({ request }) => {
     data: {
       audience: "self",
       monitor: true,
-      cleanup: false,
+      cleanup: true,
       minimal: false,
       accessibility: true,
     },
@@ -103,7 +103,9 @@ browserFlow(
     await expect(count).toContainText("2 apps selected");
 
     // Up to ten apps apply at once; more ask to confirm first.
-    await bar.getByRole("button", { name: /Mark safe/ }).click();
+    await bar
+      .getByRole("button", { name: /Keep & accept current concerns/ })
+      .click();
 
     // Marked on the server, and on the cards without a reload.
     for (const id of ids) {

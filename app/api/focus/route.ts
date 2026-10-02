@@ -111,8 +111,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Coerce goal flags to booleans. Undefined fields default to false.
-  let monitor = Boolean(body.monitor);
-  let cleanup = Boolean(body.cleanup);
+  const monitor = Boolean(body.monitor);
+  const cleanup = Boolean(body.cleanup);
   const minimal = Boolean(body.minimal);
   const accessibility = Boolean(body.accessibility);
   const workflow = body.workflow;
@@ -126,15 +126,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Mutual exclusion: minimal can't combine with monitor or cleanup.
-  // If client sent both, minimal wins (matches the "Keep it minimal" switch
-  // which deselects the goal tiles). Selecting no goal tiles is now a VALID
-  // empty state — it resolves to the hard-default baseline surface — so there
-  // is deliberately no silent fallback to monitor here.
-  if (minimal) {
-    monitor = false;
-    cleanup = false;
-  }
   const finalWorkflow =
     workflow ?? inferFocusWorkflow({ audience, monitor, cleanup, minimal });
 

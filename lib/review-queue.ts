@@ -77,9 +77,12 @@ export interface QueuePreflightChoices {
 }
 
 export interface QueueComputeOptions {
+  acceptedAppIds?: Set<string>;
   /** Apps with pending changes (privacy / accessibility / policy). */
   changedAppIds?: Set<string>;
+  deferredAppIds?: Set<string>;
   profileBadges: Record<string, AppProfileBadge>;
+  reopenedAppIds?: Set<string>;
   /** Seedable RNG for stable random sort in tests. Defaults to Math.random. */
   rng?: () => number;
   scope: QueueScope;
@@ -121,13 +124,22 @@ export function computeQueueRiskScore(app: QueueAppInput): number {
 }
 
 function matchesScope(app: QueueAppInput, opts: QueueComputeOptions): boolean {
+  if (opts.scope !== "all" && opts.deferredAppIds?.has(app.id)) {
+    return false;
+  }
   switch (opts.scope) {
     case "undecided":
-      return !opts.userVerdicts[app.id];
+      return (
+        !opts.userVerdicts[app.id] || opts.reopenedAppIds?.has(app.id) === true
+      );
     case "all":
       return true;
     case "mismatch":
-      return (opts.profileBadges[app.id]?.count ?? 0) > 0;
+      return (
+        (!opts.acceptedAppIds?.has(app.id) ||
+          opts.reopenedAppIds?.has(app.id) === true) &&
+        (opts.profileBadges[app.id]?.count ?? 0) > 0
+      );
     case "changed":
       return opts.changedAppIds
         ? opts.changedAppIds.has(app.id)

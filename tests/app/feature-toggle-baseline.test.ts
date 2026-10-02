@@ -96,13 +96,19 @@ test("focusValue reflects the active goal set", () => {
     }),
   ] as Goal[];
   // The GET computes focusValue this way against the SAVED focus:
-  // 'Keep it minimal' turns Stats off; a monitor focus leaves it on.
+  // 'Keep it simple' reduces activity detail; Monitor retains it.
   assert.equal(
-    resolveFocusBaseline("flag.page.stats", focusCtx(minimalGoals)),
+    resolveFocusBaseline(
+      "flag.dashboard.activity_section",
+      focusCtx(minimalGoals)
+    ),
     "off"
   );
   assert.equal(
-    resolveFocusBaseline("flag.page.stats", focusCtx(monitorGoals)),
+    resolveFocusBaseline(
+      "flag.dashboard.activity_section",
+      focusCtx(monitorGoals)
+    ),
     "on"
   );
 });

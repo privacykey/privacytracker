@@ -31,6 +31,7 @@ import {
   VERDICT_ORDER,
   type VerdictValue,
 } from "../../lib/verdict-types";
+import { ReviewNextStep } from "./ReviewNextStep";
 
 interface Props {
   appId: string;
@@ -179,6 +180,7 @@ export default function VerdictPicker({
   // replay via the same /api/verdicts route that fired the original
   // change.
   interface VerdictUndoOp {
+    acceptedCurrent?: boolean;
     priorUser: AppVerdict | null;
   }
   const MAX_VERDICT_UNDO_OPS = 20;
@@ -217,7 +219,12 @@ export default function VerdictPicker({
         const res = await fetch("/api/verdicts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ appId, verdict, rationale }),
+          body: JSON.stringify({
+            appId,
+            verdict,
+            rationale,
+            acceptCurrent: verdict === "safe",
+          }),
         });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
@@ -236,7 +243,7 @@ export default function VerdictPicker({
         // rationale field as soon as a verdict was picked.
         setEditing(true);
         setStep("reason");
-        pushVerdictUndo({ priorUser });
+        pushVerdictUndo({ priorUser, acceptedCurrent: verdict === "safe" });
         onChange?.(saved.verdict);
         // Bust the Router Cache so a back-nav to /dashboard or
         // /dashboard/apps re-fetches the RSC payload — otherwise
@@ -308,6 +315,7 @@ export default function VerdictPicker({
           body: JSON.stringify({
             appId,
             verdict: top.priorUser.verdict,
+            clearAcceptance: top.acceptedCurrent === true,
             rationale: top.priorUser.rationale ?? null,
           }),
         });
@@ -434,7 +442,10 @@ export default function VerdictPicker({
         {VERDICT_ORDER.map((value, index) => {
           const meta = VERDICT_META[value];
           const active = state.user?.verdict === value;
-          const optionLabel = tVerdict(`${value}_short`);
+          const optionLabel =
+            value === "safe"
+              ? tPicker("keep_accept")
+              : tVerdict(`${value}_short`);
           const optionDesc = tVerdict(`${value}_desc`);
           return (
             <button
@@ -606,6 +617,14 @@ export default function VerdictPicker({
         </div>
 
         {errorBlock}
+        {!compact && (
+          <ReviewNextStep
+            appId={appId}
+            key={`${appId}:${state.user?.updatedAt ?? 0}`}
+            onChange={() => onChange?.(state.user?.verdict ?? null)}
+            verdict={state.user?.verdict ?? null}
+          />
+        )}
       </section>
     );
   }
@@ -707,6 +726,14 @@ export default function VerdictPicker({
         </div>
 
         {errorBlock}
+        {!compact && (
+          <ReviewNextStep
+            appId={appId}
+            key={`${appId}:${state.user?.updatedAt ?? 0}`}
+            onChange={() => onChange?.(state.user?.verdict ?? null)}
+            verdict={state.user?.verdict ?? null}
+          />
+        )}
       </section>
     );
   }
@@ -745,7 +772,10 @@ export default function VerdictPicker({
         {VERDICT_ORDER.map((value, index) => {
           const meta = VERDICT_META[value];
           const active = state.user?.verdict === value;
-          const optionLabel = tVerdict(`${value}_short`);
+          const optionLabel =
+            value === "safe"
+              ? tPicker("keep_accept")
+              : tVerdict(`${value}_short`);
           const optionDesc = tVerdict(`${value}_desc`);
           return (
             <button
@@ -786,6 +816,14 @@ export default function VerdictPicker({
       )}
 
       {errorBlock}
+      {!compact && (
+        <ReviewNextStep
+          appId={appId}
+          key={`${appId}:${state.user?.updatedAt ?? 0}`}
+          onChange={() => onChange?.(state.user?.verdict ?? null)}
+          verdict={state.user?.verdict ?? null}
+        />
+      )}
     </section>
   );
 }

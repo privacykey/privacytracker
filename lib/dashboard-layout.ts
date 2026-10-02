@@ -129,6 +129,8 @@ export interface DashboardLayout {
    * the layout is trivially JSON-roundtrippable.
    */
   hidden: DashboardCardId[];
+  /** Retain card order when focus changes. Off by default. */
+  keepFixed?: boolean;
   order: DashboardCardId[];
   v: 1;
 }
@@ -138,6 +140,37 @@ export const DEFAULT_LAYOUT: DashboardLayout = {
   order: [...CANONICAL_ORDER],
   hidden: [],
 };
+
+/** Reorder available sections around the selected job; preserve hidden choices. */
+export function layoutForFocus(
+  layout: DashboardLayout,
+  focus: {
+    audience: string;
+    monitor: boolean;
+    cleanup: boolean;
+  }
+): DashboardLayout {
+  if (layout.keepFixed) {
+    return layout;
+  }
+  const first: DashboardCardId[] = ["focus_strip", "hero"];
+  if (focus.audience === "guardian") {
+    first.push("age_rating_callout", "family_callout");
+  }
+  if (focus.monitor) {
+    first.push("review_section");
+  }
+  if (focus.cleanup) {
+    first.push("review_cta", "cleanup_callout", "profile_mismatch_section");
+  }
+  if (focus.audience === "loved_one") {
+    first.push("task_list");
+  }
+  return {
+    ...layout,
+    order: [...first, ...CANONICAL_ORDER.filter((id) => !first.includes(id))],
+  };
+}
 
 // ─────────────────────────────────────────────
 // Presets
@@ -467,7 +500,10 @@ export function reconcileLayout(
       typeof id === "string" && FIRST_CLASS_CARDS.has(id as DashboardCardId)
   );
 
-  return normaliseLayout({ v: 1, order: out, hidden });
+  return {
+    ...normaliseLayout({ v: 1, order: out, hidden }),
+    ...(s.keepFixed === true ? { keepFixed: true } : {}),
+  };
 }
 
 // ─────────────────────────────────────────────

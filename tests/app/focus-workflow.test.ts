@@ -38,7 +38,7 @@ test("focus workflow validation and inference are conservative", () => {
       cleanup: true,
       minimal: false,
     }),
-    "custom"
+    "other_handoff"
   );
   assert.equal(workflowAllowsAuditBundle("other_handoff"), true);
   assert.equal(workflowAllowsAuditBundle("other_monitor"), false);

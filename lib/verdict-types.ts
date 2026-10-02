@@ -47,8 +47,8 @@ export interface VerdictMeta {
 export const VERDICT_META: Record<VerdictValue, VerdictMeta> = {
   safe: {
     value: "safe",
-    label: "Marked safe",
-    shortLabel: "Safe",
+    label: "Keeping app",
+    shortLabel: "Keep",
     description:
       "Keeping this app — you're comfortable with what it does and how it handles your data.",
     icon: "✓",

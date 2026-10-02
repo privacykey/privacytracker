@@ -103,7 +103,11 @@ export default function BulkSelectBar({
         const res = await fetch("/api/verdicts/bulk", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ appIds: selectedIds, verdict }),
+          body: JSON.stringify({
+            appIds: selectedIds,
+            verdict,
+            acceptCurrent: verdict === "safe",
+          }),
         });
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
@@ -163,7 +167,11 @@ export default function BulkSelectBar({
             ? await fetch("/api/verdicts", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ appId: p.appId, verdict: p.verdict }),
+                body: JSON.stringify({
+                  appId: p.appId,
+                  verdict: p.verdict,
+                  clearAcceptance: undo.verdict === "safe",
+                }),
               })
             : await fetch(
                 `/api/verdicts?appId=${encodeURIComponent(p.appId)}`,

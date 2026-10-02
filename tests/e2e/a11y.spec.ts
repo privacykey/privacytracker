@@ -205,7 +205,7 @@ async function setDefaultFocus(request: APIRequestContext) {
     data: {
       audience: "self",
       monitor: true,
-      cleanup: false,
+      cleanup: true,
       minimal: false,
       accessibility: true,
     },

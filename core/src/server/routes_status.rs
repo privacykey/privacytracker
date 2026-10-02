@@ -160,7 +160,18 @@ pub async fn verdicts(State(state): State<AppState>, Query(q): Query<Params>) ->
     })();
 
     match listed {
-        Ok(verdicts) => json_ok(&VerdictsBody { verdicts }),
+        Ok(verdicts) => {
+            let mut result = serde_json::to_value(VerdictsBody { verdicts }).unwrap();
+            if get(&q, "decision") == Some("1") {
+                result["deferredUntil"] =
+                    serde_json::json!(super::focus_review::deferred(&conn, app_id).ok().flatten());
+                result["accepted"] = serde_json::json!(super::focus_review::accepted(
+                    &conn, app_id
+                )
+                .unwrap_or(false));
+            }
+            json_ok(&result)
+        }
         // Node logs and answers 500 with this exact body.
         Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to list verdicts"),
     }
@@ -377,7 +388,11 @@ mod tests {
         assert!(!compute_is_due(day, since, now));
         assert!(compute_is_due(day, 0, now));
         // A day after the default: due.
-        assert!(compute_is_due(day, schedule_since(0, &(now - day).to_string()), now));
+        assert!(compute_is_due(
+            day,
+            schedule_since(0, &(now - day).to_string()),
+            now
+        ));
         // Once a sync has run since, the sync is what counts.
         assert_eq!(schedule_since(now - 10, &(now - day).to_string()), now - 10);
         // No marker, or garbage, is `|| 0`.

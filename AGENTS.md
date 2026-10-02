@@ -158,8 +158,11 @@ settings editor is `FocusPurposeForm` (rendered via `WelcomeSplash` and
 - **"Who's this for?"** is a visible 3-up segmented control (Me / Someone
   else / A child = `self` / `loved_one` / `guardian`); *A child* (guardian)
   is reachable only here and reveals the child-age band picker.
-- **"Keep it minimal"** is the subtractive `minimal` strip as an explicit
-  switch, mutually exclusive with the goal tiles.
+- **"Keep it simple"** is the `minimal` presentation modifier. It retains
+  Monitor/Cleanup goals, their tools, notifications and task opt-ins. It reduces
+  dashboard density and diagnostic detail. Comparison, shortlist and guided
+  cleanup default off and are enabled by Cleanup or Helping someone (guardian
+  also enables guided review); explicit feature overrides still win.
 - **No silent default:** selecting no tiles is a VALID empty baseline that
   resolves to the hard-default surface — `/api/focus` and `activeGoalsFrom`
   no longer force `monitor` on. (Pinned by `tests/app/focus-workflow.test.ts`
@@ -263,6 +266,27 @@ The home dashboard at `/dashboard` reads two independent axes when deciding what
 2. **Preference layer** — a `DashboardLayout` blob (`lib/dashboard-layout.ts`) stored in `app_settings` under `dashboard.layout`. Drives card order and per-card hidden state for the user. "Given the cards available to me, which order, and which hidden?"
 
 A card paints iff `flag === 'on'` AND `!layout.hidden.includes(id)` AND (for callouts) its data predicate holds. The two axes are deliberately separate: hiding "Activity" in the editor and switching focus from `self/curious` to `loved_one/family` keeps the personal hidden choice but lets the family callouts come back on through the focus.
+
+Focus saves reorder cards around the selected job via `layoutForFocus`, within
+the focus transaction, only when audience or goal/modifier values change.
+`DashboardLayout.keepFixed` is optional and defaults off; when true it preserves
+order. Presets preserve this setting, and turning it off takes effect on the next
+focus change. Hidden choices and capability gates remain independent.
+
+`GET /api/triage?overview=1&since=<epoch-ms>` adds a bounded app preview with
+whole-scope counts. Since-last-visit counts mean distinct apps with a live change
+after the supplied timestamp (Wayback imports excluded); the browser remembers
+one timestamp per device view. An overview read failure is 500, not an empty
+fleet. Review state lives in `review.accept.<appId>` / `review.defer.<appId>` in
+`app_settings`, mirrored by `core/src/server/focus_review.rs`. Explicit Keep
+(`acceptCurrent: true` on a safe verdict) records the collection hierarchy and
+profile at that moment. New collection types, categories or data items, or a
+different profile, reopen the concern; removals alone do not. Rationale edits and
+imported recommendations do not accept concerns. `POST /api/verdicts` with
+`deferDays: 1|7|30` persists a reminder without replacing the user's verdict.
+`GET ...?decision=1` exposes reminder/acceptance state; `DELETE ...?deferredOnly=1`
+cancels only the reminder. Dashboard mismatch reads use `?unresolved=1` to omit
+accepted concerns and future reminders; raw profile badges still report facts.
 
 `lib/dashboard-layout.ts` mirrors `lib/privacy-profile.ts` exactly — preset key list, `_META` records, `_PRESETS` records, plus `matchDashboardPreset(layout)` / `reconcileLayout(stored)` / `describeLayoutTransition(prev, next)`. Five presets ship out of the box (`default`, `minimal`, `caretaker`, `watchdog`, `at_a_glance`). `reconcileLayout` strips unknown ids, dedupes, drops callouts from `hidden[]` (callouts are reorder-only), and slots any newly-added canonical card next to its previous neighbour with hidden=false — so users on older saved layouts pick up new cards automatically rather than silently missing them. Server-only helpers live in `lib/dashboard-layout-server.ts`; `saveDashboardLayoutWithLog` records a `dashboard_layout_applied` activity row whenever a save crosses a named-preset boundary (custom-to-custom edits don't fire to keep the activity log readable).
 

@@ -60,6 +60,30 @@ test("computeQueueApps filters by scope=undecided", () => {
   );
 });
 
+test("guided review honors acceptance and reminders while explicit All remains available", () => {
+  const apps = [mkApp("kept"), mkApp("later"), mkApp("reopened")];
+  const options = {
+    sort: "alphabetical" as const,
+    userVerdicts: { kept: "safe", reopened: "safe" } as Record<
+      string,
+      VerdictValue
+    >,
+    profileBadges: Object.fromEntries(
+      apps.map((app) => [app.id, mkBadge(1, 1)])
+    ),
+    acceptedAppIds: new Set(["kept"]),
+    deferredAppIds: new Set(["later"]),
+    reopenedAppIds: new Set(["reopened"]),
+  };
+  for (const scope of ["undecided", "mismatch"] as const) {
+    assert.deepEqual(
+      computeQueueApps(apps, { ...options, scope }).map((app) => app.id),
+      ["reopened"]
+    );
+  }
+  assert.equal(computeQueueApps(apps, { ...options, scope: "all" }).length, 3);
+});
+
 test("computeQueueApps filters by scope=mismatch", () => {
   const apps = [mkApp("a"), mkApp("b"), mkApp("c")];
   const result = computeQueueApps(apps, {

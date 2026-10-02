@@ -120,9 +120,9 @@ test("turning Monitor off later keeps daily", async () => {
 test("a focus without Monitor sets no schedule", async () => {
   await saveFocus({ ...MONITOR, monitor: false, cleanup: true });
   assert.equal(storedSchedule(), null);
-  // "Keep it minimal" wins over the tiles, so Monitor is not saved.
+  // Minimal retains Monitor and its daily default.
   await saveFocus({ ...MONITOR, minimal: true });
-  assert.equal(storedSchedule(), null);
+  assert.equal(storedSchedule(), "daily");
 });
 
 test("an empty stored value counts as never chosen", () => {

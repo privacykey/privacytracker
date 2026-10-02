@@ -10,8 +10,7 @@ import { expect, test } from "@playwright/test";
  * integration surface — refactors to the grid's compare-mode toggle
  * won't affect the comparison page's contract.
  *
- * `flag.page.compare` defaults to 'on' for the `self` audience, so
- * no focus elevation is needed beyond the standard seed.
+ * Comparison is enabled by the Cleanup focus used by this scenario.
  */
 
 const sameOriginHeaders = {
@@ -31,7 +30,7 @@ test.beforeEach(async ({ request }) => {
     data: {
       audience: "self",
       monitor: true,
-      cleanup: false,
+      cleanup: true,
       minimal: false,
       accessibility: true,
     },

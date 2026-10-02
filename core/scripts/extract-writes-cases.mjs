@@ -752,7 +752,26 @@ async function guardCases(route, method, limit, extra = {}) {
       accessibility: true,
     },
   });
-  await run("focus minimal wins", {
+  await run("focus retains a fixed custom order", {
+    route,
+    method,
+    setup: [
+      setting(
+        "dashboard.layout",
+        JSON.stringify({ ...DASHBOARD_PRESETS.watchdog, keepFixed: true })
+      ),
+    ],
+    json: { audience: "self", cleanup: true },
+  });
+  await run("focus reorders custom layout and preserves hidden cards", {
+    route,
+    method,
+    setup: [
+      setting("dashboard.layout", JSON.stringify(DASHBOARD_PRESETS.watchdog)),
+    ],
+    json: { audience: "loved_one", monitor: true, cleanup: true },
+  });
+  await run("focus minimal retains goals", {
     route,
     method,
     json: { audience: "self", monitor: true, cleanup: true, minimal: true },

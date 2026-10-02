@@ -26,6 +26,7 @@
 
 import { recordActivity } from "./activity";
 import db from "./db";
+import { acceptCurrentConcern, clearDeferral } from "./focus-review";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -353,7 +354,7 @@ export function setVerdict(input: SetVerdictInput): AppVerdict {
 export function setVerdicts(
   appIds: string[],
   verdict: VerdictValue,
-  options: { rationale?: string | null } = {}
+  options: { rationale?: string | null; acceptCurrent?: boolean } = {}
 ): AppVerdict[] {
   if (!isValidVerdict(verdict)) {
     throw new Error(`invalid verdict: ${verdict}`);
@@ -396,6 +397,10 @@ export function setVerdicts(
         id = generateId();
         firstSet = now;
         insert.run(id, appId, verdict, rationale, now, now);
+      }
+      clearDeferral(appId);
+      if (verdict === "safe" && options.acceptCurrent === true) {
+        acceptCurrentConcern(appId);
       }
       out.push({
         id,
