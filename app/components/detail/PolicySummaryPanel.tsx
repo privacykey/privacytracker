@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import type { FlagValue } from "../../../lib/feature-flag-rules";
 import {
   type AppPolicyAnalysis,
   canSummariseStoredPolicy,
@@ -108,7 +109,7 @@ interface PolicyPanelFlagState {
   aiSummary: boolean;
   aiSummaryDisclaimer: boolean;
   changeStrip: boolean;
-  chunkNotes: boolean;
+  chunkNotes: FlagValue;
   fallbackReferences: boolean;
   highlights: boolean;
   lensGrid: boolean;
@@ -116,8 +117,8 @@ interface PolicyPanelFlagState {
   recentChangeBanner: boolean;
   rescrapeButton: boolean;
   rescrapeSummariseButton: boolean;
-  runLogDetails: boolean;
-  runLogStrip: boolean;
+  runLogDetails: FlagValue;
+  runLogStrip: FlagValue;
   safetySummary: boolean;
   sourcePolicyLink: boolean;
   summariseButton: boolean;
@@ -150,8 +151,11 @@ export default function PolicySummaryPanel({
   onViewDiff: () => void;
   /**
    * Wave I — per-section flag state. Each `flag.detail.policy.*` flag
-   * threads through here as a boolean; missing flags fall back to true
-   * so legacy callers stay rendering as before.
+   * threads through here as a boolean, except the three diagnostics
+   * (`chunk_notes`, `run_log_strip`, `run_log_details`), which default to
+   * "collapsed" and arrive raw: "collapsed" shows the block closed, "on"
+   * shows it open, "off" hides it. Missing flags fall back to a showing
+   * value so legacy callers stay rendering as before.
    */
   flags?: Partial<PolicyPanelFlagState>;
 }) {
@@ -176,9 +180,9 @@ export default function PolicySummaryPanel({
     whatsNew: flags?.whatsNew ?? true,
     recentChangeBanner: flags?.recentChangeBanner ?? true,
     changeStrip: flags?.changeStrip ?? true,
-    chunkNotes: flags?.chunkNotes ?? true,
-    runLogStrip: flags?.runLogStrip ?? true,
-    runLogDetails: flags?.runLogDetails ?? true,
+    chunkNotes: flags?.chunkNotes ?? "collapsed",
+    runLogStrip: flags?.runLogStrip ?? "collapsed",
+    runLogDetails: flags?.runLogDetails ?? "collapsed",
     fallbackReferences: flags?.fallbackReferences ?? true,
     waybackBackupLink: flags?.waybackBackupLink ?? true,
     sourcePolicyLink: flags?.sourcePolicyLink ?? true,
@@ -706,12 +710,13 @@ export default function PolicySummaryPanel({
       {/* Live phase / thinking strip. During a run we stream; otherwise we
           fall back to the last persisted run log so the user can still see
           what happened on the previous click. */}
-      {pf.runLogStrip && (
+      {pf.runLogStrip !== "off" && (
         <PolicyRunLogStrip
+          detailsOpen={pf.runLogDetails === "on"}
           log={displayLog}
           regenError={regenError}
           running={runningPhase !== "idle"}
-          showDetails={pf.runLogDetails}
+          showDetails={pf.runLogDetails !== "off"}
         />
       )}
 
@@ -742,10 +747,13 @@ export default function PolicySummaryPanel({
         />
       )}
 
-      {pf.chunkNotes &&
+      {pf.chunkNotes !== "off" &&
         analysis?.chunkNotes &&
         analysis.chunkNotes.length > 0 && (
-          <PolicyChunkNotesBlock notes={analysis.chunkNotes} />
+          <PolicyChunkNotesBlock
+            notes={analysis.chunkNotes}
+            open={pf.chunkNotes === "on"}
+          />
         )}
 
       {app.privacyPolicyUrl && analysis && !analysis.summary && (

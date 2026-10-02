@@ -23,6 +23,7 @@ import type {
 } from "../../lib/changelog-types";
 import { formatDate as formatDateWithMode } from "../../lib/date-format";
 import { useDateFormat } from "../../lib/date-format-hook";
+import type { FlagValue } from "../../lib/feature-flag-rules";
 import { formatPriceLine, priceTooltip } from "../../lib/price-display";
 import { sortPrivacyTypesForDisplay } from "../../lib/privacy-meta";
 import type { PrivacyProfile } from "../../lib/privacy-profile";
@@ -109,20 +110,23 @@ export interface AppImportProvenanceProp {
 
 /**
  * Resolved detail-flag values from the server. Wave F widens this from the
- * annotations sidebar to cover every major App Detail section. Each entry
- * is a 'on' | 'off' boolean (or 'collapsed' for the few that support it);
- * legacy callers that don't pass the prop keep their pre-flag behaviour
- * because every consumer falls back to "true" / "on" when the value is
+ * annotations sidebar to cover every major App Detail section. Most
+ * entries are booleans (the flag is "on"). The five flags that can
+ * resolve to "collapsed" are kept as their raw `FlagValue` instead:
+ * "collapsed" means shown but not expanded, "on" shown and expanded,
+ * "off" hidden. A boolean would read their "collapsed" default as off.
+ * Legacy callers that don't pass the prop keep their pre-flag behaviour
+ * because every consumer falls back to a showing value when it is
  * missing.
  */
 export interface DetailFlagState {
   // Accessibility tab
-  a11yPanel: boolean;
+  a11yPanel: FlagValue;
   a11yPreferenceHighlights: boolean;
   actionsDeleteButton: boolean;
   // Actions
   actionsResyncButton: boolean;
-  annotationsSidebar: "on" | "off" | "collapsed";
+  annotationsSidebar: FlagValue;
   /** Server-resolved focus.audience — drives audience-specific copy + behaviour. */
   audience: "self" | "loved_one" | "guardian";
   // Charts (under timeline)
@@ -146,7 +150,7 @@ export interface DetailFlagState {
   policyAiSummary: boolean;
   policyAiSummaryDisclaimer: boolean;
   policyChangeStrip: boolean;
-  policyChunkNotes: boolean;
+  policyChunkNotes: FlagValue;
   policyFallbackReferences: boolean;
   policyHighlights: boolean;
   policyLensGrid: boolean;
@@ -156,8 +160,8 @@ export interface DetailFlagState {
   policyRecentChangeBanner: boolean;
   policyRescrapeButton: boolean;
   policyRescrapeSummariseButton: boolean;
-  policyRunLogDetails: boolean;
-  policyRunLogStrip: boolean;
+  policyRunLogDetails: FlagValue;
+  policyRunLogStrip: FlagValue;
   policySafetySummary: boolean;
   policySourcePolicyLink: boolean;
   policySummariseButton: boolean;
@@ -293,9 +297,10 @@ export default function AppDetailView({
     policySafetySummary: detailFlags?.policySafetySummary ?? false,
     policyHighlights: detailFlags?.policyHighlights ?? true,
     policyChangeStrip: detailFlags?.policyChangeStrip ?? true,
-    policyChunkNotes: detailFlags?.policyChunkNotes ?? true,
-    policyRunLogStrip: detailFlags?.policyRunLogStrip ?? true,
-    policyRunLogDetails: detailFlags?.policyRunLogDetails ?? true,
+    // Tri-state, defaulting to their shared hard default "collapsed".
+    policyChunkNotes: detailFlags?.policyChunkNotes ?? "collapsed",
+    policyRunLogStrip: detailFlags?.policyRunLogStrip ?? "collapsed",
+    policyRunLogDetails: detailFlags?.policyRunLogDetails ?? "collapsed",
     policyFallbackReferences: detailFlags?.policyFallbackReferences ?? true,
     policyWaybackBackupLink: detailFlags?.policyWaybackBackupLink ?? true,
     policySourcePolicyLink: detailFlags?.policySourcePolicyLink ?? true,
@@ -307,7 +312,7 @@ export default function AppDetailView({
       detailFlags?.policyRescrapeSummariseButton ?? true,
     policyPreviewToggle: detailFlags?.policyPreviewToggle ?? true,
     policyAiSummaryDisclaimer: detailFlags?.policyAiSummaryDisclaimer ?? true,
-    a11yPanel: detailFlags?.a11yPanel ?? true,
+    a11yPanel: detailFlags?.a11yPanel ?? "collapsed",
     a11yPreferenceHighlights: detailFlags?.a11yPreferenceHighlights ?? true,
     reviewPanel: detailFlags?.reviewPanel ?? true,
     reviewMarkReviewed: detailFlags?.reviewMarkReviewed ?? true,
@@ -338,8 +343,16 @@ export default function AppDetailView({
   const [toast, setToast] = useState("");
   const [reviewState, setReviewState] =
     useState<UnacknowledgedChanges>(unacknowledged);
+  // `flag.detail.a11y.panel` is tri-state with a "collapsed" default. A
+  // tab has no closed state of its own, so "collapsed" and "on" both show
+  // it; "on" also lets the resolver turn on the preference highlights,
+  // which depend on this flag being "on". Never gate on `f.a11yPanel`
+  // directly: every value, "off" included, is a truthy string.
+  const a11yPanelVisible = f.a11yPanel !== "off";
   const canShowAccessibilityTab =
-    f.a11yPanel && trackAccessibility && app.hasAccessibilityLabels != null;
+    a11yPanelVisible &&
+    trackAccessibility &&
+    app.hasAccessibilityLabels != null;
   const canShowPolicyTab = f.policyPanel;
 
   // One-shot blue pulse on the section the URL hash points at — same
@@ -1337,7 +1350,7 @@ export default function AppDetailView({
           aren't presented with an empty surface on apps we haven't rescraped
           since the feature shipped.
         */}
-        {f.a11yPanel &&
+        {a11yPanelVisible &&
           trackAccessibility &&
           app.hasAccessibilityLabels != null && (
             <button
@@ -1546,7 +1559,7 @@ export default function AppDetailView({
       {/* Accessibility tab — renders the declared-feature list alongside the
           canonical baseline, so users can see both what Apple expects a
           developer to consider AND what this developer actually filed. */}
-      {tab === "accessibility" && trackAccessibility && f.a11yPanel && (
+      {tab === "accessibility" && trackAccessibility && a11yPanelVisible && (
         <div
           aria-labelledby="tab-accessibility"
           id="tabpanel-accessibility"

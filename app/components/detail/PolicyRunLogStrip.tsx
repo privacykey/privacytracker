@@ -27,6 +27,7 @@ export default function PolicyRunLogStrip({
   log,
   regenError,
   showDetails = true,
+  detailsOpen = false,
 }: {
   running: boolean;
   log: PolicyRunPhase[];
@@ -38,6 +39,11 @@ export default function PolicyRunLogStrip({
    * the strip stays a one-line status indicator.
    */
   showDetails?: boolean;
+  /**
+   * Whether the full trace starts open: the same flag set to "on" rather
+   * than its "collapsed" default. The reader can still toggle it.
+   */
+  detailsOpen?: boolean;
 }) {
   const tLog = useTranslations("app_detail.policy_log");
   // Settings → Appearance → Date format. Drives the "Last run" label
@@ -139,7 +145,7 @@ export default function PolicyRunLogStrip({
       </div>
 
       {showDetails && log.length > 0 && (
-        <details style={{ marginTop: 8 }}>
+        <details open={detailsOpen} style={{ marginTop: 8 }}>
           <summary
             style={{ cursor: "pointer", color: "var(--text-3, #6c7c94)" }}
           >
