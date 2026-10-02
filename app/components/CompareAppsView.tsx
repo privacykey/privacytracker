@@ -2698,8 +2698,8 @@ function ComparisonTable({
           keeps the categories as the first thing the user sees, and frames
           the banner as context ("here's why one side is thin") rather than
           a full-width alert at the top. We only show it for the 'unfilled'
-          case; genuine "no data collected" slots advertise themselves with
-          a green chip on the slot header instead. */}
+          case; a slot whose label is Data Not Collected names that label in
+          a neutral chip on its header instead. */}
       {showBanner && (
         <NoDataNotice
           a={a}
@@ -2820,9 +2820,10 @@ function ProfilePrefCell({
  * Callout shown below the comparison grid when one or both apps are in the
  * `unfilled` empty-state bucket — i.e. Apple explicitly renders "No Details
  * Provided" because the developer hasn't declared privacy labels yet. This
- * is distinct from a modern app that legitimately doesn't collect data
- * (those get the green "No data collected" chip on their slot header; no
- * banner here). We nudge the user toward the dev's privacy policy so they
+ * is distinct from an app whose label is Data Not Collected (that slot
+ * names the label in a neutral chip on its header; no banner here).
+ * Like every label, Data Not Collected is the developer's own statement, so
+ * it is shown as a disclosure to compare with the policy, never as a pass. We nudge the user toward the dev's privacy policy so they
  * can corroborate the App Store silence against the dev's own disclosure.
  */
 function NoDataNotice({
@@ -2901,9 +2902,10 @@ function SlotHeader({
   shortlistAction,
 }: {
   slot: SlotData;
-  /** `labeled` = app has privacy categories. `none` = app declared nothing
-   *  (green "No data collected" chip). `unfilled` = Apple shows "No Details
-   *  Provided" (warning chip + banner below the grid).  */
+  /** `labeled` = app has privacy categories. `none` = the label is Data
+   *  Not Collected (neutral chip naming the label, plus the policy link).
+   *  `unfilled` = Apple shows "No Details Provided" (warning chip + banner
+   *  below the grid).  */
   status: "labeled" | "none" | "unfilled";
   /** Optional "save as alternative" affordance. Only passed for slot B, and
    *  only when a tracked source app is paired up (sourceAppId exists). */
@@ -2922,7 +2924,7 @@ function SlotHeader({
   const hasFooter = isNoData || isUnfilled || hasA11yCount;
   return (
     <div
-      className={`compare-slot-header${isNoData ? " compare-slot-header-ok" : ""}${isUnfilled ? " compare-slot-header-warn" : ""}`}
+      className={`compare-slot-header${isUnfilled ? " compare-slot-header-warn" : ""}`}
     >
       <div className="compare-slot-header-row">
         {slot.iconUrl ? (
@@ -3022,11 +3024,14 @@ function SlotHeader({
               empty state. The a11y count chip (below) rides in the same row
               even when the privacy side is just 'labeled' / fine. */}
           {isNoData && (
+            // Named like every other label, with the label's own icon. No
+            // green and no check mark: it is the developer's statement, and
+            // the policy link beside it is where the user checks it.
             <span
-              className="compare-slot-chip compare-slot-chip-ok"
+              className="compare-slot-chip compare-slot-chip-declared"
               title={tCompare("no_collection_chip_title")}
             >
-              <span aria-hidden="true">✓</span>
+              <PrivacyTypeIcon identifier="DATA_NOT_COLLECTED" />
               {tCompare("chip_no_data_collected")}
             </span>
           )}
@@ -3900,7 +3905,7 @@ function AccessibilitySlotHeader({
 
 /**
  * Compact "6/9 a11y" chip shown in the slot-header footer row alongside the
- * other empty-state chips ("No details provided", "No data collected", etc.)
+ * other empty-state chips ("No details provided", "Data Not Collected", etc.)
  * so every reason-for-this-slot pill sits on the same visual tier. Rendered
  * in both comparison modes so the a11y density of a previewed App Store app
  * is visible at a glance, without the user having to flip over to the
