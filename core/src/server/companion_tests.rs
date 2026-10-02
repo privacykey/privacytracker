@@ -336,6 +336,42 @@ fn private_addresses() {
     }
 }
 
+/// LAN addresses stay private, usable and deduplicated in interface order.
+#[cfg(unix)]
+#[test]
+fn lan_addresses_filter_interfaces_and_preserve_order() {
+    use nix::{ifaddrs::InterfaceAddress, net::if_::InterfaceFlags, sys::socket::SockaddrStorage};
+
+    let interface = |ip: Option<&str>, flags| InterfaceAddress {
+        interface_name: "fixture".into(),
+        flags,
+        address: ip.map(|ip| SockaddrStorage::from(ip.parse::<std::net::SocketAddr>().unwrap())),
+        netmask: None,
+        broadcast: None,
+        destination: None,
+    };
+    let up = InterfaceFlags::IFF_UP;
+    let addresses = companion_lan::private_interface_addresses([
+        interface(Some("192.168.1.20:0"), up),
+        interface(Some("10.0.0.2:0"), InterfaceFlags::empty()),
+        interface(Some("127.0.0.1:0"), up | InterfaceFlags::IFF_LOOPBACK),
+        interface(Some("8.8.8.8:0"), up),
+        interface(Some("[::1]:0"), up),
+        interface(None, up),
+        interface(Some("100.100.1.1:0"), up),
+        interface(Some("192.168.1.20:0"), up),
+        interface(Some("10.0.0.2:0"), up),
+    ]);
+    assert_eq!(addresses, ["192.168.1.20", "100.100.1.1", "10.0.0.2"]);
+
+    let actual = companion_lan::lan_addresses();
+    assert!(actual.iter().all(|ip| companion_lan::is_private_v4(ip.parse().unwrap())));
+    let mut unique = actual.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(unique.len(), actual.len());
+}
+
 /// Accepts exactly one certificate, by SHA-256: what the iPhone app does.
 #[derive(Debug)]
 struct Pinned {

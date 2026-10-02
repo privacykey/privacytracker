@@ -12,6 +12,14 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Security
+
+- Replace manual network-interface pointer traversal with an owning Rust
+  iterator when finding addresses for paired phones.
+- Patch Next.js, DOMPurify and affected build-tool dependencies. The Linux
+  desktop's upstream GLib iterator warning and Storybook's elliptic warning
+  remain tracked in [Dependency security](docs/DEPENDENCY-SECURITY.md).
+
 ### Added
 
 - Settings → Companion pairs the privacytracker iPhone app with your
