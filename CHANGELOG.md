@@ -162,6 +162,16 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- The app detail page's Accessibility tab appears again. Its flag,
+  `flag.detail.a11y.panel`, has three values and defaults to `collapsed`
+  (shown), but the page read it as on or off, so the default counted as
+  off. The tab appeared only with the accessibility option in your focus,
+  and the header's accessibility chip opened an empty page. The AI Policy
+  tab had the same bug: the strip showing the last summary run is back,
+  and the per-chunk notes show, closed, wherever the AI summary does.
+  "Keep it minimal" and the guardian audience still hide both, and setting
+  the run-log-details or chunk-notes flag to `on` in Developer Options
+  starts that section open.
 - Desktop app: "Start at login" works in the signed app. It asked macOS's
   System Events to add a login item, which the app has no permission to do,
   so macOS most likely refused it silently. It now adds a LaunchAgent

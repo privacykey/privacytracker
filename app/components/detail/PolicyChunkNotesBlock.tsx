@@ -9,16 +9,23 @@ import type { PolicyChunkNote } from "../../../lib/policy-summary-meta";
  * current policy's content hash (see hydratePolicyAnalysis). Lets the user
  * validate what each chunk produced before trusting the merged rollup —
  * directly addresses the "can't validate if responses are valid" concern.
+ *
+ * `open` is `flag.detail.policy.chunk_notes` set to "on" rather than its
+ * "collapsed" default. It only sets the starting state; the reader can
+ * still toggle the block.
  */
 export default function PolicyChunkNotesBlock({
   notes,
+  open = false,
 }: {
   notes: PolicyChunkNote[];
+  open?: boolean;
 }) {
   const tDetail = useTranslations("app_detail");
   return (
     <details
       className="policy-chunk-notes"
+      open={open}
       style={{
         marginTop: 12,
         padding: "10px 12px",

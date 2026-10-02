@@ -11,7 +11,7 @@
  * hook has been deleted; `lib/use-flag-bundle.ts` (over
  * `GET /api/feature-flags`) is the only client-side flag reader.
  *
- * Three ways that can silently regress, one test each:
+ * Four ways that can silently regress, one test each:
  *
  *  1. The resolver hooks come back, or a client component imports the
  *     resolver directly. Same bug, new spelling.
@@ -23,8 +23,10 @@
  *  3. A typo'd key. `useFlagValues*` are typed to `FlagKey`, so tsc
  *     catches those — but `useFlagBundle` / `useResolvedFlag` accept any
  *     string, and an unknown key resolves to `false` with no error.
+ *  4. A tri-state flag is read raw and then coerced by hand, which is
+ *     test 2's bug written out in the loader instead of the hook.
  *
- * All three are static scans, deliberately: they cost nothing and they
+ * All four are static scans, deliberately: they cost nothing and they
  * fire on the PR that introduces the mistake rather than in a browser
  * months later.
  */
@@ -243,4 +245,101 @@ test("the key scan finds the migrated call sites", () => {
   ]) {
     assert.ok(found.has(key), `expected the scan to see ${key}`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// 4. A raw tri-state read is not coerced back to a boolean
+// ---------------------------------------------------------------------------
+
+/**
+ * Flag keys whose raw value is compared with "on" in the source.
+ *
+ * Test 2 only sees the boolean hooks. A loader can read raw through
+ * `useFlagValues` and then write `v["<key>"] === "on"` itself, which
+ * reads "collapsed" as off just the same. AppDetailLoader did that for
+ * `flag.detail.a11y.panel` and the three policy diagnostics, hiding the
+ * accessibility tab, the run-log strip and the chunk notes for every
+ * focus that left them at their "collapsed" default. Two shapes count:
+ *
+ *   - a literal key read and compared in place, `v["flag.x"] === "on"`
+ *     or `values?.["flag.x"] !== "on"`;
+ *   - a literal key passed to a local helper whose body makes that
+ *     comparison on its parameter, `const on = (key) => v?.[key] === "on"`
+ *     and then `on("flag.x")`.
+ *
+ * Comparing a tri-state value with "on" is right when it decides whether
+ * a surface starts expanded. That comparison belongs where the raw value
+ * is used (AppDetailView's `annotationsSidebar === "on"`), not at the
+ * key read, so a key read compared with "on" is always the bug.
+ */
+function onComparedKeys(text: string): string[] {
+  const keys: string[] = [];
+  for (const read of text.matchAll(
+    /\[\s*["'](flag\.[^"']+)["']\s*\]\s*[!=]==?\s*["']on["']/g
+  )) {
+    keys.push(read[1]);
+  }
+  const helpers = text.matchAll(
+    /\b(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*\(\s*([A-Za-z_$][\w$]*)\b[^)]*\)\s*(?::[^=]+)?=>\s*[\w$.]+\s*(?:\?\.)?\[\s*\2\s*\]\s*[!=]==?\s*["']on["']/g
+  );
+  for (const helper of helpers) {
+    const calls = new RegExp(
+      String.raw`\b${helper[1]}\(\s*["'](flag\.[^"']+)["']\s*\)`,
+      "g"
+    );
+    for (const call of text.matchAll(calls)) {
+      keys.push(call[1]);
+    }
+  }
+  return keys;
+}
+
+test("the coercion scan sees both shapes and leaves raw reads alone", () => {
+  // Pins the regexes against the shapes they exist for, so a change that
+  // stops them matching fails here instead of letting test 4 go quiet.
+  const coerced = [
+    'a11yPanel: v["flag.detail.a11y.panel"] === "on",',
+    'const strip = values?.["flag.detail.policy.run_log_strip"] !== "on";',
+    'const on = (key: DashboardFlagKey) => v?.[key] === "on";',
+    'riskTierLegend: on("flag.dashboard.risk_tier_legend"),',
+  ].join("\n");
+  assert.deepEqual(onComparedKeys(coerced).sort(), [
+    "flag.dashboard.risk_tier_legend",
+    "flag.detail.a11y.panel",
+    "flag.detail.policy.run_log_strip",
+  ]);
+
+  const raw = [
+    'annotationsSidebar: v["flag.detail.annotations_sidebar"] ?? "collapsed",',
+    'a11yPanel: triState("flag.detail.a11y.panel"),',
+    'const visible = f.a11yPanel !== "off";',
+    'initiallyExpanded={detailFlags.annotationsSidebar === "on"}',
+  ].join("\n");
+  assert.deepEqual(onComparedKeys(raw), []);
+});
+
+test("no tri-state flag is compared with 'on' after a raw read", () => {
+  const offenders: string[] = [];
+  const found = new Set<string>();
+  for (const { path, text } of SOURCES) {
+    for (const key of onComparedKeys(text)) {
+      found.add(key);
+      if (TRI_STATE.includes(key as FlagKey)) {
+        offenders.push(`${path}: ${key}`);
+      }
+    }
+  }
+  // The detail loader's boolean flags are still coerced this way, which
+  // is correct for them. Seeing one proves the scan reached the loaders.
+  assert.ok(
+    found.has("flag.detail.tabs.compare"),
+    "expected the scan to see AppDetailLoader's boolean reads"
+  );
+  assert.deepEqual(
+    offenders,
+    [],
+    "these flags can resolve to 'collapsed', which `=== \"on\"` reads as " +
+      "off. Pass the raw value down and decide at the surface: render " +
+      "unless it is 'off', and start expanded only when it is 'on'."
+  );
 });
