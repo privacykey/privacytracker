@@ -4447,6 +4447,12 @@
             "currentValue": "off",
             "focusValue": "off",
             "override": null
+          },
+          {
+            "key": "flag.global.label_hints",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
           }
         ]
       },
@@ -4585,6 +4591,12 @@
           },
           {
             "key": "flag.global.info_tooltips",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.global.label_hints",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -4890,6 +4902,12 @@
           },
           {
             "key": "flag.global.info_tooltips",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.global.label_hints",
             "currentValue": "off",
             "focusValue": "off",
             "override": null
@@ -5956,6 +5974,12 @@
             "override": null
           },
           {
+            "key": "flag.global.label_hints",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
             "key": "flag.global.social_share",
             "currentValue": "on",
             "focusValue": "on",
@@ -6658,6 +6682,12 @@
           },
           {
             "key": "flag.global.info_tooltips",
+            "currentValue": "off",
+            "focusValue": "off",
+            "override": null
+          },
+          {
+            "key": "flag.global.label_hints",
             "currentValue": "off",
             "focusValue": "off",
             "override": null

@@ -783,6 +783,7 @@ export const GOAL_RULES: Record<
   // notifications, review actions, comparison or the tools those goals enable.
   minimal: {
     "flag.global.info_tooltips": "off",
+    "flag.global.label_hints": "off",
     "flag.devopts.visible": "off",
     "flag.detail.policy.run_log_strip": "off",
     "flag.detail.policy.run_log_details": "off",

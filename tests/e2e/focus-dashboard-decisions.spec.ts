@@ -79,6 +79,25 @@ test("Keep and Decide later persist, and replacement opens a comparison for that
     page.locator(`#higher-risk a[href="/apps/${app.id}"]`)
   ).toHaveCount(0);
   await expect(
+    await request.post("/api/focus", {
+      headers,
+      data: { audience: "self", monitor: true },
+    })
+  ).toBeOK();
+  await page.reload();
+  await expect(page.locator(".focus-overview-apps")).toContainText(
+    "Decide later"
+  );
+  await expect(
+    page.getByRole("link", { name: "Start guided cleanup" })
+  ).toHaveCount(0);
+  await expect(
+    await request.post("/api/focus", {
+      headers,
+      data: { audience: "self", monitor: true, cleanup: true },
+    })
+  ).toBeOK();
+  await expect(
     await request.post("/api/verdicts", {
       headers,
       data: { appId: app.id, verdict: "replace" },

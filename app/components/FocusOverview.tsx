@@ -97,7 +97,7 @@ export function FocusOverview({
           </div>
         )}
       </div>
-      {canReview && data.dueCount > 0 && (
+      {data.dueCount > 0 && (
         <p className="focus-overview-reminder">
           {t("due", { count: data.dueCount })}
         </p>
@@ -117,7 +117,7 @@ export function FocusOverview({
               {app.changeCount > 0 && (
                 <span>{t("app_changes", { count: app.changeCount })}</span>
               )}
-              {canReview && (
+              {(canReview || app.decision !== "review") && (
                 <span>
                   {t(`decision.${app.decision}`)}
                   {app.remindAt

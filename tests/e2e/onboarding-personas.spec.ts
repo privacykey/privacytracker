@@ -197,8 +197,9 @@ browserFlow("persona: guardian for a child", async ({ page }) => {
   );
   await expect(seed).toBeOK();
   await page.goto("/dashboard");
-  await expect(page.locator(".focus-strip-value")).toHaveText(
-    "Looking after a child"
+  await expect(page.locator(".focus-goal-labels")).toContainText("For a child");
+  await expect(page.locator(".focus-goal-labels")).toContainText(
+    "Monitor changes"
   );
 });
 

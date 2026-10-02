@@ -38,6 +38,7 @@ export interface TaskCompletionContext {
   anyAppDetailVisitedAt: number | null;
   auditBundleLastExportedAt: number | null;
   backgroundWizardCompletedAt: number | null;
+  compareEnabled?: boolean;
   compareVisitedAt: number | null;
   focus: FocusState;
   /** True when at least one device exists with at least one app linked.
@@ -54,6 +55,7 @@ export interface TaskCompletionContext {
    *  done at least one re-sync — they've discovered the feature. */
   lastResyncAt: number;
   privacyMapVisitedAt: number | null;
+  reviewEnabled?: boolean;
   /** Current value of `sync_schedule` in `app_settings`. Used by
    *  `setup_background_mode` to also count "switched away from manual
    *  sync" as a form of "tracking in the background." */
@@ -131,7 +133,8 @@ export const TASK_DEFS: UserTaskDef[] = [
     route: "/dashboard/review-recommendations",
     prerequisites: ["create_privacy_profile"],
     i18nKey: "review_mismatches",
-    includedWhen: (focus) => has(focus, "cleanup") || has(focus, "minimal"),
+    includedWhen: (focus, _env, ctx) =>
+      ctx.reviewEnabled ?? (has(focus, "cleanup") || focus.audience !== "self"),
     completionCheck: (ctx) => ctx.verdictCount >= 1,
   },
   {
@@ -139,7 +142,9 @@ export const TASK_DEFS: UserTaskDef[] = [
     route: "/dashboard/compare",
     prerequisites: [],
     i18nKey: "compare_two_apps",
-    includedWhen: (focus) => has(focus, "monitor") || has(focus, "cleanup"),
+    includedWhen: (focus, _env, ctx) =>
+      ctx.compareEnabled ??
+      (has(focus, "cleanup") || focus.audience === "loved_one"),
     completionCheck: (ctx) => ctx.compareVisitedAt != null,
   },
   {
