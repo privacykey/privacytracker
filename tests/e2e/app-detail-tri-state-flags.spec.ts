@@ -45,7 +45,14 @@ const browserFlow = process.env.CODEX_SANDBOX ? test.skip : test;
 const A11Y_PANEL = "flag.detail.a11y.panel";
 const RUN_LOG_STRIP = "flag.detail.policy.run_log_strip";
 const RUN_LOG_DETAILS = "flag.detail.policy.run_log_details";
-const OVERRIDDEN = [A11Y_PANEL, RUN_LOG_STRIP, RUN_LOG_DETAILS];
+
+/**
+ * The overrides the current test has set, so cleanup deletes only those.
+ * The per-key DELETE route allows 30 calls a minute and the whole suite
+ * shares that budget: clearing every key around every test spent all 30
+ * here and left the specs after this one with 429s.
+ */
+const overridden = new Set<string>();
 
 /** Focus payload shape accepted by POST /api/focus. */
 interface FocusPayload {
@@ -95,6 +102,9 @@ async function setOverride(
   key: string,
   value: "on" | "off"
 ) {
+  // Recorded before the write, so a POST that lands but fails its check
+  // is still cleaned up.
+  overridden.add(key);
   await expect(
     await request.post("/api/feature-flags/overrides", {
       headers: sameOriginHeaders,
@@ -104,13 +114,14 @@ async function setOverride(
 }
 
 async function clearOverrides(request: APIRequestContext) {
-  for (const key of OVERRIDDEN) {
+  for (const key of overridden) {
     await expect(
       await request.delete(
         `/api/feature-flags/overrides/${encodeURIComponent(key)}`,
         { headers: sameOriginHeaders }
       )
     ).toBeOK();
+    overridden.delete(key);
   }
 }
 
@@ -148,6 +159,8 @@ async function openPolicyTab(page: Page) {
 test.beforeAll(async ({ request }) => {
   // One reset and one seed for the file: both routes are rate limited and
   // the whole suite shares their budget, and nothing below removes an app.
+  // The reset also clears any override an earlier spec left, which is why
+  // each test only has to undo its own.
   await expect(
     await request.post("/api/reset", { headers: sameOriginHeaders })
   ).toBeOK();
@@ -179,7 +192,6 @@ test.beforeAll(async ({ request }) => {
 
 test.beforeEach(async ({ request }) => {
   await setFocus(request, MONITOR_FOCUS);
-  await clearOverrides(request);
 });
 
 test.afterEach(async ({ request }) => {
