@@ -447,7 +447,7 @@
     },
     "accessibility": {
       "label": "I also need accessibility info for my apps",
-      "subtext": "Elevates the accessibility panel and filter row."
+      "subtext": "Shows the accessibility panel and filter row."
     }
   },
   "onboarding": {
@@ -3029,7 +3029,7 @@
       "hint": "Four tiers, derived from Apple's privacy labels. Tap to expand.",
       "intro": "Each app carries a single risk pill based on what Apple's privacy labels say — not on what the app just changed. Accessibility and privacy-policy updates don't move the pill.",
       "example_kicker": "Example",
-      "footer": "Labels are self-declared by developers, so the pill is a floor, not a ceiling — an app could collect more than it admits. Dive into the app's Privacy Labels tab to see exactly which categories and how they're used."
+      "footer": "Labels are self-declared by developers, so the pill is a floor, not a ceiling — an app could collect more than it admits. Open the app's Privacy Labels tab to see exactly which categories and how they're used."
     },
     "risk_tiers": {
       "high_rule": "At least one data type declared as \"Data Used to Track You\".",
