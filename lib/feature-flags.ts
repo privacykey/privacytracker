@@ -22,6 +22,7 @@ import {
   HARD_DEFAULTS,
   type Modifier,
   type PrimaryGoal,
+  parentHidesDependents,
   TOUR_STEPS,
 } from "./feature-flag-rules";
 
@@ -194,13 +195,16 @@ function computeFlag(key: FlagKey, ctx: ResolverContext): FlagValue {
     value = "on";
   }
 
-  // 6. Dependency check — dependents collapse to 'off' when the parent
-  //    isn't 'on'. Runs BEFORE the user override so an explicit override
-  //    of 'on' can break the chain (intentional power-user escape hatch).
+  // 6. Dependency check — dependents collapse to 'off' when the parent is
+  //    hidden: 'off', or, for a two-state parent, anything but 'on'. A
+  //    tri-state parent at 'collapsed' is shown, so it doesn't count
+  //    (`parentHidesDependents`). Runs BEFORE the user override so an
+  //    explicit override of 'on' can break the chain (intentional
+  //    power-user escape hatch).
   const parent = FLAG_DEPENDENCIES[key];
   if (parent) {
     const parentValue = computeFlag(parent, ctx); // recurse — DAG is enforced at registry time
-    if (parentValue !== "on") {
+    if (parentHidesDependents(parent, parentValue)) {
       value = "off";
     }
   }

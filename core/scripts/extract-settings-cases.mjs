@@ -511,7 +511,7 @@ CONTEXTS.push(
   },
   {
     name: "override: parent set to a value that is not on/off",
-    why: "override_value is an unchecked cast — it is echoed verbatim, and `parentValue !== 'on'` still collapses the dependents",
+    why: "override_value is an unchecked cast — it is echoed verbatim, and a two-state parent at anything but 'on' still collapses the dependents",
     audience: "self",
     goals: {},
     overrides: [[PARENT, "banana"]],
@@ -560,6 +560,49 @@ if (grandchild) {
     overrides: [[deps[deps[grandchild]], "off"]],
   });
 }
+
+// Step 6 on a tri-state parent (hard default 'collapsed'): only 'off' hides
+// its dependents, since 'collapsed' is still on screen. The focus contexts
+// above already leave both tri-state parents at 'collapsed'; these pin the
+// override paths, and that a two-state parent at 'collapsed' still hides.
+const TRI_PARENTS = Object.entries(deps).filter(
+  ([, parent]) => rules.HARD_DEFAULTS[parent] === "collapsed"
+);
+if (TRI_PARENTS.length === 0) {
+  throw new Error(
+    "extract-settings-cases: no dependency has a tri-state parent; the cases below assume one"
+  );
+}
+CONTEXTS.push(
+  {
+    name: "override: tri-state parents off",
+    why: "step 6 — an 'off' tri-state parent collapses its dependents",
+    audience: "self",
+    goals: { monitor: true },
+    overrides: TRI_PARENTS.map(([, parent]) => [parent, "off"]),
+  },
+  {
+    name: "override: tri-state parents collapsed under the accessibility modifier",
+    why: "step 6 — a 'collapsed' tri-state parent is shown, so its dependents keep their values even when a rule had set the parent 'on'",
+    audience: "self",
+    goals: { accessibility: true },
+    overrides: TRI_PARENTS.map(([, parent]) => [parent, "collapsed"]),
+  },
+  {
+    name: "override: tri-state parents set to a value that is not on/off",
+    why: "step 6 — on a tri-state parent only 'off' hides, so an unchecked value leaves the dependents alone",
+    audience: "self",
+    goals: {},
+    overrides: TRI_PARENTS.map(([, parent]) => [parent, "banana"]),
+  },
+  {
+    name: "override: two-state parent collapsed",
+    why: "step 6 — a two-state parent at 'collapsed' is read as off by clients, so its dependents still collapse",
+    audience: "self",
+    goals: { monitor: true },
+    overrides: [[PARENT, "collapsed"]],
+  }
+);
 
 const rowKey = (r) => JSON.stringify(r);
 let reference = null;

@@ -204,6 +204,14 @@ Going forward, changes are recorded here as they land.
   "Keep it minimal" and the guardian audience still hide both, and setting
   the run-log-details or chunk-notes flag to `on` in Developer Options
   starts that section open.
+- That Accessibility tab also highlights the features your accessibility
+  profile (in Settings) asks for under every focus, not only with the
+  accessibility option on, and the AI Policy tab's last-run strip shows its
+  "Full trace", closed. Both depend on another flag, and a flag that
+  depends on another was turned off whenever the other was not fully on,
+  so `collapsed`, where the accessibility panel and the strip sit by
+  default, counted as hidden. A `collapsed` parent no longer turns its
+  dependents off; an `off` one still does.
 - Desktop app: "Start at login" works in the signed app. It asked macOS's
   System Events to add a login item, which the app has no permission to do,
   so macOS most likely refused it silently. It now adds a LaunchAgent

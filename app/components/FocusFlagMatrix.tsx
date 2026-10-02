@@ -42,6 +42,7 @@ import {
   HARD_DEFAULTS,
   type Modifier,
   type PrimaryGoal,
+  parentHidesDependents,
 } from "@/lib/feature-flag-rules";
 import { useModalFocus } from "../../lib/use-modal-focus";
 
@@ -153,7 +154,7 @@ function resolveFor(
   const parent = FLAG_DEPENDENCIES[key];
   if (parent) {
     const parentValue = resolveFor(parent, audience, goals);
-    if (parentValue !== "on") {
+    if (parentHidesDependents(parent, parentValue)) {
       value = "off";
     }
   }
