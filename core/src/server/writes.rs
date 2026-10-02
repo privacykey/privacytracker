@@ -441,7 +441,7 @@ fn seed_routes() -> Vec<RouteSpec> {
         guard: Guard::Mutation(GuardOptions {
             action: "dev.seed_sample_data",
             key_prefix: "dev.seed_sample_data",
-            limit: 60,
+            limit: 120,
             window_ms: 10 * 60_000,
             message: Some("Rate limit exceeded for dev sample seeding. Try again later."),
             admin: AdminRule::Configured,
@@ -734,7 +734,7 @@ fn maintenance_routes() -> Vec<RouteSpec> {
             Guard::Inline(InlineGuard {
                 prefix: "reset",
                 // Sized for the E2E suite; see app/api/reset/route.ts.
-                limit: 60,
+                limit: 120,
                 window_ms: 10 * 60_000,
                 message: "Rate limit exceeded for reset. Try again later.",
                 rate_audit: Some("reset.rate_limited"),
