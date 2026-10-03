@@ -1110,13 +1110,15 @@ scope, count-only, radar input variants, timeline validation and changelog
 pagination/filter branches.
 
 `node --conditions=react-server --import tsx core/scripts/extract-stats-cases.mjs`
-executes the real Node readers on 75 fixed-clock database scenarios and 13
+executes the real Node readers on 80 fixed-clock database scenarios and 13
 age coercions, producing `core/tests/fixtures/stats-cases.json` and the wire
 metadata in `stats_meta.json`. Rust replays identical SQL and compares the
 serialized bytes and annotation sweep effects. CI regenerates both files
 before crate tests, detecting Node drift even though live read parity is
 still a local gate. Invalid JSON/error paths and independent read failures
-are included. No new dependency or schema migration is introduced.
+are included, along with overview reminders before, at and after their deadline
+and outside the selected device scope. No new dependency or schema migration
+is introduced.
 
 Two pre-existing gate defects surfaced during verification: the feature-flag
 probe's stale 221-row expectation is now 222, and three diagnostics tests

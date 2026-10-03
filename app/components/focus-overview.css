@@ -71,6 +71,11 @@
   font-size: 13px;
   color: var(--text-2);
 }
+.focus-overview-app-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .focus-overview-actions {
   padding-top: 18px;
   border-top: 1px solid var(--border);
@@ -97,6 +102,7 @@
 }
 .review-later-controls {
   justify-content: flex-start;
+  scroll-margin-top: 100px;
 }
 .review-later-controls select {
   padding: 8px;

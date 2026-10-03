@@ -558,6 +558,126 @@
   ],
   "cases": [
     {
+      "name": "overview: reminder offset -1",
+      "op": "overview",
+      "args": {
+        "since": 1789387200000
+      },
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings(key,value) VALUES (?,?)",
+          "params": [
+            "review.defer.89999001",
+            "1789473599999"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"apps\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"changeCount\":2,\"decision\":\"due\",\"remindAt\":1789473599999},{\"id\":\"89999003\",\"name\":\"Stats Empty\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null}],\"pendingChanges\":1,\"newChanges\":0,\"dueCount\":1,\"replacementCount\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "overview: reminder offset 0",
+      "op": "overview",
+      "args": {
+        "since": 1789387200000
+      },
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings(key,value) VALUES (?,?)",
+          "params": [
+            "review.defer.89999001",
+            "1789473600000"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"apps\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"changeCount\":2,\"decision\":\"due\",\"remindAt\":1789473600000},{\"id\":\"89999003\",\"name\":\"Stats Empty\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null}],\"pendingChanges\":1,\"newChanges\":0,\"dueCount\":1,\"replacementCount\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "overview: reminder offset 1",
+      "op": "overview",
+      "args": {
+        "since": 1789387200000
+      },
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings(key,value) VALUES (?,?)",
+          "params": [
+            "review.defer.89999001",
+            "1789473600001"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"apps\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"changeCount\":2,\"decision\":\"later\",\"remindAt\":1789473600001},{\"id\":\"89999003\",\"name\":\"Stats Empty\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null}],\"pendingChanges\":1,\"newChanges\":0,\"dueCount\":0,\"replacementCount\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "overview: reminder offset 86400000",
+      "op": "overview",
+      "args": {
+        "since": 1789387200000
+      },
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings(key,value) VALUES (?,?)",
+          "params": [
+            "review.defer.89999001",
+            "1789560000000"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"apps\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"changeCount\":2,\"decision\":\"later\",\"remindAt\":1789560000000},{\"id\":\"89999003\",\"name\":\"Stats Empty\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null}],\"pendingChanges\":1,\"newChanges\":0,\"dueCount\":0,\"replacementCount\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
+      "name": "overview: due reminder outside device scope",
+      "op": "overview",
+      "args": {
+        "devices": "missing"
+      },
+      "changes": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings(key,value) VALUES (?,?)",
+          "params": [
+            "review.defer.89999001",
+            "1789473599999"
+          ]
+        }
+      ],
+      "empty": false,
+      "expected": "{\"apps\":[{\"id\":\"89999001\",\"name\":\"Stats Alpha\",\"iconUrl\":null,\"changeCount\":2,\"decision\":\"due\",\"remindAt\":1789473599999},{\"id\":\"89999003\",\"name\":\"Stats Empty\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null},{\"id\":\"89999002\",\"name\":\"stats alpha\",\"iconUrl\":null,\"changeCount\":0,\"decision\":\"review\",\"remindAt\":null}],\"pendingChanges\":1,\"newChanges\":null,\"dueCount\":1,\"replacementCount\":0}",
+      "error": false,
+      "annotations": [
+        "pt-stats-note-0",
+        "pt-stats-note-1",
+        "pt-stats-note-2"
+      ]
+    },
+    {
       "name": "summary: populated",
       "op": "summary",
       "args": {},

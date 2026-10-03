@@ -14,6 +14,10 @@ Going forward, changes are recorded here as they land.
 
 ### Focus and dashboard
 
+- Keep the dashboard's "since last visit" comparison steady through app review,
+  navigation and refreshes in the same browser tab, separately for each device
+  view. Due reminders now say "Ready to review" and link directly to the
+  decision picker or rescheduling controls.
 - Keep Monitor and Cleanup selected while using the simpler view. Comparison,
   shortlist and guided cleanup follow the chosen focus; individual overrides
   still take priority.

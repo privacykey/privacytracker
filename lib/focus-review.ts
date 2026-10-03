@@ -140,7 +140,7 @@ export function deferDecision(
 
 export interface FocusOverviewApp {
   changeCount: number;
-  decision: "review" | "kept" | "replace" | "uninstall" | "later";
+  decision: "review" | "kept" | "replace" | "uninstall" | "later" | "due";
   iconUrl: string | null;
   id: string;
   name: string;
@@ -230,7 +230,9 @@ export function getFocusOverview(
       replacementCount++;
     }
     const decision = remindAt
-      ? "later"
+      ? remindAt <= now
+        ? "due"
+        : "later"
       : row.verdict === "safe" && hasAcceptedConcern(row.id, collections)
         ? "kept"
         : row.verdict === "replace" || row.verdict === "uninstall"

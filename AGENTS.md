@@ -277,9 +277,13 @@ focus change. Hidden choices and capability gates remain independent.
 
 `GET /api/triage?overview=1&since=<epoch-ms>` adds a bounded app preview with
 whole-scope counts. Since-last-visit counts mean distinct apps with a live change
-after the supplied timestamp (Wayback imports excluded); the browser remembers
-one timestamp per device view. An overview read failure is 500, not an empty
-fleet. Review state lives in `review.accept.<appId>` / `review.defer.<appId>` in
+after the supplied timestamp (Wayback imports excluded). `lib/dashboard-visit.ts`
+keeps a comparison baseline per device view for the tab session, in sessionStorage
+with an in-memory fallback; navigation and reloads retain it. Only successful
+dashboard reads update localStorage for the next tab's visit, using the request's
+start time so changes arriving during the read remain new. An overview read
+failure is 500, not an empty fleet. Review state lives in
+`review.accept.<appId>` / `review.defer.<appId>` in
 `app_settings`, mirrored by `core/src/server/focus_review.rs`. Explicit Keep
 (`acceptCurrent: true` on a safe verdict) records the collection hierarchy and
 profile at that moment. New collection types, categories or data items, or a
@@ -287,7 +291,10 @@ different profile, reopen the concern; removals alone do not. Rationale edits an
 imported recommendations do not accept concerns. `POST /api/verdicts` with
 `deferDays: 1|7|30` persists a reminder without replacing the user's verdict.
 `GET ...?decision=1` exposes reminder/acceptance state; `DELETE ...?deferredOnly=1`
-cancels only the reminder. Dashboard mismatch reads use `?unresolved=1` to omit
+cancels only the reminder. The overview returns `decision: 'due'` when a reminder
+has reached its deadline, with Review now / Reschedule links; future reminders
+remain `later`. The reschedule link focuses the detail reminder controls after
+their saved state loads. Dashboard mismatch reads use `?unresolved=1` to omit
 accepted concerns and future reminders; raw profile badges still report facts.
 
 `lib/dashboard-layout.ts` mirrors `lib/privacy-profile.ts` exactly — preset key list, `_META` records, `_PRESETS` records, plus `matchDashboardPreset(layout)` / `reconcileLayout(stored)` / `describeLayoutTransition(prev, next)`. Five presets ship out of the box (`default`, `minimal`, `caretaker`, `watchdog`, `at_a_glance`). `reconcileLayout` strips unknown ids, dedupes, drops callouts from `hidden[]` (callouts are reorder-only), and slots any newly-added canonical card next to its previous neighbour with hidden=false — so users on older saved layouts pick up new cards automatically rather than silently missing them. Server-only helpers live in `lib/dashboard-layout-server.ts`; `saveDashboardLayoutWithLog` records a `dashboard_layout_applied` activity row whenever a save crosses a named-preset boundary (custom-to-custom edits don't fire to keep the activity log readable).

@@ -120,13 +120,28 @@ export function FocusOverview({
               {(canReview || app.decision !== "review") && (
                 <span>
                   {t(`decision.${app.decision}`)}
-                  {app.remindAt
+                  {app.remindAt && app.decision !== "due"
                     ? ` · ${new Date(app.remindAt).toLocaleDateString()}`
                     : ""}
                 </span>
               )}
             </div>
-            {canCompare && app.decision === "replace" ? (
+            {app.decision === "due" ? (
+              <div className="focus-overview-app-actions">
+                <Link
+                  className="btn btn-primary btn-sm"
+                  href={`/apps/${encodeURIComponent(app.id)}#verdict-picker-heading`}
+                >
+                  {t("review_now")}
+                </Link>
+                <Link
+                  className="btn btn-secondary btn-sm"
+                  href={`/apps/${encodeURIComponent(app.id)}#review-reminder`}
+                >
+                  {t("reschedule")}
+                </Link>
+              </div>
+            ) : canCompare && app.decision === "replace" ? (
               <Link
                 className="btn btn-secondary btn-sm"
                 href={`/dashboard/compare?a=id:${encodeURIComponent(app.id)}&from=review`}

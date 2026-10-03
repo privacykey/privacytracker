@@ -23,14 +23,18 @@ export function ReviewNextStep({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const due = until !== null && until <= Date.now();
   useEffect(() => {
     let live = true;
+    setLoaded(false);
     fetch(`/api/verdicts?appId=${encodeURIComponent(appId)}&decision=1`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
         if (live) {
           setUntil(data.deferredUntil);
           setAccepted(data.accepted === true);
+          setLoaded(true);
         }
       })
       .catch(() => {
@@ -42,6 +46,21 @@ export function ReviewNextStep({
       live = false;
     };
   }, [appId, verdict]);
+  useEffect(() => {
+    if (!loaded) {
+      return;
+    }
+    const focusReminder = () => {
+      if (window.location.hash === "#review-reminder") {
+        const controls = document.getElementById("review-reminder");
+        controls?.focus({ preventScroll: true });
+        controls?.scrollIntoView({ block: "center" });
+      }
+    };
+    focusReminder();
+    window.addEventListener("hashchange", focusReminder);
+    return () => window.removeEventListener("hashchange", focusReminder);
+  }, [loaded]);
   async function defer(cancel = false) {
     setSaving(true);
     setError(false);
@@ -86,7 +105,14 @@ export function ReviewNextStep({
           )}
         </div>
       )}
-      <div className="review-later-controls">
+      {until && (
+        <p role="status">
+          {due
+            ? t("due")
+            : t("scheduled", { date: new Date(until).toLocaleDateString() })}
+        </p>
+      )}
+      <div className="review-later-controls" id="review-reminder" tabIndex={-1}>
         <label>
           {t("remind_in")}{" "}
           <select
@@ -107,14 +133,11 @@ export function ReviewNextStep({
           onClick={() => defer()}
           type="button"
         >
-          {t(saving ? "saving" : "later")}
+          {t(saving ? "saving" : until ? "reschedule" : "later")}
         </button>
       </div>
       {until && (
-        <div role="status">
-          <p>
-            {t("scheduled", { date: new Date(until).toLocaleDateString() })}
-          </p>
+        <div>
           <button
             className="btn btn-ghost btn-sm"
             disabled={saving}

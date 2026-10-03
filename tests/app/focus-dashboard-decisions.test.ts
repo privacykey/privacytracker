@@ -158,7 +158,7 @@ test("Decide later survives reads, becomes due, and a later decision clears the 
   assert.equal(getFocusOverview(undefined, undefined, until).dueCount, 1);
   assert.equal(
     getFocusOverview(undefined, undefined, until).apps[0].decision,
-    "later"
+    "due"
   );
   assert.equal((await save({ appId: "focus-app", deferDays: 0 })).status, 400);
   assert.equal((await save({ appId: "missing", deferDays: 7 })).status, 404);
