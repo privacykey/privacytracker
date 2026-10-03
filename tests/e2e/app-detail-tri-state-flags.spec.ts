@@ -245,13 +245,20 @@ browserFlow(
 );
 
 browserFlow(
-  "an 'off' override removes the Accessibility tab",
+  "an 'off' override removes the Accessibility tab and the header chip that opens it",
   async ({ page, request }) => {
     await setOverride(request, A11Y_PANEL, "off");
     expect(await resolved(request, A11Y_PANEL)).toBe("off");
 
     await openDetail(page);
     await expect(page.locator("#tab-accessibility")).toHaveCount(0);
+    // The chip's only job is to switch to that tab. Left in place, it
+    // deselected every tab and left the page empty. Its own flag is still
+    // "on", so the absence below is the tab gate's doing.
+    expect(await resolved(request, "flag.detail.header.a11y_count_chip")).toBe(
+      "on"
+    );
+    await expect(page.locator(".detail-a11y-chip")).toHaveCount(0);
   }
 );
 

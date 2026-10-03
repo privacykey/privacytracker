@@ -216,6 +216,11 @@ Going forward, changes are recorded here as they land.
   so `collapsed`, where the accessibility panel and the strip sit by
   default, counted as hidden. A `collapsed` parent no longer turns its
   dependents off; an `off` one still does.
+- The app detail header's accessibility chip no longer opens an empty page
+  when the Accessibility tab is turned off in Developer Options
+  (`flag.detail.a11y.panel` set to `off`). Clicking it switched to the
+  hidden tab and deselected every tab; the chip now hides with the tab.
+  The muted "no features" label stays, since it opens nothing.
 - Desktop app: "Start at login" works in the signed app. It asked macOS's
   System Events to add a login item, which the app has no permission to do,
   so macOS most likely refused it silently. It now adds a LaunchAgent
