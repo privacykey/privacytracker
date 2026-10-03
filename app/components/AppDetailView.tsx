@@ -971,10 +971,13 @@ export default function AppDetailView({
               icon links down to the dedicated tab when the developer has
               declared ≥1 feature; when the shelf is present but empty we
               show a muted "no features" variant so users know Apple asked
-              and the developer filed nothing.
+              and the developer filed nothing. The linking chip also needs
+              the tab it opens: with `flag.detail.a11y.panel` off, clicking
+              it deselected every tab and left the page empty. The muted
+              variant is a plain label, so it keeps its own gate.
             */}
             {f.headerA11yCountChip &&
-              trackAccessibility &&
+              canShowAccessibilityTab &&
               app.hasAccessibilityLabels === 1 && (
                 <button
                   aria-label={tDetail("a11y_chip_aria", {
