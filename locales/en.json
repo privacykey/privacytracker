@@ -6104,7 +6104,7 @@
     "guided_cleanup": "Start guided cleanup",
     "handoff": "Prepare a report to share",
     "handoff_hint": "A snapshot of this review. Your saved review stays here; private notes stay out of the report.",
-    "first_visit_hint": "Since-last-visit counts apply to this browser and selected device view.",
+    "first_visit_hint": "Since-last-visit counts are local to this browser and device view. They stay steady while you review apps in this tab, including after a refresh.",
     "audience": {
       "self": "For me",
       "loved_one": "Helping someone",
@@ -6121,8 +6121,11 @@
       "kept": "Keeping · current concern accepted",
       "replace": "Planning a replacement",
       "uninstall": "Planned removal",
-      "later": "Decide later"
-    }
+      "later": "Decide later",
+      "due": "Ready to review"
+    },
+    "review_now": "Review now",
+    "reschedule": "Reschedule"
   },
   "focus_review": {
     "accepted": "You are keeping this app and accepting its current mismatch with your preferences. We will ask again if its collection changes or you change your privacy profile. Policy and accessibility alerts remain independent.",
@@ -6135,6 +6138,8 @@
     "later": "Decide later",
     "scheduled": "Saved. This decision will return to your dashboard on {date}.",
     "cancel": "Cancel reminder",
-    "error": "Could not save or load the decision. Please try again."
+    "error": "Could not save or load the decision. Please try again.",
+    "due": "Ready to review. Make a decision above, or choose a new reminder.",
+    "reschedule": "Reschedule"
   }
 }

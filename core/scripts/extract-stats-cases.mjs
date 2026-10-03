@@ -21,6 +21,7 @@ const { getMatrixData, getRadarData, getTimelineData } = await import(
   "../../lib/stats-views.ts"
 );
 const { getTriageData } = await import("../../lib/triage.ts");
+const { getFocusOverview } = await import("../../lib/focus-review.ts");
 const { getMismatchedApps } = await import(
   "../../lib/privacy-profile-server.ts"
 );
@@ -75,6 +76,9 @@ const run = async (name, op, args = {}, changes = [], empty = false) => {
       case "triage":
         result = getTriageData(requested);
         break;
+      case "overview":
+        result = getFocusOverview(requested, args.since, now);
+        break;
       case "matrix":
         result = getMatrixData();
         break;
@@ -119,6 +123,32 @@ const run = async (name, op, args = {}, changes = [], empty = false) => {
   cases.push({ name, op, args, changes, empty, expected, error, annotations });
 };
 const change = (sql, ...params) => ({ sql, params });
+for (const offset of [-1, 0, 1, 86400000]) {
+  await run(
+    `overview: reminder offset ${offset}`,
+    "overview",
+    { since: now - 86400000 },
+    [
+      change(
+        "INSERT OR REPLACE INTO app_settings(key,value) VALUES (?,?)",
+        `review.defer.${STATS_IDS[0]}`,
+        String(now + offset)
+      ),
+    ]
+  );
+}
+await run(
+  "overview: due reminder outside device scope",
+  "overview",
+  { devices: "missing" },
+  [
+    change(
+      "INSERT OR REPLACE INTO app_settings(key,value) VALUES (?,?)",
+      `review.defer.${STATS_IDS[0]}`,
+      String(now - 1)
+    ),
+  ]
+);
 for (const op of [
   "summary",
   "triage",

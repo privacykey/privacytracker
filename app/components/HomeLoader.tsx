@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { type DashboardLayout, DEFAULT_LAYOUT } from "@/lib/dashboard-layout";
+import { dashboardVisits } from "@/lib/dashboard-visit";
 import { describePurpose } from "@/lib/onboarding-purpose";
 import { isSameOriginPath } from "@/lib/same-origin-path";
 import { useFlagBundleStatus, useFlagValues } from "@/lib/use-flag-bundle";
@@ -169,12 +170,6 @@ export default function HomeLoader() {
   const sampleMode = searchParams.get("sample") === "1";
   const editLayoutRequested = searchParams.get("edit") === "layout";
 
-  const visits = useRef(
-    new Map<
-      string,
-      { since: number | null; recorded: boolean; startedAt: number }
-    >()
-  );
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
@@ -202,24 +197,8 @@ export default function HomeLoader() {
     }
     let live = true;
     setFailed(false);
-    const visitKey = `privacytracker.dashboard.visit.${scopeParam ?? "all"}`;
-    if (!visits.current.has(visitKey)) {
-      let since: number | null = null;
-      try {
-        const value = Number(localStorage.getItem(visitKey));
-        if (Number.isSafeInteger(value) && value > 0 && value <= Date.now()) {
-          since = value;
-        }
-      } catch {
-        /* Storage is optional. */
-      }
-      visits.current.set(visitKey, {
-        since,
-        recorded: false,
-        startedAt: Date.now(),
-      });
-    }
-    const visit = visits.current.get(visitKey)!;
+    const readStartedAt = Date.now();
+    const visit = dashboardVisits.begin(scopeParam, readStartedAt);
     Promise.all([
       // Three of these describe "your apps" and so follow the device
       // scope: the triage blob (every dashboard count), the off-profile
@@ -305,14 +284,9 @@ export default function HomeLoader() {
             return;
           }
 
-          if (!visit.recorded) {
-            try {
-              localStorage.setItem(visitKey, String(visit.startedAt));
-            } catch {
-              /* Keep the dashboard usable without storage. */
-            }
-            visit.recorded = true;
-          }
+          // A change arriving while this read is in flight belongs to the next
+          // visit too, even if it was not yet included in this response.
+          dashboardVisits.record(visit, readStartedAt);
           setData({
             triage,
             focus: focus ?? null,

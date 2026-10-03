@@ -120,7 +120,9 @@ pub(super) fn overview(
         if row["verdict"] == "replace" {
             replacements += 1;
         }
-        let decision = if until.is_some() {
+        let decision = if until.is_some_and(|n| n <= now) {
+            "due"
+        } else if until.is_some() {
             "later"
         } else if row["verdict"] == "safe"
             && accepted_with_collections(conn, id, Some(&collections))?
