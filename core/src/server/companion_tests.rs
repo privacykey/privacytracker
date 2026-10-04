@@ -37,6 +37,31 @@ fn token(fill: char) -> String {
 
 // ── Allowlist, shape and labels ───────────────────────────────────────
 
+/// Until someone names it, an instance describes its host: the Mac's name
+/// in the desktop app, a plain description anywhere else. The old default,
+/// "privacytracker", says nothing a phone could tell instances apart by, so
+/// it reads as unnamed whether it was stored or not. Mirrors the Node test.
+#[test]
+fn an_unnamed_instance_describes_its_host() {
+    assert_eq!(default_instance_name_for(false, None), "privacytracker server");
+    assert_eq!(default_instance_name_for(false, Some("Adam's MacBook Pro")), "privacytracker server");
+    assert_eq!(default_instance_name_for(true, Some("  Adam's   MacBook Pro ")), "Adam's MacBook Pro");
+    assert_eq!(default_instance_name_for(true, None), "My Mac");
+    assert_eq!(default_instance_name_for(true, Some("   ")), "My Mac");
+    assert_eq!(chosen_instance_name(""), None);
+    assert_eq!(chosen_instance_name("privacytracker"), None);
+    assert_eq!(chosen_instance_name("  Home   server "), Some("Home server".to_string()));
+
+    // Through the database: nothing stored, then a name, then cleared.
+    let state = memory_state();
+    let conn = state.db();
+    assert_eq!(instance_name(&conn), "privacytracker server");
+    super::super::settings::set_setting_with(&conn, INSTANCE_NAME_KEY, "privacytracker").unwrap();
+    assert_eq!(instance_name(&conn), "privacytracker server");
+    super::super::settings::set_setting_with(&conn, INSTANCE_NAME_KEY, "Home server").unwrap();
+    assert_eq!(instance_name(&conn), "Home server");
+}
+
 #[test]
 fn the_allowlist_is_get_only_and_exact() {
     for path in [
@@ -226,7 +251,7 @@ fn a_companion_token_reads_the_allowlist_on_an_install_that_needs_the_admin_toke
     assert_eq!(locked, StatusCode::UNAUTHORIZED, "baseline: locked");
     assert_eq!(triage, StatusCode::OK);
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["instanceName"], "privacytracker");
+    assert_eq!(body["instanceName"], "privacytracker server", "an unnamed server says what it is");
     assert_eq!(body["appCount"], 1);
     assert_eq!(body["scope"], "read");
     assert_eq!(body["device"]["label"], "phone");

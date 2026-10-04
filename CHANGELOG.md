@@ -48,6 +48,10 @@ Going forward, changes are recorded here as they land.
   within 15 minutes stops working, every paired phone is listed with when
   it was last used, and removing one ends its access at once. "Delete
   everything" ends every pairing, and backups leave pairings out.
+  The name phones show for the instance is set where the code is made. It
+  starts as this Mac's name in the desktop app, or "privacytracker server"
+  elsewhere, and a name typed there goes into the code without a separate
+  save.
 - In the desktop app, "Allow phone connections" (off by default) lets a
   paired phone on the same Wi-Fi reach this Mac. It opens a second,
   encrypted listener on your local network that answers paired phones only
