@@ -4598,7 +4598,7 @@
     "companion_card": {
       "scope_note": "A paired phone can read your app list, each app's labels and history, and the change feed. It can't change anything, and it can't see settings, backups, exports or devices.",
       "instance_name_label": "Name phones see",
-      "instance_name_hint": "The iPhone app shows this name when it connects.",
+      "instance_name_hint": "The iPhone app shows this name. It starts as this Mac's name, or \"privacytracker server\" on a server; change it before you make a code. Phones already paired pick up a new name the next time they check in.",
       "save": "Save",
       "saved": "Saved",
       "lan_title": "Allow phone connections",

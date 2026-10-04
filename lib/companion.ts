@@ -46,7 +46,20 @@ import { getSetting, setSetting } from "./scheduler";
 export const COMPANION_LABEL_MAX = 60;
 export const COMPANION_INSTANCE_NAME_MAX = 60;
 export const COMPANION_INSTANCE_NAME_KEY = "companion_instance_name";
-export const COMPANION_INSTANCE_NAME_DEFAULT = "privacytracker";
+/**
+ * The name phones see until someone names the instance. In the desktop app
+ * it is the Mac's name, which the shell passes as
+ * `PRIVACYTRACKER_COMPUTER_NAME` (with a fallback when it cannot read it);
+ * anywhere else it describes a server. `core/src/server/companion.rs`
+ * mirrors all three.
+ */
+export const COMPANION_SERVER_NAME_DEFAULT = "privacytracker server";
+export const COMPANION_DESKTOP_NAME_FALLBACK = "My Mac";
+/**
+ * The default before it described the host. Stored or not, it says nothing
+ * a phone can tell instances apart by, so it reads as unnamed.
+ */
+const COMPANION_LEGACY_INSTANCE_NAME = "privacytracker";
 export const COMPANION_LABEL_DEFAULT = "iPhone";
 /** At most this many pairings exist at once; pairing another is refused. */
 export const COMPANION_MAX_DEVICES = 20;
@@ -210,20 +223,36 @@ export function revokeCompanionPairing(id: string): string | null {
   return row.label;
 }
 
-export function getCompanionInstanceName(): string {
-  return cleanLabel(
-    getSetting(COMPANION_INSTANCE_NAME_KEY, ""),
-    COMPANION_INSTANCE_NAME_DEFAULT,
-    COMPANION_INSTANCE_NAME_MAX
-  );
+export function defaultCompanionInstanceName(): string {
+  if (process.env.PRIVACYTRACKER_RUNTIME === "desktop") {
+    return cleanLabel(
+      process.env.PRIVACYTRACKER_COMPUTER_NAME,
+      COMPANION_DESKTOP_NAME_FALLBACK,
+      COMPANION_INSTANCE_NAME_MAX
+    );
+  }
+  return COMPANION_SERVER_NAME_DEFAULT;
 }
 
-export function setCompanionInstanceName(name: unknown): string {
-  const cleaned = cleanLabel(
-    name,
-    COMPANION_INSTANCE_NAME_DEFAULT,
+export function getCompanionInstanceName(): string {
+  const stored = cleanLabel(
+    getSetting(COMPANION_INSTANCE_NAME_KEY, ""),
+    "",
     COMPANION_INSTANCE_NAME_MAX
   );
-  setSetting(COMPANION_INSTANCE_NAME_KEY, cleaned);
-  return cleaned;
+  return stored && stored !== COMPANION_LEGACY_INSTANCE_NAME
+    ? stored
+    : defaultCompanionInstanceName();
+}
+
+/**
+ * An empty name clears it, so the default applies again and, in the
+ * desktop app, follows the Mac's name if that changes.
+ */
+export function setCompanionInstanceName(name: unknown): string {
+  setSetting(
+    COMPANION_INSTANCE_NAME_KEY,
+    cleanLabel(name, "", COMPANION_INSTANCE_NAME_MAX)
+  );
+  return getCompanionInstanceName();
 }

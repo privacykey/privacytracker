@@ -54,7 +54,13 @@ const LAST_USED_RESOLUTION_MS: i64 = 60 * 1000;
 const LABEL_MAX: usize = 60;
 const INSTANCE_NAME_MAX: usize = 60;
 const INSTANCE_NAME_KEY: &str = "companion_instance_name";
-const INSTANCE_NAME_DEFAULT: &str = "privacytracker";
+/// The name phones see until someone names the instance: the Mac's name in
+/// the desktop app (`PRIVACYTRACKER_COMPUTER_NAME`, from the shell), a plain
+/// description anywhere else. Mirrors `lib/companion.ts`.
+const SERVER_NAME_DEFAULT: &str = "privacytracker server";
+const DESKTOP_NAME_FALLBACK: &str = "My Mac";
+/// The default before it described the host; it reads as unnamed.
+const INSTANCE_NAME_LEGACY: &str = "privacytracker";
 const LABEL_DEFAULT: &str = "iPhone";
 const MAX_DEVICES: i64 = 20;
 
@@ -277,10 +283,30 @@ pub async fn lan_not_found() -> Response {
 
 // ── Reads ─────────────────────────────────────────────────────────────
 
+fn default_instance_name() -> String {
+    let desktop = crate::host_env::var("PRIVACYTRACKER_RUNTIME").is_ok_and(|v| v == "desktop");
+    let computer = crate::host_env::var("PRIVACYTRACKER_COMPUTER_NAME").ok();
+    default_instance_name_for(desktop, computer.as_deref())
+}
+
+fn default_instance_name_for(desktop: bool, computer: Option<&str>) -> String {
+    if desktop {
+        clean_label(computer, DESKTOP_NAME_FALLBACK, INSTANCE_NAME_MAX)
+    } else {
+        SERVER_NAME_DEFAULT.to_string()
+    }
+}
+
+/// The stored name, unless there is none or it is the legacy default.
+fn chosen_instance_name(stored: &str) -> Option<String> {
+    let cleaned = clean_label(Some(stored), "", INSTANCE_NAME_MAX);
+    (!cleaned.is_empty() && cleaned != INSTANCE_NAME_LEGACY).then_some(cleaned)
+}
+
 fn instance_name(conn: &Connection) -> String {
     let stored =
         super::settings::get_setting_with(conn, INSTANCE_NAME_KEY, "").unwrap_or_default();
-    clean_label(Some(&stored), INSTANCE_NAME_DEFAULT, INSTANCE_NAME_MAX)
+    chosen_instance_name(&stored).unwrap_or_else(default_instance_name)
 }
 
 fn device_json(
@@ -454,7 +480,8 @@ pub async fn rename(State(state): State<AppState>, req: Request) -> Response {
         return json_error(StatusCode::BAD_REQUEST, "instanceName must be a string");
     };
     let conn = state.db();
-    let cleaned = clean_label(Some(name), INSTANCE_NAME_DEFAULT, INSTANCE_NAME_MAX);
+    // An empty name clears it, so the default applies again.
+    let cleaned = clean_label(Some(name), "", INSTANCE_NAME_MAX);
     if let Err(e) = super::settings::set_setting_with(&conn, INSTANCE_NAME_KEY, &cleaned) {
         super::diag::log_error(format!("[companion] rename failed {e}"));
         return json_error(StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error");

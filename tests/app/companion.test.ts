@@ -18,11 +18,14 @@ import { beforeEach, test } from "node:test";
 import { NextRequest } from "next/server";
 import { TABLES_EXCLUDED_FROM_BACKUP } from "../../lib/backup";
 import {
+  COMPANION_INSTANCE_NAME_KEY,
   COMPANION_MAX_DEVICES,
   createCompanionPairing,
+  getCompanionInstanceName,
   listCompanionDevices,
   loadCompanionRegistry,
   revokeCompanionPairing,
+  setCompanionInstanceName,
 } from "../../lib/companion";
 import {
   _resetCompanionRegistry,
@@ -36,6 +39,7 @@ import {
 } from "../../lib/companion-gate";
 import { buildPairingLink } from "../../lib/companion-link";
 import db from "../../lib/db";
+import { setSetting } from "../../lib/scheduler";
 import { wipeAllUserData } from "../../lib/wipe-all-data";
 import { proxy } from "../../proxy";
 import { resetTestDb, seedTrackedApp } from "../helpers/test-db";
@@ -289,6 +293,32 @@ async function routes() {
     lan: await import("../../app/api/companion/lan/route"),
   };
 }
+
+test("an unnamed instance describes its host until someone names it", () => {
+  const saved = { ...process.env };
+  try {
+    process.env.PRIVACYTRACKER_RUNTIME = "";
+    assert.equal(getCompanionInstanceName(), "privacytracker server");
+    // The old default says nothing a phone could tell instances apart by,
+    // so a stored copy of it reads as unnamed too.
+    setSetting(COMPANION_INSTANCE_NAME_KEY, "privacytracker");
+    assert.equal(getCompanionInstanceName(), "privacytracker server");
+
+    // The desktop app: the Mac's name, passed by the shell.
+    process.env.PRIVACYTRACKER_RUNTIME = "desktop";
+    process.env.PRIVACYTRACKER_COMPUTER_NAME = "  Adam's   MacBook Pro ";
+    assert.equal(getCompanionInstanceName(), "Adam's MacBook Pro");
+    process.env.PRIVACYTRACKER_COMPUTER_NAME = "";
+    assert.equal(getCompanionInstanceName(), "My Mac");
+
+    // A chosen name wins; an empty one hands back to the default.
+    assert.equal(setCompanionInstanceName("  Home   server "), "Home server");
+    assert.equal(getCompanionInstanceName(), "Home server");
+    assert.equal(setCompanionInstanceName("   "), "My Mac");
+  } finally {
+    process.env = saved;
+  }
+});
 
 const LOCAL = "http://127.0.0.1:3000";
 const sameOrigin = { origin: LOCAL, host: "127.0.0.1:3000" };

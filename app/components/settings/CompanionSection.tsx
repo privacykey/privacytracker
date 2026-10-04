@@ -156,16 +156,21 @@ export default function CompanionSection({
     baseUrl = window.location.origin;
   }
 
+  const putName = async (): Promise<CompanionPayload> => {
+    const next = await fetch("/api/companion", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ instanceName: nameDraft }),
+    }).then((r) => readJson<CompanionPayload>(r));
+    setData(next);
+    setNameDraft(next.instanceName);
+    return next;
+  };
+
   const saveName = async () => {
     setSavingName(true);
     try {
-      const next = await fetch("/api/companion", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ instanceName: nameDraft }),
-      }).then((r) => readJson<CompanionPayload>(r));
-      setData(next);
-      setNameDraft(next.instanceName);
+      await putName();
       showToast(t("saved"));
     } catch (error) {
       showToast(t("error_generic", { error: String(error) }));
@@ -196,6 +201,11 @@ export default function CompanionSection({
     }
     setPairing(true);
     try {
+      // A name typed here but not saved goes into this code, not the old one.
+      const instanceName =
+        nameDraft.trim() === data.instanceName
+          ? data.instanceName
+          : (await putName()).instanceName;
       const created = await fetch("/api/companion/pairings", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -207,7 +217,7 @@ export default function CompanionSection({
         link: buildPairingLink({
           baseUrl,
           fingerprint,
-          instanceName: data.instanceName,
+          instanceName,
           token: created.token,
         }),
       });
@@ -270,32 +280,6 @@ export default function CompanionSection({
 
       {data && (
         <>
-          <div className="settings-field companion-name">
-            <label className="settings-field-label" htmlFor={nameId}>
-              {t("instance_name_label")}
-            </label>
-            <div className="companion-inline">
-              <input
-                className="settings-input"
-                id={nameId}
-                maxLength={60}
-                onChange={(e) => setNameDraft(e.target.value)}
-                value={nameDraft}
-              />
-              <button
-                className="btn btn-secondary"
-                disabled={savingName || nameDraft.trim() === data.instanceName}
-                onClick={saveName}
-                type="button"
-              >
-                {t("save")}
-              </button>
-            </div>
-            <span className="settings-field-help">
-              {t("instance_name_hint")}
-            </span>
-          </div>
-
           {lan?.supported && (
             <div className="companion-lan">
               <label className="settings-checkbox-row">
@@ -356,6 +340,35 @@ export default function CompanionSection({
                 {t("pair_loopback_warning", { host: pageHost })}
               </p>
             )}
+            {/* The name is set here, where the code is made: it starts as
+                a description of this host, and the code carries it. */}
+            <div className="settings-field companion-name">
+              <label className="settings-field-label" htmlFor={nameId}>
+                {t("instance_name_label")}
+              </label>
+              <div className="companion-inline">
+                <input
+                  className="settings-input"
+                  id={nameId}
+                  maxLength={60}
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  value={nameDraft}
+                />
+                <button
+                  className="btn btn-secondary"
+                  disabled={
+                    savingName || nameDraft.trim() === data.instanceName
+                  }
+                  onClick={saveName}
+                  type="button"
+                >
+                  {t("save")}
+                </button>
+              </div>
+              <span className="settings-field-help">
+                {t("instance_name_hint")}
+              </span>
+            </div>
             <div className="companion-inline">
               <label className="companion-visually-hidden" htmlFor={labelId}>
                 {t("pair_label")}

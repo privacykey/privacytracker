@@ -200,7 +200,7 @@ pub fn entry_url(base_url: &str) -> String {
 /// process state in the core, set once.
 pub fn start(data_dir: &Path, site: &Path) -> Result<Started, BoxError> {
     let credential = desktop_auth::mint_credential()?;
-    let env = environment(data_dir, &credential)?;
+    let env = environment(data_dir, &credential, crate::backend::computer_name().as_deref())?;
     let preferred = remembered_port(data_dir);
     let site = site.to_path_buf();
     let served = tauri::async_runtime::block_on(async move {
@@ -343,7 +343,11 @@ fn resources_beside_executable() -> Option<PathBuf> {
 /// nothing to sign in with. No `PRIVACYTRACKER_NETWORK_EXPOSED` either,
 /// which would make the server demand that token. The launch credential
 /// guards the API instead, and changes nothing on screen.
-fn environment(data_dir: &Path, credential: &str) -> Result<HashMap<String, String>, BoxError> {
+fn environment(
+    data_dir: &Path,
+    credential: &str,
+    computer_name: Option<&str>,
+) -> Result<HashMap<String, String>, BoxError> {
     let dir = data_dir
         .to_str()
         .ok_or("the data directory's path is not valid UTF-8")?;
@@ -364,6 +368,10 @@ fn environment(data_dir: &Path, credential: &str) -> Result<HashMap<String, Stri
     // MobileSync folder under it.
     if let Ok(home) = std::env::var("HOME") {
         env.insert("HOME".to_string(), home);
+    }
+    // The companion app's default name for this instance.
+    if let Some(name) = computer_name {
+        env.insert("PRIVACYTRACKER_COMPUTER_NAME".to_string(), name.to_string());
     }
     Ok(env)
 }
@@ -563,7 +571,12 @@ mod tests {
 
     #[test]
     fn the_environment_carries_the_launch_credential_and_no_admin_token() {
-        let env = environment(Path::new("/tmp/pt"), "c0ffee").expect("utf-8 path");
+        let env = environment(Path::new("/tmp/pt"), "c0ffee", Some("Adam's MacBook Pro")).expect("utf-8 path");
+        assert_eq!(
+            env.get("PRIVACYTRACKER_COMPUTER_NAME").map(String::as_str),
+            Some("Adam's MacBook Pro"),
+            "the companion app's default name for the instance",
+        );
         assert_eq!(env.get("PRIVACYTRACKER_DATA_DIR").unwrap(), "/tmp/pt");
         assert_eq!(env.get("PRIVACYTRACKER_BIND_HOST").unwrap(), "127.0.0.1");
         assert_eq!(env.get("PRIVACYTRACKER_RUNTIME").unwrap(), "desktop");

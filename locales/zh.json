@@ -4598,7 +4598,7 @@
     "companion_card": {
       "scope_note": "已配对的手机可以读取您的应用列表、每个应用的标签和历史，以及变更动态。它无法修改任何内容，也看不到设置、备份、导出或设备。",
       "instance_name_label": "手机上显示的名称",
-      "instance_name_hint": "iPhone 应用连接时会显示此名称。",
+      "instance_name_hint": "iPhone 应用会显示此名称。默认是这台 Mac 的名称，在服务器上则是“privacytracker server”；可以在生成配对码之前修改。已配对的手机会在下次检查时获取新名称。",
       "save": "保存",
       "saved": "已保存",
       "lan_title": "允许手机连接",

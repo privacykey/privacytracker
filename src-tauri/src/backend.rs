@@ -37,6 +37,29 @@ pub use crate::sidecar::{boot, SidecarHandle as Running};
 #[cfg(feature = "rust-backend")]
 pub use crate::embedded::{boot, EmbeddedServer as Running};
 
+/// The Mac's name as set in System Settings → General → About ("Adam's
+/// MacBook Pro"). Either backend gets it as `PRIVACYTRACKER_COMPUTER_NAME`,
+/// and the companion app calls the instance by it until someone names it
+/// in Settings → Companion. `None` when it cannot be read; the backend then
+/// says "My Mac".
+#[cfg(target_os = "macos")]
+pub fn computer_name() -> Option<String> {
+    let out = std::process::Command::new("/usr/sbin/scutil")
+        .args(["--get", "ComputerName"])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let name = String::from_utf8(out.stdout).ok()?.trim().to_string();
+    (!name.is_empty()).then_some(name)
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn computer_name() -> Option<String> {
+    None
+}
+
 /// The per-user data directory, and therefore the database. The same path
 /// on both backends, so either build opens what the other wrote.
 ///
