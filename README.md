@@ -24,6 +24,10 @@
 
 ---
 
+<!-- launch video: replace this comment with the github.com/user-attachments/assets/… link on its own line -->
+
+*A 48-second tour. The apps, people and label changes in it are made up for the demo.*
+
 privacytracker watches the privacy labels Apple shows on each app's App Store
 page — *Data Used to Track You*, *Data Linked to You*, *Data Not Linked to
 You* — and tells you when an app you use changes them. It can summarise
