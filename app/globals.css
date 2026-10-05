@@ -29327,8 +29327,14 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 .feature-toggle-icon {
+  /* A fixed, centred box so every label starts at the same x: the icons
+     mix emoji with text glyphs (the label examples' ✦), and those differ
+     in advance width. 22px fits an emoji at this size. */
+  flex: none;
+  width: 22px;
   font-size: 17px;
   line-height: 1;
+  text-align: center;
 }
 
 .feature-toggle-label {

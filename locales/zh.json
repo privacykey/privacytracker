@@ -19,7 +19,8 @@
       "privacy_map": "隐私地图",
       "stats": "统计与图表",
       "notifications": "通知",
-      "shortlist": "候选清单"
+      "shortlist": "候选清单",
+      "label_hints": "隐私标签示例"
     }
   },
   "verdict": {

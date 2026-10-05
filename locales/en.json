@@ -19,7 +19,8 @@
       "privacy_map": "Privacy Map",
       "stats": "Stats & charts",
       "notifications": "Notifications",
-      "shortlist": "Shortlist"
+      "shortlist": "Shortlist",
+      "label_hints": "Privacy label examples"
     }
   },
   "verdict": {

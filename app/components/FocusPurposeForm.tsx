@@ -369,7 +369,7 @@ export default function FocusPurposeForm({
 
         {/* Per-feature toggles. In onboarding they sit behind an
             "Advanced" disclosure: they're an override layer for the
-            goals above, and rendering all six inline pushed the primary
+            goals above, and rendering them all inline pushed the primary
             CTA off a phone screen entirely. Settings keeps them
             expanded — someone on that page came to fiddle. */}
         {mode === "onboarding" ? (
