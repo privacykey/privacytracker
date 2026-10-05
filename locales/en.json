@@ -4136,7 +4136,7 @@
     "privacy_policy_link": "Privacy Policy ↗",
     "label_definitions_link": "Label definitions",
     "label_scope_note": "These labels name a <em>category</em> of data, not the specific fields inside it. Only the developer can see that list. For what this app says about how much it collects, see <policy>the policy’s collection scope</policy>.",
-    "label_scope_note_hint": "Each label has a ✦ that shows what it could mean.",
+    "label_scope_note_hint": "Each label has a ✦ that shows what it could mean. <off>Turn them off in Settings</off>.",
     "label_scope_note_plain": "These labels name a <em>category</em> of data, not the specific fields inside it. Only the developer can see that list.",
     "apple_app_hint": "This is an Apple app. For Apple’s own privacy labels — including Messages, Maps, Safari, Mail, Health, and more — see <apple>apple.com/au/privacy/labels ↗</apple>. For definitions of the terms on this page, see the <defs>in-app definitions reference</defs>.",
     "policy_fetch_scope_note": "Re-sync and Sync All also re-fetch this policy in the background when they finish, except within the policy scrape throttle’s cooldown or while policy scraping is disabled. They don’t summarise it: use the buttons on this tab for that, or to fetch it now.",

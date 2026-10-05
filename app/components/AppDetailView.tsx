@@ -1668,7 +1668,23 @@ export default function AppDetailView({
                       DataLabelHint never renders would send them hunting
                       for a control that isn't there.
                     */}
-                    {f.labelHints && <> {tDetail("label_scope_note_hint")}</>}
+                    {f.labelHints && (
+                      <>
+                        {" "}
+                        {tDetail.rich("label_scope_note_hint", {
+                          // For anyone the examples distract: straight to
+                          // the switch, which focuses itself on arrival.
+                          off: (chunks) => (
+                            <Link
+                              className="link-button-inline"
+                              href="/dashboard/settings/focus#toggle-label_hints"
+                            >
+                              {chunks}
+                            </Link>
+                          ),
+                        })}
+                      </>
+                    )}
                   </span>
                 </p>
                 {/* Wrapper carries `id="profile-mismatch"` so notification

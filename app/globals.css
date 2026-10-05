@@ -29320,6 +29320,12 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   opacity: 0.6;
 }
 
+/* Arrival from a `#toggle-<name>` deep link: the policy lens's pulse, so
+   every "this is what you followed" highlight reads the same. */
+.feature-toggle-item--target .feature-toggle-chip {
+  animation: policy-lens-target-pulse 1.6s ease-out;
+}
+
 .feature-toggle-chip:focus-visible,
 .feature-toggle-reset:focus-visible {
   outline: 2px solid var(--blue, #0a84ff);

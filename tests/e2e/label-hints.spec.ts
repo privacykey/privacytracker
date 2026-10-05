@@ -297,14 +297,18 @@ browserFlow(
     await expect(lens).toBeInViewport();
 
     // ── 5. The hints mute, through the Settings switch ───────────────
-    // The regular-user path: Settings, the "Your focus" card's Adjust link,
-    // then "Fine-tune features" on the focus editor.
+    // The regular-user path: the note's "Turn them off in Settings" link,
+    // which lands on the switch under "Fine-tune features" on the focus
+    // editor (also reachable from Settings' "Your focus" card, Adjust).
     // It writes the same override the guardian and minimal focuses get by
     // rule, so this also covers the mute itself.
     const examplesSwitch = page
       .locator("button.feature-toggle-chip")
       .filter({ hasText: "Privacy label examples" });
-    const flipSwitch = async (pressedAfter: "true" | "false") => {
+    const flipSwitch = async (
+      pressedAfter: "true" | "false",
+      via: "click" | "keyboard" = "click"
+    ) => {
       await expect(examplesSwitch).toBeEnabled();
       // Wait for the write, not just the chip: navigating away mid-request
       // would abort it and leave the override wherever it was.
@@ -313,7 +317,11 @@ browserFlow(
           res.url().includes("/api/feature-flags/overrides") &&
           res.request().method() !== "GET"
       );
-      await examplesSwitch.click();
+      if (via === "keyboard") {
+        await page.keyboard.press("Space");
+      } else {
+        await examplesSwitch.click();
+      }
       expect((await written).ok()).toBe(true);
       await expect(examplesSwitch).toHaveAttribute(
         "aria-pressed",
@@ -330,10 +338,23 @@ browserFlow(
     };
 
     try {
-      await page.goto("/dashboard/settings/focus");
+      await page.goto(appPath);
+      await note
+        .getByRole("link", { name: "Turn them off in Settings" })
+        .click();
+      await expect(page).toHaveURL(
+        /\/dashboard\/settings\/focus#toggle-label_hints$/
+      );
+      // Landed on the switch: in view, highlighted, and focused, so the
+      // next key press acts on it.
+      await expect(examplesSwitch).toBeFocused();
+      await expect(examplesSwitch).toBeInViewport();
+      await expect(page.locator("#toggle-label_hints")).toHaveClass(
+        /feature-toggle-item--target/
+      );
       // On for the monitor focus seeded above.
       await expect(examplesSwitch).toHaveAttribute("aria-pressed", "true");
-      await flipSwitch("false");
+      await flipSwitch("false", "keyboard");
       expect(await hintsOverride()).toBe("off");
 
       await page.goto(appPath);
@@ -349,6 +370,7 @@ browserFlow(
       // trigger that no longer renders would send them hunting for nothing.
       await expect(note).toContainText("not the specific fields inside it");
       await expect(note).not.toContainText("shows what it could mean");
+      await expect(note.getByRole("link")).toHaveCount(0);
 
       // Back on. That matches what the focus gives, so the row clears the
       // override rather than pinning a redundant "on" that would stop a

@@ -90,6 +90,9 @@ export default function FeatureToggleRow() {
   // Per-chip refs so a successful retry can land focus back on the toggle (the
   // error block holding the Retry button unmounts on success → focus to body).
   const chipRefs = useRef<Map<string, HTMLButtonElement | null>>(new Map());
+  // The switch a `#toggle-<i18n>` link landed on, pulsed once on arrival.
+  const [targetKey, setTargetKey] = useState<string | null>(null);
+  const handledHash = useRef(false);
 
   // Initial load: the focus-only baseline + any existing overrides.
   useEffect(() => {
@@ -280,6 +283,35 @@ export default function FeatureToggleRow() {
     requestAnimationFrame(() => chipRefs.current.get(key)?.focus());
   }
 
+  // Deep links land on one switch: the label-scope note's "Turn them off in
+  // Settings" points at `#toggle-label_hints`. The page renders on the
+  // client, so the browser's own anchor jump fires before the switch exists.
+  // Once the rows have loaded: bring it to the middle of the screen, pulse
+  // it, and move focus there so the next key press acts on it.
+  useEffect(() => {
+    if (!loaded || handledHash.current) {
+      return;
+    }
+    handledHash.current = true;
+    const id = window.location.hash.replace(/^#/, "");
+    const tg = TOGGLES.find((x) => `toggle-${x.i18n}` === id);
+    const chip = tg ? chipRefs.current.get(tg.key) : null;
+    if (!(tg && chip)) {
+      return;
+    }
+    // Smooth only when motion is welcome: a script-driven smooth scroll
+    // ignores the global reduced-motion rule (WCAG 2.2 AAA, 2.3.3).
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    chip.scrollIntoView({
+      behavior: reduceMotion ? "auto" : "smooth",
+      block: "center",
+    });
+    chip.focus({ preventScroll: true });
+    setTargetKey(tg.key);
+  }, [loaded]);
+
   // Only hide the whole section when the INITIAL load failed with nothing to
   // show — a per-toggle WRITE failure must never blank the row.
   if (loaded && loadFailed && rows.size === 0) {
@@ -303,7 +335,18 @@ export default function FeatureToggleRow() {
           const err = writeErrors.get(tg.key);
           const label = t(`features.${tg.i18n}`);
           return (
-            <div className="feature-toggle-item" key={tg.key}>
+            <div
+              className={`feature-toggle-item${
+                targetKey === tg.key ? " feature-toggle-item--target" : ""
+              }`}
+              id={`toggle-${tg.i18n}`}
+              key={tg.key}
+              onAnimationEnd={() => {
+                if (targetKey === tg.key) {
+                  setTargetKey(null);
+                }
+              }}
+            >
               <button
                 aria-busy={busy}
                 aria-pressed={on}

@@ -4136,7 +4136,7 @@
     "privacy_policy_link": "隐私政策 ↗",
     "label_definitions_link": "标签定义",
     "label_scope_note": "这些标签标示的是数据的<em>类别</em>，而非其中的具体字段——只有开发者能看到该清单。关于本应用自述的收集范围，请参阅<policy>隐私政策的收集范围</policy>。",
-    "label_scope_note_hint": "每个标签旁的 ✦ 可显示它可能意味着什么。",
+    "label_scope_note_hint": "每个标签旁的 ✦ 可显示它可能意味着什么。<off>可在设置中关闭</off>。",
     "label_scope_note_plain": "这些标签标示的是数据的<em>类别</em>，而非其中的具体字段——只有开发者能看到该清单。",
     "apple_app_hint": "这是一款 Apple 应用。Apple 自家应用（包括信息、地图、Safari、邮件、健康等）的隐私标签请见 <apple>apple.com/au/privacy/labels ↗</apple>。关于本页术语的定义，请参阅<defs>应用内定义参考</defs>。",
     "policy_fetch_scope_note": "「重新同步」和「全部同步」完成后也会在后台重新抓取此政策，但在政策抓取限速的冷却时间内或禁用隐私政策抓取时除外。它们不会生成摘要：如需生成摘要或立即抓取，请使用此标签页上的按钮。",
