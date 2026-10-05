@@ -148,3 +148,53 @@ test("due reminders offer Review now and Reschedule; a failed save preserves the
     row.getByRole("link", { name: "Review now", exact: true })
   ).toHaveCount(0);
 });
+
+test("apps with unreviewed changes open in place from the overview, and close again", async ({
+  page,
+  request,
+}) => {
+  const apps = await (await request.get("/api/apps")).json();
+  const changed = apps.slice(0, 2);
+  const db = fixtureDb();
+  try {
+    // Two apps carry an unreviewed change, the third none. The counter is
+    // what both the overview and "Changes to review" read.
+    db.prepare("DELETE FROM privacy_snapshots").run();
+    db.prepare(
+      "UPDATE apps SET changeCount = 0, changes_acknowledged_at = 0"
+    ).run();
+    for (const app of changed) {
+      db.prepare("UPDATE apps SET changeCount = 1 WHERE id = ?").run(app.id);
+      db.prepare(
+        "INSERT INTO privacy_snapshots(id,app_id,scraped_at,snapshot_json,changes_detected,changes_summary,source) VALUES (?,?,?,'[]',1,'[]','live')"
+      ).run(`expand-${app.id}`, app.id, Date.now() - 1000);
+    }
+  } finally {
+    db.close();
+  }
+  await page.goto("/dashboard");
+  const overview = page.locator(".focus-overview");
+  // The section below lists the changed apps, so the card starts collapsed
+  // and each app appears once on the page.
+  await expect(page.locator("#changes-to-review")).toBeVisible();
+  const show = overview.getByRole("button", {
+    name: "Show 2 apps with unreviewed changes",
+    exact: true,
+  });
+  await expect(show).toHaveAttribute("aria-expanded", "false");
+  const link = overview.getByRole("link", {
+    name: changed[0].name,
+    exact: true,
+  });
+  await expect(link).toBeHidden();
+  await show.click();
+  const hide = overview.getByRole("button", {
+    name: "Hide apps with unreviewed changes",
+    exact: true,
+  });
+  await expect(hide).toHaveAttribute("aria-expanded", "true");
+  await expect(link).toBeVisible();
+  await expect(overview.locator(".focus-overview-apps-more li")).toHaveCount(2);
+  await hide.click();
+  await expect(link).toBeHidden();
+});

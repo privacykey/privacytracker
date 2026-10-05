@@ -241,6 +241,15 @@
   border: 1px solid var(--border-subtle, rgba(127, 127, 127, 0.15));
   border-radius: var(--r-lg, 14px);
 }
+/* A finished check-up collapses to its chip. The chip carries its own
+   border and bottom margin, so the card around it steps back rather than
+   framing a pill in an otherwise empty panel. */
+.task-list-card:has(> .task-list-chip) {
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+}
 .task-list-card-header {
   display: flex;
   gap: 12px;

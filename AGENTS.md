@@ -275,6 +275,17 @@ the focus transaction, only when audience or goal/modifier values change.
 order. Presets preserve this setting, and turning it off takes effect on the next
 focus change. Hidden choices and capability gates remain independent.
 
+The overview card (`FocusOverview`) does not render that preview whole.
+`splitOverviewRows` in `lib/focus-overview-rows.ts` (client-safe, pinned by
+`tests/app/focus-overview-rows.test.ts`) keeps every decision in progress
+visible, caps the untouched starter rows at three, and puts apps whose only
+state is "has unreviewed changes" behind an expand control inside the card.
+It starts collapsed when the "Changes to review" section renders on the page,
+because that section lists the same apps with more detail, and expanded when it
+does not. The split is client-only: the server preview and its Rust mirror are
+unchanged, so the expanded list is still bounded by the preview, and the card
+says how many changed apps it could not carry.
+
 `GET /api/triage?overview=1&since=<epoch-ms>` adds a bounded app preview with
 whole-scope counts. Since-last-visit counts mean distinct apps with a live change
 after the supplied timestamp (Wayback imports excluded). `lib/dashboard-visit.ts`

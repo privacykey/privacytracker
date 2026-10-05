@@ -14,6 +14,16 @@ Going forward, changes are recorded here as they land.
 
 ### Focus and dashboard
 
+- Shorten the dashboard overview. It lists the decisions you still have in
+  progress, and **Show apps with unreviewed changes** opens the changed apps in
+  place instead of listing them twice. The overview says how many apps are
+  stale next to **Re-sync now**, and the note about "since last visit" appears
+  only with a count.
+- Say "Top 6 of 69 apps" when the risk list is a slice, show the top three under
+  "Consider replacing", show "Security hygiene" only when both Monitor and
+  Cleanup are selected, and collapse a finished check-up even while optional
+  extras remain. The risk list no longer says "you" when the apps belong to
+  someone else or a child.
 - Keep the dashboard's "since last visit" comparison steady through app review,
   navigation and refreshes in the same browser tab, separately for each device
   view. Due reminders now say "Ready to review" and link directly to the

@@ -563,7 +563,9 @@ export default function HomeView({
       showRiskFlag && triage.higherRisk.length > 0 ? (
         <RiskSection
           apps={triage.higherRisk}
+          audience={focusSummary?.audience ?? "self"}
           id="higher-risk"
+          total={triage.highRiskCount + triage.moderateRiskCount}
           variant={
             showCleanupCallout
               ? "cleanup"
@@ -581,10 +583,16 @@ export default function HomeView({
       showHeroQuiet || showHeroAttention ? (
         triage.overview ? (
           <FocusOverview
+            changesListedBelow={
+              showReview &&
+              !hiddenSet.has("review_section") &&
+              triage.reviewable.length > 0
+            }
             data={triage.overview}
             focus={focusSummary}
             onSyncAll={syncAllStale}
             scopeParam={scopeParam}
+            staleCount={triage.staleCount}
             syncing={syncingAll}
             total={triage.totalApps}
           />
@@ -610,8 +618,14 @@ export default function HomeView({
           count={ageRatingFlagged.count}
         />
       ) : null,
+    // The rule tables are per-goal, so `callout.understand_declutter` also
+    // resolves on for Clean up alone. The callout is written for the
+    // Monitor AND Clean up pairing; `elevateStale` already keys off the same
+    // conjunction.
     third_party_callout: () =>
-      showThirdPartyCallout ? <ThirdPartyCallout triage={triage} /> : null,
+      showThirdPartyCallout && elevateStale ? (
+        <ThirdPartyCallout triage={triage} />
+      ) : null,
     glance_section: () =>
       showGlance ? <GlanceSection triage={triage} /> : null,
     definitions_callout: () =>
@@ -1659,8 +1673,10 @@ function ReviewSection({
               <div className="home-row-body">
                 <div className="home-row-title">{app.name}</div>
                 <div className="home-row-sub">
-                  {app.changeCount} change{app.changeCount === 1 ? "" : "s"} ·{" "}
-                  {relativeTime(tRel, app.lastChangeAt)}
+                  {tSections("review_change_count", {
+                    count: app.changeCount,
+                  })}{" "}
+                  · {relativeTime(tRel, app.lastChangeAt)}
                   {app.topChange && (
                     <span className="home-row-topchange">
                       {" "}
@@ -1718,7 +1734,7 @@ function ConsiderReplacingSection({
   // mismatches get a "see all" footer that routes to the apps grid with
   // the "bad match" filter implicitly applied via the badge (which is now
   // present on every card).
-  const MAX_VISIBLE = 6;
+  const MAX_VISIBLE = 3;
   const visible = apps.slice(0, MAX_VISIBLE);
   const hidden = Math.max(0, apps.length - visible.length);
 
@@ -1726,15 +1742,13 @@ function ConsiderReplacingSection({
     <section className="home-section profile-replace-section" id={id}>
       <div className="profile-replace-section-title">
         <span aria-hidden>🛡</span>
-        Consider replacing
+        {tSections("replace_kicker")}
         <span className="home-section-count" style={{ marginLeft: 6 }}>
-          {apps.length} app{apps.length === 1 ? "" : "s"}
+          {tSections("watchlist_count", { count: apps.length })}
         </span>
       </div>
       <p className="profile-replace-section-subtitle">
-        These apps go further than your privacy profile allows. Open one to see
-        which categories mismatch, and decide whether to keep, replace, or
-        delete.
+        {tSections("replace_sub")}
       </p>
 
       <div className="profile-replace-list">
@@ -1790,8 +1804,9 @@ function ConsiderReplacingSection({
                 </span>
               )}
               <span className="profile-replace-row-count">
-                {entry.mismatch.count} mismatch
-                {entry.mismatch.count === 1 ? "" : "es"}
+                {tSections("replace_mismatch_count", {
+                  count: entry.mismatch.count,
+                })}
               </span>
             </Link>
           );
@@ -1800,11 +1815,14 @@ function ConsiderReplacingSection({
 
       {hidden > 0 && (
         <p className="settings-field-help" style={{ marginTop: 10 }}>
-          +{hidden} more on the{" "}
-          <Link className="welcome-link" href="/dashboard/apps">
-            apps page
-          </Link>{" "}
-          (look for the warning badge).
+          {tSections.rich("replace_more", {
+            count: hidden,
+            link: (chunks) => (
+              <Link className="welcome-link" href="/dashboard/apps">
+                {chunks}
+              </Link>
+            ),
+          })}
         </p>
       )}
     </section>
@@ -1819,12 +1837,19 @@ function RiskSection({
   id,
   apps,
   variant = "default",
+  audience = "self",
+  total,
 }: {
   id: string;
   apps: TriageApp[];
   /** Intent-driven wording. `cleanup` frames this as a delete-list, `family`
    *  frames it as a review-with-kids list, `default` is the neutral watchlist. */
   variant?: "default" | "cleanup" | "family";
+  /** Whose apps these are. The subtitle says "you" only for `self`. */
+  audience?: "self" | "loved_one" | "guardian";
+  /** Size of the whole higher-risk set. `apps` is only its top slice, so
+   *  the header names both when they differ. */
+  total?: number;
 }) {
   const tSections = useTranslations("dashboard.sections");
   const tRisk = useTranslations("risk");
@@ -1835,11 +1860,21 @@ function RiskSection({
         ? tSections("family_kicker")
         : tSections("watchlist_kicker");
   const sub =
-    variant === "cleanup"
-      ? tSections("cleanup_sub")
-      : variant === "family"
-        ? tSections("family_sub")
-        : tSections("watchlist_sub");
+    variant === "family"
+      ? tSections("family_sub")
+      : variant === "cleanup"
+        ? tSections(
+            audience === "self" ? "cleanup_sub" : `cleanup_sub_${audience}`
+          )
+        : tSections(
+            audience === "loved_one"
+              ? "watchlist_sub_loved_one"
+              : "watchlist_sub"
+          );
+  const count =
+    total !== undefined && total > apps.length
+      ? tSections("watchlist_top_of", { shown: apps.length, total })
+      : tSections("watchlist_count", { count: apps.length });
   return (
     <section
       className="home-section home-section-risk home-section-watchlist"
@@ -1848,9 +1883,7 @@ function RiskSection({
       <div className="home-section-header">
         <h2 className="home-section-title">
           <span className="home-section-kicker">{kicker}</span>
-          <span className="home-section-count">
-            {tSections("watchlist_count", { count: apps.length })}
-          </span>
+          <span className="home-section-count">{count}</span>
         </h2>
         <p className="home-section-sub">{sub}</p>
       </div>
@@ -1869,19 +1902,21 @@ function RiskSection({
                 {app.unlinkedCount > 0 && (
                   <span className="home-row-chip home-row-chip-unlinked">
                     <PrivacyTypeIcon tier="not_linked" />
-                    {app.unlinkedCount} unlinked
+                    {tSections("risk_chip_unlinked", {
+                      count: app.unlinkedCount,
+                    })}
                   </span>
                 )}
                 {app.linkedCount > 0 && (
                   <span className="home-row-chip home-row-chip-linked">
                     <PrivacyTypeIcon tier="linked" />
-                    {app.linkedCount} linked
+                    {tSections("risk_chip_linked", { count: app.linkedCount })}
                   </span>
                 )}
                 {app.trackCount > 0 && (
                   <span className="home-row-chip home-row-chip-track">
                     <PrivacyTypeIcon tier="tracking" />
-                    {app.trackCount} track
+                    {tSections("risk_chip_track", { count: app.trackCount })}
                   </span>
                 )}
               </div>
@@ -1898,7 +1933,7 @@ function RiskSection({
 
       <div className="home-section-footer">
         <Link className="btn btn-ghost btn-sm" href="/dashboard/apps">
-          See all apps sorted by risk →
+          {tSections("risk_see_all")}
         </Link>
       </div>
     </section>

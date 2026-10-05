@@ -2985,6 +2985,19 @@
       "sync_stale": "同步 {count} 个过期应用",
       "syncing_stale": "正在同步过期应用…",
       "watchlist_count": "{count} 个应用",
+      "watchlist_top_of": "共 {total} 个应用，显示前 {shown} 个",
+      "cleanup_sub_loved_one": "这些应用会跨应用跟踪对方，或收集大量与其身份相关联的数据。逐个打开，决定给出什么建议。",
+      "cleanup_sub_guardian": "这些应用会跨应用跟踪你的孩子，或收集大量与其身份相关联的数据。逐个打开，决定保留还是移除。",
+      "watchlist_sub_loved_one": "会跨应用跟踪对方或收集大量与其身份相关联数据的应用。这只是一份参考清单，暂无需操作。",
+      "risk_chip_unlinked": "{count} 项未关联",
+      "risk_chip_linked": "{count} 项关联",
+      "risk_chip_track": "{count} 项追踪",
+      "risk_see_all": "查看按风险排序的全部应用 →",
+      "review_change_count": "{count} 处变化",
+      "replace_kicker": "考虑替换",
+      "replace_sub": "这些应用超出了你的隐私偏好所允许的范围。打开任意一个查看哪些类别不符，再决定保留、替换还是删除。",
+      "replace_mismatch_count": "{count} 项不符",
+      "replace_more": "另有 {count} 个，见<link>应用页面</link>（留意警告标记）。",
       "cleanup_kicker": "🧹 清理候选",
       "cleanup_sub": "这些应用会跨应用跟踪你，或收集大量与你身份相关联的数据。逐个打开决定保留还是删除。",
       "family_kicker": "👪 与家人一起检查",
@@ -6132,7 +6145,11 @@
       "due": "待审查"
     },
     "review_now": "立即审查",
-    "reschedule": "重新安排提醒"
+    "reschedule": "重新安排提醒",
+    "show_changed": "显示 {count} 个有未检查变化的应用",
+    "hide_changed": "收起有未检查变化的应用",
+    "more_changed": "另有 {count} 个应用有未检查变化。",
+    "more_changed_link": "查看全部应用"
   },
   "focus_review": {
     "accepted": "你选择保留应用并接受当前与偏好不符的问题。若数据收集发生变化或你修改隐私偏好，我们会再次提示。隐私政策和无障碍提醒保持独立。",
