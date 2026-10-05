@@ -77,6 +77,15 @@ test("Keep and Decide later persist, and replacement opens a comparison for that
   await expect(page.locator(".focus-overview-apps")).toContainText(
     "Decide later"
   );
+  // The simple view folds the risk list. Open it when it has something to
+  // show, so the check below reads a rendered list, not an absent one.
+  const more = page.getByRole("button", {
+    name: "Show more detail",
+    exact: true,
+  });
+  if ((await more.count()) > 0) {
+    await more.click();
+  }
   await expect(
     page.locator(`#higher-risk a[href="/apps/${app.id}"]`)
   ).toHaveCount(0);
@@ -118,6 +127,54 @@ test("Keep and Decide later persist, and replacement opens a comparison for that
   await expect(page).toHaveURL(
     new RegExp(`/dashboard/compare\\?a=id:${app.id}`)
   );
+});
+
+test("simple view folds the long lists behind Show more detail, and leaving it brings them back", async ({
+  page,
+  request,
+}) => {
+  // The whole canned set, so the risk list has rows to fold.
+  await expect(
+    await request.post("/api/dev/seed-sample-data?source=canned", { headers })
+  ).toBeOK();
+  const triage = await (await request.get("/api/triage")).json();
+  expect(triage.higherRisk.length).toBeGreaterThan(0);
+
+  await page.goto("/dashboard");
+  await expect(
+    page.getByRole("heading", { name: "Your apps, your next steps" })
+  ).toBeVisible();
+  await expect(page.locator("#higher-risk")).toHaveCount(0);
+  const note = page.locator("#simple-view-more");
+  await expect(note).toContainText("Simple view is hiding");
+  const show = note.getByRole("button", {
+    name: "Show more detail",
+    exact: true,
+  });
+  await expect(show).toHaveAttribute("aria-expanded", "false");
+  await show.click();
+  await expect(page.locator("#higher-risk")).toBeVisible();
+  const hide = note.getByRole("button", {
+    name: "Hide the extra detail",
+    exact: true,
+  });
+  await expect(hide).toHaveAttribute("aria-expanded", "true");
+  // The note stops claiming the lists are hidden once they are on screen.
+  await expect(note).toContainText("that simple view usually hides");
+  await expect(note).not.toContainText("Simple view is hiding");
+  await hide.click();
+  await expect(page.locator("#higher-risk")).toHaveCount(0);
+
+  // Without the modifier the lists are simply part of the page again.
+  await expect(
+    await request.post("/api/focus", {
+      headers,
+      data: { audience: "self", monitor: true, cleanup: true, minimal: false },
+    })
+  ).toBeOK();
+  await page.reload();
+  await expect(page.locator("#higher-risk")).toBeVisible();
+  await expect(page.locator("#simple-view-more")).toHaveCount(0);
 });
 
 test("fixed layout survives a focus change; switching it off resumes automatic order on the next change", async ({

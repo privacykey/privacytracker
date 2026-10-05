@@ -25,6 +25,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -38,6 +39,7 @@ import {
   type DashboardLayout,
   DEFAULT_LAYOUT,
   FIRST_CLASS_CARDS,
+  splitSimpleViewOrder,
 } from "../../lib/dashboard-layout";
 import { categoryLabel as i18nCategoryLabel } from "../../lib/i18n-meta";
 import type { PrimaryPurpose } from "../../lib/onboarding-purpose";
@@ -353,6 +355,15 @@ export default function HomeView({
   );
   const [dismissingBanner, setDismissingBanner] = useState(false);
   const showManualAppsBanner = !bannerDismissed && manualAppsCount === 0;
+  // "Keep it simple" folds the long reference lists behind a control at the
+  // bottom of the page (see SIMPLE_VIEW_FOLDED_CARDS). Opened per visit:
+  // someone who always wants them turns the modifier off instead.
+  const simpleView = focusSummary?.minimal ?? false;
+  const [showSimpleDetail, setShowSimpleDetail] = useState(false);
+  const simpleDetailId = useId();
+  const simpleDetailFolded = simpleView && !showSimpleDetail;
+  // A jump to a folded section lands on the control that opens it.
+  const staleHref = simpleDetailFolded ? `#${SIMPLE_MORE_ID}` : "#stale-apps";
 
   const dismissManualAppsBanner = async () => {
     if (dismissingBanner) {
@@ -413,11 +424,11 @@ export default function HomeView({
         key: "stale",
         label: tHeadsUp("stale_label", { count: triage.staleCount }),
         cls: "headsup-stale",
-        href: "#stale-apps",
+        href: staleHref,
       });
     }
     return items;
-  }, [triage, tHeadsUp]);
+  }, [triage, tHeadsUp, staleHref]);
 
   const syncAllStale = async () => {
     if (syncingAll) {
@@ -624,7 +635,7 @@ export default function HomeView({
     // conjunction.
     third_party_callout: () =>
       showThirdPartyCallout && elevateStale ? (
-        <ThirdPartyCallout triage={triage} />
+        <ThirdPartyCallout staleHref={staleHref} triage={triage} />
       ) : null,
     glance_section: () =>
       showGlance ? <GlanceSection triage={triage} /> : null,
@@ -662,6 +673,20 @@ export default function HomeView({
       ),
   };
 
+  // Cards that will paint, in order: not hidden by the user, and with a
+  // renderer that returned something (flag on, data predicate met).
+  const renderCards = (ids: readonly DashboardCardId[]) =>
+    ids.flatMap((id) => {
+      if (hiddenSet.has(id)) {
+        return [];
+      }
+      const node = renderers[id]?.();
+      return node ? [<Fragment key={id}>{node}</Fragment>] : [];
+    });
+  // The edit shell lays out every card itself, so nothing is folded there.
+  const simpleOrder = splitSimpleViewOrder(layout.order, simpleView);
+  const foldedCards = renderCards(simpleOrder.folded);
+
   return editMode ? (
     <EditModeShell
       effectiveLayout={effectiveLayout}
@@ -672,19 +697,72 @@ export default function HomeView({
     />
   ) : (
     <div className="page-container home-page">
-      {layout.order.map((id) => {
-        if (hiddenSet.has(id)) {
-          return null;
-        }
-        const node = renderers[id]?.();
-        if (!node) {
-          return null;
-        }
-        return <Fragment key={id}>{node}</Fragment>;
-      })}
+      {renderCards(simpleOrder.main)}
+      {foldedCards.length > 0 && (
+        <SimpleViewMore
+          controls={simpleDetailId}
+          count={foldedCards.length}
+          expanded={showSimpleDetail}
+          onToggle={() => setShowSimpleDetail((open) => !open)}
+        />
+      )}
+      <div id={simpleDetailId}>{showSimpleDetail && foldedCards}</div>
       {showLayoutEditorLink && <LayoutEditorFooterLink />}
       <Toast>{toast}</Toast>
     </div>
+  );
+}
+
+/** Anchor for the simple view's "Show more detail" control. Jumps to a
+ *  folded section land here instead of on an element that is not rendered. */
+const SIMPLE_MORE_ID = "simple-view-more";
+
+/**
+ * The simple view's way back to the detail it folds away: a quiet note at
+ * the bottom of the dashboard with one button that opens the long lists
+ * below it, and a link to where the modifier itself is switched off.
+ */
+function SimpleViewMore({
+  count,
+  expanded,
+  onToggle,
+  controls,
+}: {
+  /** Folded lists that have something to show. */
+  count: number;
+  expanded: boolean;
+  onToggle: () => void;
+  /** Id of the region the button opens. */
+  controls: string;
+}) {
+  const t = useTranslations("dashboard.simple_view");
+  return (
+    <section
+      aria-label={t("aria")}
+      className="home-simple-more"
+      id={SIMPLE_MORE_ID}
+    >
+      <p className="home-simple-more-note">
+        {t(expanded ? "note_open" : "note", { count })}
+      </p>
+      <div className="home-simple-more-actions">
+        <button
+          aria-controls={controls}
+          aria-expanded={expanded}
+          className="btn btn-secondary btn-sm"
+          onClick={onToggle}
+          type="button"
+        >
+          {t(expanded ? "hide" : "show")}
+        </button>
+        <Link
+          className="home-simple-more-link"
+          href="/dashboard/settings/you#focus"
+        >
+          {t("focus_settings")}
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -1259,7 +1337,15 @@ function AgeRatingCallout({
   );
 }
 
-function ThirdPartyCallout({ triage }: { triage: TriageData }) {
+function ThirdPartyCallout({
+  triage,
+  staleHref = "#stale-apps",
+}: {
+  triage: TriageData;
+  /** Where "Jump to stale apps" lands. The simple view points it at the
+   *  control that opens the folded lists while the stale list is folded. */
+  staleHref?: string;
+}) {
   const stale = triage.staleCount;
   const tCallouts = useTranslations("dashboard.callouts");
   return (
@@ -1273,7 +1359,7 @@ function ThirdPartyCallout({ triage }: { triage: TriageData }) {
           ` ${tCallouts("security_hygiene_stale", { count: stale })}`}
       </p>
       {stale > 0 && (
-        <Link className="intent-callout-link" href="#stale-apps">
+        <Link className="intent-callout-link" href={staleHref}>
           {tCallouts("security_hygiene_jump")}
         </Link>
       )}

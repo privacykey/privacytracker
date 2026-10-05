@@ -14,6 +14,10 @@ Going forward, changes are recorded here as they land.
 
 ### Focus and dashboard
 
+- With **Keep it simple** on, the dashboard folds its three long lists (the
+  risk list, "Consider replacing" and stale apps) behind **Show more detail**
+  at the bottom of the page. One click opens them for the visit; turning
+  Keep it simple off brings them back for good.
 - Shorten the dashboard overview. It lists the decisions you still have in
   progress, and **Show apps with unreviewed changes** opens the changed apps in
   place instead of listing them twice. The overview says how many apps are

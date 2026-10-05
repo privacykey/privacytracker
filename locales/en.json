@@ -3063,6 +3063,14 @@
       "minimal_meaning": "The label lists nothing the app collects, linked or otherwise. Like every label, it is the developer's own statement, so compare it with the privacy policy.",
       "minimal_example": "Offline games and simple tools declare it, and so do some apps whose privacy policy describes collecting data."
     },
+    "simple_view": {
+      "aria": "Simple view",
+      "note": "Simple view is hiding {count, plural, one {# longer list} other {# longer lists}} of apps.",
+      "note_open": "Showing {count, plural, one {the # longer list} other {the # longer lists}} that simple view usually hides.",
+      "show": "Show more detail",
+      "hide": "Hide the extra detail",
+      "focus_settings": "Open focus settings"
+    },
     "layout_footer": {
       "customize": "Customise dashboard…",
       "customize_aria": "Customise the order and visibility of dashboard cards",

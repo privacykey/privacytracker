@@ -542,6 +542,47 @@ export function describeLayoutTransition(
   return null;
 }
 
+// ─────────────────────────────────────────────
+// "Keep it simple" fold
+// ─────────────────────────────────────────────
+
+/**
+ * The long reference lists the simple view ("Keep it simple", the `minimal`
+ * presentation modifier) folds behind a "Show more detail" control at the
+ * bottom of the dashboard.
+ *
+ * This is presentation, not capability: the cards' flags stay on and the
+ * user's own hidden choices still apply, so one click brings the lists back
+ * for the visit and turning the modifier off brings them back for good.
+ * Switching them off in the rule tables instead would have left a simple-view
+ * user no way to see them short of changing their focus.
+ */
+export const SIMPLE_VIEW_FOLDED_CARDS: ReadonlySet<DashboardCardId> = new Set([
+  "risk_section",
+  "profile_mismatch_section",
+  "stale_section",
+]);
+
+/**
+ * Split a layout's order for the simple view. `main` renders as usual;
+ * `folded` renders below the "Show more detail" control once it is opened.
+ * Both keep the user's order. Outside the simple view nothing is folded.
+ */
+export function splitSimpleViewOrder(
+  order: readonly DashboardCardId[],
+  simpleView: boolean
+): { folded: DashboardCardId[]; main: DashboardCardId[] } {
+  if (!simpleView) {
+    return { main: [...order], folded: [] };
+  }
+  const main: DashboardCardId[] = [];
+  const folded: DashboardCardId[] = [];
+  for (const id of order) {
+    (SIMPLE_VIEW_FOLDED_CARDS.has(id) ? folded : main).push(id);
+  }
+  return { main, folded };
+}
+
 /**
  * Visibility helper for callers (tour-step skippers, deep-link
  * resolvers) that need to know whether a card will actually render.
