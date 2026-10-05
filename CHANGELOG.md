@@ -62,7 +62,9 @@ Going forward, changes are recorded here as they land.
 
 - A **Privacy label examples** switch under "Fine-tune features" (Settings,
   "Your focus", Adjust; and onboarding's Advanced section) turns the ✦
-  examples off for anyone who finds them distracting. It writes the same
+  examples off for anyone who finds them distracting. The label-scope note
+  links straight to it ("Turn them off in Settings"), landing with the
+  switch focused and highlighted. It writes the same
   per-feature override as the other switches there, so it wins over the
   focus rules, and switching it back clears the override. The label caveat
   and its policy link stay either way.
