@@ -39,7 +39,7 @@ export default function OutputIdentifiersUnified() {
         x="160"
         y="28"
       >
-        WHAT THEY DO WITH IT
+        WHAT COULD BE DONE WITH IT
       </text>
 
       {/* Three apps, each stamped with the identical ad ID. */}
@@ -107,7 +107,7 @@ export default function OutputIdentifiersUnified() {
           👤
         </text>
         <text fill="var(--text)" fontSize="8" fontWeight="700" x="200" y="135">
-          One profile — you
+          One profile: you
         </text>
         <text
           fill="var(--text-3)"

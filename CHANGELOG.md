@@ -40,6 +40,38 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- App detail pages now explain what a privacy label *means*, not just what
+  it is called. Every category card on the Privacy labels tab gains the
+  vignette hint (the ✦ trigger next to the existing ⓘ), playing the short
+  animated story for that category at **this app's declared tier** — the
+  severity comes from the accordion the card sits in, so an app that logs
+  Usage Data anonymously shows the anonymised-funnel story while one that
+  uses it to track you shows the 11pm re-engagement push. The 14 × 3
+  vignette set already existed but was reachable only from the privacy
+  profile editor in Settings.
+
+- A label-scope note above the privacy-label accordions, stating plainly
+  that Apple's labels name a *category* of data rather than the fields
+  inside it, and that only the developer can see that list. (Whether Apple
+  checks a label is left to the trust card above it, so the two don't
+  repeat each other.) It links through to the policy summary's collection-scope
+  lens — the nearest thing the app holds to an actual answer — which now
+  highlights on arrival. The note also points at the ✦ explainers, since
+  the trigger is a single glyph with no other affordance. The caveat and
+  the policy link are deliberately not gated on `flag.global.label_hints`,
+  so the audiences with the animations muted still get them; only the
+  sentence naming the ✦ is gated, so those users are not sent looking for
+  a control that never renders.
+
+- Every vignette popover opens with a "This is an example" lip, in the app's
+  informational blue so it can't be read as a severity tier, and ends with a
+  "Read more about privacy labels" link to that category's entry on the label
+  definitions page. The definitions page gains an anchor per category and
+  scrolls to it once its content mounts: the body renders inside a Suspense
+  boundary, so the browser's own anchor jump fires before the entry exists.
+  Its Back button returns to wherever the link was opened, and now names the
+  settings group routes "Settings" rather than "Dashboard".
+
 - Settings → Companion pairs the privacytracker iPhone app with your
   instance. Choose "Make a pairing code" and scan the QR code with the app.
   A pairing is a read-only token that can read your app list, each app's
@@ -76,6 +108,50 @@ Going forward, changes are recorded here as they land.
   in-app change alert privacytracker's bell provides.
 
 ### Changed
+
+- All 42 vignette captions are rewritten in a conditional voice, so a
+  scenario reads as one possibility rather than a report of what the app in
+  front of you is doing. "Your GPS trail pins your home address" becomes "A
+  GPS trail could pin your home address". 37 in-artwork headings move the
+  same way — "WHAT THE APP DOES" → "WHAT AN APP COULD DO", "WHAT'S STORED" →
+  "WHAT COULD BE STORED", "WHAT THEY LEARN" → "WHAT COULD BE LEARNED" — and
+  the one fabricated street address ("14 Maple St, Apt 3", under a heading
+  claiming it as fact) is replaced with a generic label. The scenes still say
+  what a tier can amount to; they no longer look like they found it.
+
+- Each popover now also states what IS known: "This app has disclosed that it
+  collects {category}, not what that includes. Its privacy policy may say
+  more." That replaces an earlier attempt at the same problem — an "Example"
+  chip on the artwork plus a sentence distinguishing the real label from the
+  illustrated scene. Five separate places said "example", and the bubble
+  asked readers to hold a label-versus-scene distinction they had no reason
+  to care about. The popover now says it once, in a lip across the top.
+
+- Plain language for WCAG 2.2 AAA (3.1.3 unusual words, 3.1.4
+  abbreviations): the captions spell out GPS, OS, ID and "misc" ("a
+  location trail", "system version", "advertising identifier",
+  "miscellaneous records"), and replace four technical terms: a
+  "product-analytics funnel" becomes "a tally of how people move through the
+  app", a "session token" becomes "a throwaway code", an "audience segment"
+  becomes "a list of people like you" sold to advertisers, and "aggregate"
+  becomes "overall" or "totals". The zh captions get the same abbreviation
+  and "session token" swaps; the rest of that bundle still waits on
+  Crowdin. Text drawn inside the artwork is unchanged: the caption beside
+  each scene now carries most of the expanded terms.
+
+- NOTE: the zh caption bundle is not updated here. Those strings round-trip
+  through Crowdin, and 10 of the 42 were already describing different
+  scenarios from their English source before this change. zh readers keep the
+  indicative voice until the next translation pull.
+
+- `macos-release.yml` now calls `scripts/fetch-node-sidecar.sh` instead of
+  carrying its own ~40 lines of inline download-and-verify shell. The
+  Node release-key fingerprints had been duplicated between the workflow
+  and (until now) nothing else; they have exactly one home now and cannot
+  drift between CI and a developer's machine. Behaviour is unchanged —
+  same GPG-then-hash verification, same output paths — with the build
+  matrix's target passed through `TAURI_BUILD_TARGET`, the variable
+  `stage-standalone.mjs` already reads when choosing which binary to wrap.
 
 - "Data Not Collected" is shown as the developer's disclosure, like every
   other label, rather than as a pass. Compare no longer paints the slot green
@@ -201,6 +277,47 @@ Going forward, changes are recorded here as they land.
   to turn it on. Both servers behave the same.
 
 ### Fixed
+
+- The vignette popover could only ever work as a tooltip. It closed the
+  instant the pointer left the ✦, a click after hovering toggled it shut
+  instead of pinning it open, and because it is attached at the end of the
+  page it sat outside the Tab order. It now waits 150ms before closing so the
+  pointer can cross into it, a click pins it, and once it has been opened
+  with Enter or a click, Tab moves into it and back out. Tabbing past a ✦
+  still moves straight on, so a row of them costs keyboard users nothing.
+
+- A popover taller than the room on either side of its ✦ ran off the edge of
+  the screen, where it couldn't be scrolled to because it is fixed-position.
+  It is now kept fully on screen, dropping its pointer arrow in the rare case
+  it has to overlap the ✦. When it is taller than the screen itself (a phone
+  held sideways, or a desktop zoomed to 400% as WCAG 1.4.10 Reflow tests),
+  its contents now scroll inside it, and on screens under 520px tall the
+  artwork drops from 180px to 120px so most bubbles fit without scrolling.
+
+- The label explainers now meet WCAG 2.2 AAA where the code can carry it.
+  Text contrast reaches 7:1 in light and dark (1.4.6): the lip, link, caption
+  label and disclosure line in each popover, and the label-scope note, which
+  measured 5.0 to 6.6. They use local colour mixes so the app's palette is
+  untouched. Popover text gets 1.5 line spacing and a wider paragraph gap,
+  and the scope note is capped at 80 characters a line; it ran to about 157
+  on desktop (1.4.8). The ✦ and the Read more link each get a 44×44 pointer
+  target (2.5.5); on the category cards the ✦ moves right so its target sits
+  clear of the ⓘ beside it. When a popover is taller than the room either side
+  of its ✦, it takes the roomier side and scrolls, instead of covering the
+  focused ✦ (focus not obscured, 2.4.11 and 2.4.12), and its scroll box
+  becomes a Tab stop so the keyboard can scroll it. The jump to the
+  collection-scope lens no longer animates when reduced motion is on
+  (2.3.3): a script-driven smooth scroll ignores the global CSS rule.
+  `label-hints.spec.ts` checks contrast, pointer targets, the uncovered
+  trigger and the Tab order.
+
+- The ✦ trigger failed WCAG 2.2 target size (2.5.8): its box was 18×18,
+  with an invisible `::after` supplying the rest, which axe does not count,
+  and the spacing exception cannot apply to a control laid over the
+  category card's link. The box itself is now 24×24, with negative margins
+  keeping inline rows (the profile editor) from reflowing, and on the cards
+  its tap area no longer overlaps the ⓘ beside it. `label-hints.spec.ts`
+  now checks both, since `a11y.spec.ts` scans WCAG 2.1 rules only.
 
 - The app detail page's Accessibility tab appears again. Its flag,
   `flag.detail.a11y.panel`, has three values and defaults to `collapsed`

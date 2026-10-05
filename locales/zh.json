@@ -346,6 +346,9 @@
   "data_label_hint": {
     "trigger_label": "这是什么意思？查看示例",
     "popover_aria_label": "示例：{category}，{severity}",
+    "example_lip": "这是一个示例",
+    "read_more": "进一步了解隐私标签",
+    "not_disclosed": "该应用已申报会收集{category}，但未说明其中包含哪些内容。其隐私政策可能有更多信息。",
     "captions": {
       "contact_info": {
         "data_used_to_track_you": "在 App A 中输入你的邮箱并关闭它。打开 App B —— 它已经认识你了。当联系信息被用于追踪时，它就变成一把钥匙，能让从未登录过的应用直接识别你。",
@@ -363,7 +366,7 @@
         "data_not_linked_to_you": "你的交易金额落入桶中。返回的汇总消费统计与你无关。"
       },
       "location": {
-        "data_used_to_track_you": "你的 GPS 轨迹离开你的手机，出现在数据经纪人的档案里 —— 同样的面包屑早已绘好，包括这个应用没理由看到的地方。",
+        "data_used_to_track_you": "你的定位轨迹离开你的手机，出现在数据经纪人的档案里 —— 同样的面包屑早已绘好，包括这个应用没理由看到的地方。",
         "data_linked_to_you": "你的工作地点、家、周末去处都固定到你在这里的档案。应用记得你在哪里、去过哪里。",
         "data_not_linked_to_you": "你的位置粗化到邮编或城市，加入人口热力图。图上没有任何一个点带有你的名字。"
       },
@@ -393,9 +396,9 @@
         "data_not_linked_to_you": "你的查询被汇总成趋势。「本周有多少人搜索了 X」是真实的；但那些是谁的搜索已经消失了。"
       },
       "identifiers": {
-        "data_used_to_track_you": "你的广告 ID 是一个你看不见的条形码。当你打开其他应用时，它们会扫描它；每一个都知道之前来的是你。",
-        "data_linked_to_you": "你的账户或设备 ID 归档到你这里的档案中。应用知道每次访问都是同一个你。",
-        "data_not_linked_to_you": "匿名会话令牌取代了你的身份。应用收集的行为数据无法与你关联。"
+        "data_used_to_track_you": "你的广告标识符 是一个你看不见的条形码。当你打开其他应用时，它们会扫描它；每一个都知道之前来的是你。",
+        "data_linked_to_you": "你的账户或设备标识符 归档到你这里的档案中。应用知道每次访问都是同一个你。",
+        "data_not_linked_to_you": "临时的匿名代码取代了你的身份。应用收集的行为数据无法与你关联。"
       },
       "purchases": {
         "data_used_to_track_you": "你在这里买的东西，以「你可能也喜欢」的形式出现在完全不同的商店里。你的收据是一把钥匙，能在零售网络中打开你。",
@@ -4118,6 +4121,9 @@
     "view_on_app_store": "在 App Store 查看 ↗",
     "privacy_policy_link": "隐私政策 ↗",
     "label_definitions_link": "标签定义",
+    "label_scope_note": "这些标签标示的是数据的<em>类别</em>，而非其中的具体字段——只有开发者能看到该清单。关于本应用自述的收集范围，请参阅<policy>隐私政策的收集范围</policy>。",
+    "label_scope_note_hint": "每个标签旁的 ✦ 可显示它可能意味着什么。",
+    "label_scope_note_plain": "这些标签标示的是数据的<em>类别</em>，而非其中的具体字段——只有开发者能看到该清单。",
     "apple_app_hint": "这是一款 Apple 应用。Apple 自家应用（包括信息、地图、Safari、邮件、健康等）的隐私标签请见 <apple>apple.com/au/privacy/labels ↗</apple>。关于本页术语的定义，请参阅<defs>应用内定义参考</defs>。",
     "policy_fetch_scope_note": "「重新同步」和「全部同步」完成后也会在后台重新抓取此政策，但在政策抓取限速的冷却时间内或禁用隐私政策抓取时除外。它们不会生成摘要：如需生成摘要或立即抓取，请使用此标签页上的按钮。",
     "policy_change_strip": {

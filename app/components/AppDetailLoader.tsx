@@ -62,6 +62,9 @@ const DETAIL_FLAG_KEYS = [
   "flag.detail.labels.profile_mismatch_badges",
   "flag.detail.labels.no_details_warning",
   "flag.detail.labels.trust_card",
+  // Global, not a flag.detail.* one: the same switch DataLabelHint reads.
+  // The labels tab uses it to decide whether to point users at the ✦.
+  "flag.global.label_hints",
   "flag.detail.policy.panel",
   "flag.detail.policy.ai_summary",
   "flag.detail.policy.lens_grid",
@@ -136,6 +139,7 @@ const ALL_ON_FLAGS: DetailFlagState = {
   actionsResyncButton: true,
   actionsDeleteButton: true,
   footerImportProvenance: true,
+  labelHints: true,
   labelsCards: true,
   labelsProfileMismatchBadges: true,
   labelsNoDetailsWarning: true,
@@ -293,6 +297,7 @@ export default function AppDetailLoader() {
         actionsDeleteButton: v["flag.detail.actions.delete_button"] === "on",
         footerImportProvenance:
           v["flag.detail.footer.import_provenance"] === "on",
+        labelHints: v["flag.global.label_hints"] === "on",
         labelsCards: v["flag.detail.labels.cards"] === "on",
         labelsProfileMismatchBadges:
           v["flag.detail.labels.profile_mismatch_badges"] === "on",

@@ -135,6 +135,7 @@ export default function PolicySummaryPanel({
   onViewDiff,
   flags,
   onRefresh,
+  highlightLensKey,
 }: {
   app: App;
   formatDate: (ts: number) => string;
@@ -158,6 +159,13 @@ export default function PolicySummaryPanel({
    * value so legacy callers stay rendering as before.
    */
   flags?: Partial<PolicyPanelFlagState>;
+  /**
+   * `POLICY_LENSES` key of the lens the user was deep-linked to, e.g.
+   * `collection_scope` when they arrived from the privacy tab's
+   * label-scope note. Adds the arrival highlight to that one card; null
+   * (the default, and every other entry point) highlights nothing.
+   */
+  highlightLensKey?: string | null;
 }) {
   // i18n for the AI policy panel section. Captured at the top so the
   // section title `<h2>` below can read from `app_detail.policy.*`.
@@ -874,9 +882,28 @@ export default function PolicySummaryPanel({
                 const meta = POLICY_RATING_META[entry.rating];
 
                 return (
+                  /*
+                    `id` makes each lens a deep-link target — the app
+                    detail page's label-scope note points at
+                    `#policy-lens-collection_scope`, and the same shape
+                    works for any other lens.
+
+                    The arrival highlight comes from `highlightLensKey`
+                    rather than the `:target` pseudo-class. `:target` was
+                    tried first and silently never matches here: this card
+                    lives in a tab panel that isn't mounted when the hash
+                    is set, and `:target` is resolved at navigation time
+                    only — an element that appears later never starts
+                    matching it.
+                  */
                   <div
-                    className={`policy-lens-card policy-lens-card-${entry.rating}`}
+                    className={`policy-lens-card policy-lens-card-${entry.rating}${
+                      highlightLensKey === lens.key
+                        ? " policy-lens-card--target"
+                        : ""
+                    }`}
                     data-rating={entry.rating}
+                    id={`policy-lens-${lens.key}`}
                     key={lens.key}
                   >
                     <div className="policy-lens-top">

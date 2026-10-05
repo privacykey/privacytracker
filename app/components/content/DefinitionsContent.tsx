@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import {
   DefinitionsTransparencyBody,
   DefinitionsTransparencySource,
@@ -178,7 +179,12 @@ function resolveBackLink(
       label = "Stats";
     } else if (path === "/dashboard/manual-apps") {
       label = "Manual apps";
-    } else if (path === "/dashboard/settings") {
+    } else if (
+      path === "/dashboard/settings" ||
+      path.startsWith("/dashboard/settings/")
+    ) {
+      // Includes the group routes (/dashboard/settings/you etc.), where the
+      // privacy profile editor links here from its label vignettes.
       label = "Settings";
     } else if (path === "/onboard") {
       label = "Onboarding";
@@ -217,6 +223,38 @@ export default function DefinitionsContent() {
   const locale = useLocale();
   const appleLinks = appleLinksForLocale(locale);
   const back = resolveBackLink(resolvedSearchParams);
+
+  // `#category-<id>` deep links (from each label vignette's "Read more").
+  // This body renders inside the page's Suspense boundary, so the browser's
+  // own anchor jump has already fired, against nothing, by the time the
+  // entries exist. Scroll here instead, and mark the entry briefly so it can
+  // be found on a long page.
+  const [targetCategory, setTargetCategory] = useState<string | null>(null);
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash.startsWith("category-")) {
+      return;
+    }
+    // Two frames: on a client-side navigation the App Router applies its
+    // own scroll after this commit, and a scroll made inside this effect is
+    // overwritten by it.
+    let clearTimer: number | undefined;
+    let frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(() => {
+        const el = document.getElementById(hash);
+        if (!el) {
+          return;
+        }
+        el.scrollIntoView({ block: "center" });
+        setTargetCategory(hash);
+        clearTimer = window.setTimeout(() => setTargetCategory(null), 2000);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(clearTimer);
+    };
+  }, []);
 
   // i18n — every visible string on this page reads from one of:
   //   - `help_definitions_page`           (page chrome + section bodies)
@@ -346,7 +384,15 @@ export default function DefinitionsContent() {
 
             <ul className="definitions-category-list">
               {Object.entries(CATEGORY_META).map(([key, meta]) => (
-                <li className="definitions-category-item" key={key}>
+                <li
+                  className={`definitions-category-item${
+                    targetCategory === `category-${key.toLowerCase()}`
+                      ? " definitions-category-item--target"
+                      : ""
+                  }`}
+                  id={`category-${key.toLowerCase()}`}
+                  key={key}
+                >
                   <span
                     aria-hidden="true"
                     className="definitions-category-icon"

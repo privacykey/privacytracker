@@ -22,7 +22,7 @@ export default function NotLinkedLocation() {
         x="239"
         y="30"
       >
-        WHAT'S STORED
+        WHAT COULD BE STORED
       </text>
 
       {/* Raw ping (left) */}

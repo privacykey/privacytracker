@@ -157,7 +157,7 @@ export default function OutputDiagFingerprint() {
         x="232"
         y="156"
       >
-        only one phone fits — yours
+        only one phone fits: yours
       </text>
     </g>
   );
