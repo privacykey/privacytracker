@@ -21,7 +21,7 @@ export default function NotLinkedIdentifiers() {
         x="239"
         y="30"
       >
-        WHAT'S SENT
+        WHAT COULD BE SENT
       </text>
 
       <rect

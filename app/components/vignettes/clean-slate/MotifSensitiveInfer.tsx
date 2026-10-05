@@ -81,7 +81,7 @@ export default function MotifSensitiveInfer() {
         x="16"
         y="128"
       >
-        INFERRED ABOUT YOU
+        COULD BE INFERRED
       </text>
 
       {/* Sensitive-category guesses pop out */}

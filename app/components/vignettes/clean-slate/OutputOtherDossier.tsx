@@ -28,7 +28,7 @@ export default function OutputOtherDossier() {
         x="256"
         y="10"
       >
-        ADDED TO YOUR FILE
+        COULD BE ADDED TO YOUR FILE
       </text>
 
       {/* Identity match — the unnamed data is still tied to you. */}

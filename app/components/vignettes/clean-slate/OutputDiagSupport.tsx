@@ -19,7 +19,7 @@ export default function OutputDiagSupport() {
         x="160"
         y="30"
       >
-        WHAT THE APP DOES
+        WHAT AN APP COULD DO
       </text>
 
       <g className="v-cs-surface">
@@ -64,7 +64,7 @@ export default function OutputDiagSupport() {
           ⚠️
         </text>
         <text fill="var(--text)" fontSize="7.5" fontWeight="700" x="177" y="75">
-          Crash #4821 — login
+          Crash #4821: login
         </text>
         <text fill="var(--text-3)" fontSize="6.5" x="177" y="85">
           from your device · your account

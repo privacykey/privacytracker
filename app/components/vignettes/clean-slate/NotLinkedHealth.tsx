@@ -19,7 +19,7 @@ export default function NotLinkedHealth() {
         x="239"
         y="30"
       >
-        WHAT'S STORED
+        WHAT COULD BE STORED
       </text>
 
       <rect
@@ -98,7 +98,7 @@ export default function NotLinkedHealth() {
           1 of 50,000 samples
         </text>
         <text fill="var(--text-3)" fontSize="6.5" x="175" y="143">
-          drives the average — not your record
+          drives the average, not your record
         </text>
       </g>
     </g>

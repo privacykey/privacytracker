@@ -78,6 +78,22 @@ function isAppleBuiltInApp(developer: string | undefined | null): boolean {
 // before the detail/ split.
 export type { AccessibilityFeatureProp } from "./detail/types";
 
+/**
+ * Deep-link fragment for the policy summary's collection-scope lens —
+ * the closest thing the app holds to "what does this app actually
+ * capture?", and where the privacy tab's label-scope note routes.
+ *
+ * The `policy-lens-` prefix is a contract with two other places: the
+ * `id` PolicySummaryPanel puts on each lens card, and the hash branch in
+ * the routing effect below. The suffix is the `POLICY_LENSES` key.
+ */
+const POLICY_COLLECTION_SCOPE_HASH = "policy-lens-collection_scope";
+
+/** How long a deep-link arrival highlight stays on. Matches the 1.6s
+ *  `policy-lens-target-pulse` animation with a little slack so the class
+ *  outlives the keyframes rather than cutting them off. */
+const HASH_PULSE_MS = 2000;
+
 type Tab = "privacy" | "accessibility" | "changelog" | "policy" | "compare";
 
 /**
@@ -142,6 +158,10 @@ export interface DetailFlagState {
   // Header
   headerFreshnessBadge: boolean;
   // Privacy labels
+  /** `flag.global.label_hints` — whether DataLabelHint renders at all.
+   *  Guardian and minimal set it off; the labels tab uses it to suppress the
+   *  scope note's pointer at a ✦ those users will never see. */
+  labelHints: boolean;
   labelsCards: boolean;
   labelsNoDetailsWarning: boolean;
   labelsProfileMismatchBadges: boolean;
@@ -285,6 +305,7 @@ export default function AppDetailView({
     actionsResyncButton: detailFlags?.actionsResyncButton ?? true,
     actionsDeleteButton: detailFlags?.actionsDeleteButton ?? true,
     footerImportProvenance: detailFlags?.footerImportProvenance ?? true,
+    labelHints: detailFlags?.labelHints ?? true,
     labelsCards: detailFlags?.labelsCards ?? true,
     labelsProfileMismatchBadges:
       detailFlags?.labelsProfileMismatchBadges ?? true,
@@ -381,6 +402,11 @@ export default function AppDetailView({
         setTab(canShowAccessibilityTab ? "accessibility" : "privacy");
       } else if (hash === "changelog" || hash.startsWith("snapshot-")) {
         setTab("changelog");
+      } else if (hash.startsWith("policy-lens-")) {
+        // `#policy-lens-<key>` — a single lens inside the policy summary.
+        // Used by the label-scope note's "collection scope" link and by
+        // any external deep-link of the same shape.
+        setTab(canShowPolicyTab ? "policy" : "privacy");
       }
       setHashPulseTarget(hash);
       // Clear after the pulse animation finishes so a same-hash
@@ -400,6 +426,78 @@ export default function AppDetailView({
       }
     };
   }, [canShowAccessibilityTab, canShowPolicyTab]);
+
+  /**
+   * Send the user from the privacy tab's label-scope note to the policy
+   * summary's collection-scope lens.
+   *
+   * Sets the tab directly rather than relying on the hash effect above,
+   * because assigning a hash that is already current fires no
+   * `hashchange` — clicking the note twice would otherwise be a no-op
+   * the second time. The hash is still written so the URL is shareable
+   * and so `:target` (which drives the lens highlight in globals.css)
+   * matches.
+   */
+  const showCollectionScope = () => {
+    setTab("policy");
+    if (typeof window !== "undefined") {
+      window.location.hash = POLICY_COLLECTION_SCOPE_HASH;
+    }
+    // Set the pulse target directly instead of leaving it to the
+    // hashchange listener above. Two reasons it can't be left to fire:
+    // assigning a hash that is already current emits no `hashchange`
+    // (so a second click would be a no-op), and the listener races the
+    // tab switch that mounts the lens in the first place.
+    setHashPulseTarget(POLICY_COLLECTION_SCOPE_HASH);
+    window.setTimeout(() => {
+      setHashPulseTarget((prev) =>
+        prev === POLICY_COLLECTION_SCOPE_HASH ? null : prev
+      );
+    }, HASH_PULSE_MS);
+  };
+
+  // Which policy lens (if any) should render its arrival highlight.
+  //
+  // This is deliberately explicit state rather than the `:target`
+  // pseudo-class, which was the first attempt and does not work here:
+  // the lens card is inside a tab panel that isn't mounted when the hash
+  // is set, and a browser resolves `:target` at navigation time only —
+  // an element that appears afterwards never starts matching.
+  const highlightLensKey = hashPulseTarget?.startsWith("policy-lens-")
+    ? hashPulseTarget.slice("policy-lens-".length)
+    : null;
+
+  // Scroll a `#policy-lens-*` target into view once the policy tab has
+  // actually mounted. The browser's own anchor scroll can't do this: the
+  // lens lives in a tab panel that isn't in the DOM at navigation time.
+  // `analysis` in PolicySummaryPanel is seeded synchronously from
+  // `app.policyAnalysis`, so one frame after the tab flips is enough —
+  // no polling needed. A missing element (no stored analysis yet) simply
+  // leaves the user at the top of the policy tab, which is the right
+  // place to be anyway since that's where the rescrape controls are.
+  useEffect(() => {
+    if (typeof window === "undefined" || tab !== "policy") {
+      return;
+    }
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash.startsWith("policy-lens-")) {
+      return;
+    }
+    // Smooth only when motion is welcome. A script-driven smooth scroll
+    // ignores the global prefers-reduced-motion rule (that rule only resets
+    // the CSS scroll-behavior), so it has to be asked for explicitly: WCAG
+    // 2.2 AAA animation from interactions (2.3.3).
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(hash)?.scrollIntoView({
+        behavior: reduceMotion ? "auto" : "smooth",
+        block: "center",
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [tab, hashPulseTarget]);
   // Initial verdicts payload for the picker. We fetch once here so the
   // server-rendered hero doesn't need to await the verdicts query; the
   // picker also re-fetches on mount to catch any imports that landed
@@ -1522,38 +1620,90 @@ export default function AppDetailView({
             ) : null
           ) : (
             f.labelsCards && (
-              // Wrapper carries `id="profile-mismatch"` so notification
-              // links of the form `/apps/<id>#profile-mismatch` (fired
-              // by createProfileMismatchNotification + bell routing)
-              // can scroll-to and pulse this section. The pulse class
-              // is toggled in by an effect below that watches
-              // location.hash.
-              <div
-                className={`app-detail-privacy-types${
-                  hashPulseTarget === "profile-mismatch"
-                    ? " app-detail-privacy-types--pulse"
-                    : ""
-                }`}
-                id="profile-mismatch"
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 16,
-                  scrollMarginTop: 80,
-                }}
-              >
-                {sortPrivacyTypesForDisplay(app.privacyTypes).map((pt) => (
-                  <PrivacyTypeSection
-                    key={pt.id}
-                    privacyType={pt}
-                    profile={
-                      f.labelsProfileMismatchBadges
-                        ? (privacyProfile ?? null)
-                        : null
-                    }
-                  />
-                ))}
-              </div>
+              <>
+                {/*
+                  Label-scope note. Apple's labels name a CATEGORY, never
+                  the fields inside it, so "Usage Data" can't be resolved
+                  into what this app actually captures — by us or by
+                  anyone outside the developer. Saying so up front stops
+                  the category cards reading as a complete inventory.
+
+                  Deliberately NOT gated on `flag.global.label_hints`:
+                  that flag is off for the guardian and minimal focuses,
+                  and those users would otherwise be left with the
+                  definitions alone and no statement of their limits.
+
+                  The nearest thing the app holds to an actual answer is
+                  the policy summary's collection-scope lens, so the note
+                  ends by routing there rather than dead-ending. Mirrors
+                  `a11y_disclaimer` on the accessibility tab in tone and
+                  placement so the two tabs read as one voice.
+                */}
+                <p className="label-scope-note">
+                  <span aria-hidden="true" className="label-scope-note-icon">
+                    ⓘ
+                  </span>
+                  <span className="label-scope-note-text">
+                    {canShowPolicyTab
+                      ? tDetail.rich("label_scope_note", {
+                          em: (chunks) => <em>{chunks}</em>,
+                          policy: (chunks) => (
+                            <button
+                              className="link-button-inline"
+                              onClick={showCollectionScope}
+                              type="button"
+                            >
+                              {chunks}
+                            </button>
+                          ),
+                        })
+                      : tDetail.rich("label_scope_note_plain", {
+                          em: (chunks) => <em>{chunks}</em>,
+                        })}
+                    {/*
+                      Pointer at the vignette triggers — and the ONLY part
+                      of this note gated on `flag.global.label_hints`. The
+                      caveat itself must always show (the muted audiences
+                      need it most), but telling them to look for a ✦ that
+                      DataLabelHint never renders would send them hunting
+                      for a control that isn't there.
+                    */}
+                    {f.labelHints && <> {tDetail("label_scope_note_hint")}</>}
+                  </span>
+                </p>
+                {/* Wrapper carries `id="profile-mismatch"` so notification
+                    links of the form `/apps/<id>#profile-mismatch` (fired
+                    by createProfileMismatchNotification + bell routing)
+                    can scroll-to and pulse this section. The pulse class
+                    is toggled in by an effect below that watches
+                    location.hash. */}
+                <div
+                  className={`app-detail-privacy-types${
+                    hashPulseTarget === "profile-mismatch"
+                      ? " app-detail-privacy-types--pulse"
+                      : ""
+                  }`}
+                  id="profile-mismatch"
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 16,
+                    scrollMarginTop: 80,
+                  }}
+                >
+                  {sortPrivacyTypesForDisplay(app.privacyTypes).map((pt) => (
+                    <PrivacyTypeSection
+                      key={pt.id}
+                      privacyType={pt}
+                      profile={
+                        f.labelsProfileMismatchBadges
+                          ? (privacyProfile ?? null)
+                          : null
+                      }
+                    />
+                  ))}
+                </div>
+              </>
             )
           )}
         </div>
@@ -1605,6 +1755,7 @@ export default function AppDetailView({
               previewToggle: f.policyPreviewToggle,
             }}
             formatDate={formatDate}
+            highlightLensKey={highlightLensKey}
             onRefresh={refresh}
             onViewDiff={() => setTab("changelog")}
             policyDiffAlertDays={policyDiffAlertDays ?? 90}

@@ -29,7 +29,7 @@ export default function OutputContentAITrain() {
         x="160"
         y="30"
       >
-        WHAT HAPPENS NEXT
+        WHAT COULD HAPPEN NEXT
       </text>
 
       <g className="v-cs-surface">

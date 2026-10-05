@@ -22,7 +22,7 @@ export default function OutputSensitiveNotLinked() {
         x="239"
         y="30"
       >
-        WHAT'S STORED
+        WHAT COULD BE STORED
       </text>
 
       {/* Raw signal log — the identifier is struck before anything moves */}

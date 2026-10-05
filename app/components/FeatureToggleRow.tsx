@@ -52,6 +52,10 @@ const TOGGLES: readonly ToggleDef[] = [
   { key: "flag.page.stats", i18n: "stats", icon: "📊" },
   { key: "flag.nav.notification_bell", i18n: "notifications", icon: "🔔" },
   { key: "flag.page.shortlist", i18n: "shortlist", icon: "⭐" },
+  // The ✦ examples on privacy labels (DataLabelHint). Some people find an
+  // animation beside every label distracting; this is their off switch.
+  // The glyph matches the trigger on the cards so the two read as one thing.
+  { key: "flag.global.label_hints", i18n: "label_hints", icon: "✦" },
 ];
 
 /** Per-flag state we track. `override` null ⇒ value is purely focus-derived. */

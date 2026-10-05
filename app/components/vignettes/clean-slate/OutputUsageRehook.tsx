@@ -120,7 +120,7 @@ export default function OutputUsageRehook() {
           now
         </text>
         <text fill="#475569" fontSize="6.5" x={sx + 8} y={py + 104}>
-          Still up? Come back —
+          Still up? Come back.
         </text>
         <text fill="#475569" fontSize="6.5" x={sx + 8} y={py + 113}>
           3 new updates waiting

@@ -23,7 +23,7 @@ export default function OutputContactsShadow() {
         x="160"
         y="30"
       >
-        WHAT THEY BUILD
+        WHAT COULD BE BUILT
       </text>
 
       <g className="v-cs-surface">
@@ -136,7 +136,7 @@ export default function OutputContactsShadow() {
         x="164"
         y="146"
       >
-        Stitched from 14 address books — incl. yours
+        Stitched from 14 address books, incl. yours
       </text>
     </g>
   );
