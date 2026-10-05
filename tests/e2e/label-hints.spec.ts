@@ -11,7 +11,8 @@ import { expect, test } from "@playwright/test";
  *   2. The `DataLabelHint` vignette trigger on each category card,
  *      sitting alongside (never replacing) the existing InfoTooltip.
  *   3. The `flag.global.label_hints` mute, which the guardian and
- *      minimal focuses set to "off".
+ *      minimal focuses set to "off" and anyone can set from the
+ *      "Privacy label examples" switch in Settings (exercised here).
  *
  * (3) is the case worth having in CI. The component used to read the
  * flag through `useFlag` (lib/feature-flags-hooks.ts), which resolves
@@ -223,21 +224,36 @@ browserFlow(
     // bubble is taller than the room beside the trigger (common at 720px
     // tall), its scroll box is an extra stop ahead of the link, so the
     // keyboard can scroll it; the helpers step over it when it's there.
-    const scrollBox = bubble.locator(".data-label-hint-scroll");
-    const scrollBoxIsStop = async () =>
-      (await scrollBox.getAttribute("tabindex")) === "0";
+    // Whether it overflows can change while the page is still smooth-
+    // scrolling the trigger into view, so they check where focus actually
+    // went instead of predicting it from the box's tabindex. Focus must
+    // never fall back to the page on the way.
+    const focusedStop = () =>
+      page.evaluate(() => {
+        const el = document.activeElement;
+        for (const [cls, name] of [
+          ["data-label-hint-scroll", "box"],
+          ["data-label-hint-more", "link"],
+          ["data-label-hint-trigger", "trigger"],
+        ]) {
+          if (el?.classList.contains(cls)) {
+            return name;
+          }
+        }
+        return el?.tagName.toLowerCase() ?? "none";
+      });
     const tabToLink = async () => {
       await page.keyboard.press("Tab");
-      if (await scrollBoxIsStop()) {
-        await expect(scrollBox).toBeFocused();
+      await expect.poll(focusedStop).toMatch(/^(box|link)$/);
+      if ((await focusedStop()) === "box") {
         await page.keyboard.press("Tab");
       }
       await expect(more).toBeFocused();
     };
     const shiftTabToTrigger = async () => {
       await page.keyboard.press("Shift+Tab");
-      if (await scrollBoxIsStop()) {
-        await expect(scrollBox).toBeFocused();
+      await expect.poll(focusedStop).toMatch(/^(box|trigger)$/);
+      if ((await focusedStop()) === "box") {
         await page.keyboard.press("Shift+Tab");
       }
       await expect(trigger).toBeFocused();
@@ -280,35 +296,86 @@ browserFlow(
     await expect(lens).toHaveClass(/policy-lens-card--target/);
     await expect(lens).toBeInViewport();
 
-    // ── 5. The hints mute ────────────────────────────────────────────
-    await expect(
-      await request.post("/api/feature-flags/overrides", {
-        headers: sameOriginHeaders,
-        data: { key: HINTS_FLAG, value: "off" },
-      })
-    ).toBeOK();
-    await page.goto(appPath);
-    await expect(note).toBeVisible();
-    await expect(page.locator(".data-label-hint-trigger")).toHaveCount(0);
-    // Definitions and the caveat must both survive the mute — muting the
-    // animation must not cost these users the explanation.
-    await expect(
-      page.locator(".category-card-info-overlay .info-tooltip-trigger")
-    ).toHaveCount(cardCount);
-    // ...but the note's pointer at the ✦ must NOT survive it. The caveat is
-    // deliberately ungated; the sentence telling users to look for a
-    // trigger that no longer renders would send them hunting for nothing.
-    await expect(note).toContainText("not the specific fields inside it");
-    await expect(note).not.toContainText("shows what it could mean");
+    // ── 5. The hints mute, through the Settings switch ───────────────
+    // The regular-user path: Settings, the "Your focus" card's Adjust link,
+    // then "Fine-tune features" on the focus editor.
+    // It writes the same override the guardian and minimal focuses get by
+    // rule, so this also covers the mute itself.
+    const examplesSwitch = page
+      .locator("button.feature-toggle-chip")
+      .filter({ hasText: "Privacy label examples" });
+    const flipSwitch = async (pressedAfter: "true" | "false") => {
+      await expect(examplesSwitch).toBeEnabled();
+      // Wait for the write, not just the chip: navigating away mid-request
+      // would abort it and leave the override wherever it was.
+      const written = page.waitForResponse(
+        (res) =>
+          res.url().includes("/api/feature-flags/overrides") &&
+          res.request().method() !== "GET"
+      );
+      await examplesSwitch.click();
+      expect((await written).ok()).toBe(true);
+      await expect(examplesSwitch).toHaveAttribute(
+        "aria-pressed",
+        pressedAfter
+      );
+    };
+    const hintsOverride = async () => {
+      const res = await request.get("/api/feature-flags");
+      await expect(res).toBeOK();
+      const { flags } = (await res.json()) as {
+        flags: { key: string; override: string | null }[];
+      };
+      return flags.find((f) => f.key === HINTS_FLAG)?.override ?? null;
+    };
 
-    // Clear the override. The whole suite shares one SQLite file, so
-    // leaving `label_hints` off here would silently mute the vignettes
-    // for every spec that runs after this one.
-    await expect(
-      await request.delete(`/api/feature-flags/overrides?key=${HINTS_FLAG}`, {
-        headers: sameOriginHeaders,
-      })
-    ).toBeOK();
+    try {
+      await page.goto("/dashboard/settings/focus");
+      // On for the monitor focus seeded above.
+      await expect(examplesSwitch).toHaveAttribute("aria-pressed", "true");
+      await flipSwitch("false");
+      expect(await hintsOverride()).toBe("off");
+
+      await page.goto(appPath);
+      await expect(note).toBeVisible();
+      await expect(page.locator(".data-label-hint-trigger")).toHaveCount(0);
+      // Definitions and the caveat must both survive the mute — muting the
+      // animation must not cost these users the explanation.
+      await expect(
+        page.locator(".category-card-info-overlay .info-tooltip-trigger")
+      ).toHaveCount(cardCount);
+      // ...but the note's pointer at the ✦ must NOT survive it. The caveat
+      // is deliberately ungated; the sentence telling users to look for a
+      // trigger that no longer renders would send them hunting for nothing.
+      await expect(note).toContainText("not the specific fields inside it");
+      await expect(note).not.toContainText("shows what it could mean");
+
+      // Back on. That matches what the focus gives, so the row clears the
+      // override rather than pinning a redundant "on" that would stop a
+      // later focus change from muting the examples.
+      await page.goto("/dashboard/settings/focus");
+      await expect(examplesSwitch).toHaveAttribute("aria-pressed", "false");
+      await flipSwitch("true");
+      expect(await hintsOverride()).toBeNull();
+
+      await page.goto(appPath);
+      await expect(page.locator(".data-label-hint-trigger")).toHaveCount(
+        cardCount
+      );
+    } finally {
+      // The whole suite shares one SQLite file, so leaving `label_hints` off
+      // after a failure here would silently mute the vignettes for every
+      // spec that runs after this one. Only DELETE when something is set:
+      // per-key DELETEs share a 30-a-minute budget across the suite.
+      if ((await hintsOverride()) !== null) {
+        await expect(
+          await request.delete(
+            `/api/feature-flags/overrides?key=${HINTS_FLAG}`,
+            { headers: sameOriginHeaders }
+          )
+        ).toBeOK();
+      }
+    }
   }
 );
 
@@ -393,6 +460,27 @@ browserFlow(
     const more = bubble.locator(".data-label-hint-more");
     await expect(more).toBeFocused();
     await expect(more).toBeInViewport();
+
+    // The box keeps its tab stop while it holds focus, even once the bubble
+    // stops overflowing (a taller window here; in practice, the page
+    // settling after smooth-scrolling the trigger into view). Taking
+    // tabindex off the focused box would drop focus back to the page.
+    const scrollBox = bubble.locator(".data-label-hint-scroll");
+    await page.keyboard.press("Shift+Tab");
+    await expect(scrollBox).toBeFocused();
+    await page.setViewportSize({ width: 667, height: 1000 });
+    await expect
+      .poll(() =>
+        scrollBox.evaluate((el) => el.scrollHeight > el.clientHeight + 1)
+      )
+      .toBe(false);
+    await expect(scrollBox).toBeFocused();
+    await expect(scrollBox).toHaveAttribute("tabindex", "0");
+    // Once focus moves on, the stop goes with the overflow.
+    await page.keyboard.press("Tab");
+    await expect(more).toBeFocused();
+    await expect(scrollBox).not.toHaveAttribute("tabindex");
+
     await more.click();
     await expect(page).toHaveURL(/\/help\/definitions/);
   }

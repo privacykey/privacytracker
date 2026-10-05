@@ -115,6 +115,12 @@ export default function DataLabelHint({
   // on the link alone, the arrow keys don't move it, and the top of the
   // bubble can't be brought back into view (WCAG 2.1.1, and 2.1.3 at AAA).
   const [scrollable, setScrollable] = useState(false);
+  // Whether the scroll box itself holds focus. It keeps its tab stop while
+  // it does: the bubble re-fits as the page scrolls (smooth scrolling a
+  // trigger into view, say) and can stop overflowing mid-scroll, and taking
+  // tabindex off the focused element drops focus to the page.
+  const [scrollFocused, setScrollFocused] = useState(false);
+  const scrollStop = scrollable || scrollFocused;
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -302,6 +308,8 @@ export default function DataLabelHint({
   useLayoutEffect(() => {
     if (!(open && placement)) {
       setScrollable(false);
+      // Closing unmounts the box without a blur event.
+      setScrollFocused(false);
       return;
     }
     const el = bubbleRef.current?.querySelector<HTMLElement>(
@@ -507,13 +515,25 @@ export default function DataLabelHint({
           arrow stays outside so the overflow doesn't clip it.
         */}
         <div
-          aria-label={scrollable ? popoverAria : undefined}
+          aria-label={scrollStop ? popoverAria : undefined}
           className="data-label-hint-scroll"
-          role={scrollable ? "region" : undefined}
+          // React's focus events bubble, so only the box's own focus counts,
+          // not the link inside it.
+          onBlur={(event) => {
+            if (event.target === event.currentTarget) {
+              setScrollFocused(false);
+            }
+          }}
+          onFocus={(event) => {
+            if (event.target === event.currentTarget) {
+              setScrollFocused(true);
+            }
+          }}
+          role={scrollStop ? "region" : undefined}
           style={
             placement ? { maxHeight: placement.scrollMaxHeight } : undefined
           }
-          tabIndex={scrollable ? 0 : undefined}
+          tabIndex={scrollStop ? 0 : undefined}
         >
           {/*
           The scenes are concrete on purpose (a lock-screen time, a home
