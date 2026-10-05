@@ -1548,11 +1548,11 @@
       "done_body": "Auto-sync is on, so label changes get caught without you checking. You can change how often it runs in Settings."
     },
     "remove_apps_from_phone": {
-      "title": "Clear flagged apps off your phone",
+      "title": "Clear flagged apps off the phone",
       "body": "Mark what to uninstall and we'll walk you through removing them from the device."
     },
     "resync_apps_from_device": {
-      "title": "Pull a fresh app list from your iPhone",
+      "title": "Pull a fresh app list from the iPhone",
       "body": "Re-import from a device to see what's been added or removed since last time."
     },
     "export_audit_bundle": {
@@ -2981,6 +2981,19 @@
       "sync_stale": "Sync {count, plural, one {# stale app} other {# stale apps}}",
       "syncing_stale": "Syncing stale apps…",
       "watchlist_count": "{count, plural, one {# app} other {# apps}}",
+      "watchlist_top_of": "Top {shown} of {total} apps",
+      "cleanup_sub_loved_one": "These apps track them across other apps or link a lot of data to their identity. Open each one to decide what to recommend.",
+      "cleanup_sub_guardian": "These apps track your child across other apps or link a lot of data to their identity. Open each one to decide whether to keep or remove it.",
+      "watchlist_sub_loved_one": "Apps that track them across other apps, or link a lot of data to their identity. This is a reference list. Nothing to action right now.",
+      "risk_chip_unlinked": "{count} unlinked",
+      "risk_chip_linked": "{count} linked",
+      "risk_chip_track": "{count} track",
+      "risk_see_all": "See all apps sorted by risk →",
+      "review_change_count": "{count, plural, one {# change} other {# changes}}",
+      "replace_kicker": "Consider replacing",
+      "replace_sub": "These apps go further than your privacy profile allows. Open one to see which categories mismatch, and decide whether to keep, replace, or delete.",
+      "replace_mismatch_count": "{count, plural, one {# mismatch} other {# mismatches}}",
+      "replace_more": "+{count} more on the <link>apps page</link> (look for the warning badge).",
       "cleanup_kicker": "🧹 Candidates for clean-up",
       "cleanup_sub": "These apps track you across other apps or collect a lot of data linked to your identity. Open each one to decide whether to keep or delete.",
       "family_kicker": "👪 Review these with your family",
@@ -6125,7 +6138,11 @@
       "due": "Ready to review"
     },
     "review_now": "Review now",
-    "reschedule": "Reschedule"
+    "reschedule": "Reschedule",
+    "show_changed": "Show {count, plural, one {# app} other {# apps}} with unreviewed changes",
+    "hide_changed": "Hide apps with unreviewed changes",
+    "more_changed": "{count, plural, one {# more app has} other {# more apps have}} unreviewed changes.",
+    "more_changed_link": "See all apps"
   },
   "focus_review": {
     "accepted": "You are keeping this app and accepting its current mismatch with your preferences. We will ask again if its collection changes or you change your privacy profile. Policy and accessibility alerts remain independent.",

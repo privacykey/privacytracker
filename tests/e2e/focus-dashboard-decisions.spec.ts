@@ -34,8 +34,10 @@ test("overview retains both goals with Minimal and leads into guided cleanup", a
   await expect(page.locator(".focus-goal-labels")).toContainText("Clean up");
   await expect(page.locator(".focus-goal-labels")).toContainText("Simple view");
   const apps = await (await request.get("/api/apps")).json();
+  // Nothing is decided or changed in the fresh sample, so the card shows
+  // only its starter rows (OVERVIEW_STARTER_ROWS), not the whole preview.
   await expect(page.locator(".focus-overview-apps li")).toHaveCount(
-    Math.min(8, apps.length)
+    Math.min(3, apps.length)
   );
   await page.getByRole("link", { name: "Start guided cleanup" }).click();
   await expect(
