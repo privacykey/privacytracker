@@ -3119,14 +3119,14 @@
       "presets": {
         "labels": {
           "default": "默认",
-          "minimal": "极简",
+          "minimal": "简洁",
           "caretaker": "看护者",
           "watchdog": "监督",
           "at_a_glance": "一目了然"
         },
         "descriptions": {
           "default": "规范顺序，所有卡片可见。安全的基线。",
-          "minimal": "仅保留核心内容 — 主页卡片、风险、需复核以及一览统计。",
+          "minimal": "状态与变化。较长的列表收在“显示更多详情”后面。",
           "caretaker": "以家人为重。首先呈现隐私关切和复核队列。",
           "watchdog": "风险优先。快速发现可能想替换或同步的应用。",
           "at_a_glance": "统计放在顶部。适合希望先看到整体情况的用户。"

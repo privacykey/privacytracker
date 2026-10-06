@@ -94,6 +94,7 @@ pub(super) fn read(conn: &Connection, now: i64) -> Result<Value> {
     for def in metadata()["tasks"].as_array().unwrap() {
         let id = text(&def["id"]);
         let included = match id {
+            "view_privacy_map" => enabled("flag.page.privacy_map"),
             "review_mismatches" => enabled("flag.appgrid.review_queue.enabled"),
             "compare_two_apps" => enabled("flag.page.compare"),
             "import_label_history" => audience == "self" && monitor,

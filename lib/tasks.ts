@@ -54,6 +54,10 @@ export interface TaskCompletionContext {
    *  Lets `resync_apps_from_device` auto-complete once the user has
    *  done at least one re-sync — they've discovered the feature. */
   lastResyncAt: number;
+  /** Whether `/dashboard/privacy` is on for this focus. The guardian rules
+   *  switch the page off, and a step that links to a 404 is worse than no
+   *  step. Absent means "not checked" and the step stays included. */
+  privacyMapEnabled?: boolean;
   privacyMapVisitedAt: number | null;
   reviewEnabled?: boolean;
   /** Current value of `sync_schedule` in `app_settings`. Used by
@@ -107,7 +111,10 @@ export const TASK_DEFS: UserTaskDef[] = [
     route: "/dashboard/privacy",
     prerequisites: [],
     i18nKey: "view_privacy_map",
-    includedWhen: () => true,
+    // Only while the page it opens is on. `flag.page.privacy_map` is off
+    // for the guardian audience, where "Take me there" used to land on a
+    // 404 page.
+    includedWhen: (_focus, _env, ctx) => ctx.privacyMapEnabled ?? true,
     completionCheck: (ctx) => ctx.privacyMapVisitedAt != null,
   },
   {

@@ -14,6 +14,13 @@ Going forward, changes are recorded here as they land.
 
 ### Focus and dashboard
 
+- The check-up no longer offers "See what your apps collect" to the child
+  audience, whose focus switches the Privacy Map off. The step used to open a
+  page that does not exist for them.
+- The **Minimal** layout preset is now **Simple**, and shows what the simple
+  view leads with: the review banner, the overview and "Changes to review". It
+  used to list the risk list and the at-a-glance numbers, which Keep it simple
+  folds and hides.
 - With **Keep it simple** on, the dashboard folds its three long lists (the
   risk list, "Consider replacing" and stale apps) behind **Show more detail**
   at the bottom of the page. One click opens them for the visit; turning

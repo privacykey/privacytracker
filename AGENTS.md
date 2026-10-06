@@ -299,7 +299,14 @@ short of changing their focus. The control shows only when a folded card has
 something to render, the edit shell never folds, and a jump to a folded section
 (`staleHref`) lands on the control. Pinned by
 `tests/app/simple-view-fold.test.ts` and
-`tests/e2e/focus-dashboard-decisions.spec.ts`.
+`tests/e2e/focus-dashboard-decisions.spec.ts`. The layout preset keyed
+`minimal` is labelled "Simple" and lists only what the simple view leads with
+(`review_cta`, `hero`, `review_section`); the key stays `minimal` because the
+preset API and `dashboard_layout_applied` activity rows carry it. The check-up
+follows the same rule as the fold's capability axis: `view_privacy_map` is
+included only while `flag.page.privacy_map` is on (`privacyMapEnabled` in the
+task context, mirrored in `core/src/server/user_tasks.rs`), because the guardian
+rules switch that page off and the step used to open a 404.
 
 `GET /api/triage?overview=1&since=<epoch-ms>` adds a bounded app preview with
 whole-scope counts. Since-last-visit counts mean distinct apps with a live change
