@@ -419,47 +419,51 @@ export default function DevicesView({
                         void handleOwnerSubmit(device.id);
                       }}
                     >
-                      <label className="devices-owner-field">
-                        <span className="devices-owner-label">
-                          {t("owner_name_label")}
-                        </span>
-                        <input
-                          autoFocus
-                          className="input"
-                          disabled={isBusy}
-                          onChange={(e) => setOwnerLabelValue(e.target.value)}
-                          placeholder={t("owner_name_placeholder")}
-                          type="text"
-                          value={ownerLabelValue}
-                        />
-                      </label>
-                      <label className="devices-owner-field">
-                        <span className="devices-owner-label">
-                          {t("owner_audience_label")}
-                        </span>
-                        <select
-                          className="input"
-                          disabled={isBusy}
-                          onChange={(e) => {
-                            const next = e.target.value as OwnerAudience | "";
-                            // The attestation is worded per owner, so a
-                            // tick given for one owner does not carry to
-                            // another — same rule as the import step.
-                            if (next !== ownerAudienceValue) {
-                              setOwnerAckValue(false);
-                            }
-                            setOwnerAudienceValue(next);
-                          }}
-                          value={ownerAudienceValue}
-                        >
-                          <option value="">{t("owner_audience_unset")}</option>
-                          {OWNER_AUDIENCES.map((a) => (
-                            <option key={a} value={a}>
-                              {t(`owner_audience_option.${a}`)}
+                      <div className="devices-owner-fields">
+                        <label className="devices-owner-field">
+                          <span className="devices-owner-label">
+                            {t("owner_name_label")}
+                          </span>
+                          <input
+                            autoFocus
+                            className="settings-input devices-owner-input"
+                            disabled={isBusy}
+                            onChange={(e) => setOwnerLabelValue(e.target.value)}
+                            placeholder={t("owner_name_placeholder")}
+                            type="text"
+                            value={ownerLabelValue}
+                          />
+                        </label>
+                        <label className="devices-owner-field">
+                          <span className="devices-owner-label">
+                            {t("owner_audience_label")}
+                          </span>
+                          <select
+                            className="settings-input devices-owner-input"
+                            disabled={isBusy}
+                            onChange={(e) => {
+                              const next = e.target.value as OwnerAudience | "";
+                              // The attestation is worded per owner, so a
+                              // tick given for one owner does not carry to
+                              // another — same rule as the import step.
+                              if (next !== ownerAudienceValue) {
+                                setOwnerAckValue(false);
+                              }
+                              setOwnerAudienceValue(next);
+                            }}
+                            value={ownerAudienceValue}
+                          >
+                            <option value="">
+                              {t("owner_audience_unset")}
                             </option>
-                          ))}
-                        </select>
-                      </label>
+                            {OWNER_AUDIENCES.map((a) => (
+                              <option key={a} value={a}>
+                                {t(`owner_audience_option.${a}`)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
                       <p className="devices-owner-help">
                         {t("owner_audience_help")}
                       </p>

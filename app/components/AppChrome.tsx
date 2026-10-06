@@ -11,6 +11,7 @@ import AdminTokenBridge from "./AdminTokenBridge";
 import ClientDiagnosticsBoot from "./ClientDiagnosticsBoot";
 import DeviceScopeProvider from "./DeviceScopeProvider";
 import DevMenu from "./DevMenu";
+import ExternalLinkBridge from "./ExternalLinkBridge";
 import FlagHighlightHandler from "./FlagHighlightHandler";
 import FocusPreviewBanner from "./FocusPreviewBanner";
 import { ImportQueueProvider } from "./ImportQueueProvider";
@@ -169,6 +170,9 @@ function ChromeBody({
               in src-tauri/src/app_menu.rs; this component is the
               webview-side counterpart. */}
             <MenuActionsBridge />
+            {/* Desktop only: hands external links to the system browser,
+              which the webview cannot open itself. */}
+            <ExternalLinkBridge />
             {/* Read-only notice — only renders when served from a
               non-local host without the admin-token cookie, i.e. when
               proxy.ts will 401 every write. */}

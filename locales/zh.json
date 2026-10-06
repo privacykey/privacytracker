@@ -1079,6 +1079,8 @@
     "step1": {
       "back_to_goals": "返回你的用途",
       "back_aria": "返回你的用途",
+      "back_to_devices": "返回设备",
+      "back_to_devices_aria": "返回设置 → 设备",
       "subtitle": "选择最简单的导入方式。导入前可以随时切换方法。",
       "method_grid_aria": "导入方式",
       "advanced_grid_aria": "高级导入方式",

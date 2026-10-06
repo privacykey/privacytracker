@@ -85,6 +85,13 @@ export default function Step1ChooseMethod({
     requestAnimationFrame(() => card?.focus());
   }
 
+  // A device re-sync (`/onboard?resync=<id>`) came from Settings → Devices,
+  // not from the purpose screen, so its back link goes there and says so.
+  const backHref = w.resyncDeviceId
+    ? "/dashboard/settings/devices"
+    : "/welcome";
+  const backAriaKey = w.resyncDeviceId ? "back_to_devices_aria" : "back_aria";
+  const backLabelKey = w.resyncDeviceId ? "back_to_devices" : "back_to_goals";
   return (
     <>
       {step === 1 && onboardStepChooseMethodOn && (
@@ -93,13 +100,16 @@ export default function Step1ChooseMethod({
                 aren't stranded on step 1 with no way back to revisit
                 their audience or goals picks. Mirrors the Back button
                 on subsequent wizard steps; keeps the same `wizard-back-link`
-                placement so the muscle-memory carries between screens. */}
+                placement so the muscle-memory carries between screens.
+                A device re-sync (`/onboard?resync=<id>`) came from
+                Settings → Devices, not from the purpose screen, so it
+                goes back there and says so. */}
           <Link
-            aria-label={tStep1("back_aria")}
+            aria-label={tStep1(backAriaKey)}
             className="wizard-back-link"
-            href="/welcome"
+            href={backHref}
           >
-            <span aria-hidden="true">←</span> {tStep1("back_to_goals")}
+            <span aria-hidden="true">←</span> {tStep1(backLabelKey)}
           </Link>
           <h1 className="wizard-title">{tWiz("add_apps")}</h1>
           <p className="wizard-subtitle">{tStep1("subtitle")}</p>

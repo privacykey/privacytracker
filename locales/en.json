@@ -1079,6 +1079,8 @@
     "step1": {
       "back_to_goals": "Back to your purpose",
       "back_aria": "Back to your purpose",
+      "back_to_devices": "Back to devices",
+      "back_to_devices_aria": "Back to Settings → Devices",
       "subtitle": "Choose the import path that feels easiest. You can switch methods at any time before importing.",
       "method_grid_aria": "Import method",
       "advanced_grid_aria": "Advanced import methods",

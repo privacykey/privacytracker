@@ -8784,6 +8784,25 @@ body.review-rec-print-active .review-rec-print a {
   margin-bottom: 32px;
 }
 
+/* Six tiles (a privacy profile and accessibility labels both on) used to
+   land as five across and one straggler. Two rows of three read as one
+   set, and the tiles stay wide enough for a 44px figure. */
+.stat-cards:has(> :nth-child(6)) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .stat-cards:has(> :nth-child(6)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 420px) {
+  .stat-cards:has(> :nth-child(6)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .stat-card {
   padding: 24px 22px;
   background: var(--surface);

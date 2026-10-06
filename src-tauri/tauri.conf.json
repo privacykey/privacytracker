@@ -70,7 +70,7 @@
   },
   "plugins": {
     "shell": {
-      "open": "^x-apple\\.systempreferences:com\\.apple\\.preference\\.universalaccess$"
+      "open": "^(https?://.+|x-apple\\.systempreferences:com\\.apple\\.preference\\.universalaccess)$"
     },
     "updater": {
       "active": true,

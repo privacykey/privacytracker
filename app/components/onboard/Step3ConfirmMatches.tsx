@@ -1333,7 +1333,7 @@ export default function Step3ConfirmMatches({
                       <label className="wizard-device-owner-field">
                         <span>{tStep3("owner_name_label")}</span>
                         <input
-                          className="input"
+                          className="settings-input"
                           onChange={(e) =>
                             setDeviceOwner({ label: e.target.value })
                           }
