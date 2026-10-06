@@ -350,6 +350,19 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- External links open again in the desktop app. The webview has no tabs
+  and dropped every "open in a new tab" link, so the Apple sources on the
+  label definitions page, developer privacy policies and App Store links
+  did nothing when clicked; they now open in your default browser.
+- **Set owner** on Settings → Devices is a proper form: bordered fields side
+  by side, a readable label size and a framed card, instead of a bare text
+  box and a naked drop-down.
+- Re-syncing a device from Settings → Devices no longer offers "Back to
+  your purpose" on the first import step. The link reads "Back to devices"
+  and returns there.
+- The Statistics page lays six summary tiles out as two rows of three
+  instead of five and a straggler, which happened once a privacy profile
+  and accessibility labels were both on.
 - The vignette popover could only ever work as a tooltip. It closed the
   instant the pointer left the ✦, a click after hovering toggled it shut
   instead of pinning it open, and because it is attached at the end of the

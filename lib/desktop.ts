@@ -659,6 +659,50 @@ export function applyThemeOverride(
 }
 
 /**
+ * The URL a click on `href` should hand to the system browser, or null
+ * when the link stays inside the app: a same-origin page, a fragment, a
+ * download, `mailto:` or any other non-http scheme. `origin` is the
+ * page's own. Pure, so the decision is unit-tested without a webview.
+ */
+export function externalHttpUrl(href: string, origin: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(href, origin);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    return null;
+  }
+  if (url.origin === origin) {
+    return null;
+  }
+  return url.href;
+}
+
+/**
+ * Open a URL in the system browser from the desktop app. The webview has
+ * no tabs and drops `target="_blank"`, so every external link on every
+ * page goes through here (see app/components/ExternalLinkBridge.tsx).
+ * The shell plugin's `open` scope in src-tauri/tauri.conf.json allows
+ * http(s) and the one macOS settings scheme below; anything else is
+ * refused there. Returns false outside Tauri or when the plugin refused.
+ */
+export async function openExternal(url: string): Promise<boolean> {
+  const invoke = getInvoke();
+  if (!invoke) {
+    return false;
+  }
+  try {
+    await invoke("plugin:shell|open", { path: url });
+    return true;
+  } catch (err) {
+    console.warn("openExternal failed:", err);
+    return false;
+  }
+}
+
+/**
  * Deep-link into the macOS System Settings → Accessibility pane. Returns
  * `true` if the URL was handed off to the shell, `false` otherwise (non-
  * Tauri, non-macOS, or the plugin call errored). Uses the documented
