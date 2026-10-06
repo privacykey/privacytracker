@@ -56,10 +56,13 @@ minimumReleaseAgeExclude:
 # actually executes Babel.
 #
 # `sharp` is forced to the patched 0.35 line. Next (even 16.2.11) still
-# pins it transitively at ^0.34.5 (next > sharp, used by the image
+# pinned it transitively at ^0.34.5 (next > sharp, used by the image
 # optimizer), which `pnpm audit --prod` rejects for GHSA-f88m-g3jw-g9cj
 # (libvips CVE-2026-33327/-33328/-35590/-35591, fixed in sharp 0.35.0).
-# Drop this once Next's own range moves to >=0.35.
+# Floor raised 0.35.0 -> 0.35.5 for GHSA-wq5f-xc86-pv6w (the librsvg
+# bundled with libvips, CVE-2026-96889, fixed in 0.35.5): Next 16.3.6
+# declares ^0.35.4, which the lockfile held at 0.35.4. Drop this once
+# Next's own range moves to >=0.35.5.
 #
 # `nanoid` is force-resolved to the patched 3.3.18 line. It arrives via
 # next > postcss > nanoid, and the postcss override above does NOT lift it:
@@ -77,7 +80,7 @@ minimumReleaseAgeExclude:
 overrides:
   postcss: ^8.5.18
   '@babel/core': ^8.0.0
-  sharp: ^0.35.0
+  sharp: ^0.35.5
   nanoid: ^3.3.18
   source-map-js: ^1.2.2
 
@@ -89,6 +92,9 @@ overrides:
   'qs@6': ^6.16.0
   'js-yaml@4': ^4.3.2
   'image-size@2': ^2.0.3
+  # Storybook's css-loader (postcss-modules-local-by-default, -scope) for
+  # GHSA-rj75-hqrm-r3gf: quadratic flat-selector parsing, fixed in 7.1.6.
+  'postcss-selector-parser@7': ^7.1.6
   # Storybook still pins v6; v7 fixes publicPath traversal and keeps the
   # webpack 5 middleware API. Validate both its static and dev builds.
   'webpack-dev-middleware@6': ^7.4.5

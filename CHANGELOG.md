@@ -12,6 +12,17 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Security
+
+- Raise `sharp` to 0.35.5 (GHSA-wq5f-xc86-pv6w, a vulnerability in the
+  librsvg bundled with its libvips, CVE-2026-96889), which reaches the app
+  through Next.js. Only the Docker image's Node rollback (`BACKEND=node`)
+  carries it at runtime; the default Rust image and the desktop app ship no
+  Node.
+- Raise `postcss-selector-parser` to 7.1.6 (GHSA-rj75-hqrm-r3gf, CPU
+  exhaustion through quadratic selector parsing) in Storybook's CSS
+  tooling. Development only.
+
 ## [0.3.0] — 2026-10-06
 
 The first release since v0.1.2, and the first on the Rust server: neither
