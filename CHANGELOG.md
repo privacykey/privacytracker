@@ -384,6 +384,17 @@ Going forward, changes are recorded here as they land.
 - The Statistics page lays six summary tiles out as two rows of three
   instead of five and a straggler, which happened once a privacy profile
   and accessibility labels were both on.
+
+- `tauri build` (and `just tauri-build`) stopped on macOS 27 with E0463
+  "can't find crate for `ctor_proc_macro`", or the same for another proc
+  macro, or a dlopen error naming one. Under the 13.5 deployment target that
+  `tauri build` sets, stripping debug info left each proc-macro dylib's string
+  table 4-byte aligned, and macOS 27 refuses to load such a dylib. Release
+  builds no longer strip proc macros and build scripts; the app itself is
+  built as before. `tauri dev` was never affected, because debug builds don't
+  strip. The cause is in rustc's strip step, so this is a workaround, tracked
+  in #382. Developer-facing only.
+
 - The vignette popover could only ever work as a tooltip. It closed the
   instant the pointer left the ✦, a click after hovering toggled it shut
   instead of pinning it open, and because it is attached at the end of the
