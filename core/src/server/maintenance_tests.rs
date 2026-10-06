@@ -105,6 +105,9 @@ fn list_files(dir: &Path) -> Vec<String> {
     out
 }
 
+/// The 32 bytes `extract-maintenance-cases.mjs` pins as the boot secret.
+const ORACLE_SESSION_SECRET: [u8; 32] = [0x5a; 32];
+
 #[test]
 fn maintenance_paths_match_node_wire_stream_rows_and_ring() {
     let _env = crate::server::trust::env_lock();
@@ -126,6 +129,10 @@ fn maintenance_paths_match_node_wire_stream_rows_and_ring() {
     ] {
         std::env::remove_var(var);
     }
+    // The oracle pinned the boot secret the login cookie is derived from
+    // (`globalThis[Symbol.for("privacytracker.admin-session-secret")]`), so
+    // the recorded Set-Cookie is reproducible here.
+    crate::server::auth::set_session_secret_for_tests(ORACLE_SESSION_SECRET);
 
     let fixture: Value =
         serde_json::from_str(include_str!("../../tests/fixtures/maintenance-cases.json")).unwrap();
