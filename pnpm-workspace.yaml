@@ -67,11 +67,19 @@ minimumReleaseAgeExclude:
 # `pnpm audit --prod` rejects that for GHSA-2v37-7h3g-55p8 (custom
 # generators loop indefinitely when size is zero, fixed in 3.3.18). Drop
 # this once postcss's own range moves to >=3.3.18.
+#
+# `source-map-js` is force-resolved to the patched 1.2.2 line. It arrives
+# the same way (next > postcss > source-map-js), and postcss 8.5.18
+# declares `^1.2.1`, which the lockfile held at 1.2.1. `pnpm audit --prod`
+# rejects that for GHSA-68fv-2mgg-jv7q (event-loop denial of service
+# through indexed source-map section offsets, fixed in 1.2.2). Drop this
+# once postcss's own range moves to >=1.2.2.
 overrides:
   postcss: ^8.5.18
   '@babel/core': ^8.0.0
   sharp: ^0.35.0
   nanoid: ^3.3.18
+  source-map-js: ^1.2.2
 
   # Security patch floors for transitive build tooling. Keep fixes scoped to
   # the affected major versions until upstream consumers raise their floors.
