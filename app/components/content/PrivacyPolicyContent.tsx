@@ -135,7 +135,7 @@ const POLICY_SUBPROCESSORS: Subprocessor[] = [
     endpoint:
       "archive.org/wayback/available, web.archive.org/save/<policy URL>, web.archive.org/web/<timestamp>/<policy URL>",
     trigger:
-      "After each successful policy fetch for an App Store app, the app looks up the newest Wayback Machine copy of that policy and asks the Archive to save a fresh one, so the AI Policy and Change History tabs can link to an archived copy. If a developer's site refuses both direct requests, the app reads the policy from the newest Wayback copy instead. None of this happens while policy scraping is disabled.",
+      "After each successful policy fetch for an App Store app, the app looks up the newest Wayback Machine copy of that policy, so the AI Policy and Change History tabs can link to an archived copy. It asks the Archive to save a fresh copy only when no copy from the last 45 days is known, neither in that lookup nor from an earlier save. If a developer's site refuses both direct requests, the app reads the policy from the newest Wayback copy instead. None of this happens while policy scraping is disabled.",
     sends:
       "The public address of the developer's privacy policy. No cookies, no identifiers.",
     receives:

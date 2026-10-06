@@ -31,6 +31,8 @@
 //! runner, the replay is the only caller.
 #![cfg_attr(not(test), allow(dead_code))]
 
+use std::sync::{atomic::AtomicBool, Arc};
+
 use super::{
     activity_log::record_activity_named,
     flags,
@@ -74,6 +76,12 @@ const PERSIST_LOG: &str =
     "UPDATE privacy_policy_analyses\n        SET last_run_log = ?\n      WHERE app_id = ?";
 const PERSIST_ANALYSIS: &str = "\n    INSERT INTO privacy_policy_analyses (\n      app_id,\n      policy_url,\n      status,\n      source_title,\n      source_content_type,\n      source_text,\n      source_word_count,\n      source_origin,\n      source_final_url,\n      content_hash,\n      analysis_mode,\n      summary_json,\n      previous_summary_json,\n      previous_summary_at,\n      model,\n      error,\n      updated_at,\n      last_run_log,\n      source_fetched_at\n    )\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n    ON CONFLICT(app_id) DO UPDATE SET\n      policy_url = excluded.policy_url,\n      status = excluded.status,\n      source_title = excluded.source_title,\n      source_content_type = excluded.source_content_type,\n      source_text = excluded.source_text,\n      source_word_count = excluded.source_word_count,\n      source_origin = excluded.source_origin,\n      source_final_url = excluded.source_final_url,\n      content_hash = excluded.content_hash,\n      analysis_mode = excluded.analysis_mode,\n      summary_json = excluded.summary_json,\n      previous_summary_json = excluded.previous_summary_json,\n      previous_summary_at = excluded.previous_summary_at,\n      model = excluded.model,\n      error = excluded.error,\n      updated_at = excluded.updated_at,\n      last_run_log = excluded.last_run_log,\n      source_fetched_at = excluded.source_fetched_at\n  ";
 const TOUCH_VERSION: &str = "UPDATE privacy_policy_versions SET last_fetched_at = ? WHERE id = ?";
+const SELECT_ARCHIVE_URL: &str = "SELECT archive_url FROM privacy_policy_versions WHERE id = ?";
+/// `POLICY_VERSION_KEEP_COUNT` / `POLICY_VERSION_KEEP_CHARS`: how much of an
+/// app's version history `prunePolicyVersions` keeps.
+const POLICY_VERSION_KEEP_COUNT: usize = 20;
+const POLICY_VERSION_KEEP_CHARS: i64 = 8 * 1024 * 1024;
+const SELECT_VERSION_SIZES: &str = "SELECT id, length(source_text) AS chars\n         FROM privacy_policy_versions\n        WHERE app_id = ?\n        ORDER BY first_fetched_at DESC, id DESC";
 const INSERT_VERSION: &str = "INSERT INTO privacy_policy_versions (\n       id, app_id, content_hash, first_fetched_at, last_fetched_at,\n       policy_url, source_final_url, source_title, source_content_type,\n       source_origin, source_word_count, source_text\n     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 const SET_ARCHIVE_URL: &str =
     "UPDATE privacy_policy_versions SET archive_url = ?, archive_submitted_at = ? WHERE id = ?";
@@ -111,12 +119,20 @@ impl Phase {
 }
 
 /// `PolicySyncOptions`.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct SyncOptions {
     pub phase: Phase,
     pub force_resummarise: bool,
     pub bypass_throttle: bool,
+    /// `signal`: set by the caller to stop the summarise phase before its
+    /// next provider call; the streamed regenerate sets it when the client
+    /// has gone. The fetch phase ignores it.
+    pub cancel: Option<Arc<AtomicBool>>,
 }
+
+/// `ARCHIVE_RECENT_CAPTURE_MS`: Save Page Now is asked only when no capture
+/// from this many milliseconds back is known.
+const ARCHIVE_RECENT_CAPTURE_MS: i64 = 45 * 24 * 60 * 60 * 1000;
 
 /// Save Page Now for the version the sync stored.
 pub(crate) enum SaveNow {
@@ -542,7 +558,7 @@ fn has_any_policy_version(conn: &Connection, app_id: &str) -> bool {
 
 /// `upsertPolicyVersion`: the existing row for this text touched, or a new
 /// one; either way its id.
-fn upsert_policy_version(
+pub(super) fn upsert_policy_version(
     w: &mut Writer,
     ids: &mut dyn Ids,
     app_id: &str,
@@ -583,7 +599,55 @@ fn upsert_policy_version(
             json!(source_text),
         ],
     )?;
+    prune_policy_versions(w, app_id, &id)?;
     Ok(id)
+}
+
+/// `prunePolicyVersions`: the versions of the app beyond the retention
+/// bound, newest first, dropped: every row past the first
+/// `POLICY_VERSION_KEEP_COUNT`, and every row that would carry the kept
+/// text past `POLICY_VERSION_KEEP_CHARS`. The row just written stays
+/// whatever its size.
+fn prune_policy_versions(w: &mut Writer, app_id: &str, keep_id: &str) -> Result<(), String> {
+    let rows: Vec<(String, i64)> = {
+        let mut stmt = w
+            .conn
+            .prepare(SELECT_VERSION_SIZES)
+            .map_err(|e| e.to_string())?;
+        let found = stmt
+            .query_map([app_id], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))
+            })
+            .map_err(|e| e.to_string())?;
+        found
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    let mut drop: Vec<String> = Vec::new();
+    let mut kept = 0usize;
+    let mut chars = 0i64;
+    for (id, size) in rows {
+        if id == keep_id {
+            kept += 1;
+            chars += size;
+            continue;
+        }
+        if kept >= POLICY_VERSION_KEEP_COUNT || chars + size > POLICY_VERSION_KEEP_CHARS {
+            drop.push(id);
+            continue;
+        }
+        kept += 1;
+        chars += size;
+    }
+    if drop.is_empty() {
+        return Ok(());
+    }
+    let placeholders = vec!["?"; drop.len()].join(", ");
+    w.run(
+        &format!("DELETE FROM privacy_policy_versions WHERE id IN ({placeholders})"),
+        drop.into_iter().map(|id| json!(id)).collect(),
+    )?;
+    Ok(())
 }
 
 // ── History and the bell ─────────────────────────────────────────────
@@ -747,7 +811,7 @@ async fn fetch_and_store(
     fetcher: &dyn Fetcher,
     request: &PolicyRequest,
     policy_url: &str,
-    options: SyncOptions,
+    options: &SyncOptions,
     stash: &mut Option<Value>,
 ) -> Result<(Value, FollowUps), String> {
     let app_id = request.app_id.as_str();
@@ -1020,35 +1084,84 @@ async fn fetch_and_store(
         } else {
             source.final_url.clone()
         };
+        // The capture already linked to this version: a Save Page Now that
+        // landed on an earlier fetch, which the availability API may not
+        // list yet, or an earlier lookup's find.
+        let linked_url: Option<String> = log.db().with(|w| {
+            w.conn
+                .query_row(SELECT_ARCHIVE_URL, [version_id.as_str()], |r| {
+                    r.get::<_, Option<String>>(0)
+                })
+                .optional()
+                .map(Option::flatten)
+                .map_err(|e| e.to_string())
+        })?;
+        let linked_capture_ms = linked_url
+            .as_deref()
+            .and_then(wayback::extract_timestamp)
+            .and_then(|ts| wayback::parse_timestamp_ms(Some(&ts)));
+        let mut found_capture_ms: Option<i64> = None;
         match wayback::lookup_latest(fetcher, &target).await {
             Some(snapshot) => {
-                let at = log.now();
-                let linked = log.db().with(|w| {
-                    w.run(
-                        SET_ARCHIVE_URL,
-                        vec![json!(snapshot.url), json!(at), json!(version_id)],
-                    )
-                });
-                match linked {
-                    Ok(_) => log.note(
+                found_capture_ms = wayback::parse_timestamp_ms(snapshot.timestamp.as_deref());
+                // The newest known capture stays linked: the lookup's find
+                // replaces a linked capture only when at least as new (or
+                // undated).
+                let newer = match (linked_capture_ms, found_capture_ms) {
+                    (Some(linked), Some(found)) => found >= linked,
+                    _ => true,
+                };
+                if newer {
+                    let at = log.now();
+                    let linked = log.db().with(|w| {
+                        w.run(
+                            SET_ARCHIVE_URL,
+                            vec![json!(snapshot.url), json!(at), json!(version_id)],
+                        )
+                    });
+                    match linked {
+                        Ok(_) => log.note(
+                            "archive-existing",
+                            format!(
+                                "Linked to existing Wayback snapshot ({}).",
+                                snapshot.timestamp.as_deref().unwrap_or("unknown ts")
+                            ),
+                        ),
+                        Err(e) => log.fail("archive-existing", e),
+                    }
+                } else {
+                    log.note(
                         "archive-existing",
                         format!(
-                            "Linked to existing Wayback snapshot ({}).",
-                            snapshot.timestamp.as_deref().unwrap_or("unknown ts")
+                            "Kept the newer linked Wayback snapshot; the archive lists {}.",
+                            snapshot.timestamp.as_deref().unwrap_or("an undated one")
                         ),
-                    ),
-                    Err(e) => log.fail("archive-existing", e),
+                    );
                 }
             }
             None => log.note("archive-existing", "No existing Wayback snapshot found."),
         }
-        fire_save_now(
-            log.db(),
-            fetcher,
-            &mut follow_ups,
-            version_id.clone(),
-            target,
-        );
+        // Save Page Now only when no capture from the last 45 days is
+        // known, found or linked.
+        let now = log.now();
+        let recent = [found_capture_ms, linked_capture_ms]
+            .into_iter()
+            .flatten()
+            .any(|ms| now - ms <= ARCHIVE_RECENT_CAPTURE_MS);
+        if recent {
+            log.note(
+                "archive-save",
+                "A capture from the last 45 days exists; not asking Save Page Now.",
+            );
+        } else {
+            fire_save_now(
+                log.db(),
+                fetcher,
+                &mut follow_ups,
+                version_id.clone(),
+                target,
+            );
+        }
     }
 
     let label = safe_url_label(policy_url);
@@ -1250,22 +1363,26 @@ async fn run_phase(
     clock: &dyn Clock,
     request: &PolicyRequest,
     policy_url: &str,
-    options: SyncOptions,
+    options: &SyncOptions,
     stash: &mut Option<Value>,
 ) -> Result<(Value, FollowUps), String> {
     use super::policy_summary::summarise_stored_policy;
     let force = options.force_resummarise;
+    let cancel = options.cancel.as_deref();
     match options.phase {
         Phase::Fetch => {
             fetch_and_store(log, ids, fetcher, request, policy_url, options, stash).await
         }
-        Phase::Summarise => summarise_stored_policy(log, ids, fetcher, clock, request, force).await,
+        Phase::Summarise => {
+            summarise_stored_policy(log, ids, fetcher, clock, request, force, cancel).await
+        }
         Phase::All => {
             let (after_fetch, follow_ups) =
                 fetch_and_store(log, ids, fetcher, request, policy_url, options, stash).await?;
             if after_fetch.get("status").and_then(Value::as_str) == Some("source_ready") {
                 let (analysis, nested) =
-                    summarise_stored_policy(log, ids, fetcher, clock, request, force).await?;
+                    summarise_stored_policy(log, ids, fetcher, clock, request, force, cancel)
+                        .await?;
                 Ok((
                     analysis,
                     FollowUps {
@@ -1322,7 +1439,7 @@ pub(crate) async fn sync_policy_analysis_streamed(
         let sink = sink.map(|s| &mut *s as &mut (dyn FnMut(&Map<String, Value>) + Send));
         let mut log = RunLogger::new(&mut *db, clock, app_id).streaming(sink);
         let outcome = run_phase(
-            &mut log, ids, fetcher, clock, request, policy_url, options, &mut stash,
+            &mut log, ids, fetcher, clock, request, policy_url, &options, &mut stash,
         )
         .await;
         (outcome, log.logged("disabled"), log.last_logged())

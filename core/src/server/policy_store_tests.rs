@@ -12,15 +12,16 @@
 //! compare the wire response, the stream and the tables. JSON cases hold
 //! `crate::jsjson` to V8's messages and `JSON.stringify(JSON.parse(s))`.
 use super::policy_store::{
-    run_follow_ups, sync_policy_analysis, Phase, PolicyRequest, SyncOptions,
+    run_follow_ups, sync_policy_analysis, upsert_policy_version, Phase, PolicyRequest, SyncOptions,
 };
 use super::sync_runner::Clock;
 use crate::{
     outbound::{fetch_via, FetchFuture, Fetcher, Hop, HopFuture, Outgoing, Request},
     scrape::{
         fetch_tests::raw_reply,
-        persist::{Locked, Statement},
+        persist::{DbAccess, Locked, Statement},
         persist_tests::{dump, to_sql, CountingIds},
+        wayback,
     },
 };
 use reqwest::header::HeaderMap;
@@ -260,6 +261,7 @@ fn policy_store_matches_node_calls_streams_rows_and_result() {
             phase: Phase::Fetch,
             force_resummarise: case["options"]["forceResummarise"] == true,
             bypass_throttle: case["options"]["bypassThrottle"] == true,
+            cancel: None,
         };
         let mut ids = CountingIds {
             prefix: "00000000-0000-4000-8000-",
@@ -500,4 +502,373 @@ fn policy_routes_match_node_wire_calls_stream_and_rows() {
         failures.len(),
         failures.join("\n\n")
     );
+}
+
+// ── Bounds on what one policy can cost (mirroring tests/app/policy-*.test.ts) ──
+
+/// 2026-09-15T12:00Z, the oracles' frozen instant.
+const NOW: i64 = 1_789_387_200_000;
+const POLICY_URL: &str = "https://example.com/privacy";
+
+fn tracked_app(id: &str) -> Value {
+    json!({
+        "sql": "INSERT INTO apps (id, name, url, iconUrl, developer, privacyPolicyUrl, firstSeen, lastSynced, changeCount) VALUES (?, ?, ?, '', ?, ?, ?, ?, 0)",
+        "params": [id, "Fixture App", format!("https://apps.apple.com/us/app/fixture/id{id}"), "Fixture Developer", POLICY_URL, NOW - 86_400_000, NOW - 86_400_000]
+    })
+}
+
+fn setting(key: &str, value: &str) -> Value {
+    json!({
+        "sql": "INSERT INTO app_settings (key, value) VALUES (?, ?)",
+        "params": [key, value]
+    })
+}
+
+/// A clean stored source for the summarise phase to work from.
+fn stored_source(app_id: &str, text: &str) -> Value {
+    json!({
+        "sql": "INSERT INTO privacy_policy_analyses (app_id, policy_url, status, source_text, source_word_count, content_hash, updated_at, source_fetched_at) VALUES (?, ?, 'source_ready', ?, ?, ?, ?, ?)",
+        "params": [app_id, POLICY_URL, text, text.split_whitespace().count(), format!("hash-{app_id}"), NOW, NOW]
+    })
+}
+
+fn policy_text() -> String {
+    "This privacy policy explains how the developer collects account information, device identifiers, usage data and approximate location data. We use personal information to provide the product, prevent fraud, perform analytics and measure advertising. We share data with service providers, analytics partners and advertising partners. Users may request access, deletion and opt out of marketing. "
+        .repeat(8)
+}
+
+fn page_reply() -> Value {
+    json!({"status": 200, "headers": {"content-type": "text/plain; charset=utf-8"}, "body": policy_text()})
+}
+
+fn availability_reply(capture: Option<i64>) -> Value {
+    let snapshots = match capture {
+        Some(ms) => {
+            let stamp = wayback::format_timestamp(ms);
+            json!({"closest": {"available": true, "url": format!("https://web.archive.org/web/{stamp}/{POLICY_URL}"), "timestamp": stamp}})
+        }
+        None => json!({}),
+    };
+    json!({"status": 200, "headers": {"content-type": "application/json"}, "body": json!({"archived_snapshots": snapshots}).to_string()})
+}
+
+fn save_reply() -> Value {
+    json!({"status": 302, "headers": {"location": format!("/web/{}/{POLICY_URL}", wayback::format_timestamp(NOW))}, "body": ""})
+}
+
+fn request(app_id: &str) -> PolicyRequest {
+    PolicyRequest {
+        app_id: app_id.to_string(),
+        app_name: "Fixture App".to_string(),
+        developer: Some("Fixture Developer".to_string()),
+        policy_url: Some(POLICY_URL.to_string()),
+    }
+}
+
+/// One sync over `conn` with the replies given; the URLs fetched, in order.
+fn sync_with(
+    rt: &tokio::runtime::Runtime,
+    mutex: &Mutex<Connection>,
+    replies: Vec<Value>,
+    request: &PolicyRequest,
+    options: SyncOptions,
+) -> (Value, Vec<String>) {
+    let clock = Arc::new(AtomicI64::new(NOW));
+    let ticking = Ticking(clock.clone());
+    let fetcher = Canned::new(replies, clock);
+    let mut ids = CountingIds {
+        prefix: "00000000-0000-4000-8000-",
+        next: 0,
+    };
+    let analysis = {
+        let mut db = Locked {
+            conn: mutex,
+            log: None,
+            on_wait: None,
+        };
+        let synced = rt
+            .block_on(sync_policy_analysis(
+                &mut db, &mut ids, &fetcher, &ticking, request, options,
+            ))
+            .unwrap();
+        rt.block_on(run_follow_ups(
+            &mut db,
+            &fetcher,
+            &ticking,
+            synced.follow_ups,
+        ));
+        synced.analysis
+    };
+    assert_eq!(fetcher.unused(), 0, "every canned reply was fetched");
+    let urls = fetcher
+        .calls
+        .lock()
+        .unwrap()
+        .iter()
+        .map(|c| c["url"].as_str().unwrap().to_string())
+        .collect();
+    (analysis, urls)
+}
+
+fn fetch_options() -> SyncOptions {
+    SyncOptions {
+        phase: Phase::Fetch,
+        force_resummarise: false,
+        bypass_throttle: true,
+        cancel: None,
+    }
+}
+
+fn archive_url(conn: &Connection, app_id: &str) -> Option<String> {
+    conn.query_row(
+        "SELECT archive_url FROM privacy_policy_versions WHERE app_id = ?",
+        [app_id],
+        |r| r.get(0),
+    )
+    .unwrap()
+}
+
+fn run_log(conn: &Connection, app_id: &str) -> String {
+    conn.query_row(
+        "SELECT last_run_log FROM privacy_policy_analyses WHERE app_id = ?",
+        [app_id],
+        |r| r.get::<_, Option<String>>(0),
+    )
+    .unwrap()
+    .unwrap_or_default()
+}
+
+#[test]
+fn save_page_now_is_not_asked_while_a_recent_capture_is_known() {
+    let _utc = Utc::new();
+    let rt = runtime();
+    let day = 86_400_000;
+
+    // A capture from three days ago: linked, and no save requested, on
+    // every fetch.
+    let mutex = Mutex::new(seeded(&json!([tracked_app("90001")])));
+    for _ in 0..3 {
+        let (analysis, urls) = sync_with(
+            &rt,
+            &mutex,
+            vec![page_reply(), availability_reply(Some(NOW - 3 * day))],
+            &request("90001"),
+            fetch_options(),
+        );
+        assert_eq!(analysis["status"], "source_ready");
+        assert_eq!(urls.len(), 2, "{urls:?}");
+        assert!(urls[1].starts_with("https://archive.org/wayback/available"));
+    }
+    let conn = mutex.lock().unwrap();
+    assert!(archive_url(&conn, "90001").is_some());
+    assert!(run_log(&conn, "90001").contains("archive-save"));
+    drop(conn);
+
+    // A capture from last year is too old: a save is asked, lands, and is
+    // linked. The next fetch finds the old capture again but keeps the
+    // newer linked one and asks for nothing.
+    let mutex = Mutex::new(seeded(&json!([tracked_app("90002")])));
+    let (_, urls) = sync_with(
+        &rt,
+        &mutex,
+        vec![
+            page_reply(),
+            availability_reply(Some(NOW - 400 * day)),
+            save_reply(),
+        ],
+        &request("90002"),
+        fetch_options(),
+    );
+    assert_eq!(urls.len(), 3, "{urls:?}");
+    assert!(urls[2].starts_with("https://web.archive.org/save/"));
+    let linked = archive_url(&mutex.lock().unwrap(), "90002").unwrap();
+    assert!(linked.contains(&wayback::format_timestamp(NOW)), "{linked}");
+    let (_, urls) = sync_with(
+        &rt,
+        &mutex,
+        vec![page_reply(), availability_reply(Some(NOW - 400 * day))],
+        &request("90002"),
+        fetch_options(),
+    );
+    assert_eq!(urls.len(), 2, "{urls:?}");
+    let conn = mutex.lock().unwrap();
+    assert_eq!(
+        archive_url(&conn, "90002").as_deref(),
+        Some(linked.as_str())
+    );
+    assert!(run_log(&conn, "90002").contains("Kept the newer linked Wayback snapshot"));
+    drop(conn);
+
+    // No capture at all: one save, which then covers the next fetch.
+    let mutex = Mutex::new(seeded(&json!([tracked_app("90003")])));
+    let (_, urls) = sync_with(
+        &rt,
+        &mutex,
+        vec![page_reply(), availability_reply(None), save_reply()],
+        &request("90003"),
+        fetch_options(),
+    );
+    assert_eq!(urls.len(), 3, "{urls:?}");
+    let (_, urls) = sync_with(
+        &rt,
+        &mutex,
+        vec![page_reply(), availability_reply(None)],
+        &request("90003"),
+        fetch_options(),
+    );
+    assert_eq!(urls.len(), 2, "{urls:?}");
+}
+
+#[test]
+fn policy_versions_are_pruned_by_count_and_by_size() {
+    let mutex = Mutex::new(seeded(&json!([tracked_app("90004"), tracked_app("90005")])));
+    let mut ids = CountingIds {
+        prefix: "00000000-0000-4000-8000-",
+        next: 0,
+    };
+    let columns = || {
+        [
+            json!(POLICY_URL),
+            Value::Null,
+            Value::Null,
+            json!("text/plain"),
+            json!("direct"),
+            json!(3),
+        ]
+    };
+    let mut store = |app_id: &str, index: i64, text: &str| -> String {
+        let mut locked = Locked {
+            conn: &mutex,
+            log: None,
+            on_wait: None,
+        };
+        let db: &mut dyn DbAccess = &mut locked;
+        db.with(|w| {
+            upsert_policy_version(
+                w,
+                &mut ids,
+                app_id,
+                &format!("hash-{app_id}-{index}"),
+                json!(1_700_000_000_000_i64 + index * 60_000),
+                columns(),
+                text,
+            )
+        })
+        .unwrap()
+    };
+    let hashes = |app_id: &str| -> Vec<String> {
+        let conn = mutex.lock().unwrap();
+        let mut stmt = conn
+            .prepare("SELECT content_hash FROM privacy_policy_versions WHERE app_id = ? ORDER BY first_fetched_at")
+            .unwrap();
+        stmt.query_map([app_id], |r| r.get::<_, String>(0))
+            .unwrap()
+            .map(Result::unwrap)
+            .collect()
+    };
+
+    // By count: the newest twenty stay.
+    for i in 0..25 {
+        store("90004", i, &format!("policy text {i}"));
+    }
+    let kept = hashes("90004");
+    assert_eq!(kept.len(), 20);
+    assert_eq!(kept[0], "hash-90004-5");
+    assert_eq!(kept[19], "hash-90004-24");
+
+    // By size: three thirds and a little over the bound drop the oldest;
+    // one version over the bound on its own is still kept.
+    let third = 8 * 1024 * 1024 / 3 + 1;
+    store("90005", 0, &"a".repeat(third));
+    store("90005", 1, &"b".repeat(third));
+    assert_eq!(hashes("90005"), ["hash-90005-0", "hash-90005-1"]);
+    store("90005", 2, &"c".repeat(third));
+    assert_eq!(hashes("90005"), ["hash-90005-1", "hash-90005-2"]);
+    store("90005", 3, &"d".repeat(8 * 1024 * 1024 + 10));
+    assert_eq!(hashes("90005"), ["hash-90005-3"]);
+    // Pruning is per app.
+    assert_eq!(hashes("90004").len(), 20);
+}
+
+fn summarise_options(cancel: Option<Arc<AtomicBool>>) -> SyncOptions {
+    SyncOptions {
+        phase: Phase::Summarise,
+        force_resummarise: true,
+        bypass_throttle: false,
+        cancel,
+    }
+}
+
+fn custom_provider() -> [Value; 3] {
+    [
+        setting("ai_provider", "custom"),
+        setting("ai_model", "fixture-local-model"),
+        setting("ai_base_url", "https://ai.example.test/v1"),
+    ]
+}
+
+#[test]
+fn a_stored_text_over_the_chunk_budget_is_refused_before_any_call() {
+    let _utc = Utc::new();
+    let rt = runtime();
+    // Paragraphs two of which never fit one 4,000-unit chunk: one chunk each,
+    // and more of them than the budget allows.
+    let paragraph = "a".repeat(2001);
+    let text = vec![paragraph; 121].join("\n\n");
+    let [provider, model, base] = custom_provider();
+    let mutex = Mutex::new(seeded(&json!([
+        tracked_app("90006"),
+        provider,
+        model,
+        base,
+        stored_source("90006", &text)
+    ])));
+    let (analysis, urls) = sync_with(
+        &rt,
+        &mutex,
+        vec![],
+        &request("90006"),
+        summarise_options(None),
+    );
+    assert_eq!(analysis["status"], "analysis_error");
+    let error = analysis["error"].as_str().unwrap();
+    assert!(
+        error.contains("121 chunks; one summary makes at most 120 chunk calls"),
+        "{error}"
+    );
+    assert!(urls.is_empty(), "{urls:?}");
+    assert!(run_log(&mutex.lock().unwrap(), "90006").contains("chunk-budget"));
+}
+
+#[test]
+fn a_cancelled_summary_stops_before_its_next_call() {
+    let _utc = Utc::new();
+    let rt = runtime();
+    let text = vec!["b".repeat(3000); 3].join("\n\n");
+    let [provider, model, base] = custom_provider();
+    let mutex = Mutex::new(seeded(&json!([
+        tracked_app("90007"),
+        provider,
+        model,
+        base,
+        stored_source("90007", &text)
+    ])));
+    let cancel = Arc::new(AtomicBool::new(true));
+    let (analysis, urls) = sync_with(
+        &rt,
+        &mutex,
+        vec![],
+        &request("90007"),
+        summarise_options(Some(cancel)),
+    );
+    assert_eq!(analysis["status"], "analysis_error");
+    assert!(
+        analysis["error"]
+            .as_str()
+            .unwrap()
+            .starts_with("Summary cancelled before it finished"),
+        "{}",
+        analysis["error"]
+    );
+    assert!(urls.is_empty(), "{urls:?}");
 }
