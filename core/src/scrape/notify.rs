@@ -118,6 +118,13 @@ pub(super) fn version_update(
     if previous_version == current_version {
         return Ok(false);
     }
+    // `versionUpdateNotificationsEnabled()`: the stored blob's
+    // `versionUpdates`, else its default (off), read before the dedupe
+    // stamp as Node reads it. Off means no row and no stamp.
+    let prefs = get_setting_with(w.conn, "notification_prefs", "").map_err(message)?;
+    if !crate::server::user_content::notification_type_enabled(&prefs, "versionUpdates") {
+        return Ok(false);
+    }
     let dedupe_key = format!("version_update_notified_{app_id}_at");
     if (now as f64) - last_fired(w, &dedupe_key)? < VERSION_UPDATE_NOTIFY_WINDOW_MS {
         return Ok(false);

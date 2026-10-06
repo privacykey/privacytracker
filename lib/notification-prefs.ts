@@ -70,10 +70,14 @@ export const NOTIFICATION_TYPE_META: Record<
     key: "versionUpdates",
     label: "App version updates",
     description:
-      "When Apple reports a new App Store version for a tracked app \u2014 useful for cross-referencing a release with a privacy-label change.",
+      "When Apple reports a new App Store version for a tracked app, useful for cross-referencing a release with a privacy-label change. Off by default: the new version still shows on the app\u2019s page and in the Activity log, and nothing reaches the bell, the badge or a webhook until you turn this on.",
     example:
       'e.g. "Instagram updated from v287.0 to v288.0 (released 14 Apr 2026)."',
-    defaultOn: true,
+    // An app update is not a privacy change, and the row read as one in the
+    // bell, on the Dock badge and in the desktop toast. Gated where the row
+    // is written (`versionUpdateNotificationsEnabled` in lib/notifications.ts),
+    // so off means not recorded, not hidden.
+    defaultOn: false,
   },
   importCompleted: {
     key: "importCompleted",
@@ -273,6 +277,70 @@ export function classifyNotificationType(
     return "policyUpdates";
   }
   return "labelChanges";
+}
+
+/**
+ * What a bell row is about, for the pill on the row and for the sublines
+ * that must not count an app update as "1 change detected". Finer than
+ * `classifyNotificationType`, whose keys are the user's switches: a
+ * label-change row is told apart from a policy or an accessibility one by
+ * its entries' categories, and a row with no entries is a system notice.
+ */
+export type NotificationKind =
+  | "version_update"
+  | "privacy_labels"
+  | "privacy_policy"
+  | "accessibility"
+  | "profile_mismatch"
+  | "import"
+  | "unmatched"
+  | "ai_timeout"
+  | "job_resumed"
+  | "parser_warning"
+  | "system";
+
+const SYNTHETIC_KINDS: ReadonlyMap<string, NotificationKind> = new Map([
+  ["version_update", "version_update"],
+  ["profile_mismatch", "profile_mismatch"],
+  ["import_completed", "import"],
+  ["manual_apps_prompt", "unmatched"],
+  ["ai_timeout", "ai_timeout"],
+  ["parser_fallthrough", "parser_warning"],
+]);
+
+export function describeNotificationKind(
+  entries:
+    | ReadonlyArray<{ category?: string; type?: string }>
+    | null
+    | undefined
+): NotificationKind {
+  if (!entries || entries.length === 0) {
+    return "system";
+  }
+  const firstType = entries[0]?.type;
+  if (typeof firstType === "string") {
+    if (JOB_RESUME_TYPES.has(firstType)) {
+      return "job_resumed";
+    }
+    const synthetic = SYNTHETIC_KINDS.get(firstType);
+    if (synthetic) {
+      return synthetic;
+    }
+  }
+  if (
+    entries.every(
+      (e) =>
+        e?.category === "privacy-policy" ||
+        e?.type === "policy" ||
+        e?.type === "policy_summary"
+    )
+  ) {
+    return "privacy_policy";
+  }
+  if (entries.every((e) => e?.category === "accessibility")) {
+    return "accessibility";
+  }
+  return "privacy_labels";
 }
 
 /**

@@ -9830,6 +9830,88 @@ body.review-rec-print-active .review-rec-print a {
   font-weight: 700;
 }
 
+.notif-dropdown-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: flex-end;
+}
+.notif-dropdown-actions .btn {
+  font-size: 12px;
+}
+.notif-dropdown-actions .btn.is-active {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.notif-clear-all.is-confirming {
+  color: var(--red);
+}
+
+/* Inline per-type switches: the same preference Settings → Notifications
+   writes, reachable without leaving the page that is nagging you. */
+.notif-mute-panel {
+  padding: 10px 16px 12px;
+  background: color-mix(in srgb, var(--text) 3%, transparent);
+  border-bottom: 1px solid var(--popover-border);
+}
+.notif-mute-help {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+.notif-mute-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.notif-mute-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  cursor: pointer;
+}
+.notif-mute-settings {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+/* What a row is about. The text is the signal; the tint only groups. */
+.notif-kind {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-2);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: var(--surface-active);
+  border-radius: 999px;
+}
+.notif-kind-privacy_labels {
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 14%, transparent);
+}
+.notif-kind-privacy_policy {
+  color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 14%, transparent);
+}
+.notif-kind-profile_mismatch,
+.notif-kind-parser_warning {
+  color: var(--orange);
+  background: color-mix(in srgb, var(--orange) 14%, transparent);
+}
+.notif-kind-version_update {
+  color: var(--text-3);
+}
+
 .notif-list {
   max-height: 380px;
   overflow-y: auto;

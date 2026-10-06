@@ -2709,7 +2709,7 @@
     "policy_updates_desc": "When the developer's linked privacy policy text changes since the last sync. Off by default: a changed policy then stays on the app's History timeline without a review marker, bell notification or webhook post.",
     "policy_updates_example": "e.g. \"Spotify's privacy policy has been updated — new section on third-party sharing.\"",
     "version_updates_label": "App version updates",
-    "version_updates_desc": "When Apple reports a new App Store version for a tracked app — useful for cross-referencing a release with a privacy-label change.",
+    "version_updates_desc": "When Apple reports a new App Store version for a tracked app, useful for cross-referencing a release with a privacy-label change. Off by default: the new version still shows on the app's page and in the Activity log, and nothing reaches the bell, the badge or a webhook until you turn this on.",
     "version_updates_example": "e.g. \"Instagram updated from v287.0 to v288.0 (released 14 Apr 2026).\"",
     "import_completed_label": "Import finished",
     "import_completed_desc": "A one-shot confirmation each time a bulk import finishes, including partial/queued runs.",
@@ -2735,6 +2735,25 @@
     "empty_no_changes": "🎉 No changes detected yet",
     "empty_hidden_prefix": "🔕 All current notifications are hidden by your preferences.",
     "empty_hidden_link": "Adjust preferences →",
+    "clear_all": "Clear all",
+    "clear_all_confirm": "{count, plural, one {Clear # notification?} other {Clear # notifications?}}",
+    "clear_all_busy": "Clearing…",
+    "mute_toggle": "Mute…",
+    "mute_help": "Untick a type to stop showing it here. Nothing is deleted: tick it again and those notifications come back.",
+    "mute_settings_link": "All notification settings →",
+    "kinds": {
+      "version_update": "App update",
+      "privacy_labels": "Privacy labels",
+      "privacy_policy": "Privacy policy",
+      "accessibility": "Accessibility",
+      "profile_mismatch": "Privacy profile",
+      "import": "Import",
+      "unmatched": "Unmatched apps",
+      "ai_timeout": "AI summary",
+      "job_resumed": "Background job",
+      "parser_warning": "Parser warning",
+      "system": "System"
+    },
     "stale_app_title": "The import this notification came from now points at a different App Store listing.",
     "time_just_now": "just now",
     "time_minutes_ago": "{count}m ago",
@@ -2781,7 +2800,9 @@
       "policy_stale_cleared": "A previous privacy-policy sync lock was stuck after a server restart and has been cleared. You can start a new policy sync now.",
       "policy_resumed_with_data": "Privacy-policy sync resumed — {remaining} of {total, plural, one {# app} other {# apps}} still to process. Running in the background.",
       "n_changes_with_first": "{count, plural, one {# change detected · {first}} other {# changes detected · {first}}}",
-      "n_changes": "{count, plural, one {# change detected} other {# changes detected}}"
+      "n_changes": "{count, plural, one {# change detected} other {# changes detected}}",
+      "version_update": "Updated from v{previous} to v{current}",
+      "version_update_default": "A new App Store version was released."
     }
   },
   "changelog_page": {
@@ -3655,6 +3676,7 @@
     "device_sub_no_model": "{count, plural, one {# app} other {# apps}}",
     "unattached_label": "Not tied to a device",
     "unattached_sub": "Apps added by hand or from a CSV",
+    "manage_devices": "Manage devices →",
     "banner_scoped": "You're viewing {scope}.",
     "banner_show_all": "Show all devices",
     "grid_filtering_by": "Showing",

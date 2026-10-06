@@ -2654,6 +2654,32 @@ async function adminCases(route, method, extra = {}) {
   });
 }
 
+// ── /api/notifications: Clear all ────────────────────────────────────
+// Appended after every other case on purpose: a case's forwarded address
+// and ids come from counters, so a case added mid-file would move every
+// later case's recording.
+{
+  const route = "/api/notifications";
+  const method = "POST";
+  await run("notifications clear all", {
+    route,
+    method,
+    setup: [
+      ...APPS,
+      notification("n-1", A1, 0),
+      notification("n-2", A1, 1),
+      notification("n-3", A2, 0),
+    ],
+    json: { action: "clear" },
+  });
+  await run("notifications clear all with nothing to clear", {
+    route,
+    method,
+    setup: [...APPS],
+    json: { action: "clear" },
+  });
+}
+
 writeFileSync(
   path.join(
     path.dirname(new URL(import.meta.url).pathname),

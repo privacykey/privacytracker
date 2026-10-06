@@ -53,6 +53,7 @@ const INSERT_VERDICT_BULK: &str = "INSERT INTO app_verdicts\n       (id, app_id,
 const UPDATE_VERDICT_BULK: &str =
     "UPDATE app_verdicts\n     SET verdict = ?, rationale = ?, updated_at = ?\n     WHERE id = ?";
 const MARK_ALL_READ: &str = "UPDATE notifications SET read = 1";
+const DELETE_ALL_NOTIFICATIONS: &str = "DELETE FROM notifications";
 const INSERT_ANNOTATION: &str = "INSERT INTO annotations\n       (id, app_id, content, source, source_name, visibility, tag,\n        created_at, updated_at, deleted_at)\n     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)";
 const SOFT_DELETE_ANNOTATION: &str =
     "UPDATE annotations SET deleted_at = ?, updated_at = ? WHERE id = ?";
@@ -877,6 +878,14 @@ fn notifications_post(cx: &mut Cx, body: BodyOutcome) -> Response {
             return internal_error();
         }
         return json_ok(&json!({ "success": true }));
+    }
+    // The bell's "Clear all": `clearAllNotifications`, every row whatever
+    // its read state, and how many went.
+    if action == Some("clear") {
+        return match cx.w.run(DELETE_ALL_NOTIFICATIONS, vec![]) {
+            Ok(removed) => json_ok(&json!({ "success": true, "removed": removed })),
+            Err(_) => internal_error(),
+        };
     }
     if action == Some("mark_unread") {
         let Some(Value::Array(raw)) = prop(&body, "ids") else {

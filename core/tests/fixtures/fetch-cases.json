@@ -5858,23 +5858,6 @@
         {
           "sql": "COMMIT",
           "params": []
-        },
-        {
-          "sql": "\n    INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read)\n    VALUES (?, ?, ?, ?, ?, 0)\n  ",
-          "params": [
-            "00000000-0000-4000-8000-000000000005",
-            "2001",
-            "Diff",
-            "[{\"type\":\"version_update\",\"description\":\"Diff updated from v1.0.0 to v2.0.0 (released 2 Jan 2026).\",\"previousVersion\":\"1.0.0\",\"currentVersion\":\"2.0.0\",\"previousVersionUpdatedAt\":1767323045000,\"currentVersionUpdatedAt\":1767323045000}]",
-            1789478664000
-          ]
-        },
-        {
-          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
-          "params": [
-            "version_update_notified_2001_at",
-            "1789478664000"
-          ]
         }
       ],
       "rows": {
@@ -5978,16 +5961,6 @@
             "read": 0,
             "stale": 0,
             "not_before": null
-          },
-          {
-            "id": "00000000-0000-4000-8000-000000000005",
-            "app_id": "2001",
-            "app_name": "Diff",
-            "change_summary": "[{\"type\":\"version_update\",\"description\":\"Diff updated from v1.0.0 to v2.0.0 (released 2 Jan 2026).\",\"previousVersion\":\"1.0.0\",\"currentVersion\":\"2.0.0\",\"previousVersionUpdatedAt\":1767323045000,\"currentVersionUpdatedAt\":1767323045000}]",
-            "created_at": 1789478664000,
-            "read": 0,
-            "stale": 0,
-            "not_before": null
           }
         ],
         "activity_log": [
@@ -6016,12 +5989,7 @@
             "duration_ms": 0
           }
         ],
-        "app_settings": [
-          {
-            "key": "version_update_notified_2001_at",
-            "value": "1789478664000"
-          }
-        ]
+        "app_settings": []
       },
       "expected": {
         "ok": true,

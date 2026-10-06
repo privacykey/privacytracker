@@ -33,6 +33,7 @@ import {
   getNotifications,
   getUnreadCount,
 } from "../../lib/notifications";
+import { setSetting } from "../../lib/scheduler";
 import { resetTestDb, seedTrackedApp } from "../helpers/test-db";
 
 test.beforeEach(resetTestDb);
@@ -261,6 +262,9 @@ function writeEverySystemNotice(): number {
       },
     ],
   });
+  // Version updates are off by default and then write nothing; this
+  // fixture is about the read-side flags, so turn the type on.
+  setSetting("notification_prefs", JSON.stringify({ versionUpdates: true }));
   createVersionUpdateNotification({
     appId: "123",
     appName: "Fixture App",
