@@ -56,8 +56,11 @@ gh attestation verify oci://ghcr.io/privacykey/privacytracker:0.3.0 \
 
 Use HTTPS for LAN access, including on a home network. Configure
 `PRIVACYTRACKER_ALLOWED_HOSTS` with the hostname you use in the browser; loopback
-remains allowed for health checks. Host allowlisting prevents DNS rebinding but
-does not replace authentication.
+(`localhost`, `127.0.0.0/8`, `::1`) remains allowed for health checks. A name
+under `.localhost`, such as the overlays' default `privacytracker.localhost`,
+is an ordinary hostname here: list it in the allowlist, which also requires the
+admin token. Host allowlisting prevents DNS rebinding but does not replace
+authentication.
 
 The Caddy example in `deploy/caddy/compose.yaml` supplies the required host,
 network and proxy settings. Set `PRIVACYTRACKER_HOST` and `AUDITOR_ADMIN_TOKEN` in

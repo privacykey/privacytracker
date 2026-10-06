@@ -7,7 +7,9 @@ import {
 
 test("isLocalOnlyHost recognises localhost forms", () => {
   assert.equal(isLocalOnlyHost("localhost:3000"), true);
-  assert.equal(isLocalOnlyHost("privacytracker.localhost"), true);
+  // A name under .localhost is served only through the allowlist, so the
+  // diagnostics read it as a network host like any other name.
+  assert.equal(isLocalOnlyHost("privacytracker.localhost"), false);
   assert.equal(isLocalOnlyHost("127.0.0.1:3000"), true);
   assert.equal(isLocalOnlyHost("[::1]:3000"), true);
   assert.equal(isLocalOnlyHost("privacytracker.home.arpa"), false);

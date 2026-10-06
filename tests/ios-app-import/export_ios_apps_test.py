@@ -103,6 +103,54 @@ class BackupImportTests(unittest.TestCase):
             self.assertEqual(rows[0]["bundle_id"], "com.apple.mobiletimer")
             self.assertEqual(json.loads((output_dir / "apps.json").read_text())[1]["name"], "Signal")
 
+    def test_write_outputs_neutralises_formula_shaped_csv_cells(self) -> None:
+        names = [
+            "=1+1",
+            "+2+2",
+            "-3",
+            "@SUM(99)",
+            " =HYPERLINK(\"https://evil.example\",\"click\")",
+            "＝fullwidth",
+            "two\nlines\r\nhere",
+            "\ttabbed",
+            "Plain Name",
+        ]
+        records = [
+            export_ios_apps.AppRecord(name, f"com.example.app{index}", "unit")
+            for index, name in enumerate(names)
+        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            export_ios_apps.write_outputs(records, output_dir, "apps")
+
+            raw = (output_dir / "apps.csv").read_text(encoding="utf-8")
+            # Every field is quoted, so a cell can never spill into the next.
+            for line in raw.splitlines():
+                self.assertTrue(line.startswith('"') and line.endswith('"'), line)
+            with (output_dir / "apps.csv").open(newline="", encoding="utf-8") as handle:
+                by_bundle = {row["bundle_id"]: row["name"] for row in csv.DictReader(handle)}
+            self.assertEqual(by_bundle["com.example.app0"], "\t=1+1")
+            self.assertEqual(by_bundle["com.example.app1"], "\t+2+2")
+            self.assertEqual(by_bundle["com.example.app2"], "\t-3")
+            self.assertEqual(by_bundle["com.example.app3"], "\t@SUM(99)")
+            # Leading whitespace does not hide the formula character.
+            self.assertEqual(
+                by_bundle["com.example.app4"], '\t =HYPERLINK("https://evil.example","click")'
+            )
+            self.assertEqual(by_bundle["com.example.app5"], "\t＝fullwidth")
+            # Line breaks inside a name collapse, so one record stays one row.
+            self.assertEqual(by_bundle["com.example.app6"], "two lines here")
+            self.assertEqual(by_bundle["com.example.app7"], "\t\ttabbed")
+            self.assertEqual(by_bundle["com.example.app8"], "Plain Name")
+            # The text and JSON outputs carry the names as they are.
+            self.assertEqual(
+                (output_dir / "apps.txt").read_text(encoding="utf-8").splitlines()[0], "=1+1"
+            )
+            self.assertEqual(
+                json.loads((output_dir / "apps.json").read_text(encoding="utf-8"))[3]["name"],
+                "@SUM(99)",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

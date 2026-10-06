@@ -53,6 +53,16 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- A hostname under `.localhost` is no longer treated as loopback by the host
+  allowlist on either backend. Where a resolver sends such a name is up to it,
+  so a token-less install on loopback now refuses a page that rebinds one to
+  127.0.0.1, as it refuses any other unknown host. The Caddy and Traefik
+  overlays already list `privacytracker.localhost` in
+  `PRIVACYTRACKER_ALLOWED_HOSTS`; a hand-rolled setup that relied on the old
+  rule needs the same entry, and the admin token that comes with it.
+- The iOS app-list helper (`scripts/ios-app-import/export_ios_apps.py`) quotes
+  every CSV field and prefixes a tab to a name that a spreadsheet would read as
+  a formula, so an app named like `=HYPERLINK(...)` opens as text.
 - Replace manual network-interface pointer traversal with an owning Rust
   iterator when finding addresses for paired phones.
 - Patch Next.js, DOMPurify and affected build-tool dependencies. The Linux
