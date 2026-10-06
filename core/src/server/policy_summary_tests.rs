@@ -234,6 +234,7 @@ fn run_sync(rt: &tokio::runtime::Runtime, case: &Value) -> Vec<String> {
         phase: phase(&case["options"]),
         force_resummarise: case["options"]["forceResummarise"] == true,
         bypass_throttle: case["options"]["bypassThrottle"] == true,
+        cancel: None,
     };
     let mut ids = CountingIds {
         prefix: "00000000-0000-4000-8000-",

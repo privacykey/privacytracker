@@ -51,11 +51,18 @@ use crate::{
     },
 };
 use serde_json::{json, Value};
-use std::{future::Future, pin::Pin};
+use std::{
+    future::Future,
+    pin::Pin,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 const PERSIST_CHUNK_NOTES: &str = "UPDATE privacy_policy_analyses\n        SET chunk_notes_json = ?, chunk_notes_hash = ?\n      WHERE app_id = ?";
 const MAX_DIRECT_POLICY_CHARS: usize = 40_000;
 const MAX_CHUNK_CHARS: usize = 12_000;
+/// `MAX_SUMMARY_CHUNKS`: the most chunk calls one summary makes. A text the
+/// fetch bounded (`MAX_POLICY_SOURCE_CHARS`) always fits.
+const MAX_SUMMARY_CHUNKS: usize = 120;
 const NEEDS_CONFIG_ERROR: &str =
     "Configure an AI provider in Settings to enable privacy-policy summaries.";
 
@@ -175,6 +182,7 @@ pub(super) fn summarise_stored_policy<'a, 'b: 'a>(
     clock: &'a dyn Clock,
     request: &'a PolicyRequest,
     force_resummarise: bool,
+    cancel: Option<&'a AtomicBool>,
 ) -> SummariseFuture<'a> {
     Box::pin(summarise(
         log,
@@ -183,6 +191,7 @@ pub(super) fn summarise_stored_policy<'a, 'b: 'a>(
         clock,
         request,
         force_resummarise,
+        cancel,
     ))
 }
 
@@ -193,6 +202,7 @@ async fn summarise(
     clock: &dyn Clock,
     request: &PolicyRequest,
     force_resummarise: bool,
+    cancel: Option<&AtomicBool>,
 ) -> Result<(Value, FollowUps), String> {
     let app_id = request.app_id.as_str();
     let Some(policy_url) = request.policy_url.as_deref().filter(|u| !u.is_empty()) else {
@@ -319,6 +329,7 @@ async fn summarise(
             policy_url,
             policy_text: &text,
             content_hash: &content_hash,
+            cancel,
         },
         guardian,
     )
@@ -386,6 +397,24 @@ pub(super) struct Subject<'s> {
     pub policy_url: &'s str,
     pub policy_text: &'s str,
     pub content_hash: &'s str,
+    /// Set when the caller has cancelled the run: checked before every
+    /// provider call, as Node checks its `AbortSignal`. Node also aborts
+    /// the call in flight; here that call finishes and the next is not made.
+    pub cancel: Option<&'s AtomicBool>,
+}
+
+/// `throwIfCancelled`.
+fn check_cancelled(subject: &Subject<'_>) -> Result<(), String> {
+    if subject
+        .cancel
+        .is_some_and(|flag| flag.load(Ordering::SeqCst))
+    {
+        return Err(
+            "Summary cancelled before it finished; the chunk notes made so far are kept for the next run."
+                .to_string(),
+        );
+    }
+    Ok(())
 }
 
 /// `resolvePolicyLengthConfig`: the direct limit and the chunk size.
@@ -413,6 +442,7 @@ pub(super) async fn build_policy_summary(
             "ai-direct",
             format!("Sending {} chars in a single call.", locale_int(length)),
         );
+        check_cancelled(subject)?;
         let schema = final_summary_schema(guardian);
         let prompt = build_direct_prompt(
             subject.app_name,
@@ -446,6 +476,17 @@ pub(super) async fn build_policy_summary(
         "ai-chunked",
         format!("Splitting source into {} chunks.", chunks.len()),
     );
+    // The budget: a text the fetch bounded always fits; one stored before
+    // the bound existed, or written by another path, is refused before the
+    // first call.
+    if chunks.len() > MAX_SUMMARY_CHUNKS {
+        let message = format!(
+            "Policy text splits into {} chunks; one summary makes at most {MAX_SUMMARY_CHUNKS} chunk calls. Rescrape the policy so its text is bounded, then summarise again.",
+            locale_int(chunks.len())
+        );
+        log.fail("chunk-budget", message.clone());
+        return Err(message);
+    }
     let reusable = if subject.content_hash.is_empty() {
         None
     } else {
@@ -463,6 +504,7 @@ pub(super) async fn build_policy_summary(
         );
     }
     for index in notes.len()..chunks.len() {
+        check_cancelled(subject)?;
         log.start_phase(
             &format!("chunk-{}", index + 1),
             Some(format!(
@@ -490,6 +532,7 @@ pub(super) async fn build_policy_summary(
             }
         }
     }
+    check_cancelled(subject)?;
     log.start_phase(
         "chunk-merge",
         Some("Merging chunk notes into final summary.".to_string()),
@@ -686,6 +729,7 @@ pub(crate) async fn summarize_sample_privacy_policy(
             policy_url: SAMPLE_POLICY_URL,
             policy_text: SAMPLE_POLICY_TEXT,
             content_hash: &content_hash,
+            cancel: None,
         },
         guardian,
     )
