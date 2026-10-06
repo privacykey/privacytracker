@@ -27,13 +27,12 @@ export interface FocusWorkflowInput {
 }
 
 /**
- * Infer a workflow only when the existing audience/goals state points at one
- * unambiguously. Someone-else flows need the extra handoff-vs-monitor answer,
- * so they intentionally collapse to custom unless a caller supplies workflow.
+ * Helping someone defaults to a one-off review and handoff. An explicitly
+ * stored ongoing workflow still wins at the call site.
  */
 export function inferFocusWorkflow(input: FocusWorkflowInput): FocusWorkflow {
-  if (input.minimal) {
-    return "custom";
+  if (input.audience === "loved_one") {
+    return "other_handoff";
   }
   if (input.audience === "self") {
     if (input.monitor && !input.cleanup) {

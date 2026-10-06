@@ -19,15 +19,16 @@
       "privacy_map": "Privacy Map",
       "stats": "Stats & charts",
       "notifications": "Notifications",
-      "shortlist": "Shortlist"
+      "shortlist": "Shortlist",
+      "label_hints": "Privacy label examples"
     }
   },
   "verdict": {
-    "safe_label": "Marked safe",
-    "safe_short": "Safe",
-    "safe_desc": "Keeping this app — you're comfortable with what it does and how it handles your data.",
+    "safe_label": "Keeping app",
+    "safe_short": "Keep",
+    "safe_desc": "Keep this app and accept its current mismatch with your preferences. New collection or a changed privacy profile asks for a new decision.",
     "replace_label": "Looking for replacement",
-    "replace_short": "Replace",
+    "replace_short": "Plan replacement",
     "replace_desc": "You want a less invasive alternative. Use the Compare view to find candidates and add them to your shortlist.",
     "uninstall_label": "Marked to remove",
     "uninstall_short": "Remove",
@@ -63,7 +64,8 @@
     "error_load": "Failed to load",
     "error_save": "Failed to save",
     "error_clear": "Failed to clear",
-    "error_dismiss": "Failed to dismiss"
+    "error_dismiss": "Failed to dismiss",
+    "keep_accept": "Keep & accept current concern"
   },
   "review_rec": {
     "_comment": "Strings for the /dashboard/review-recommendations review-and-act wizard. Sub-blocks mirror the visual structure: hero, gate, stepper labels, then one block per step (review/compare/action/backup/act), modals, and the printable checklist.",
@@ -314,7 +316,7 @@
     "high_desc": "Apps that track you across other apps and websites, or collect sensitive data.",
     "moderate_desc": "Apps linking a meaningful amount of data to your identity.",
     "low_desc": "Apps collecting a limited amount of identifiable data.",
-    "minimal_desc": "Apps collecting no linked or tracking data.",
+    "minimal_desc": "Apps whose label declares no linked or tracking data.",
     "unknown_desc": "The developer hasn't filled in privacy labels yet — Apple will require them on the next update.",
     "no_apps_with_level": "No {level} apps"
   },
@@ -345,76 +347,79 @@
   "data_label_hint": {
     "trigger_label": "What does this mean? Show example",
     "popover_aria_label": "Example: {category}, {severity}",
+    "example_lip": "This is an example",
+    "read_more": "Read more about privacy labels",
+    "not_disclosed": "This app has disclosed that it collects {category}, not what that includes. Its privacy policy may say more.",
     "captions": {
       "contact_info": {
-        "data_used_to_track_you": "Give one app your email, and a week later your inbox fills with brands you never signed up with. Your address got passed along — and it finds you by name.",
-        "data_linked_to_you": "Your name, email and phone run your account here — they sign you in, send your receipts, track your delivery. Tied to you, kept in this one app.",
-        "data_not_linked_to_you": "Your address is struck out before anything is stored. What's kept is a sign-up tally — domains and countries — with no addresses in it."
+        "data_used_to_track_you": "Give one app your email and it could be passed along. Within a week, brands you never signed up with would fill your inbox, finding you by name.",
+        "data_linked_to_you": "Your name, email and phone could run your account: signing you in, sending receipts, tracking delivery. Tied to you, kept in this one app.",
+        "data_not_linked_to_you": "Your address could be struck out before anything is stored, leaving a sign-up tally of domains and countries with no addresses in it."
       },
       "health_and_fitness": {
-        "data_used_to_track_you": "Your step count leaves the app and reaches an insurer's model. Low-activity weeks read as risk — and your premium gets recalculated upward.",
-        "data_linked_to_you": "Your workouts are filed under your name here — weekly trends, streaks, rest days. The app knows your body's patterns and keeps them to itself.",
-        "data_not_linked_to_you": "Your sample is stripped of identity and pooled with 50,000 others. The averages are real; none of them point back to you."
+        "data_used_to_track_you": "A step count could leave the app and reach an insurer's model, where low-activity weeks read as risk and a premium gets recalculated upward.",
+        "data_linked_to_you": "Your workouts could be filed under your name, with weekly trends, streaks and rest days. The app would know your body's patterns and keep them to itself.",
+        "data_not_linked_to_you": "Your sample could be stripped of identity and pooled with 50,000 others. The averages would be real, none of them pointing back to you."
       },
       "financial_info": {
-        "data_used_to_track_you": "Enter your salary and assets, and a booking site quotes you a higher airfare — same seat, same flight, priced for what they know you can pay.",
-        "data_linked_to_you": "Your card and balance are pinned to your account here — saved for checkout, under your name, visible to this app only.",
-        "data_not_linked_to_you": "Your amount drops into an anonymous total. The aggregate spend stat is real; your slice of it can't be traced back."
+        "data_used_to_track_you": "Your salary and assets could set the price you are shown. A booking site might quote a higher airfare for the same seat, priced for what they know you can pay.",
+        "data_linked_to_you": "Your card and balance could be pinned to your account, saved for checkout under your name and visible to this app only.",
+        "data_not_linked_to_you": "Your amount could drop into an anonymous total. The overall spend figure would be real, your slice of it untraceable."
       },
       "location": {
-        "data_used_to_track_you": "Your GPS trail pins your home address and your daily pattern — when you leave, when you're back. Enough to identify you without ever asking your name.",
-        "data_linked_to_you": "Your home, your work, your morning commute get filed against your profile here. The app remembers your routine — and keeps it in-app.",
-        "data_not_linked_to_you": "Your pings are pooled by area before storage — one dot among 48,210 in your region today, with no names and no device IDs."
+        "data_used_to_track_you": "A location trail could pin your home address and your daily pattern: when you leave, and when you are back. Enough to identify you without ever asking your name.",
+        "data_linked_to_you": "Your home, your work, your morning commute could be filed against your profile. The app would remember your routine and keep it in-app.",
+        "data_not_linked_to_you": "Your pings could be pooled by area before storage. You would be one dot among 48,210 in your region, with no names and no device identifiers attached."
       },
       "sensitive_info": {
-        "data_used_to_track_you": "Nothing was asked. Your faith and politics were inferred from what you read and joined, packaged into an audience segment, and sold — 'Why this ad?' quietly names it.",
-        "data_linked_to_you": "The app holds its guess about your beliefs and uses it to tune what you see — inside this one app, not sold on.",
-        "data_not_linked_to_you": "Your identity is struck from the signal at source. What survives is a regional count — one of 64,000 — with no names attached."
+        "data_used_to_track_you": "Nothing need be asked. Your faith or politics could be guessed from what you read and joined, then sold to advertisers as a list of people like you.",
+        "data_linked_to_you": "The app could hold a guess about your beliefs and use it to tune what you see, inside this one app and not sold on.",
+        "data_not_linked_to_you": "Your identity could be struck from the signal at source, leaving you as one of 64,000 in a regional count, with no names attached."
       },
       "contacts": {
-        "data_used_to_track_you": "Share your address book and the app builds a file on Sarah — her name, her number, who she knows — though she never signed up for anything.",
-        "data_linked_to_you": "Your contacts are filed against your profile to power 'people you may know'. The app knows your circle; it stays in this app.",
-        "data_not_linked_to_you": "Your contacts are reduced to a count before storage. '312 contacts' is all that survives — no names, no numbers."
+        "data_used_to_track_you": "Share an address book and an app could build a file on someone who never signed up for anything: their name, their number, who they know.",
+        "data_linked_to_you": "Your contacts could be filed against your profile to power 'people you may know'. The app would know your circle, and keep it in this app.",
+        "data_not_linked_to_you": "Your contacts could be reduced to a count before storage. '312 contacts' would be all that survives, with no names and no numbers."
       },
       "user_content": {
-        "data_used_to_track_you": "Your photo library becomes training data. The model learns your face from your own pictures — and can now recognise it anywhere.",
-        "data_linked_to_you": "Your photos are filed in your library here — backed up under your account so your devices stay in sync. Yours, in this one app.",
-        "data_not_linked_to_you": "Owner and location are stripped from each image first. Your photo becomes one of 10 million in an anonymous pool."
+        "data_used_to_track_you": "A photo library could become training data. A model could learn your face from your own pictures, and recognise it anywhere after that.",
+        "data_linked_to_you": "Your photos could be filed in your library here and backed up under your account, so your devices stay in sync. Yours, in this one app.",
+        "data_not_linked_to_you": "Owner and location could be stripped from each image first, leaving your photo as one of 10 million in an anonymous pool."
       },
       "browsing_history": {
-        "data_used_to_track_you": "The product page you looked at follows you. An ad for the same shoes turns up inside a completely unrelated app — matched to you.",
-        "data_linked_to_you": "The pages you read are filed into 'interests' on your profile here, and your feed quietly reshapes around them.",
-        "data_not_linked_to_you": "Your visit is counted as a topic tally — sport, travel, finance. The counts are real; who visited is stripped."
+        "data_used_to_track_you": "A product page you looked at could follow you. An ad for the same shoes might turn up inside a completely unrelated app, matched to you.",
+        "data_linked_to_you": "The pages you read could be filed into 'interests' on your profile, and your feed could quietly reshape around them.",
+        "data_not_linked_to_you": "Your visit could be counted in a topic tally like sport, travel or finance. The counts would be real, with who visited stripped out."
       },
       "search_history": {
-        "data_used_to_track_you": "Search for pasta recipes here, and a chef's-knife ad meets you inside an unrelated news app. Your query travelled — and it was matched to you.",
-        "data_linked_to_you": "Your queries stay on your profile here — type 'pa' and it already suggests your pasta searches. Convenient, and contained to this app.",
-        "data_not_linked_to_you": "Your query is struck from the log and folded into trends. 'Pasta recipes is trending' is real; whose searches made it isn't kept."
+        "data_used_to_track_you": "Search for pasta recipes and a chef's-knife ad could meet you inside an unrelated news app, your query having travelled and been matched to you.",
+        "data_linked_to_you": "Your queries could stay on your profile, so typing 'pa' already suggests your pasta searches. Convenient, and contained to this app.",
+        "data_not_linked_to_you": "Your query could be struck from the log and folded into trends. 'Pasta recipes is trending' would be real, whose searches made it not kept."
       },
       "identifiers": {
-        "data_used_to_track_you": "Your device's advertising ID is the same in every app. Three apps compare notes, the IDs line up — and three separate yous become one profile.",
-        "data_linked_to_you": "Your account ID ties your phone, tablet and laptop together — the same you across devices, inside this one service.",
-        "data_not_linked_to_you": "A throwaway session token stands in for your identity, then expires. The behaviour data can't be walked back to you."
+        "data_used_to_track_you": "A device's advertising identifier is the same in every app. Three apps could compare notes, the identifiers line up, and three separate yous become one profile.",
+        "data_linked_to_you": "Your account could tie your phone, tablet and laptop together as the same you across devices, inside this one service.",
+        "data_not_linked_to_you": "A throwaway code could stand in for your identity and then expire, leaving a record of what you did that cannot be traced back to you."
       },
       "purchases": {
-        "data_used_to_track_you": "Buy a dog bowl and puppy food, and an ad for puppy gear meets you inside an unrelated puzzle app. Your receipt told a story — and it was matched to you.",
-        "data_linked_to_you": "Your orders are filed in your account — for receipts and easy reorder. They know what you bought; it isn't sold on.",
-        "data_not_linked_to_you": "Your name comes off the receipt before storage. '$51 · pet store · today' joins the aggregate; who paid isn't kept."
+        "data_used_to_track_you": "Buy a dog bowl and puppy food, and an ad for puppy gear could meet you inside an unrelated puzzle app. Your receipt would tell a story that gets matched to you.",
+        "data_linked_to_you": "Your orders could be filed in your account, for receipts and easy reorder. They would know what you bought; it would not be sold on.",
+        "data_not_linked_to_you": "Your name could come off the receipt before storage. '$51 · pet store · today' would join the totals, with who paid not kept."
       },
       "usage_data": {
-        "data_used_to_track_you": "The app learns your weak moment — 11pm, every night. A notification lands on your lock screen at 11:04, timed to pull you back in.",
-        "data_linked_to_you": "Where you left off is kept on your profile so the app can drop you straight back in — 60% through the article. Used here, not sold.",
-        "data_not_linked_to_you": "Your user id is struck from each event. Your tap becomes +1 on a product-analytics funnel — open, browse, buy — with no user attached."
+        "data_used_to_track_you": "An app could learn a weak moment, like 11pm every night, and time a notification to land on your lock screen at 11:04 and pull you back in.",
+        "data_linked_to_you": "Where you left off could be kept on your profile so the app drops you straight back in, 60% through the article. Used here, not sold.",
+        "data_not_linked_to_you": "Your user identifier could be struck from each event, your tap becoming +1 in a tally of how people move through the app (open, browse, buy), with no one attached."
       },
       "diagnostics": {
-        "data_used_to_track_you": "A crash report's boring facts — model, OS, battery — combine into a fingerprint. In a crowd of phones, exactly one matches: yours.",
-        "data_linked_to_you": "Your crash is ticketed against your account, the bug gets reproduced, and the fix ships back to your device. Tied to you so they can fix your bug.",
-        "data_not_linked_to_you": "The device id is struck before the report ships. Your crash becomes +1 on a dashboard — 0.3% of sessions — with no devices in it."
+        "data_used_to_track_you": "A crash report's boring facts (model, system version, battery) could combine into a fingerprint. In a crowd of phones, exactly one would match: yours.",
+        "data_linked_to_you": "Your crash could be ticketed against your account, the bug reproduced, and the fix shipped back to your device. Tied to you so they can fix it.",
+        "data_not_linked_to_you": "The device identifier could be struck before the report ships, your crash becoming +1 on a dashboard showing 0.3% of sessions, with no devices in it."
       },
       "other": {
-        "data_used_to_track_you": "The label only says 'other'. Whatever it is, it's filed with everything else they hold on you — matched to you, contents undisclosed.",
-        "data_linked_to_you": "Unnamed data sits on file with your account, used 'for app functionality' — which is all the label says. Kept in this one app.",
-        "data_not_linked_to_you": "The user id is struck from each record at source. What's kept is a pile of misc records with no one attached — yours points at nobody."
+        "data_used_to_track_you": "The label only says 'other'. Whatever it is could be filed with everything else they hold on you and matched to you, its contents undisclosed.",
+        "data_linked_to_you": "Unnamed data could sit on file with your account, used 'for app functionality', which is all the label says. Kept in this one app.",
+        "data_not_linked_to_you": "The user identifier could be struck from each record at source, leaving a pile of miscellaneous records with no one attached. Yours would point at nobody."
       }
     }
   },
@@ -442,12 +447,12 @@
       "subtext": "Finds the apps that take the most, with help to remove them."
     },
     "minimal": {
-      "label": "Just the basics",
-      "subtext": "A pared-down audit surface — no extras."
+      "label": "Keep it simple",
+      "subtext": "Less dashboard detail. Your goals and their tools stay enabled."
     },
     "accessibility": {
       "label": "I also need accessibility info for my apps",
-      "subtext": "Elevates the accessibility panel and filter row."
+      "subtext": "Shows the accessibility panel and filter row."
     }
   },
   "onboarding": {
@@ -485,7 +490,7 @@
       },
       "help": {
         "title": "Help a friend",
-        "body": "Looking through someone else's apps? We'll help you gather what you find so you can share it or talk it over."
+        "body": "Review their apps once, save your recommendations and hand over a report they can use."
       },
       "guardian": {
         "title": "Looking after a child",
@@ -1547,11 +1552,11 @@
       "done_body": "Auto-sync is on, so label changes get caught without you checking. You can change how often it runs in Settings."
     },
     "remove_apps_from_phone": {
-      "title": "Clear flagged apps off your phone",
+      "title": "Clear flagged apps off the phone",
       "body": "Mark what to uninstall and we'll walk you through removing them from the device."
     },
     "resync_apps_from_device": {
-      "title": "Pull a fresh app list from your iPhone",
+      "title": "Pull a fresh app list from the iPhone",
       "body": "Re-import from a device to see what's been added or removed since last time."
     },
     "export_audit_bundle": {
@@ -1981,7 +1986,7 @@
       "loading": "Loading…",
       "no_apps_tracked": "No apps tracked yet.",
       "no_apps_match": "No apps match the current filters.",
-      "filter_hide_no_data": "Hide apps with no data collected",
+      "filter_hide_no_data": "Hide apps that declare no data",
       "filter_off_profile_only": "Only off-profile apps",
       "filter_show_profile_rows": "Show Privacy Profile on rows",
       "filter_show_profile_title": "Highlight cells that exceed your Privacy Profile",
@@ -1998,7 +2003,7 @@
       "no_pref_aria": "No preference set",
       "severity_legend_aria": "Severity colour key",
       "tooltip_category": "Category",
-      "tooltip_not_collected": "Not collected",
+      "tooltip_not_collected": "Not declared",
       "tooltip_your_preference": "Your preference",
       "tooltip_no_preference": "No preference",
       "tooltip_hover_inspect": "Hover to inspect",
@@ -2288,7 +2293,7 @@
     "neither_filled_labels": "Neither developer has filled in privacy labels yet",
     "no_details_provided_title": "{name}: Apple shows \"No Details Provided\". The developer will be required to provide privacy details when they submit their next app update.",
     "no_details_chip_title": "Apple shows \"No Details Provided\" — the developer hasn't submitted privacy labels yet",
-    "policy_link_review_pref": "Confirm by reading the developer's privacy policy",
+    "policy_link_review_pref": "Compare the label with the developer's privacy policy",
     "policy_link_review_no_labels": "Apple labels are missing — the privacy policy is the authoritative source",
     "header_a11y_feature": "Accessibility feature",
     "table_privacy_aria": "Data categories collected by {a} and {b}",
@@ -2301,7 +2306,7 @@
     "shortlist_add": "+ Shortlist",
     "slot_label_tracked": "Tracked",
     "slot_label_preview": "Preview",
-    "chip_no_data_collected": "No data collected",
+    "chip_no_data_collected": "Data Not Collected",
     "chip_no_details_provided": "No details provided",
     "chip_no_details_chip_title_alt": "Apple shows \"No Details Provided\" — the developer hasn't submitted privacy labels yet",
     "read_privacy_policy": "Read privacy policy ↗",
@@ -2980,6 +2985,19 @@
       "sync_stale": "Sync {count, plural, one {# stale app} other {# stale apps}}",
       "syncing_stale": "Syncing stale apps…",
       "watchlist_count": "{count, plural, one {# app} other {# apps}}",
+      "watchlist_top_of": "Top {shown} of {total} apps",
+      "cleanup_sub_loved_one": "These apps track them across other apps or link a lot of data to their identity. Open each one to decide what to recommend.",
+      "cleanup_sub_guardian": "These apps track your child across other apps or link a lot of data to their identity. Open each one to decide whether to keep or remove it.",
+      "watchlist_sub_loved_one": "Apps that track them across other apps, or link a lot of data to their identity. This is a reference list. Nothing to action right now.",
+      "risk_chip_unlinked": "{count} unlinked",
+      "risk_chip_linked": "{count} linked",
+      "risk_chip_track": "{count} track",
+      "risk_see_all": "See all apps sorted by risk →",
+      "review_change_count": "{count, plural, one {# change} other {# changes}}",
+      "replace_kicker": "Consider replacing",
+      "replace_sub": "These apps go further than your privacy profile allows. Open one to see which categories mismatch, and decide whether to keep, replace, or delete.",
+      "replace_mismatch_count": "{count, plural, one {# mismatch} other {# mismatches}}",
+      "replace_more": "+{count} more on the <link>apps page</link> (look for the warning badge).",
       "cleanup_kicker": "🧹 Candidates for clean-up",
       "cleanup_sub": "These apps track you across other apps or collect a lot of data linked to your identity. Open each one to decide whether to keep or delete.",
       "family_kicker": "👪 Review these with your family",
@@ -3029,7 +3047,7 @@
       "hint": "Four tiers, derived from Apple's privacy labels. Tap to expand.",
       "intro": "Each app carries a single risk pill based on what Apple's privacy labels say — not on what the app just changed. Accessibility and privacy-policy updates don't move the pill.",
       "example_kicker": "Example",
-      "footer": "Labels are self-declared by developers, so the pill is a floor, not a ceiling — an app could collect more than it admits. Dive into the app's Privacy Labels tab to see exactly which categories and how they're used."
+      "footer": "Labels are self-declared by developers, so the pill is a floor, not a ceiling — an app could collect more than it admits. Open the app's Privacy Labels tab to see exactly which categories and how they're used."
     },
     "risk_tiers": {
       "high_rule": "At least one data type declared as \"Data Used to Track You\".",
@@ -3042,8 +3060,16 @@
       "low_meaning": "The app collects something — often diagnostics, optional usage stats, or a single linked category — without building a full profile.",
       "low_example": "Typical of light-touch utilities, calculators, or reference apps that collect a crash log or optional analytics.",
       "minimal_rule": "The developer declares no data collection at all.",
-      "minimal_meaning": "Apple's privacy labels show an empty sheet. Nothing the app says it collects, linked or otherwise.",
-      "minimal_example": "Typical of single-player offline games, simple reference tools, and some privacy-focused utilities."
+      "minimal_meaning": "The label lists nothing the app collects, linked or otherwise. Like every label, it is the developer's own statement, so compare it with the privacy policy.",
+      "minimal_example": "Offline games and simple tools declare it, and so do some apps whose privacy policy describes collecting data."
+    },
+    "simple_view": {
+      "aria": "Simple view",
+      "note": "Simple view is hiding {count, plural, one {# longer list} other {# longer lists}} of apps.",
+      "note_open": "Showing {count, plural, one {the # longer list} other {the # longer lists}} that simple view usually hides.",
+      "show": "Show more detail",
+      "hide": "Hide the extra detail",
+      "focus_settings": "Open focus settings"
     },
     "layout_footer": {
       "customize": "Customise dashboard…",
@@ -3093,14 +3119,14 @@
       "presets": {
         "labels": {
           "default": "Default",
-          "minimal": "Minimal",
+          "minimal": "Simple",
           "caretaker": "Caretaker",
           "watchdog": "Watchdog",
           "at_a_glance": "At a glance"
         },
         "descriptions": {
           "default": "Canonical order with every card visible. A safe baseline.",
-          "minimal": "Just the essentials — hero, risk, review, and at-a-glance stats.",
+          "minimal": "Status and what changed. The longer lists stay behind Show more detail.",
           "caretaker": "Family-focused. Surface privacy concerns and the review queue first.",
           "watchdog": "Risk-first. Quickly spot the apps you might want to replace or sync.",
           "at_a_glance": "Stats up top. For users who want the high-level picture first."
@@ -3148,7 +3174,9 @@
           "age_rating_callout": "\"Apps rated above your child's age range\" notice for the guardian focus."
         }
       },
-      "edit_cards_aria": "Editable dashboard cards"
+      "edit_cards_aria": "Editable dashboard cards",
+      "keep_fixed": "Keep layout fixed",
+      "keep_fixed_hint": "Off: changing focus reorders the cards, including a custom order. Hidden cards stay hidden. Turning this off takes effect at your next focus change."
     },
     "glance": {
       "apps_tracked": "Apps tracked",
@@ -3434,17 +3462,17 @@
     },
     "actions": {
       "uninstall": "Remove",
-      "safe": "Keep",
-      "replace": "Replace",
+      "safe": "Keep & accept",
+      "replace": "Plan replacement",
       "note": "Note",
-      "skip": "Skip for now",
+      "skip": "Decide later · 7 days",
       "undo": "Undo",
       "exit": "Exit",
       "uninstall_hint": "← / 1",
       "safe_hint": "→ / 2",
       "replace_hint": "↑ / 3",
       "note_hint": "↓ / n",
-      "skip_hint": "s — advance without setting a verdict",
+      "skip_hint": "s — bring this decision back to the dashboard in 7 days",
       "undo_hint": "u",
       "exit_hint": "Esc",
       "close_title": "Close review queue (Esc)",
@@ -3495,7 +3523,7 @@
       "select_all": "Select all visible",
       "select_all_n": "Select all {count, plural, one {# app} other {# apps}} visible",
       "clear": "Clear selection",
-      "mark_safe": "Mark safe",
+      "mark_safe": "Keep & accept current concerns",
       "mark_replace": "Mark replace",
       "mark_uninstall": "Mark uninstall",
       "confirm_title": "Apply to {count, plural, one {# app} other {# apps}}?",
@@ -3515,7 +3543,11 @@
       "guardian": "your child"
     },
     "imported_rec_chip": "{name} says {verdict}",
-    "imported_rec_chip_anon": "A recommender says {verdict}"
+    "imported_rec_chip_anon": "A recommender says {verdict}",
+    "decisions_loading": "Loading your saved decisions…",
+    "decisions_error": "Could not load saved decisions. Retry before starting the review.",
+    "decisions_retry": "Retry",
+    "saving_reminder": "Saving your reminder…"
   },
   "policy_rating": {
     "favorable": "Favorable",
@@ -3753,7 +3785,7 @@
     "heatmap_page": "Apps {start} to {end} of {total}.",
     "matrix_app": "{app}: {groups}.",
     "matrix_group": "{severity}: {categories}",
-    "matrix_app_empty": "{app}: no data collected.",
+    "matrix_app_empty": "{app}: the label declares no data.",
     "sankey_label": "Flow chart linking {apps, plural, one {# app} other {# apps}} to how their data is used and to {categories, plural, one {# data category} other {# data categories}}.",
     "sankey_severity": "{severity}: {apps, plural, one {# app} other {# apps}}, covering {categories}.",
     "timeline_label": "Stacked area chart of privacy changes over time: {count, plural, one {# change} other {# changes}} in the selected period.",
@@ -3800,7 +3832,7 @@
     "no_details_title": "No details provided",
     "no_details_body": "The developer will be required to provide privacy details when they submit their next app update.",
     "no_labels_title": "No privacy labels found",
-    "no_labels_body": "This app may collect no data, or the App Store page format has changed.",
+    "no_labels_body": "No privacy label could be read from this app's App Store page. The page format may have changed, so check the label on the App Store.",
     "remove_modal": {
       "badge": "Remove app",
       "title": "Remove {name} from privacytracker?",
@@ -4111,6 +4143,9 @@
     "view_on_app_store": "View on App Store ↗",
     "privacy_policy_link": "Privacy Policy ↗",
     "label_definitions_link": "Label definitions",
+    "label_scope_note": "These labels name a <em>category</em> of data, not the specific fields inside it. Only the developer can see that list. For what this app says about how much it collects, see <policy>the policy’s collection scope</policy>.",
+    "label_scope_note_hint": "Each label has a ✦ that shows what it could mean. <off>Turn them off in Settings</off>.",
+    "label_scope_note_plain": "These labels name a <em>category</em> of data, not the specific fields inside it. Only the developer can see that list.",
     "apple_app_hint": "This is an Apple app. For Apple’s own privacy labels — including Messages, Maps, Safari, Mail, Health, and more — see <apple>apple.com/au/privacy/labels ↗</apple>. For definitions of the terms on this page, see the <defs>in-app definitions reference</defs>.",
     "policy_fetch_scope_note": "Re-sync and Sync All also re-fetch this policy in the background when they finish, except within the policy scrape throttle’s cooldown or while policy scraping is disabled. They don’t summarise it: use the buttons on this tab for that, or to fetch it now.",
     "policy_change_strip": {
@@ -4591,7 +4626,7 @@
     "companion_card": {
       "scope_note": "A paired phone can read your app list, each app's labels and history, and the change feed. It can't change anything, and it can't see settings, backups, exports or devices.",
       "instance_name_label": "Name phones see",
-      "instance_name_hint": "The iPhone app shows this name when it connects.",
+      "instance_name_hint": "The iPhone app shows this name. It starts as this Mac's name, or \"privacytracker server\" on a server; change it before you make a code. Phones already paired pick up a new name the next time they check in.",
       "save": "Save",
       "saved": "Saved",
       "lan_title": "Allow phone connections",
@@ -6077,5 +6112,66 @@
     "home": "Home",
     "report": "Report this problem on GitHub",
     "report_note": "Opens a bug report form with this page's address filled in. You can check and change everything before you send it."
+  },
+  "focus_overview": {
+    "title": "Your apps, your next steps",
+    "intent_both": "Monitor what changes and work through the apps you want to clean up.",
+    "intent_cleanup": "Understand the concern, then choose what to keep, compare or remove.",
+    "intent_monitor": "See what changed across the apps you track.",
+    "intent_review": "Review your apps and decide what works for you.",
+    "all_apps": "All {count} apps",
+    "tracked_apps": "Apps tracked",
+    "pending": "Apps with unreviewed changes",
+    "since_visit": "+{count} changed since your last visit",
+    "replacement_plans": "Replacement plans",
+    "due": "{count, plural, one {# decision is ready to revisit.} other {# decisions are ready to revisit.}}",
+    "app_changes": "{count, plural, one {# change to review} other {# changes to review}}",
+    "find_compare": "Find & compare alternatives",
+    "review_app": "Review & decide",
+    "view_app": "View app",
+    "guided_cleanup": "Start guided cleanup",
+    "handoff": "Prepare a report to share",
+    "handoff_hint": "A snapshot of this review. Your saved review stays here; private notes stay out of the report.",
+    "first_visit_hint": "Since-last-visit counts are local to this browser and device view. They stay steady while you review apps in this tab, including after a refresh.",
+    "audience": {
+      "self": "For me",
+      "loved_one": "Helping someone",
+      "guardian": "For a child"
+    },
+    "goal": {
+      "monitor": "Monitor changes",
+      "cleanup": "Clean up",
+      "minimal": "Simple view",
+      "accessibility": "Accessibility"
+    },
+    "decision": {
+      "review": "Ready to review",
+      "kept": "Keeping · current concern accepted",
+      "replace": "Planning a replacement",
+      "uninstall": "Planned removal",
+      "later": "Decide later",
+      "due": "Ready to review"
+    },
+    "review_now": "Review now",
+    "reschedule": "Reschedule",
+    "show_changed": "Show {count, plural, one {# app} other {# apps}} with unreviewed changes",
+    "hide_changed": "Hide apps with unreviewed changes",
+    "more_changed": "{count, plural, one {# more app has} other {# more apps have}} unreviewed changes.",
+    "more_changed_link": "See all apps"
+  },
+  "focus_review": {
+    "accepted": "You are keeping this app and accepting its current mismatch with your preferences. We will ask again if its collection changes or you change your privacy profile. Policy and accessibility alerts remain independent.",
+    "keep_hint": "Keeping an app is your choice; it does not certify the app as safe. Select Keep again to accept the current concern.",
+    "replace_hint": "Find an alternative and compare how it handles your data before deciding whether to remove this app.",
+    "find_compare": "Find & compare an alternative",
+    "remind_in": "Remind me in",
+    "days": "{count, plural, one {# day} other {# days}}",
+    "saving": "Saving…",
+    "later": "Decide later",
+    "scheduled": "Saved. This decision will return to your dashboard on {date}.",
+    "cancel": "Cancel reminder",
+    "error": "Could not save or load the decision. Please try again.",
+    "due": "Ready to review. Make a decision above, or choose a new reminder.",
+    "reschedule": "Reschedule"
   }
 }

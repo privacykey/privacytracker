@@ -132,24 +132,12 @@ export default function FocusPurposeForm({
     label: tAnimation(`labels.${monitorChange.labelKey}`),
   });
 
-  // Picking a goal tile clears "minimal" (they're mutually exclusive).
+  // Goals and presentation are independent.
   function toggleMonitor() {
-    setMonitor((prev) => {
-      const next = !prev;
-      if (next) {
-        setMinimal(false);
-      }
-      return next;
-    });
+    setMonitor((prev) => !prev);
   }
   function toggleCleanup() {
-    setCleanup((prev) => {
-      const next = !prev;
-      if (next) {
-        setMinimal(false);
-      }
-      return next;
-    });
+    setCleanup((prev) => !prev);
   }
   // The Help tile and the "Someone else" audience are two views of the same
   // axis. Toggling Help flips between self and loved_one; "A child"
@@ -157,16 +145,9 @@ export default function FocusPurposeForm({
   function toggleHelp() {
     setAudience((prev) => (prev === "loved_one" ? "self" : "loved_one"));
   }
-  // Turning "Keep it minimal" on clears the additive goal tiles.
+  // Minimal retains both selected goals.
   function toggleMinimal() {
-    setMinimal((prev) => {
-      const next = !prev;
-      if (next) {
-        setMonitor(false);
-        setCleanup(false);
-      }
-      return next;
-    });
+    setMinimal((prev) => !prev);
   }
 
   const tiles: { active: boolean; id: PrimaryPurpose; onClick: () => void }[] =
@@ -388,7 +369,7 @@ export default function FocusPurposeForm({
 
         {/* Per-feature toggles. In onboarding they sit behind an
             "Advanced" disclosure: they're an override layer for the
-            goals above, and rendering all six inline pushed the primary
+            goals above, and rendering them all inline pushed the primary
             CTA off a phone screen entirely. Settings keeps them
             expanded — someone on that page came to fiddle. */}
         {mode === "onboarding" ? (

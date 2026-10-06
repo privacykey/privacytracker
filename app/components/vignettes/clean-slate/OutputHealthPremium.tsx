@@ -22,7 +22,7 @@ export default function OutputHealthPremium() {
         x="160"
         y="30"
       >
-        WHAT THEY DO WITH IT
+        WHAT COULD BE DONE WITH IT
       </text>
 
       <g className="v-cs-surface">

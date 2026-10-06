@@ -21,7 +21,7 @@ export default function OutputUsageNotLinked() {
         x="239"
         y="30"
       >
-        WHAT'S STORED
+        WHAT COULD BE STORED
       </text>
 
       {/* Raw event log */}

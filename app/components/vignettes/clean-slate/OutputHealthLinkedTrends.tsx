@@ -19,7 +19,7 @@ export default function OutputHealthLinkedTrends() {
         x="160"
         y="30"
       >
-        WHAT THE APP DOES
+        WHAT AN APP COULD DO
       </text>
 
       <g className="v-cs-surface">
@@ -65,7 +65,7 @@ export default function OutputHealthLinkedTrends() {
           x="164"
           y="120"
         >
-          ▲ Activity trending up — best week yet
+          ▲ Activity trending up, best week yet
         </text>
       </g>
 

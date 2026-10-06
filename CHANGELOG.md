@@ -12,13 +12,14 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
-## [0.3.0] — 2026-09-29
+## [0.3.0] — 2026-10-06
 
 The first release since v0.1.2, and the first on the Rust server: neither
 the desktop app nor the Docker image runs Node any more. It also brings
 a device picker that knows whose device is whose, privacy-label history
-back to 2021, sign-in for Docker, a locked-down desktop app, pairing for
-the iPhone companion app and a long list of fixes. v0.2.0 was prepared
+back to 2021, a dashboard that follows your goals, plain explanations of
+what each label means, sign-in for Docker, a locked-down desktop app,
+pairing for the iPhone companion app and a long list of fixes. v0.2.0 was prepared
 but never released; its changes are part of this release and listed
 below.
 
@@ -62,6 +63,17 @@ below.
 - **Label history back to 2021.** The Wayback import now reaches captures
   from early 2021, each app's History tab can check the archive for that
   app alone, and the History tab pages back through older entries.
+- **What a label means.** Each category on an app's Privacy labels tab
+  now has a short, clearly marked example of what that label can mean in
+  practice; turn the examples off under Settings → Your focus. "Data Not
+  Collected" is shown as the developer's own claim, like every other
+  label, not as a pass.
+- **A dashboard that follows your goals.** The cards reorder when you
+  change your goals, unless you turn on "Keep layout fixed". The overview
+  is shorter and lists the decisions you still have in progress, and you
+  can keep an app while accepting its current concern, or come back to it
+  in 1, 7 or 30 days. With Keep it simple on, the longer lists wait behind
+  Show more detail.
 - **How much to trust a label.** With the Monitor goal, each app's
   Privacy Labels tab shows reasons to read its label with care: how long
   it has gone unchanged, the known weakness of "Data Not Collected", and
@@ -92,8 +104,8 @@ below.
   still records them.
 - **Accessibility.** Colour contrast meets WCAG AA across the app, links in
   running text are underlined, charts and the compare view work with
-  screen readers, and keyboard access works in the phone-width menu and
-  the import steps.
+  screen readers, keyboard access works in the phone-width menu and the
+  import steps, and each app's Accessibility tab is back.
 - **Fixes** to AI policy summaries, background tasks and recovery after a
   crash, the dashboard, onboarding, and the desktop app's menu bar actions
   and update banner.
@@ -110,7 +122,98 @@ Every change since v0.1.2 is listed in
 
 [//]: # (release-notes-end)
 
+### Focus and dashboard
+
+- The check-up no longer offers "See what your apps collect" to the child
+  audience, whose focus switches the Privacy Map off. The step used to open a
+  page that does not exist for them.
+- The **Minimal** layout preset is now **Simple**, and shows what the simple
+  view leads with: the review banner, the overview and "Changes to review". It
+  used to list the risk list and the at-a-glance numbers, which Keep it simple
+  folds and hides.
+- With **Keep it simple** on, the dashboard folds its three long lists (the
+  risk list, "Consider replacing" and stale apps) behind **Show more detail**
+  at the bottom of the page. One click opens them for the visit; turning
+  Keep it simple off brings them back for good.
+- Shorten the dashboard overview. It lists the decisions you still have in
+  progress, and **Show apps with unreviewed changes** opens the changed apps in
+  place instead of listing them twice. The overview says how many apps are
+  stale next to **Re-sync now**, and the note about "since last visit" appears
+  only with a count.
+- Say "Top 6 of 69 apps" when the risk list is a slice, show the top three under
+  "Consider replacing", show "Security hygiene" only when both Monitor and
+  Cleanup are selected, and collapse a finished check-up even while optional
+  extras remain. The risk list no longer says "you" when the apps belong to
+  someone else or a child.
+- Keep the dashboard's "since last visit" comparison steady through app review,
+  navigation and refreshes in the same browser tab, separately for each device
+  view. Due reminders now say "Ready to review" and link directly to the
+  decision picker or rescheduling controls.
+- Keep Monitor and Cleanup selected while using the simpler view. Comparison,
+  shortlist and guided cleanup follow the chosen focus; individual overrides
+  still take priority.
+- Show an overview of your goals and apps, full counts of unreviewed changes,
+  changes since your last visit in this browser, and actions for the next decision.
+- Keep an app while accepting its current concern, compare alternatives before
+  removal, or return to a decision in 1, 7 or 30 days. New collection or a changed
+  privacy profile reopens an accepted concern; policy and accessibility alerts
+  remain independent. Helping someone defaults to a saved review and report handoff.
+- Reorder dashboard cards when focus changes, preserving hidden choices. Turn
+  on **Keep layout fixed** in either layout editor to preserve your arrangement.
+
+### Security
+
+- Replace manual network-interface pointer traversal with an owning Rust
+  iterator when finding addresses for paired phones.
+- Patch Next.js, DOMPurify and affected build-tool dependencies. The Linux
+  desktop's upstream GLib iterator warning and Storybook's elliptic warning
+  remain tracked in [Dependency security](docs/DEPENDENCY-SECURITY.md).
+- Raise `source-map-js` to 1.2.2 (GHSA-68fv-2mgg-jv7q, an event-loop denial
+  of service in source-map parsing), which reaches the app through
+  Next.js's `postcss`.
+
 ### Added
+
+- App detail pages now explain what a privacy label *means*, not just what
+  it is called. Every category card on the Privacy labels tab gains the
+  vignette hint (the ✦ trigger next to the existing ⓘ), playing the short
+  animated story for that category at **this app's declared tier** — the
+  severity comes from the accordion the card sits in, so an app that logs
+  Usage Data anonymously shows the anonymised-funnel story while one that
+  uses it to track you shows the 11pm re-engagement push. The 14 × 3
+  vignette set already existed but was reachable only from the privacy
+  profile editor in Settings.
+
+- A **Privacy label examples** switch under "Fine-tune features" (Settings,
+  "Your focus", Adjust; and onboarding's Advanced section) turns the ✦
+  examples off for anyone who finds them distracting. The label-scope note
+  links straight to it ("Turn them off in Settings"), landing with the
+  switch focused and highlighted. It writes the same
+  per-feature override as the other switches there, so it wins over the
+  focus rules, and switching it back clears the override. The label caveat
+  and its policy link stay either way.
+
+- A label-scope note above the privacy-label accordions, stating plainly
+  that Apple's labels name a *category* of data rather than the fields
+  inside it, and that only the developer can see that list. (Whether Apple
+  checks a label is left to the trust card above it, so the two don't
+  repeat each other.) It links through to the policy summary's collection-scope
+  lens — the nearest thing the app holds to an actual answer — which now
+  highlights on arrival. The note also points at the ✦ explainers, since
+  the trigger is a single glyph with no other affordance. The caveat and
+  the policy link are deliberately not gated on `flag.global.label_hints`,
+  so the audiences with the animations muted still get them; only the
+  sentence naming the ✦ is gated, so those users are not sent looking for
+  a control that never renders.
+
+- Every vignette popover opens with a "This is an example" lip, in the app's
+  informational blue so it can't be read as a severity tier, and ends with a
+  "Read more about privacy labels" link to that category's entry on the label
+  definitions page. The definitions page gains an anchor per category and
+  scrolls to it once its content mounts: the body renders inside a Suspense
+  boundary, so the browser's own anchor jump fires before the entry exists.
+  Its Back button returns to wherever the link was opened, and now names the
+  settings group routes "Settings" rather than "Dashboard".
 
 - Settings → Companion pairs the privacytracker iPhone app with your
   instance. Choose "Make a pairing code" and scan the QR code with the app.
@@ -120,6 +223,10 @@ Every change since v0.1.2 is listed in
   within 15 minutes stops working, every paired phone is listed with when
   it was last used, and removing one ends its access at once. "Delete
   everything" ends every pairing, and backups leave pairings out.
+  The name phones show for the instance is set where the code is made. It
+  starts as this Mac's name in the desktop app, or "privacytracker server"
+  elsewhere, and a name typed there goes into the code without a separate
+  save.
 - In the desktop app, "Allow phone connections" (off by default) lets a
   paired phone on the same Wi-Fi reach this Mac. It opens a second,
   encrypted listener on your local network that answers paired phones only
@@ -144,6 +251,60 @@ Every change since v0.1.2 is listed in
   in-app change alert privacytracker's bell provides.
 
 ### Changed
+
+- All 42 vignette captions are rewritten in a conditional voice, so a
+  scenario reads as one possibility rather than a report of what the app in
+  front of you is doing. "Your GPS trail pins your home address" becomes "A
+  GPS trail could pin your home address". 37 in-artwork headings move the
+  same way — "WHAT THE APP DOES" → "WHAT AN APP COULD DO", "WHAT'S STORED" →
+  "WHAT COULD BE STORED", "WHAT THEY LEARN" → "WHAT COULD BE LEARNED" — and
+  the one fabricated street address ("14 Maple St, Apt 3", under a heading
+  claiming it as fact) is replaced with a generic label. The scenes still say
+  what a tier can amount to; they no longer look like they found it.
+
+- Each popover now also states what IS known: "This app has disclosed that it
+  collects {category}, not what that includes. Its privacy policy may say
+  more." That replaces an earlier attempt at the same problem — an "Example"
+  chip on the artwork plus a sentence distinguishing the real label from the
+  illustrated scene. Five separate places said "example", and the bubble
+  asked readers to hold a label-versus-scene distinction they had no reason
+  to care about. The popover now says it once, in a lip across the top.
+
+- Plain language for WCAG 2.2 AAA (3.1.3 unusual words, 3.1.4
+  abbreviations): the captions spell out GPS, OS, ID and "misc" ("a
+  location trail", "system version", "advertising identifier",
+  "miscellaneous records"), and replace four technical terms: a
+  "product-analytics funnel" becomes "a tally of how people move through the
+  app", a "session token" becomes "a throwaway code", an "audience segment"
+  becomes "a list of people like you" sold to advertisers, and "aggregate"
+  becomes "overall" or "totals". The zh captions get the same abbreviation
+  and "session token" swaps; the rest of that bundle still waits on
+  Crowdin. Text drawn inside the artwork is unchanged: the caption beside
+  each scene now carries most of the expanded terms.
+
+- NOTE: the zh caption bundle is not updated here. Those strings round-trip
+  through Crowdin, and 10 of the 42 were already describing different
+  scenarios from their English source before this change. zh readers keep the
+  indicative voice until the next translation pull.
+
+- `macos-release.yml` now calls `scripts/fetch-node-sidecar.sh` instead of
+  carrying its own ~40 lines of inline download-and-verify shell. The
+  Node release-key fingerprints had been duplicated between the workflow
+  and (until now) nothing else; they have exactly one home now and cannot
+  drift between CI and a developer's machine. Behaviour is unchanged —
+  same GPG-then-hash verification, same output paths — with the build
+  matrix's target passed through `TAURI_BUILD_TARGET`, the variable
+  `stage-standalone.mjs` already reads when choosing which binary to wrap.
+
+- "Data Not Collected" is shown as the developer's disclosure, like every
+  other label, rather than as a pass. Compare no longer paints the slot green
+  with a check mark: it names the label in a neutral chip beside the link to
+  the privacy policy, whose tooltip now says to compare the two. The risk
+  legend, the Minimal tooltip on the apps grid, the stats heatmap ("Not
+  declared", "Hide apps that declare no data") and its screen-reader summary
+  say what the label declares instead of stating that no data is collected.
+  An app whose label couldn't be read no longer suggests it "may collect no
+  data".
 
 - Only releases are published to the Docker image
   `ghcr.io/privacykey/privacytracker`. A release gets its version tag, and a
@@ -260,6 +421,70 @@ Every change since v0.1.2 is listed in
 
 ### Fixed
 
+- The vignette popover could only ever work as a tooltip. It closed the
+  instant the pointer left the ✦, a click after hovering toggled it shut
+  instead of pinning it open, and because it is attached at the end of the
+  page it sat outside the Tab order. It now waits 150ms before closing so the
+  pointer can cross into it, a click pins it, and once it has been opened
+  with Enter or a click, Tab moves into it and back out. Tabbing past a ✦
+  still moves straight on, so a row of them costs keyboard users nothing.
+
+- A popover taller than the room on either side of its ✦ ran off the edge of
+  the screen, where it couldn't be scrolled to because it is fixed-position.
+  It is now kept fully on screen, dropping its pointer arrow in the rare case
+  it has to overlap the ✦. When it is taller than the screen itself (a phone
+  held sideways, or a desktop zoomed to 400% as WCAG 1.4.10 Reflow tests),
+  its contents now scroll inside it, and on screens under 520px tall the
+  artwork drops from 180px to 120px so most bubbles fit without scrolling.
+
+- The label explainers now meet WCAG 2.2 AAA where the code can carry it.
+  Text contrast reaches 7:1 in light and dark (1.4.6): the lip, link, caption
+  label and disclosure line in each popover, and the label-scope note, which
+  measured 5.0 to 6.6. They use local colour mixes so the app's palette is
+  untouched. Popover text gets 1.5 line spacing and a wider paragraph gap,
+  and the scope note is capped at 80 characters a line; it ran to about 157
+  on desktop (1.4.8). The ✦ and the Read more link each get a 44×44 pointer
+  target (2.5.5); on the category cards the ✦ moves right so its target sits
+  clear of the ⓘ beside it. When a popover is taller than the room either side
+  of its ✦, it takes the roomier side and scrolls, instead of covering the
+  focused ✦ (focus not obscured, 2.4.11 and 2.4.12), and its scroll box
+  becomes a Tab stop so the keyboard can scroll it. The jump to the
+  collection-scope lens no longer animates when reduced motion is on
+  (2.3.3): a script-driven smooth scroll ignores the global CSS rule.
+  `label-hints.spec.ts` checks contrast, pointer targets, the uncovered
+  trigger and the Tab order.
+
+- The ✦ trigger failed WCAG 2.2 target size (2.5.8): its box was 18×18,
+  with an invisible `::after` supplying the rest, which axe does not count,
+  and the spacing exception cannot apply to a control laid over the
+  category card's link. The box itself is now 24×24, with negative margins
+  keeping inline rows (the profile editor) from reflowing, and on the cards
+  its tap area no longer overlaps the ⓘ beside it. `label-hints.spec.ts`
+  now checks both, since `a11y.spec.ts` scans WCAG 2.1 rules only.
+
+- The app detail page's Accessibility tab appears again. Its flag,
+  `flag.detail.a11y.panel`, has three values and defaults to `collapsed`
+  (shown), but the page read it as on or off, so the default counted as
+  off. The tab appeared only with the accessibility option in your focus,
+  and the header's accessibility chip opened an empty page. The AI Policy
+  tab had the same bug: the strip showing the last summary run is back,
+  and the per-chunk notes show, closed, wherever the AI summary does.
+  "Keep it minimal" and the guardian audience still hide both, and setting
+  the run-log-details or chunk-notes flag to `on` in Developer Options
+  starts that section open.
+- That Accessibility tab also highlights the features your accessibility
+  profile (in Settings) asks for under every focus, not only with the
+  accessibility option on, and the AI Policy tab's last-run strip shows its
+  "Full trace", closed. Both depend on another flag, and a flag that
+  depends on another was turned off whenever the other was not fully on,
+  so `collapsed`, where the accessibility panel and the strip sit by
+  default, counted as hidden. A `collapsed` parent no longer turns its
+  dependents off; an `off` one still does.
+- The app detail header's accessibility chip no longer opens an empty page
+  when the Accessibility tab is turned off in Developer Options
+  (`flag.detail.a11y.panel` set to `off`). Clicking it switched to the
+  hidden tab and deselected every tab; the chip now hides with the tab.
+  The muted "no features" label stays, since it opens nothing.
 - Desktop app: "Start at login" works in the signed app. It asked macOS's
   System Events to add a login item, which the app has no permission to do,
   so macOS most likely refused it silently. It now adds a LaunchAgent
@@ -909,6 +1134,12 @@ Every change since v0.1.2 is listed in
   that screen is the one the device gets. `POST /api/imports/items`
   accepts an optional `deviceId` for this, attached only to an import that
   has no device yet and only if the device exists.
+- The dashboard's "How we score risk" legend appears again. Its flag,
+  `flag.dashboard.risk_tier_legend`, has three values and defaults to
+  `collapsed` (shown, closed), but the dashboard read it as on or off, so
+  the default counted as off and the legend never rendered. It now shows
+  closed by default, starts open when the flag is set to `on` in Developer
+  Options, and stays hidden for `off` and for a "Keep it minimal" focus.
 
 ### Added
 

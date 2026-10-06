@@ -23,10 +23,16 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  /* The box itself is 24x24 for WCAG 2.2 target size (2.5.8). An invisible
+     ::after hit area used to supply the extra room, but axe measures the
+     element's own box, and the spacing exception can't apply when the
+     trigger sits on top of a larger link (the category card). The negative
+     margins hand the old 18px footprint back to inline rows, so the profile
+     editor's titles don't reflow: 3 - 3 + 24 = the old 6px gap + 18px. */
+  width: 24px;
+  height: 24px;
   padding: 0;
-  margin-left: 6px;
+  margin: -3px -3px -3px 3px;
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
@@ -43,11 +49,14 @@
     transform 0.15s ease;
 }
 
-/* WCAG 2.2 SC 2.5.8 — invisible hit-area extension. The painted glyph
-   stays 18px; the pseudo-element grows the clickable box to 24×24. */
-.data-label-hint-trigger::after {
+/* WCAG 2.2 AAA target size (2.5.5): a 44x44 pointer target around the
+   24x24 box. The box stays 24x24 because that is what axe measures for the
+   AA rule (2.5.8); the pointer area comes from this pseudo-element, which is
+   part of the button for hit-testing. Placement keeps it clear of the info
+   button beside it on the category cards (see .category-card-hint-overlay). */
+.data-label-hint-trigger::before {
   position: absolute;
-  inset: -3px;
+  inset: -10px;
   content: "";
 }
 
@@ -67,6 +76,21 @@
 /* ── Popover bubble ─────────────────────────────────── */
 
 .data-label-hint-bubble {
+  /* Opaque mix, not the translucent --blue-soft: the arrow has to match it
+     exactly, and a translucent fill would show the page through the arrow. */
+  --data-label-hint-lip-bg: color-mix(in srgb, var(--blue) 14%, var(--bg-2));
+  /* Text colours tuned for WCAG 2.2 AAA contrast (1.4.6, 7:1 for text this
+     size), scoped to the bubble so the app's global palette doesn't move.
+     Measured: accent ~7.9 on the lip and ~9.7 on the bubble in light, ~7.5
+     and ~8.7 in dark; muted ~7.9 light, ~7.8 dark. The plain --blue and
+     --text-3 they replace measured 5.2 to 6.6. */
+  --data-label-hint-accent-text: color-mix(
+    in srgb,
+    var(--blue) 55%,
+    var(--text)
+  );
+  --data-label-hint-muted: color-mix(in srgb, var(--text-3) 75%, var(--text));
+
   position: fixed;
   z-index: 9999;
   width: 320px;
@@ -82,6 +106,28 @@
   transition:
     opacity 0.15s ease,
     transform 0.15s ease;
+}
+
+/* Scroll container for the bubble's contents (everything but the arrow).
+   Capped at the screen height so a bubble taller than the viewport scrolls
+   inside itself instead of running off a fixed-position edge. dvh tracks the
+   visible height as mobile browser bars show and hide; vh is the fallback.
+   The inner radius matches the bubble's 14px minus its 1px border. */
+.data-label-hint-scroll {
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 13px;
+}
+
+/* Short screens: give back 60px of artwork height so most bubbles fit
+   without scrolling at all. The scenes' viewBox scales to fit, so the
+   picture shrinks rather than crops. */
+@media (max-height: 520px) {
+  .data-label-hint-stage {
+    height: 120px;
+  }
 }
 
 .data-label-hint-bubble--visible {
@@ -107,6 +153,9 @@
 
 .data-label-hint-bubble--bottom .data-label-hint-bubble-arrow {
   top: -6px;
+  /* Opening below the trigger puts the arrow on the example lip, so it
+     takes the lip's fill rather than the bubble's. */
+  background: var(--data-label-hint-lip-bg);
   border-right: none;
   border-bottom: none;
 }
@@ -134,11 +183,33 @@
   height: 100%;
 }
 
+/* "This is an example" lip across the top of the bubble. Blue is the app's
+   informational accent; the reds, oranges and creams are spoken for by the
+   severity tiers, and a lip in one of those would read as a severity.
+   Contrast: ~6.6:1 on light, ~6.2:1 on dark. */
+.data-label-hint-lip {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--data-label-hint-accent-text);
+  background: var(--data-label-hint-lip-bg);
+  border-bottom: 1px solid color-mix(in srgb, var(--blue) 28%, var(--bg-2));
+  border-top-left-radius: 13px;
+  border-top-right-radius: 13px;
+}
+
+.data-label-hint-lip + .data-label-hint-stage {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
 .data-label-hint-caption {
   padding: 12px 14px 14px;
   font-size: 13px;
   font-weight: 500;
-  line-height: 1.45;
+  /* 1.5 for WCAG 2.2 AAA visual presentation (1.4.8). */
+  line-height: 1.5;
   color: var(--text);
 }
 
@@ -147,9 +218,56 @@
   margin-bottom: 4px;
   font-size: 11px;
   font-weight: 700;
-  color: var(--text-3);
+  color: var(--data-label-hint-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+/* What IS known, under the conditional caption: the label establishes
+   that this app collects the category, not what the category contains.
+   Replaced an earlier "Example" chip plus a real-vs-illustration
+   sentence — five separate signposts across the surface said "example",
+   and the bubble asked readers to hold a label/scene distinction they
+   had no reason to care about. The captions now carry the conditional
+   voice themselves, so this line only has to state the known fact. */
+/* Link to the label definitions. Its own row so it sits clear of the
+   disclosure line above and reads as the bubble's one action. */
+.data-label-hint-footer {
+  padding: 0 14px 4px;
+}
+
+/* 44px tall for WCAG 2.2 AAA target size (2.5.5); the footer's bottom
+   padding drops by the same amount so the bubble barely grows. */
+.data-label-hint-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--data-label-hint-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.data-label-hint-more:hover {
+  text-decoration-thickness: 2px;
+}
+
+.data-label-hint-more:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.data-label-hint-not-disclosed {
+  display: block;
+  /* 1.5 leading and a paragraph gap over 1em: WCAG 2.2 AAA visual
+     presentation (1.4.8). */
+  margin-top: 12px;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--data-label-hint-muted);
 }
 
 /* ─────────────────────────────────────────────────────

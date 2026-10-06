@@ -185,6 +185,10 @@ export function buildTaskCompletionContext(
   return {
     focus,
     workflow,
+    compareEnabled: resolveFlagFromDb("flag.page.compare") === "on",
+    privacyMapEnabled: resolveFlagFromDb("flag.page.privacy_map") === "on",
+    reviewEnabled:
+      resolveFlagFromDb("flag.appgrid.review_queue.enabled") === "on",
     hasPrivacyProfile: hasProfile,
     anyAppDetailVisitedAt: numericSetting("task_visit.app_detail_at"),
     auditBundleLastExportedAt: numericSetting("audit_bundle_last_exported_at"),

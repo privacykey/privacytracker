@@ -63,9 +63,9 @@
     "— we spot the apps that take the most and put them first, with risk labels, profile-mismatch flags, ",
     "Keep it minimal",
     "— a deliberately quiet view. Hides the extras — Compare, Privacy Map, Manual Apps, the Task Center, ",
-    "Sits on top of any goal combination above and elevates accessibility-related surfaces independently.",
+    "Works alongside any goal combination above and shows accessibility tools independently.",
     "I also need accessibility info for my apps",
-    ". This elevates the accessibility panel on app detail pages, turns on the accessibility filter row i",
+    ". This shows the accessibility panel on app detail pages, turns on the accessibility filter row in t",
     "Want a refresher on what you&rsquo;re looking at?",
     "Replay the dashboard tour →"
   ],
@@ -78,14 +78,6 @@
     "Open an issue on GitHub ↗",
     "The full list of bundled libraries and their licences is on the",
     "Legal page"
-  ],
-  "app/components/HomeView.tsx": [
-    "Consider replacing",
-    "These apps go further than your privacy profile allows. Open one to see which categories mismatch, a",
-    "more on the",
-    "apps page",
-    "(look for the warning badge).",
-    "See all apps sorted by risk →"
   ],
   "app/components/KeyboardShortcuts.tsx": [
     "anywhere outside a text field to reopen this sheet."

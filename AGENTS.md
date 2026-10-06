@@ -158,8 +158,11 @@ settings editor is `FocusPurposeForm` (rendered via `WelcomeSplash` and
 - **"Who's this for?"** is a visible 3-up segmented control (Me / Someone
   else / A child = `self` / `loved_one` / `guardian`); *A child* (guardian)
   is reachable only here and reveals the child-age band picker.
-- **"Keep it minimal"** is the subtractive `minimal` strip as an explicit
-  switch, mutually exclusive with the goal tiles.
+- **"Keep it simple"** is the `minimal` presentation modifier. It retains
+  Monitor/Cleanup goals, their tools, notifications and task opt-ins. It reduces
+  dashboard density and diagnostic detail. Comparison, shortlist and guided
+  cleanup default off and are enabled by Cleanup or Helping someone (guardian
+  also enables guided review); explicit feature overrides still win.
 - **No silent default:** selecting no tiles is a VALID empty baseline that
   resolves to the hard-default surface — `/api/focus` and `activeGoalsFrom`
   no longer force `monitor` on. (Pinned by `tests/app/focus-workflow.test.ts`
@@ -247,6 +250,8 @@ onto `off`.
 
 **Flag keys** are typed (`FlagKey` union); typos fail at `tsc`. Adding a flag means: (1) add the key to the union in `feature-flag-rules.ts`, (2) add a `HARD_DEFAULTS` entry, (3) add rules in the relevant tables only if behaviour differs from the default.
 
+**Dependencies** (`FLAG_DEPENDENCIES`) turn a flag `off` while its parent is hidden; the flag's own override still wins, as it applies after. Hidden follows how clients read the parent, and `parentHidesDependents` (`lib/feature-flag-rules.ts`) is the one place that decides it: a tri-state parent (hard default `collapsed`, `isTriStateFlag`) hides its dependents only at `off`, because `collapsed` is on screen; a two-state parent hides them at anything but `on`, because Dev Options can set any flag to `collapsed` and clients read a two-state flag at `collapsed` as off. The resolver and `FocusFlagMatrix` call it, and `parent_hides_dependents` in `core/src/server/flags.rs` mirrors it. The tri-state parents are `flag.detail.a11y.panel` (→ `preference_highlights`) and `flag.detail.policy.run_log_strip` (→ `run_log_details`). `tests/app/feature-flags.test.ts` lists them, so a new tri-state parent fails it until someone checks what its dependents should do while it is `collapsed`. The rule used to be `!== "on"` for every parent, which left both dependents `off` under every focus that kept the parent at its default: the accessibility preferences saved in Settings were never highlighted, and the run log's full trace needed an override.
+
 **Migration** (`lib/migrations/v1_feature_flags.ts`, `MIGRATION_VERSION = 2`) runs eagerly in `instrumentation.ts` (6 ordered steps: schema check → user_intent → notification_prefs → callout rename → quarantine → focus_goal_rename). The last step moves any stored `flag.focus.goal.understand`/`.declutter` keys onto `.monitor`/`.cleanup` for installs from before the re-key. Idempotent end-to-end (pinned by `tests/app/feature-flag-migration.test.ts`). There is no retry loop and no migration error UI: a failing step throws `MigrationError` before `feature_flag_migration_version` is written, `instrumentation.ts` logs the error and boots on, and the next boot simply runs the migration again. The steps before the failure keep their writes, and each attempt adds its `migration` activity rows. So a step drops a stored value it cannot use rather than throwing on it (a `notification_prefs` blob that is not a JSON object, a `user_intent` that is not an own key of `INTENT_MAP`): a throw would fail the same step at every boot, and the steps after it would never run.
 
 **Annotations** (`annotations` table) and **audit-bundle export** (`lib/audit-bundle.ts`) sit on top of the flag system. Private notes (`visibility = 'private'`) are unconditionally excluded from exports at the SQL level — there is no force-include path.
@@ -263,6 +268,67 @@ The home dashboard at `/dashboard` reads two independent axes when deciding what
 2. **Preference layer** — a `DashboardLayout` blob (`lib/dashboard-layout.ts`) stored in `app_settings` under `dashboard.layout`. Drives card order and per-card hidden state for the user. "Given the cards available to me, which order, and which hidden?"
 
 A card paints iff `flag === 'on'` AND `!layout.hidden.includes(id)` AND (for callouts) its data predicate holds. The two axes are deliberately separate: hiding "Activity" in the editor and switching focus from `self/curious` to `loved_one/family` keeps the personal hidden choice but lets the family callouts come back on through the focus.
+
+Focus saves reorder cards around the selected job via `layoutForFocus`, within
+the focus transaction, only when audience or goal/modifier values change.
+`DashboardLayout.keepFixed` is optional and defaults off; when true it preserves
+order. Presets preserve this setting, and turning it off takes effect on the next
+focus change. Hidden choices and capability gates remain independent.
+
+The overview card (`FocusOverview`) does not render that preview whole.
+`splitOverviewRows` in `lib/focus-overview-rows.ts` (client-safe, pinned by
+`tests/app/focus-overview-rows.test.ts`) keeps every decision in progress
+visible, caps the untouched starter rows at three, and puts apps whose only
+state is "has unreviewed changes" behind an expand control inside the card.
+It starts collapsed when the "Changes to review" section renders on the page,
+because that section lists the same apps with more detail, and expanded when it
+does not. The split is client-only: the server preview and its Rust mirror are
+unchanged, so the expanded list is still bounded by the preview, and the card
+says how many changed apps it could not carry.
+
+**The simple view folds, it does not switch off.** With the `minimal`
+modifier on, `HomeView` renders `splitSimpleViewOrder(layout.order, true).main`
+and puts the cards in `SIMPLE_VIEW_FOLDED_CARDS` (`risk_section`,
+`profile_mismatch_section`, `stale_section`; `lib/dashboard-layout.ts`) below a
+"Show more detail" control at the bottom of the page (`#simple-view-more`),
+closed on every visit. Their flags stay on and the user's hidden choices still
+apply, so this is a third, presentation-only layer on top of the two axes
+above, and it needs no rule or Rust change. Keep it that way: turning those
+flags off for `minimal` would leave a simple-view user no way to see the lists
+short of changing their focus. The control shows only when a folded card has
+something to render, the edit shell never folds, and a jump to a folded section
+(`staleHref`) lands on the control. Pinned by
+`tests/app/simple-view-fold.test.ts` and
+`tests/e2e/focus-dashboard-decisions.spec.ts`. The layout preset keyed
+`minimal` is labelled "Simple" and lists only what the simple view leads with
+(`review_cta`, `hero`, `review_section`); the key stays `minimal` because the
+preset API and `dashboard_layout_applied` activity rows carry it. The check-up
+follows the same rule as the fold's capability axis: `view_privacy_map` is
+included only while `flag.page.privacy_map` is on (`privacyMapEnabled` in the
+task context, mirrored in `core/src/server/user_tasks.rs`), because the guardian
+rules switch that page off and the step used to open a 404.
+
+`GET /api/triage?overview=1&since=<epoch-ms>` adds a bounded app preview with
+whole-scope counts. Since-last-visit counts mean distinct apps with a live change
+after the supplied timestamp (Wayback imports excluded). `lib/dashboard-visit.ts`
+keeps a comparison baseline per device view for the tab session, in sessionStorage
+with an in-memory fallback; navigation and reloads retain it. Only successful
+dashboard reads update localStorage for the next tab's visit, using the request's
+start time so changes arriving during the read remain new. An overview read
+failure is 500, not an empty fleet. Review state lives in
+`review.accept.<appId>` / `review.defer.<appId>` in
+`app_settings`, mirrored by `core/src/server/focus_review.rs`. Explicit Keep
+(`acceptCurrent: true` on a safe verdict) records the collection hierarchy and
+profile at that moment. New collection types, categories or data items, or a
+different profile, reopen the concern; removals alone do not. Rationale edits and
+imported recommendations do not accept concerns. `POST /api/verdicts` with
+`deferDays: 1|7|30` persists a reminder without replacing the user's verdict.
+`GET ...?decision=1` exposes reminder/acceptance state; `DELETE ...?deferredOnly=1`
+cancels only the reminder. The overview returns `decision: 'due'` when a reminder
+has reached its deadline, with Review now / Reschedule links; future reminders
+remain `later`. The reschedule link focuses the detail reminder controls after
+their saved state loads. Dashboard mismatch reads use `?unresolved=1` to omit
+accepted concerns and future reminders; raw profile badges still report facts.
 
 `lib/dashboard-layout.ts` mirrors `lib/privacy-profile.ts` exactly — preset key list, `_META` records, `_PRESETS` records, plus `matchDashboardPreset(layout)` / `reconcileLayout(stored)` / `describeLayoutTransition(prev, next)`. Five presets ship out of the box (`default`, `minimal`, `caretaker`, `watchdog`, `at_a_glance`). `reconcileLayout` strips unknown ids, dedupes, drops callouts from `hidden[]` (callouts are reorder-only), and slots any newly-added canonical card next to its previous neighbour with hidden=false — so users on older saved layouts pick up new cards automatically rather than silently missing them. Server-only helpers live in `lib/dashboard-layout-server.ts`; `saveDashboardLayoutWithLog` records a `dashboard_layout_applied` activity row whenever a save crosses a named-preset boundary (custom-to-custom edits don't fire to keep the activity log readable).
 
@@ -332,6 +398,8 @@ Failure modes all land on the STRICTER legacy rule: an unreadable device row, an
 ### Companion pairing (the iOS app)
 
 Settings → Companion (`app/components/settings/CompanionSection.tsx`, flag `flag.settings.admin.companion`, default on) pairs the iOS companion app ([privacykey/privacytracker-ios](https://github.com/privacykey/privacytracker-ios)) with this instance. A pairing is one row in `companion_tokens` and one **read-only token** the phone sends as `X-PrivacyTracker-Companion-Token`. It is not a weaker admin token: it is a separate credential that unlocks GET on a fixed allowlist (`/api/companion/status`, `/api/apps`, `/api/apps/[id]/{detail,changelog,since-install,history-stats}`, `/api/changelog`, `/api/triage`) and nothing else. Tokens are `ptc_` + 64 lowercase hex; only the SHA-256 is stored, and the plaintext exists once, in the reply to `POST /api/companion/pairings`, which the card turns into a QR code (`uqr`, drawn as one SVG path) and forgets. The pairing link is `privacytracker://pair?url=…&token=…&name=…&fp=…&scope=read`; the iOS app's parser is the other half of that contract.
+
+**The name phones show** (`companion_instance_name`, `PUT /api/companion`) is edited in the card's "Pair a phone" step, and "Make a pairing code" saves a changed name before minting, so the code carries it. Unset, it describes the host: in the desktop app the Mac's name, which the shell reads with `scutil --get ComputerName` (`backend::computer_name`) and passes to either backend as `PRIVACYTRACKER_COMPUTER_NAME` (`My Mac` if it can't), and "privacytracker server" anywhere else. The old default, a bare "privacytracker", reads as unset whether stored or not, and an empty name clears it so the default (and a renamed Mac) applies again. `defaultCompanionInstanceName` in `lib/companion.ts` and `default_instance_name` in `companion.rs` mirror each other; read-parity compares the server default live.
 
 **The header decides the request on its own**, at step 0.6 of both gates: after the host allowlist and the slash redirect, before the desktop credential, the admin token and the origin check. GET on the allowlist with a valid token passes; the same header on any other path or method is a **403 whatever else rides along**, a valid admin token included, so a pairing code never widens another credential; an unknown, malformed or expired token is a 401. A token never used within 15 minutes of being made stops working (`claim_expires_at`), `last_used_at` is written at most once a minute, and revoking deletes the row.
 

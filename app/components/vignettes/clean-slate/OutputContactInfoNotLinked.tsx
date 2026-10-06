@@ -22,7 +22,7 @@ export default function OutputContactInfoNotLinked() {
         x="239"
         y="30"
       >
-        WHAT'S STORED
+        WHAT COULD BE STORED
       </text>
 
       {/* Raw sign-up log — the address is struck before anything moves */}

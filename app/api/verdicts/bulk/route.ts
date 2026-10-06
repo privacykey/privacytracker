@@ -24,6 +24,7 @@ export const dynamic = "force-dynamic";
 const MAX_BULK = 500;
 
 interface PostBody {
+  acceptCurrent?: boolean;
   appIds?: unknown;
   rationale?: string | null;
   verdict?: VerdictValue;
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
   try {
     const verdicts = setVerdicts(body.appIds, body.verdict, {
       rationale: body.rationale ?? null,
+      acceptCurrent: body.acceptCurrent === true,
     });
     // No revalidatePath — see app/api/verdicts/route.ts: static HTML must
     // never be regenerated at runtime under the hash-based CSP.

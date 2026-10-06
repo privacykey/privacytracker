@@ -2987,6 +2987,9 @@ html[data-theme-override="high-contrast"] .nav {
 .policy-lens-card {
   min-height: 154px;
   padding: 16px;
+  /* Clears the sticky nav when a `#policy-lens-*` deep-link scrolls one
+     of these into view (see .policy-lens-card--target below). */
+  scroll-margin-top: 96px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
   /* Rating accent bar lives in the left border; each rating variant overrides
@@ -2996,6 +2999,89 @@ html[data-theme-override="high-contrast"] .nav {
   transition:
     border-color 120ms ease,
     background-color 120ms ease;
+}
+
+/* Deep-link target — the app detail page's label-scope note sends users
+   to `#policy-lens-collection_scope`.
+
+   The class is applied from React state (`highlightLensKey`), NOT by
+   `:target`. `:target` was the first attempt and never matches here: the
+   lens sits in a tab panel that isn't mounted when the hash is set, and
+   the pseudo-class is resolved at navigation time — an element appearing
+   later never starts matching.
+
+   Box-shadow only, deliberately: `.policy-lens-card` encodes its rating in
+   `border-left-color` + `border-left-width`, so a border-animating pulse
+   (like `pmap-card-target-pulse`) would blank the rating accent for the
+   duration and land the card back on the wrong colour if the rating
+   variant lost the cascade. The ring reads as arrival without touching it. */
+.policy-lens-card--target {
+  animation: policy-lens-target-pulse 1.6s ease-out;
+}
+
+@keyframes policy-lens-target-pulse {
+  0% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue) 25%, transparent);
+  }
+  18% {
+    box-shadow: 0 0 0 10px color-mix(in srgb, var(--blue) 45%, transparent);
+  }
+  45% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--blue) 16%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--blue) 25%, transparent);
+  }
+}
+
+/* Label-scope note — the always-on caveat above the privacy-label
+   accordions. Sits at the same weight as the accessibility tab's
+   `a11y_disclaimer` so the two tabs read as one voice. Not gated on
+   `flag.global.label_hints`: the audiences that have the vignettes muted
+   are precisely the ones left with nothing else to explain the gap. */
+.label-scope-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.5;
+  /* Darker than --text-2 for WCAG 2.2 AAA contrast (1.4.6): ~8.3:1 light,
+     ~9.0:1 dark, where --text-2 measured 4.97:1 on the light theme. */
+  color: color-mix(in srgb, var(--text-2) 60%, var(--text));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+/* WCAG 2.2 AAA visual presentation (1.4.8): no more than 80 characters a
+   line. Full-width on desktop this ran to ~157. */
+.label-scope-note-text {
+  max-width: 80ch;
+}
+
+/* The inline policy link, at AAA contrast (~9.4:1 light, ~8.6:1 dark) in
+   place of --blue (5.4 / 5.1). Hover keeps the colour and thickens the
+   underline, since the global hover lightens the text below 7:1. */
+.label-scope-note .link-button-inline,
+.label-scope-note .link-button-inline:hover {
+  color: color-mix(in srgb, var(--blue) 55%, var(--text));
+}
+
+.label-scope-note .link-button-inline:hover {
+  text-decoration-thickness: 2px;
+}
+
+.label-scope-note em {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.label-scope-note-icon {
+  flex: 0 0 auto;
+  color: var(--text-3);
 }
 
 .policy-lens-card-concerning {
@@ -10898,6 +10984,45 @@ body.review-rec-print-active .review-rec-print a {
   margin: 0;
 }
 
+/* The vignette-hint overlay: the DataLabelHint ✦, to the right of the info
+   button in the card's header row.
+
+   Same absolute-overlay construction as .category-card-info-overlay, and
+   for the same reason: the trigger is a <button> and can't legally live
+   inside the <a> that next/link renders for the card.
+
+   Anchored to the header row rather than the label because the label wraps
+   to two lines at the grid's 140px minimum column ("Product interaction",
+   "Advertising data"), which would land the trigger somewhere different on
+   every card. */
+.category-card-hint-overlay {
+  position: absolute;
+  /* 16px, the info overlay's own top: both buttons are 24px tall, so their
+     centres share a line (28px down the card). */
+  top: 16px;
+  /* Centre 98px: 44px from the info button's centre (54px), so the two 44x44
+     pointer targets WCAG 2.2 AAA asks for (2.5.5) can sit side by side
+     without overlapping. This trigger's reaches 76-120px. */
+  left: 86px;
+  z-index: 2;
+  /* Invisible when DataLabelHint returns null (hints flag off, or no
+     vignette registered for this pair), and even when it renders, the span
+     itself must not swallow clicks meant for the Link underneath. */
+  pointer-events: none;
+}
+
+.category-card-hint-overlay > * {
+  pointer-events: auto;
+}
+
+/* No negative margins here: the overlay is absolutely placed, so the full
+   24x24 box sits at left 86px. Its 44x44 pointer area (76-120px) clears the
+   info button's box (42-66px) and leaves room for that button to grow to
+   44x44 around its own centre (32-76px). */
+.category-card-hint-overlay .data-label-hint-trigger {
+  margin: 0;
+}
+
 .category-card-icon {
   flex-shrink: 0;
   font-size: 22px;
@@ -15783,9 +15908,18 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   gap: 12px;
   align-items: flex-start;
   padding: 12px 14px;
+  /* Clears the sticky nav when a #category-<id> link scrolls here. */
+  scroll-margin-top: 96px;
   background: linear-gradient(180deg, var(--surface), transparent);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
+}
+
+/* Arrival mark for a "Read more" link from a label vignette. Reuses the
+   policy lens pulse: a box-shadow ring only, so the card's own border and
+   background are left alone. */
+.definitions-category-item--target {
+  animation: policy-lens-target-pulse 1.6s ease-out;
 }
 
 .definitions-category-icon {
@@ -21122,11 +21256,6 @@ html[data-theme-override="light"]
     background 0.15s;
 }
 
-.compare-slot-header-ok {
-  background: color-mix(in srgb, var(--green, #28b463) 8%, var(--surface));
-  border-color: color-mix(in srgb, var(--green, #28b463) 45%, var(--border));
-}
-
 .compare-slot-header-warn {
   background: color-mix(in srgb, var(--yellow, #ffd60a) 9%, var(--surface));
   border-color: color-mix(in srgb, var(--yellow, #ffd60a) 50%, var(--border));
@@ -21168,10 +21297,12 @@ html[data-theme-override="light"]
   border-radius: 999px;
 }
 
-.compare-slot-chip-ok {
-  color: var(--green, #28b463);
-  background: color-mix(in srgb, var(--green, #28b463) 18%, transparent);
-  border: 1px solid color-mix(in srgb, var(--green, #28b463) 45%, transparent);
+/* Data Not Collected, named as the developer's disclosure: neutral, like the
+   other labels, never a green pass. */
+.compare-slot-chip-declared {
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
 }
 
 .compare-slot-chip-warn {
@@ -29189,6 +29320,12 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   opacity: 0.6;
 }
 
+/* Arrival from a `#toggle-<name>` deep link: the policy lens's pulse, so
+   every "this is what you followed" highlight reads the same. */
+.feature-toggle-item--target .feature-toggle-chip {
+  animation: policy-lens-target-pulse 1.6s ease-out;
+}
+
 .feature-toggle-chip:focus-visible,
 .feature-toggle-reset:focus-visible {
   outline: 2px solid var(--blue, #0a84ff);
@@ -29196,8 +29333,14 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 .feature-toggle-icon {
+  /* A fixed, centred box so every label starts at the same x: the icons
+     mix emoji with text glyphs (the label examples' ✦), and those differ
+     in advance width. 22px fits an emoji at this size. */
+  flex: none;
+  width: 22px;
   font-size: 17px;
   line-height: 1;
+  text-align: center;
 }
 
 .feature-toggle-label {
@@ -30971,6 +31114,37 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   background: transparent;
   border: 1px dashed var(--border);
   border-radius: 999px;
+}
+
+/* The simple view's "Show more detail" control: a quiet note with one button
+   at the bottom of the dashboard. The lists it opens render below it, so the
+   button stays where it was pressed. */
+.home-simple-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  margin: 8px 0 28px;
+  scroll-margin-top: 100px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+}
+.home-simple-more-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.home-simple-more-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+.home-simple-more-link {
+  font-size: 13px;
+  color: var(--text-2);
 }
 
 /* "Customise dashboard…" link sits at the bottom of HomeView, below the

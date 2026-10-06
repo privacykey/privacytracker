@@ -201,6 +201,10 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
         .current_dir(server_js.parent().unwrap_or(&PathBuf::from(".")))
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit());
+    // The companion app's default name for this instance.
+    if let Some(name) = crate::backend::computer_name() {
+        cmd.env("PRIVACYTRACKER_COMPUTER_NAME", name);
+    }
 
     // Detach the sidecar from our Cocoa app's GUI Services session so it
     // doesn't show up in the macOS Dock as a "node" / "exec" icon. When a

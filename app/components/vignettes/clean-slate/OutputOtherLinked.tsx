@@ -19,7 +19,7 @@ export default function OutputOtherLinked() {
         x="160"
         y="30"
       >
-        WHAT THE APP DOES
+        WHAT AN APP COULD DO
       </text>
 
       <g className="v-cs-surface">
@@ -109,7 +109,7 @@ export default function OutputOtherLinked() {
         x="164"
         y="125"
       >
-        "app functionality" — that's all it says
+        "app functionality" is all it says
       </text>
 
       <text

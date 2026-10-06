@@ -5,6 +5,7 @@
  * See https://docs.privacytracker.privacykey.org/develop/feature-flags
  */
 
+import { layoutForFocus, reconcileLayout } from "./dashboard-layout";
 import db from "./db";
 import {
   type Audience,
@@ -130,6 +131,24 @@ export function setActiveFocus(
   }
 ): void {
   const transaction = db.transaction(() => {
+    const previous = getActiveFocus();
+    const changed =
+      previous.audience !== focus.audience ||
+      (["monitor", "cleanup", "minimal", "accessibility"] as const).some(
+        (key) => previous.goals.has(key) !== focus[key]
+      );
+    if (changed) {
+      let stored: unknown = null;
+      try {
+        stored = JSON.parse(getSetting("dashboard.layout", "null"));
+      } catch {
+        /* Recover a corrupt layout using the canonical order. */
+      }
+      setSetting(
+        "dashboard.layout",
+        JSON.stringify(layoutForFocus(reconcileLayout(stored), focus))
+      );
+    }
     const workflow =
       focus.workflow ??
       inferFocusWorkflow({

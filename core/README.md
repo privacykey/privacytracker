@@ -686,7 +686,10 @@ What the port had to get right, none of it visible in the response shape:
 - **Resolver order.** Goal rules apply in the fixed order monitor, cleanup,
   minimal — not storage order. The runtime rule (step 5) runs before the
   override (step 7), so an override off beats the forced on. The dependency
-  parent is resolved through the whole chain, its own override included. The
+  parent is resolved through the whole chain, its own override included, and
+  then judged by its kind: a tri-state parent (hard default `collapsed`)
+  turns its dependents off only at `off`, a two-state one at anything but
+  `on` (`parent_hides_dependents`). The
   kill switch short-circuits BEFORE the override, so its own row reports
   `currentValue: "on"` while `override: "off"`; and `focusValue` copies
   `killSwitchOff` unchanged, so stripping that override does not turn the
@@ -694,7 +697,8 @@ What the port had to get right, none of it visible in the response shape:
   throw and the route answers 500 `{error:"Failed to list flags"}` — unless
   the garbage names an `Object.prototype` property, in which case the lookup
   finds a function and no rule applies. `override_value` is an unchecked
-  cast: `"banana"` is echoed and still fails the parent's `!== "on"`.
+  cast: `"banana"` is echoed, still hides a two-state parent's dependents and
+  leaves a tri-state parent's alone.
 - **`reconcileLayout`.** A canonical card missing from the stored order is
   slotted after its nearest preceding canonical neighbour that is already
   placed — and with none, `unshift`ed to the FRONT. So `order: ["hero"]`
@@ -1106,13 +1110,15 @@ scope, count-only, radar input variants, timeline validation and changelog
 pagination/filter branches.
 
 `node --conditions=react-server --import tsx core/scripts/extract-stats-cases.mjs`
-executes the real Node readers on 75 fixed-clock database scenarios and 13
+executes the real Node readers on 80 fixed-clock database scenarios and 13
 age coercions, producing `core/tests/fixtures/stats-cases.json` and the wire
 metadata in `stats_meta.json`. Rust replays identical SQL and compares the
 serialized bytes and annotation sweep effects. CI regenerates both files
 before crate tests, detecting Node drift even though live read parity is
 still a local gate. Invalid JSON/error paths and independent read failures
-are included. No new dependency or schema migration is introduced.
+are included, along with overview reminders before, at and after their deadline
+and outside the selected device scope. No new dependency or schema migration
+is introduced.
 
 Two pre-existing gate defects surfaced during verification: the feature-flag
 probe's stale 221-row expectation is now 222, and three diagnostics tests

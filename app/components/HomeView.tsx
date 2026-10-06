@@ -25,6 +25,7 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -38,6 +39,7 @@ import {
   type DashboardLayout,
   DEFAULT_LAYOUT,
   FIRST_CLASS_CARDS,
+  splitSimpleViewOrder,
 } from "../../lib/dashboard-layout";
 import { categoryLabel as i18nCategoryLabel } from "../../lib/i18n-meta";
 import type { PrimaryPurpose } from "../../lib/onboarding-purpose";
@@ -71,7 +73,9 @@ import {
   useRovingRadioGroup,
 } from "../../lib/use-roving-radiogroup";
 import BackgroundModeCallout from "./BackgroundModeCallout";
+import { DashboardLayoutLock } from "./DashboardLayoutLock";
 import { withScopeParam } from "./DeviceScopeProvider";
+import { FocusGoalLabels, FocusOverview } from "./FocusOverview";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { useTaskCenter } from "./TaskCenter";
 import Toast from "./Toast";
@@ -218,8 +222,9 @@ export interface DashboardFlagState {
   reviewSection: boolean;
   /** Risk-section watchlist block. */
   riskSection: boolean;
-  /** Collapsible risk-tier reference legend. */
-  riskTierLegend: boolean;
+  /** Collapsible risk-tier reference legend. Tri-state: "collapsed" (the
+   *  default) shows it closed, "on" shows it open, "off" hides it. */
+  riskTierLegend: "on" | "off" | "collapsed";
   /** Stale apps (not synced in 30+ days). */
   staleSection: boolean;
   /** Audience-aware "tasks worth trying" panel at the very top. Off
@@ -235,8 +240,14 @@ export interface DashboardFlagState {
  * archetype prop.
  */
 export interface FocusSummary {
+  accessibility?: boolean;
+  audience?: "self" | "loved_one" | "guardian";
+  cleanup?: boolean;
+  minimal?: boolean;
+  monitor?: boolean;
   purpose: PrimaryPurpose;
   understandDeclutter: boolean;
+  workflow?: string;
 }
 
 export default function HomeView({
@@ -344,6 +355,15 @@ export default function HomeView({
   );
   const [dismissingBanner, setDismissingBanner] = useState(false);
   const showManualAppsBanner = !bannerDismissed && manualAppsCount === 0;
+  // "Keep it simple" folds the long reference lists behind a control at the
+  // bottom of the page (see SIMPLE_VIEW_FOLDED_CARDS). Opened per visit:
+  // someone who always wants them turns the modifier off instead.
+  const simpleView = focusSummary?.minimal ?? false;
+  const [showSimpleDetail, setShowSimpleDetail] = useState(false);
+  const simpleDetailId = useId();
+  const simpleDetailFolded = simpleView && !showSimpleDetail;
+  // A jump to a folded section lands on the control that opens it.
+  const staleHref = simpleDetailFolded ? `#${SIMPLE_MORE_ID}` : "#stale-apps";
 
   const dismissManualAppsBanner = async () => {
     if (dismissingBanner) {
@@ -404,11 +424,11 @@ export default function HomeView({
         key: "stale",
         label: tHeadsUp("stale_label", { count: triage.staleCount }),
         cls: "headsup-stale",
-        href: "#stale-apps",
+        href: staleHref,
       });
     }
     return items;
-  }, [triage, tHeadsUp]);
+  }, [triage, tHeadsUp, staleHref]);
 
   const syncAllStale = async () => {
     if (syncingAll) {
@@ -496,7 +516,7 @@ export default function HomeView({
   const showProfileMismatch = flags?.profileMismatchSection ?? true;
   const showStale = flags?.staleSection ?? true;
   const showActivity = flags?.activitySection ?? true;
-  const showRiskTierLegend = flags?.riskTierLegend ?? true;
+  const riskTierLegend = flags?.riskTierLegend ?? "collapsed";
   const showTaskList = flags?.taskList ?? true;
   const showBackgroundModeWizard = flags?.backgroundModeWizard ?? false;
   const showLayoutEditorLink = flags?.layoutEditorVisible ?? true;
@@ -534,7 +554,7 @@ export default function HomeView({
     review_cta: () => reviewCtaSlot ?? null,
     focus_strip: () =>
       showFocusStrip && focusSummary ? (
-        <FocusStrip purpose={focusSummary.purpose} />
+        <FocusStrip focus={focusSummary} purpose={focusSummary.purpose} />
       ) : null,
     // Tauri-only — the component itself runtime-gates on `isDesktop()`,
     // and the parent only passes `backgroundCalloutVisible=true` when
@@ -554,7 +574,9 @@ export default function HomeView({
       showRiskFlag && triage.higherRisk.length > 0 ? (
         <RiskSection
           apps={triage.higherRisk}
+          audience={focusSummary?.audience ?? "self"}
           id="higher-risk"
+          total={triage.highRiskCount + triage.moderateRiskCount}
           variant={
             showCleanupCallout
               ? "cleanup"
@@ -570,15 +592,32 @@ export default function HomeView({
     // is enabled.
     hero: () =>
       showHeroQuiet || showHeroAttention ? (
-        <Hero
-          headsUps={headsUps}
-          onSyncAll={syncAllStale}
-          syncing={syncingAll}
-          triage={triage}
-        />
+        triage.overview ? (
+          <FocusOverview
+            changesListedBelow={
+              showReview &&
+              !hiddenSet.has("review_section") &&
+              triage.reviewable.length > 0
+            }
+            data={triage.overview}
+            focus={focusSummary}
+            onSyncAll={syncAllStale}
+            scopeParam={scopeParam}
+            staleCount={triage.staleCount}
+            syncing={syncingAll}
+            total={triage.totalApps}
+          />
+        ) : (
+          <Hero
+            headsUps={headsUps}
+            onSyncAll={syncAllStale}
+            syncing={syncingAll}
+            triage={triage}
+          />
+        )
       ) : null,
     cleanup_callout: () =>
-      showCleanupCallout ? (
+      showCleanupCallout && !triage.overview ? (
         <CleanupCallout count={triage.highRiskCount} />
       ) : null,
     family_callout: () =>
@@ -590,8 +629,14 @@ export default function HomeView({
           count={ageRatingFlagged.count}
         />
       ) : null,
+    // The rule tables are per-goal, so `callout.understand_declutter` also
+    // resolves on for Clean up alone. The callout is written for the
+    // Monitor AND Clean up pairing; `elevateStale` already keys off the same
+    // conjunction.
     third_party_callout: () =>
-      showThirdPartyCallout ? <ThirdPartyCallout triage={triage} /> : null,
+      showThirdPartyCallout && elevateStale ? (
+        <ThirdPartyCallout staleHref={staleHref} triage={triage} />
+      ) : null,
     glance_section: () =>
       showGlance ? <GlanceSection triage={triage} /> : null,
     definitions_callout: () =>
@@ -623,8 +668,24 @@ export default function HomeView({
         <ActivitySection activity={triage.recentActivity} />
       ) : null,
     risk_tier_legend: () =>
-      showRiskTierLegend ? <RiskTierLegend id="risk-tiers" /> : null,
+      riskTierLegend === "off" ? null : (
+        <RiskTierLegend id="risk-tiers" open={riskTierLegend === "on"} />
+      ),
   };
+
+  // Cards that will paint, in order: not hidden by the user, and with a
+  // renderer that returned something (flag on, data predicate met).
+  const renderCards = (ids: readonly DashboardCardId[]) =>
+    ids.flatMap((id) => {
+      if (hiddenSet.has(id)) {
+        return [];
+      }
+      const node = renderers[id]?.();
+      return node ? [<Fragment key={id}>{node}</Fragment>] : [];
+    });
+  // The edit shell lays out every card itself, so nothing is folded there.
+  const simpleOrder = splitSimpleViewOrder(layout.order, simpleView);
+  const foldedCards = renderCards(simpleOrder.folded);
 
   return editMode ? (
     <EditModeShell
@@ -636,19 +697,72 @@ export default function HomeView({
     />
   ) : (
     <div className="page-container home-page">
-      {layout.order.map((id) => {
-        if (hiddenSet.has(id)) {
-          return null;
-        }
-        const node = renderers[id]?.();
-        if (!node) {
-          return null;
-        }
-        return <Fragment key={id}>{node}</Fragment>;
-      })}
+      {renderCards(simpleOrder.main)}
+      {foldedCards.length > 0 && (
+        <SimpleViewMore
+          controls={simpleDetailId}
+          count={foldedCards.length}
+          expanded={showSimpleDetail}
+          onToggle={() => setShowSimpleDetail((open) => !open)}
+        />
+      )}
+      <div id={simpleDetailId}>{showSimpleDetail && foldedCards}</div>
       {showLayoutEditorLink && <LayoutEditorFooterLink />}
       <Toast>{toast}</Toast>
     </div>
+  );
+}
+
+/** Anchor for the simple view's "Show more detail" control. Jumps to a
+ *  folded section land here instead of on an element that is not rendered. */
+const SIMPLE_MORE_ID = "simple-view-more";
+
+/**
+ * The simple view's way back to the detail it folds away: a quiet note at
+ * the bottom of the dashboard with one button that opens the long lists
+ * below it, and a link to where the modifier itself is switched off.
+ */
+function SimpleViewMore({
+  count,
+  expanded,
+  onToggle,
+  controls,
+}: {
+  /** Folded lists that have something to show. */
+  count: number;
+  expanded: boolean;
+  onToggle: () => void;
+  /** Id of the region the button opens. */
+  controls: string;
+}) {
+  const t = useTranslations("dashboard.simple_view");
+  return (
+    <section
+      aria-label={t("aria")}
+      className="home-simple-more"
+      id={SIMPLE_MORE_ID}
+    >
+      <p className="home-simple-more-note">
+        {t(expanded ? "note_open" : "note", { count })}
+      </p>
+      <div className="home-simple-more-actions">
+        <button
+          aria-controls={controls}
+          aria-expanded={expanded}
+          className="btn btn-secondary btn-sm"
+          onClick={onToggle}
+          type="button"
+        >
+          {t(expanded ? "hide" : "show")}
+        </button>
+        <Link
+          className="home-simple-more-link"
+          href="/dashboard/settings/you#focus"
+        >
+          {t("focus_settings")}
+        </Link>
+      </div>
+    </section>
   );
 }
 
@@ -829,6 +943,11 @@ function EditModeToolbar({
         )}
       </div>
 
+      <DashboardLayoutLock
+        disabled={saver.savingState === "saving"}
+        fixed={!!saver.layout.keepFixed}
+        onChange={saver.toggleKeepFixed}
+      />
       <div
         aria-label={t("preset_aria_group")}
         className="home-edit-toolbar-presets"
@@ -853,6 +972,7 @@ function EditModeToolbar({
                 }`}
                 data-preset={presetKey}
                 data-severity={meta.severityCls}
+                disabled={saver.savingState === "saving"}
                 onClick={() => saver.applyPreset(presetKey)}
                 role="radio"
                 tabIndex={rovingTabIndex(
@@ -915,6 +1035,9 @@ function EditModeToolbar({
         </button>
         <button
           className="btn btn-primary btn-sm"
+          disabled={
+            saver.savingState === "saving" || saver.savingState === "error"
+          }
           onClick={exitEditMode}
           type="button"
         >
@@ -1101,7 +1224,13 @@ const FOCUS_STRIP_ICONS: Record<PrimaryPurpose, string> = {
   custom: "⚙️",
 };
 
-function FocusStrip({ purpose }: { purpose: PrimaryPurpose }) {
+function FocusStrip({
+  purpose,
+  focus,
+}: {
+  purpose: PrimaryPurpose;
+  focus: FocusSummary;
+}) {
   // Chrome copy from `dashboard.focus_strip.*`; the value is the /welcome
   // purpose title from `focus_purpose.primary.<purpose>.title`, so the strip
   // speaks the same vocabulary as the onboarding + settings editor.
@@ -1115,7 +1244,11 @@ function FocusStrip({ purpose }: { purpose: PrimaryPurpose }) {
       <div className="focus-strip-body">
         <div className="focus-strip-label">{t("label")}</div>
         <div className="focus-strip-value">
-          {tPurpose(`primary.${purpose}.title`)}
+          {focus.audience ? (
+            <FocusGoalLabels focus={focus} />
+          ) : (
+            tPurpose(`primary.${purpose}.title`)
+          )}
         </div>
       </div>
       <Link className="focus-strip-change" href="/dashboard/settings/you#focus">
@@ -1204,7 +1337,15 @@ function AgeRatingCallout({
   );
 }
 
-function ThirdPartyCallout({ triage }: { triage: TriageData }) {
+function ThirdPartyCallout({
+  triage,
+  staleHref = "#stale-apps",
+}: {
+  triage: TriageData;
+  /** Where "Jump to stale apps" lands. The simple view points it at the
+   *  control that opens the folded lists while the stale list is folded. */
+  staleHref?: string;
+}) {
   const stale = triage.staleCount;
   const tCallouts = useTranslations("dashboard.callouts");
   return (
@@ -1218,7 +1359,7 @@ function ThirdPartyCallout({ triage }: { triage: TriageData }) {
           ` ${tCallouts("security_hygiene_stale", { count: stale })}`}
       </p>
       {stale > 0 && (
-        <Link className="intent-callout-link" href="#stale-apps">
+        <Link className="intent-callout-link" href={staleHref}>
           {tCallouts("security_hygiene_jump")}
         </Link>
       )}
@@ -1341,7 +1482,7 @@ function ManualAppsBanner({
   );
 }
 
-function RiskTierLegend({ id }: { id: string }) {
+function RiskTierLegend({ id, open }: { id: string; open: boolean }) {
   // i18n — legend chrome from `dashboard.risk_tier_legend.*`, the four
   // tier explainer cards from `dashboard.risk_tiers.${key}_{rule|meaning|example}`,
   // and the pill labels themselves from the shared `risk.*_label`
@@ -1351,7 +1492,10 @@ function RiskTierLegend({ id }: { id: string }) {
   const tRisk = useTranslations("risk");
   return (
     <section className="home-section home-section-legend" id={id}>
-      <details className="risk-tier-legend">
+      {/* `open` only sets the starting state; the reader can still
+          toggle it, and React leaves the attribute alone until the flag
+          itself changes. */}
+      <details className="risk-tier-legend" open={open}>
         <summary className="risk-tier-legend-summary">
           <span className="risk-tier-legend-kicker">{t("kicker")}</span>
           <span className="risk-tier-legend-hint">{t("hint")}</span>
@@ -1615,8 +1759,10 @@ function ReviewSection({
               <div className="home-row-body">
                 <div className="home-row-title">{app.name}</div>
                 <div className="home-row-sub">
-                  {app.changeCount} change{app.changeCount === 1 ? "" : "s"} ·{" "}
-                  {relativeTime(tRel, app.lastChangeAt)}
+                  {tSections("review_change_count", {
+                    count: app.changeCount,
+                  })}{" "}
+                  · {relativeTime(tRel, app.lastChangeAt)}
                   {app.topChange && (
                     <span className="home-row-topchange">
                       {" "}
@@ -1674,7 +1820,7 @@ function ConsiderReplacingSection({
   // mismatches get a "see all" footer that routes to the apps grid with
   // the "bad match" filter implicitly applied via the badge (which is now
   // present on every card).
-  const MAX_VISIBLE = 6;
+  const MAX_VISIBLE = 3;
   const visible = apps.slice(0, MAX_VISIBLE);
   const hidden = Math.max(0, apps.length - visible.length);
 
@@ -1682,15 +1828,13 @@ function ConsiderReplacingSection({
     <section className="home-section profile-replace-section" id={id}>
       <div className="profile-replace-section-title">
         <span aria-hidden>🛡</span>
-        Consider replacing
+        {tSections("replace_kicker")}
         <span className="home-section-count" style={{ marginLeft: 6 }}>
-          {apps.length} app{apps.length === 1 ? "" : "s"}
+          {tSections("watchlist_count", { count: apps.length })}
         </span>
       </div>
       <p className="profile-replace-section-subtitle">
-        These apps go further than your privacy profile allows. Open one to see
-        which categories mismatch, and decide whether to keep, replace, or
-        delete.
+        {tSections("replace_sub")}
       </p>
 
       <div className="profile-replace-list">
@@ -1746,8 +1890,9 @@ function ConsiderReplacingSection({
                 </span>
               )}
               <span className="profile-replace-row-count">
-                {entry.mismatch.count} mismatch
-                {entry.mismatch.count === 1 ? "" : "es"}
+                {tSections("replace_mismatch_count", {
+                  count: entry.mismatch.count,
+                })}
               </span>
             </Link>
           );
@@ -1756,11 +1901,14 @@ function ConsiderReplacingSection({
 
       {hidden > 0 && (
         <p className="settings-field-help" style={{ marginTop: 10 }}>
-          +{hidden} more on the{" "}
-          <Link className="welcome-link" href="/dashboard/apps">
-            apps page
-          </Link>{" "}
-          (look for the warning badge).
+          {tSections.rich("replace_more", {
+            count: hidden,
+            link: (chunks) => (
+              <Link className="welcome-link" href="/dashboard/apps">
+                {chunks}
+              </Link>
+            ),
+          })}
         </p>
       )}
     </section>
@@ -1775,12 +1923,19 @@ function RiskSection({
   id,
   apps,
   variant = "default",
+  audience = "self",
+  total,
 }: {
   id: string;
   apps: TriageApp[];
   /** Intent-driven wording. `cleanup` frames this as a delete-list, `family`
    *  frames it as a review-with-kids list, `default` is the neutral watchlist. */
   variant?: "default" | "cleanup" | "family";
+  /** Whose apps these are. The subtitle says "you" only for `self`. */
+  audience?: "self" | "loved_one" | "guardian";
+  /** Size of the whole higher-risk set. `apps` is only its top slice, so
+   *  the header names both when they differ. */
+  total?: number;
 }) {
   const tSections = useTranslations("dashboard.sections");
   const tRisk = useTranslations("risk");
@@ -1791,11 +1946,21 @@ function RiskSection({
         ? tSections("family_kicker")
         : tSections("watchlist_kicker");
   const sub =
-    variant === "cleanup"
-      ? tSections("cleanup_sub")
-      : variant === "family"
-        ? tSections("family_sub")
-        : tSections("watchlist_sub");
+    variant === "family"
+      ? tSections("family_sub")
+      : variant === "cleanup"
+        ? tSections(
+            audience === "self" ? "cleanup_sub" : `cleanup_sub_${audience}`
+          )
+        : tSections(
+            audience === "loved_one"
+              ? "watchlist_sub_loved_one"
+              : "watchlist_sub"
+          );
+  const count =
+    total !== undefined && total > apps.length
+      ? tSections("watchlist_top_of", { shown: apps.length, total })
+      : tSections("watchlist_count", { count: apps.length });
   return (
     <section
       className="home-section home-section-risk home-section-watchlist"
@@ -1804,9 +1969,7 @@ function RiskSection({
       <div className="home-section-header">
         <h2 className="home-section-title">
           <span className="home-section-kicker">{kicker}</span>
-          <span className="home-section-count">
-            {tSections("watchlist_count", { count: apps.length })}
-          </span>
+          <span className="home-section-count">{count}</span>
         </h2>
         <p className="home-section-sub">{sub}</p>
       </div>
@@ -1825,19 +1988,21 @@ function RiskSection({
                 {app.unlinkedCount > 0 && (
                   <span className="home-row-chip home-row-chip-unlinked">
                     <PrivacyTypeIcon tier="not_linked" />
-                    {app.unlinkedCount} unlinked
+                    {tSections("risk_chip_unlinked", {
+                      count: app.unlinkedCount,
+                    })}
                   </span>
                 )}
                 {app.linkedCount > 0 && (
                   <span className="home-row-chip home-row-chip-linked">
                     <PrivacyTypeIcon tier="linked" />
-                    {app.linkedCount} linked
+                    {tSections("risk_chip_linked", { count: app.linkedCount })}
                   </span>
                 )}
                 {app.trackCount > 0 && (
                   <span className="home-row-chip home-row-chip-track">
                     <PrivacyTypeIcon tier="tracking" />
-                    {app.trackCount} track
+                    {tSections("risk_chip_track", { count: app.trackCount })}
                   </span>
                 )}
               </div>
@@ -1854,7 +2019,7 @@ function RiskSection({
 
       <div className="home-section-footer">
         <Link className="btn btn-ghost btn-sm" href="/dashboard/apps">
-          See all apps sorted by risk →
+          {tSections("risk_see_all")}
         </Link>
       </div>
     </section>

@@ -20,9 +20,11 @@
 //!      not the order the goals were stored in;
 //!   4. accessibility rule;
 //!   5. runtime: two desktop-only flags are forced `on` under Tauri;
-//!   6. dependency: a flag whose parent does not resolve to `on` collapses
-//!      to `off` — and the parent is resolved through this whole chain,
-//!      recursively, INCLUDING the parent's own override;
+//!   6. dependency: a flag whose parent is hidden collapses to `off` — and
+//!      the parent is resolved through this whole chain, recursively,
+//!      INCLUDING the parent's own override. Hidden means `off` for a
+//!      tri-state parent (hard default `collapsed`) and anything but `on`
+//!      for a two-state one (`parent_hides_dependents`);
 //!   7. the flag's own override, last, so it beats the collapse.
 //!
 //! And around it, two things `resolveFlag` adds that `computeFlag` does not
@@ -35,7 +37,8 @@
 //!
 //! Two JavaScript facts the port has to reproduce rather than tidy away:
 //! `override_value` is an unchecked cast, so a stored `"banana"` is echoed
-//! verbatim and still fails the parent's `!== "on"` test; and
+//! verbatim and still reaches the parent test, where it hides a two-state
+//! parent's dependents and leaves a tri-state parent's alone; and
 //! `AUDIENCE_RULES[audience]` on an audience that is not one of the three
 //! throws (`undefined[key]`) and the route answers 500 — unless the stored
 //! audience happens to name an `Object.prototype` property, in which case
@@ -141,6 +144,18 @@ impl FlagRules {
     fn parent_of(&self, key: &str) -> Option<&str> {
         self.file.dependencies.get(key).and_then(Value::as_str)
     }
+
+    /// `parentHidesDependents` in `lib/feature-flag-rules.ts`: a tri-state
+    /// parent (hard default `collapsed`) hides its dependents only at
+    /// `off`, since `collapsed` is still on screen; a two-state parent
+    /// hides them at anything but `on`.
+    fn parent_hides_dependents(&self, parent: &str, value: &str) -> bool {
+        if self.hard_default(parent) == "collapsed" {
+            value == "off"
+        } else {
+            value != "on"
+        }
+    }
 }
 
 /// The tables, parsed once. The JSON is generated and checked in, so a parse
@@ -155,8 +170,7 @@ pub fn rules() -> &'static FlagRules {
     })
 }
 
-/// `FocusState.goals` after `activeGoalsFrom`: `minimal` suppresses the
-/// two goal tiles; `accessibility` is independent of all three.
+/// Minimal and accessibility are presentation modifiers that retain both goal tiles.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Goals {
     pub monitor: bool,
@@ -170,8 +184,8 @@ impl Goals {
     /// applied to the `/api/focus` body.
     pub fn from_stored(monitor: bool, cleanup: bool, minimal: bool, accessibility: bool) -> Self {
         Goals {
-            monitor: !minimal && monitor,
-            cleanup: !minimal && cleanup,
+            monitor,
+            cleanup,
             minimal,
             accessibility,
         }
@@ -283,10 +297,11 @@ fn compute_flag(key: &str, ctx: &Context, depth: usize) -> Result<String, Resolv
     }
 
     // 6. Dependency — the parent goes through the WHOLE chain, override
-    //    included, before the comparison.
+    //    included, before the test.
     let mut value = value.to_string();
     if let Some(parent) = rules.parent_of(key) {
-        if compute_flag(parent, ctx, depth + 1)? != "on" {
+        let parent_value = compute_flag(parent, ctx, depth + 1)?;
+        if rules.parent_hides_dependents(parent, &parent_value) {
             value = "off".to_string();
         }
     }
@@ -453,6 +468,44 @@ mod tests {
         assert_eq!(resolve_flag(child, &c).unwrap(), "on");
         // With the child's override stripped, the parent's stays: collapse.
         assert_eq!(resolve_focus_baseline(child, &c).unwrap(), "off");
+    }
+
+    #[test]
+    fn a_collapsed_tri_state_parent_leaves_its_dependents_alone() {
+        let panel = "flag.detail.a11y.panel";
+        let highlights = "flag.detail.a11y.preference_highlights";
+        let strip = "flag.detail.policy.run_log_strip";
+        let trace = "flag.detail.policy.run_log_details";
+        // Both parents at their `collapsed` default are on screen, so the
+        // dependents keep their own values.
+        let c = ctx("self", Goals::default(), &[]);
+        assert_eq!(resolve_flag(panel, &c).unwrap(), "collapsed");
+        assert_eq!(resolve_flag(highlights, &c).unwrap(), "on");
+        assert_eq!(resolve_flag(strip, &c).unwrap(), "collapsed");
+        assert_eq!(resolve_flag(trace, &c).unwrap(), "collapsed");
+        // `off` still hides them.
+        let off = ctx("self", Goals::default(), &[(panel, "off"), (strip, "off")]);
+        assert_eq!(resolve_flag(highlights, &off).unwrap(), "off");
+        assert_eq!(resolve_flag(trace, &off).unwrap(), "off");
+        // And the minimal goal's own rule still turns the trace off.
+        let minimal = Goals {
+            minimal: true,
+            ..Goals::default()
+        };
+        let m = ctx("self", minimal, &[]);
+        assert_eq!(resolve_flag(trace, &m).unwrap(), "off");
+    }
+
+    #[test]
+    fn a_collapsed_two_state_parent_still_hides_its_dependents() {
+        // Dev Options can set any flag to `collapsed`. Clients read a
+        // two-state flag at `collapsed` as off, so its dependents follow.
+        let parent = "flag.guardian.age_rating";
+        let child = "flag.dashboard.callout.age_rating";
+        let c = ctx("guardian", Goals::default(), &[(parent, "collapsed")]);
+        assert_eq!(resolve_flag(child, &c).unwrap(), "off");
+        let shown = ctx("guardian", Goals::default(), &[]);
+        assert_eq!(resolve_flag(child, &shown).unwrap(), "on");
     }
 
     #[test]

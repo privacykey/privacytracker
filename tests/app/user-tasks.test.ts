@@ -119,7 +119,7 @@ test("cleanup goal adds review_mismatches", () => {
   assert.ok(resolved.some((r) => r.id === "review_mismatches"));
 });
 
-test("minimal goal also enables review_mismatches but suppresses compare (no monitor/cleanup)", () => {
+test("minimal presentation alone does not enable review or comparison tasks", () => {
   const f = focus({ minimal: true });
   const ctx = emptyCtx({ focus: f });
   const resolved = resolveTasks(
@@ -130,8 +130,40 @@ test("minimal goal also enables review_mismatches but suppresses compare (no mon
     NOW
   );
   const ids = new Set(resolved.map((r) => r.id));
-  assert.ok(ids.has("review_mismatches"));
+  assert.ok(!ids.has("review_mismatches"));
   assert.ok(!ids.has("compare_two_apps"));
+});
+
+test("comparison checklist follows focus capabilities and explicit overrides", () => {
+  const f = focus({ monitor: true, minimal: true });
+  const visible = (overrides: Partial<TaskCompletionContext> = {}) =>
+    resolveTasks(
+      f,
+      emptyCtx({ focus: f, ...overrides }),
+      { tasks: {} },
+      { isDesktop: false },
+      NOW
+    ).some((task) => task.id === "compare_two_apps");
+  assert.equal(visible(), false);
+  assert.equal(visible({ compareEnabled: true }), true);
+  assert.equal(visible({ compareEnabled: false }), false);
+});
+
+test("the Privacy Map step is offered only while its page is on", () => {
+  // The guardian rules switch /dashboard/privacy off; the step that links
+  // there must go with it. A caller that never resolved the flag keeps it.
+  const f = focus({ audience: "guardian" });
+  const visible = (overrides: Partial<TaskCompletionContext> = {}) =>
+    resolveTasks(
+      f,
+      emptyCtx({ focus: f, ...overrides }),
+      { tasks: {} },
+      { isDesktop: false },
+      NOW
+    ).some((task) => task.id === "view_privacy_map");
+  assert.equal(visible(), true);
+  assert.equal(visible({ privacyMapEnabled: true }), true);
+  assert.equal(visible({ privacyMapEnabled: false }), false);
 });
 
 test("opt-in tasks (setup_background_mode, remove_apps_from_phone) are hidden until opted in", () => {

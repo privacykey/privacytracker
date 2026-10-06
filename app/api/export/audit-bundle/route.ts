@@ -16,7 +16,8 @@ import {
   getActiveFocus,
   getActiveFocusWorkflow,
 } from "@/lib/feature-flag-storage";
-import { resolveFlagFromDb } from "@/lib/feature-flags-server";
+import { resolveFlag } from "@/lib/feature-flags";
+import { getResolverContextFromDb } from "@/lib/feature-flags-server";
 import { workflowAllowsAuditBundle } from "@/lib/focus-workflow";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import { setSetting } from "@/lib/scheduler";
@@ -80,14 +81,15 @@ export async function POST(request: NextRequest) {
   })();
   const workflow = focus ? getActiveFocusWorkflow(focus) : null;
 
-  // Gate: callable when the bundle export flag is on OR the purpose workflow
-  // says the user is preparing a handoff bundle. Client surfaces hide the
-  // button when off, but the API is the authoritative gate.
+  // A handoff workflow supplies a default, but explicit overrides and the
+  // feature-system kill switch remain authoritative.
   try {
-    if (
-      resolveFlagFromDb("flag.settings.admin.export.audit_bundle") !== "on" &&
-      !workflowAllowsAuditBundle(workflow)
-    ) {
+    const context = getResolverContextFromDb();
+    const key = "flag.settings.admin.export.audit_bundle";
+    const handoffDefault =
+      !(context.killSwitchOff || context.overrides.has(key)) &&
+      workflowAllowsAuditBundle(workflow);
+    if (resolveFlag(key, context) !== "on" && !handoffDefault) {
       return NextResponse.json(
         { error: "Audit-bundle export is not enabled for your focus" },
         { status: 403 }

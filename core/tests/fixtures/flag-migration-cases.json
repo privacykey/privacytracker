@@ -6624,6 +6624,13 @@
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
+            "dashboard.layout",
+            "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"task_list\",\"review_cta\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
             "flag.focus.audience",
             "self"
           ]
@@ -7353,6 +7360,10 @@
       "rows": {
         "app_settings": [
           {
+            "key": "dashboard.layout",
+            "value": "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"task_list\",\"review_cta\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          },
+          {
             "key": "flag.focus.audience",
             "value": "self"
           },
@@ -7639,6 +7650,13 @@
         {
           "sql": "BEGIN",
           "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "dashboard.layout",
+            "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_cta\",\"cleanup_callout\",\"profile_mismatch_section\",\"task_list\",\"background_mode_wizard\",\"risk_section\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"review_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
@@ -8372,6 +8390,10 @@
       "rows": {
         "app_settings": [
           {
+            "key": "dashboard.layout",
+            "value": "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_cta\",\"cleanup_callout\",\"profile_mismatch_section\",\"task_list\",\"background_mode_wizard\",\"risk_section\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"review_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          },
+          {
             "key": "flag.focus.audience",
             "value": "self"
           },
@@ -8658,6 +8680,13 @@
         {
           "sql": "BEGIN",
           "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "dashboard.layout",
+            "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"review_cta\",\"cleanup_callout\",\"profile_mismatch_section\",\"task_list\",\"background_mode_wizard\",\"risk_section\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
@@ -9391,6 +9420,10 @@
       "rows": {
         "app_settings": [
           {
+            "key": "dashboard.layout",
+            "value": "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"review_cta\",\"cleanup_callout\",\"profile_mismatch_section\",\"task_list\",\"background_mode_wizard\",\"risk_section\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          },
+          {
             "key": "flag.focus.audience",
             "value": "self"
           },
@@ -9677,6 +9710,13 @@
         {
           "sql": "BEGIN",
           "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "dashboard.layout",
+            "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"age_rating_callout\",\"family_callout\",\"review_section\",\"task_list\",\"review_cta\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
@@ -10409,6 +10449,10 @@
       ],
       "rows": {
         "app_settings": [
+          {
+            "key": "dashboard.layout",
+            "value": "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"age_rating_callout\",\"family_callout\",\"review_section\",\"task_list\",\"review_cta\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          },
           {
             "key": "flag.focus.audience",
             "value": "guardian"
@@ -13506,6 +13550,13 @@
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
+            "dashboard.layout",
+            "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"age_rating_callout\",\"family_callout\",\"review_section\",\"task_list\",\"review_cta\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
             "flag.focus.audience",
             "guardian"
           ]
@@ -14237,6 +14288,10 @@
           {
             "key": "flag.focus.child_age_band",
             "value": "13_15"
+          },
+          {
+            "key": "dashboard.layout",
+            "value": "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"age_rating_callout\",\"family_callout\",\"review_section\",\"task_list\",\"review_cta\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
           },
           {
             "key": "flag.focus.audience",
@@ -23091,6 +23146,13 @@
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
+            "dashboard.layout",
+            "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"review_cta\",\"cleanup_callout\",\"profile_mismatch_section\",\"task_list\",\"background_mode_wizard\",\"risk_section\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
             "flag.focus.audience",
             "self"
           ]
@@ -23823,6 +23885,10 @@
       ],
       "rows": {
         "app_settings": [
+          {
+            "key": "dashboard.layout",
+            "value": "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"review_cta\",\"cleanup_callout\",\"profile_mismatch_section\",\"task_list\",\"background_mode_wizard\",\"risk_section\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          },
           {
             "key": "flag.focus.audience",
             "value": "self"
@@ -34686,6 +34752,13 @@
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
           "params": [
+            "dashboard.layout",
+            "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"review_cta\",\"cleanup_callout\",\"profile_mismatch_section\",\"task_list\",\"background_mode_wizard\",\"risk_section\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
             "flag.focus.audience",
             "self"
           ]
@@ -34815,6 +34888,10 @@
           {
             "key": "flag.focus.goal.understand",
             "value": "true"
+          },
+          {
+            "key": "dashboard.layout",
+            "value": "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"review_cta\",\"cleanup_callout\",\"profile_mismatch_section\",\"task_list\",\"background_mode_wizard\",\"risk_section\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
           },
           {
             "key": "flag.focus.audience",
@@ -35139,6 +35216,13 @@
         {
           "sql": "BEGIN",
           "params": []
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "dashboard.layout",
+            "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"task_list\",\"review_cta\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          ]
         },
         {
           "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
@@ -35915,6 +35999,10 @@
       ],
       "rows": {
         "app_settings": [
+          {
+            "key": "dashboard.layout",
+            "value": "{\"v\":1,\"order\":[\"focus_strip\",\"hero\",\"review_section\",\"task_list\",\"review_cta\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[]}"
+          },
           {
             "key": "flag.focus.audience",
             "value": "self"

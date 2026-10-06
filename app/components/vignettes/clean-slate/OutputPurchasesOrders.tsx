@@ -19,7 +19,7 @@ export default function OutputPurchasesOrders() {
         x="160"
         y="30"
       >
-        WHAT THE APP DOES
+        WHAT AN APP COULD DO
       </text>
 
       <g className="v-cs-surface">

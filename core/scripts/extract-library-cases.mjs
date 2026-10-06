@@ -797,6 +797,51 @@ async function adminCases(route, method, extra = {}) {
 {
   const route = "/api/verdicts";
   const base = [...APPS];
+  await run("keep accepts the current collection", {
+    route,
+    method: "POST",
+    setup: base,
+    json: { appId: A1, verdict: "safe", acceptCurrent: true },
+  });
+  await run("decide later persists a seven day reminder", {
+    route,
+    method: "POST",
+    setup: base,
+    json: { appId: A1, deferDays: 7 },
+  });
+  await run("decide later rejects invalid intervals", {
+    route,
+    method: "POST",
+    setup: base,
+    json: { appId: A1, deferDays: 0 },
+  });
+  await run("decision clears an existing reminder", {
+    route,
+    method: "POST",
+    setup: [...base, setting(`review.defer.${A1}`, String(now + 86400000))],
+    json: { appId: A1, verdict: "replace" },
+  });
+  await run("accepting a concern clears its existing reminder atomically", {
+    route,
+    method: "POST",
+    setup: [...base, setting(`review.defer.${A1}`, String(now + 86400000))],
+    json: { appId: A1, verdict: "safe", acceptCurrent: true },
+  });
+  await run("bulk acceptance clears reminders atomically", {
+    route: "/api/verdicts/bulk",
+    method: "POST",
+    setup: [...base, setting(`review.defer.${A1}`, String(now + 86400000))],
+    json: { appIds: [A1, A2], verdict: "safe", acceptCurrent: true },
+  });
+  await run("undo invalidates a newly accepted concern", {
+    route,
+    method: "POST",
+    setup: [
+      ...base,
+      setting(`review.accept.${A1}`, '{"profile":"","tokens":[]}'),
+    ],
+    json: { appId: A1, verdict: "safe", clearAcceptance: true },
+  });
   await run("verdict manifest body", {
     route,
     method: "POST",

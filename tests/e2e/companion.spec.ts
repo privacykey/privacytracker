@@ -43,11 +43,12 @@ browserFlow(
     await expect(card).toBeVisible();
     await expect(card.locator("h2")).toHaveText("Companion");
 
-    // Rename the instance as phones will see it.
+    // The name phones see starts as a description of the host, and is
+    // edited where the code is made: typed and not saved, it still goes
+    // into the code.
     const name = card.getByLabel("Name phones see");
+    await expect(name).toHaveValue("privacytracker server");
     await name.fill("E2E Mac");
-    await card.getByRole("button", { name: "Save" }).click();
-    await expect(name).toHaveValue("E2E Mac");
 
     // Outside the desktop app there is no Wi-Fi switch: the code points at
     // the address this page is open at.

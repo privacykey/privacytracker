@@ -84,6 +84,8 @@ pub struct Layout {
     pub v: i64,
     pub order: Vec<String>,
     pub hidden: Vec<String>,
+    #[serde(rename = "keepFixed", skip_serializing_if = "std::ops::Not::not")]
+    pub keep_fixed: bool,
 }
 
 fn canonical_index(id: &str) -> usize {
@@ -101,6 +103,7 @@ fn is_first_class(id: &str) -> bool {
 pub fn default_layout() -> Layout {
     Layout {
         v: 1,
+        keep_fixed: false,
         order: CANONICAL_ORDER.iter().map(|s| s.to_string()).collect(),
         hidden: Vec::new(),
     }
@@ -132,6 +135,7 @@ fn build_preset(visible: &[&str]) -> Layout {
     hidden.sort_by_key(|id| canonical_index(id));
     Layout {
         v: 1,
+        keep_fixed: false,
         order,
         hidden: hidden.into_iter().map(str::to_string).collect(),
     }
@@ -143,13 +147,7 @@ pub fn presets() -> Vec<(&'static str, Layout)> {
         ("default", default_layout()),
         (
             "minimal",
-            build_preset(&[
-                "review_cta",
-                "hero",
-                "risk_section",
-                "review_section",
-                "glance_section",
-            ]),
+            build_preset(&["review_cta", "hero", "review_section"]),
         ),
         (
             "caretaker",
@@ -197,6 +195,7 @@ pub fn presets() -> Vec<(&'static str, Layout)> {
 /// `normaliseLayout`: dedupe `order`; keep only first-class ids in `hidden`,
 /// dedupe, and sort them canonically.
 fn normalise_layout(layout: Layout) -> Layout {
+    let keep_fixed = layout.keep_fixed;
     let mut seen: HashSet<String> = HashSet::new();
     let order: Vec<String> = layout
         .order
@@ -212,6 +211,7 @@ fn normalise_layout(layout: Layout) -> Layout {
     hidden.sort_by_key(|id| canonical_index(id));
     Layout {
         v: 1,
+        keep_fixed,
         order,
         hidden,
     }
@@ -282,6 +282,7 @@ pub fn reconcile_layout(stored: &Value) -> Layout {
 
     normalise_layout(Layout {
         v: 1,
+        keep_fixed: stored.get("keepFixed").and_then(Value::as_bool) == Some(true),
         order: out.into_iter().map(str::to_string).collect(),
         hidden: hidden.into_iter().map(str::to_string).collect(),
     })
@@ -329,6 +330,36 @@ pub fn read_layout_with_match(conn: &Connection) -> rusqlite::Result<LayoutWithM
         layout,
         matched_preset,
     })
+}
+
+pub fn layout_for_focus(
+    mut layout: Layout,
+    audience: &str,
+    monitor: bool,
+    cleanup: bool,
+) -> Layout {
+    if layout.keep_fixed {
+        return layout;
+    }
+    let mut first = vec!["focus_strip", "hero"];
+    if audience == "guardian" {
+        first.extend(["age_rating_callout", "family_callout"]);
+    }
+    if monitor {
+        first.push("review_section");
+    }
+    if cleanup {
+        first.extend(["review_cta", "cleanup_callout", "profile_mismatch_section"]);
+    }
+    if audience == "loved_one" {
+        first.push("task_list");
+    }
+    layout.order = first
+        .iter()
+        .chain(CANONICAL_ORDER.iter().filter(|id| !first.contains(id)))
+        .map(|id| id.to_string())
+        .collect();
+    layout
 }
 
 #[cfg(test)]

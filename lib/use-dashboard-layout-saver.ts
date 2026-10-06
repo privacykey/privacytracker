@@ -45,6 +45,7 @@ export interface UseDashboardLayoutSaverResult {
   reorder: (activeId: DashboardCardId, overId: DashboardCardId) => void;
   resetLayout: () => Promise<void>;
   savingState: LayoutSaverState;
+  toggleKeepFixed: () => void;
   toggleVisibility: (id: DashboardCardId) => void;
 }
 
@@ -100,8 +101,9 @@ export function useDashboardLayoutSaver(
       if (debounceTimer.current !== null) {
         window.clearTimeout(debounceTimer.current);
       }
+      const seq = ++lastSeqRef.current;
       debounceTimer.current = window.setTimeout(async () => {
-        const seq = ++lastSeqRef.current;
+        debounceTimer.current = null;
         try {
           const res = await fetch("/api/dashboard/layout", {
             method: "PUT",
@@ -149,6 +151,10 @@ export function useDashboardLayoutSaver(
         return;
       }
       setPendingPreset(null);
+      if (debounceTimer.current !== null) {
+        window.clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
       setSavingState("saving");
       setErrorMsg(null);
       const seq = ++lastSeqRef.current;
@@ -184,6 +190,10 @@ export function useDashboardLayoutSaver(
   }, []);
 
   const resetLayout = useCallback(async () => {
+    if (debounceTimer.current !== null) {
+      window.clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
     setSavingState("saving");
     setErrorMsg(null);
     const seq = ++lastSeqRef.current;
@@ -219,6 +229,7 @@ export function useDashboardLayoutSaver(
         ? layout.hidden.filter((x) => x !== id)
         : [...layout.hidden, id];
       const next: DashboardLayout = {
+        ...layout,
         v: 1,
         order: layout.order,
         hidden: nextHidden,
@@ -246,6 +257,7 @@ export function useDashboardLayoutSaver(
       }
       const nextOrder = arrayMove(layout.order, oldIndex, newIndex);
       const next: DashboardLayout = {
+        ...layout,
         v: 1,
         order: nextOrder,
         hidden: layout.hidden,
@@ -275,6 +287,11 @@ export function useDashboardLayoutSaver(
     cancelPendingPreset,
     resetLayout,
     toggleVisibility,
+    toggleKeepFixed: () => {
+      const next = { ...layout, keepFixed: !layout.keepFixed };
+      setLayout(next);
+      persistLayout(next);
+    },
     reorder,
   };
 }

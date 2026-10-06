@@ -37,6 +37,31 @@ fn token(fill: char) -> String {
 
 // ── Allowlist, shape and labels ───────────────────────────────────────
 
+/// Until someone names it, an instance describes its host: the Mac's name
+/// in the desktop app, a plain description anywhere else. The old default,
+/// "privacytracker", says nothing a phone could tell instances apart by, so
+/// it reads as unnamed whether it was stored or not. Mirrors the Node test.
+#[test]
+fn an_unnamed_instance_describes_its_host() {
+    assert_eq!(default_instance_name_for(false, None), "privacytracker server");
+    assert_eq!(default_instance_name_for(false, Some("Adam's MacBook Pro")), "privacytracker server");
+    assert_eq!(default_instance_name_for(true, Some("  Adam's   MacBook Pro ")), "Adam's MacBook Pro");
+    assert_eq!(default_instance_name_for(true, None), "My Mac");
+    assert_eq!(default_instance_name_for(true, Some("   ")), "My Mac");
+    assert_eq!(chosen_instance_name(""), None);
+    assert_eq!(chosen_instance_name("privacytracker"), None);
+    assert_eq!(chosen_instance_name("  Home   server "), Some("Home server".to_string()));
+
+    // Through the database: nothing stored, then a name, then cleared.
+    let state = memory_state();
+    let conn = state.db();
+    assert_eq!(instance_name(&conn), "privacytracker server");
+    super::super::settings::set_setting_with(&conn, INSTANCE_NAME_KEY, "privacytracker").unwrap();
+    assert_eq!(instance_name(&conn), "privacytracker server");
+    super::super::settings::set_setting_with(&conn, INSTANCE_NAME_KEY, "Home server").unwrap();
+    assert_eq!(instance_name(&conn), "Home server");
+}
+
 #[test]
 fn the_allowlist_is_get_only_and_exact() {
     for path in [
@@ -226,7 +251,7 @@ fn a_companion_token_reads_the_allowlist_on_an_install_that_needs_the_admin_toke
     assert_eq!(locked, StatusCode::UNAUTHORIZED, "baseline: locked");
     assert_eq!(triage, StatusCode::OK);
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(body["instanceName"], "privacytracker");
+    assert_eq!(body["instanceName"], "privacytracker server", "an unnamed server says what it is");
     assert_eq!(body["appCount"], 1);
     assert_eq!(body["scope"], "read");
     assert_eq!(body["device"]["label"], "phone");
@@ -334,6 +359,42 @@ fn private_addresses() {
     for ip in ["8.8.8.8", "172.32.0.1", "100.128.0.1"] {
         assert!(!companion_lan::is_private_v4(ip.parse::<Ipv4Addr>().unwrap()), "{ip}");
     }
+}
+
+/// LAN addresses stay private, usable and deduplicated in interface order.
+#[cfg(unix)]
+#[test]
+fn lan_addresses_filter_interfaces_and_preserve_order() {
+    use nix::{ifaddrs::InterfaceAddress, net::if_::InterfaceFlags, sys::socket::SockaddrStorage};
+
+    let interface = |ip: Option<&str>, flags| InterfaceAddress {
+        interface_name: "fixture".into(),
+        flags,
+        address: ip.map(|ip| SockaddrStorage::from(ip.parse::<std::net::SocketAddr>().unwrap())),
+        netmask: None,
+        broadcast: None,
+        destination: None,
+    };
+    let up = InterfaceFlags::IFF_UP;
+    let addresses = companion_lan::private_interface_addresses([
+        interface(Some("192.168.1.20:0"), up),
+        interface(Some("10.0.0.2:0"), InterfaceFlags::empty()),
+        interface(Some("127.0.0.1:0"), up | InterfaceFlags::IFF_LOOPBACK),
+        interface(Some("8.8.8.8:0"), up),
+        interface(Some("[::1]:0"), up),
+        interface(None, up),
+        interface(Some("100.100.1.1:0"), up),
+        interface(Some("192.168.1.20:0"), up),
+        interface(Some("10.0.0.2:0"), up),
+    ]);
+    assert_eq!(addresses, ["192.168.1.20", "100.100.1.1", "10.0.0.2"]);
+
+    let actual = companion_lan::lan_addresses();
+    assert!(actual.iter().all(|ip| companion_lan::is_private_v4(ip.parse().unwrap())));
+    let mut unique = actual.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(unique.len(), actual.len());
 }
 
 /// Accepts exactly one certificate, by SHA-256: what the iPhone app does.

@@ -14,6 +14,16 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
+import db from "@/lib/db";
+import {
+  acceptCurrentConcern,
+  clearConcernAcceptance,
+  clearDeferral,
+  deferDecision,
+  deferredUntil,
+  hasAcceptedConcern,
+  REVIEW_DAYS,
+} from "@/lib/focus-review";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import { readBoundedJson } from "@/lib/security";
 import {
@@ -45,7 +55,15 @@ export async function GET(request: NextRequest) {
   }
   try {
     const verdicts = listVerdicts(appId);
-    return NextResponse.json({ verdicts });
+    return NextResponse.json({
+      verdicts,
+      ...(request.nextUrl.searchParams.get("decision") === "1"
+        ? {
+            deferredUntil: deferredUntil(appId),
+            accepted: hasAcceptedConcern(appId),
+          }
+        : {}),
+    });
   } catch (e) {
     console.error("[/api/verdicts GET] failed:", e);
     return NextResponse.json(
@@ -56,7 +74,10 @@ export async function GET(request: NextRequest) {
 }
 
 interface PostBody {
+  acceptCurrent?: boolean;
   appId?: string;
+  clearAcceptance?: boolean;
+  deferDays?: number;
   rationale?: string | null;
   verdict?: VerdictValue;
 }
@@ -77,7 +98,28 @@ export async function POST(request: NextRequest) {
   if (!body.appId || typeof body.appId !== "string") {
     return NextResponse.json({ error: "appId is required" }, { status: 400 });
   }
+  if (body.deferDays !== undefined && body.verdict !== undefined) {
+    return NextResponse.json(
+      { error: "Choose a verdict or a reminder, not both" },
+      { status: 400 }
+    );
+  }
   if (!isValidVerdict(body.verdict)) {
+    if (body.deferDays !== undefined) {
+      if (!REVIEW_DAYS.includes(body.deferDays as 1 | 7 | 30)) {
+        return NextResponse.json(
+          { error: "deferDays must be 1, 7 or 30" },
+          { status: 400 }
+        );
+      }
+      if (!db.prepare("SELECT id FROM apps WHERE id = ?").get(body.appId)) {
+        return NextResponse.json({ error: "App not found" }, { status: 404 });
+      }
+      return NextResponse.json(
+        { deferredUntil: deferDecision(body.appId, body.deferDays) },
+        { status: 201 }
+      );
+    }
     return NextResponse.json(
       { error: "verdict must be one of: safe, replace, uninstall" },
       { status: 400 }
@@ -95,12 +137,22 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const verdict = setVerdict({
-      appId: body.appId,
-      verdict: body.verdict,
-      rationale: body.rationale ?? null,
-      source: "user",
-    });
+    const verdict = db.transaction(() => {
+      const saved = setVerdict({
+        appId: body.appId!,
+        verdict: body.verdict!,
+        rationale: body.rationale ?? null,
+        source: "user",
+      });
+      clearDeferral(body.appId!);
+      if (body.clearAcceptance === true) {
+        clearConcernAcceptance(body.appId!);
+      }
+      if (body.verdict === "safe" && body.acceptCurrent === true) {
+        acceptCurrentConcern(body.appId!);
+      }
+      return saved;
+    })();
     return NextResponse.json({ verdict }, { status: 201 });
   } catch (e) {
     console.error("[/api/verdicts POST] failed:", e);
@@ -135,6 +187,10 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
+    if (request.nextUrl.searchParams.get("deferredOnly") === "1") {
+      clearDeferral(appId);
+      return NextResponse.json({ removed: true });
+    }
     const removed = clearVerdict(appId, source, sourceName);
     return NextResponse.json({ removed });
   } catch (e) {

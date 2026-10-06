@@ -74,28 +74,25 @@ export function resolvePurposeSelection(
   selection: PurposeSelection
 ): ResolvedPurposeFocus {
   const { audience, accessibility, minimal } = selection;
-  // Minimal is subtractive and mutually exclusive with the goal tiles.
-  const monitor = minimal ? false : selection.monitor;
-  const cleanup = minimal ? false : selection.cleanup;
+  // Minimal changes presentation without discarding the user's goals.
+  const monitor = selection.monitor;
+  const cleanup = selection.cleanup;
 
   const workflow =
     selection.workflow ??
     inferFocusWorkflow({ audience, monitor, cleanup, minimal });
 
-  // Follow-up tasks track what the chosen goals/audience imply. Minimal opts
-  // out of all of them (it's the "no extras" surface).
+  // Follow-up tasks track goals, independently of presentation.
   const taskOptIns = new Set<UserTaskId>();
   if (cleanup) {
     taskOptIns.add("remove_apps_from_phone");
   }
-  if (!minimal) {
-    if (audience === "loved_one") {
-      // Helping another adult — prepare a bundle to hand them.
-      taskOptIns.add("export_audit_bundle");
-    } else if (monitor) {
-      // Monitoring your own (or a managed child's) apps — set up background checks.
-      taskOptIns.add("setup_background_mode");
-    }
+  if (audience === "loved_one") {
+    // Helping another adult — prepare a bundle to hand them.
+    taskOptIns.add("export_audit_bundle");
+  } else if (monitor) {
+    // Monitoring your own (or a managed child's) apps — set up background checks.
+    taskOptIns.add("setup_background_mode");
   }
 
   return {

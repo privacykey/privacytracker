@@ -450,36 +450,40 @@ pub(crate) fn acceptor(identity: &Identity) -> Result<tokio_rustls::TlsAcceptor,
 /// order: what the pairing code can point a phone at. Includes Tailscale's
 /// 100.64.0.0/10, which is as private as a home LAN.
 pub(crate) fn lan_addresses() -> Vec<String> {
-    let mut out = Vec::new();
     #[cfg(unix)]
-    // SAFETY: getifaddrs fills a linked list that freeifaddrs releases; each
-    // node is read only while the list is alive, and ifa_addr is checked
-    // for null and for AF_INET before it is read as a sockaddr_in.
-    unsafe {
-        let mut head: *mut libc::ifaddrs = std::ptr::null_mut();
-        if libc::getifaddrs(&mut head) != 0 {
-            return out;
+    {
+        match nix::ifaddrs::getifaddrs() {
+            Ok(interfaces) => private_interface_addresses(interfaces),
+            Err(_) => Vec::new(),
         }
-        let mut cursor = head;
-        while !cursor.is_null() {
-            let ifa = &*cursor;
-            let up = ifa.ifa_flags & (libc::IFF_UP as u32) != 0;
-            let loopback = ifa.ifa_flags & (libc::IFF_LOOPBACK as u32) != 0;
-            if up
-                && !loopback
-                && !ifa.ifa_addr.is_null()
-                && i32::from((*ifa.ifa_addr).sa_family) == libc::AF_INET
-            {
-                let sin = &*(ifa.ifa_addr as *const libc::sockaddr_in);
-                let ip = Ipv4Addr::from(u32::from_be(sin.sin_addr.s_addr));
-                let text = ip.to_string();
-                if is_private_v4(ip) && !out.contains(&text) {
-                    out.push(text);
-                }
-            }
-            cursor = ifa.ifa_next;
+    }
+    #[cfg(not(unix))]
+    Vec::new()
+}
+
+#[cfg(unix)]
+pub(crate) fn private_interface_addresses(
+    interfaces: impl IntoIterator<Item = nix::ifaddrs::InterfaceAddress>,
+) -> Vec<String> {
+    use nix::net::if_::InterfaceFlags;
+
+    let mut out = Vec::new();
+    for interface in interfaces {
+        if !interface.flags.contains(InterfaceFlags::IFF_UP)
+            || interface.flags.contains(InterfaceFlags::IFF_LOOPBACK)
+        {
+            continue;
         }
-        libc::freeifaddrs(head);
+        let Some(ip) = interface
+            .address
+            .and_then(|address| address.as_sockaddr_in().map(|v4| v4.ip()))
+        else {
+            continue;
+        };
+        let text = ip.to_string();
+        if is_private_v4(ip) && !out.contains(&text) {
+            out.push(text);
+        }
     }
     out
 }

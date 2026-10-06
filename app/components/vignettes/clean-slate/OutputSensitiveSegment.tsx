@@ -30,7 +30,7 @@ export default function OutputSensitiveSegment() {
         x="256"
         y="12"
       >
-        SOLD AS A SEGMENT
+        COULD BE SOLD ON
       </text>
 
       {/* Identity match — the segment is tied to you, not anonymous. */}

@@ -18,10 +18,25 @@ pub(super) fn read(conn: &Connection, now: i64) -> Result<Value> {
         audience = "self".into();
     }
     let minimal = setting("flag.focus.goal.minimal")? == "true";
-    let monitor = !minimal && setting("flag.focus.goal.monitor")? == "true";
-    let cleanup = !minimal && setting("flag.focus.goal.cleanup")? == "true";
-    // Only the explicit handoff workflow includes the export opt-in task.
-    let handoff = setting("flag.focus.workflow")? == "other_handoff";
+    let monitor = setting("flag.focus.goal.monitor")? == "true";
+    let cleanup = setting("flag.focus.goal.cleanup")? == "true";
+    let workflow = setting("flag.focus.workflow")?;
+    let workflow = if [
+        "self_monitor",
+        "self_cleanup",
+        "other_handoff",
+        "other_monitor",
+        "custom",
+    ]
+    .contains(&workflow.as_str())
+    {
+        workflow
+    } else {
+        super::routes_focus::infer_focus_workflow(&audience, monitor, cleanup, minimal).to_string()
+    };
+    let handoff = workflow == "other_handoff";
+    let flag_context = flags::context_from_db(conn)?;
+    let enabled = |key| flags::resolve_flag(key, &flag_context).is_ok_and(|v| v == "on");
     let profile = grid_meta::get_privacy_profile(conn)
         .ok()
         .flatten()
@@ -79,8 +94,9 @@ pub(super) fn read(conn: &Connection, now: i64) -> Result<Value> {
     for def in metadata()["tasks"].as_array().unwrap() {
         let id = text(&def["id"]);
         let included = match id {
-            "review_mismatches" => cleanup || minimal,
-            "compare_two_apps" => monitor || cleanup,
+            "view_privacy_map" => enabled("flag.page.privacy_map"),
+            "review_mismatches" => enabled("flag.appgrid.review_queue.enabled"),
+            "compare_two_apps" => enabled("flag.page.compare"),
             "import_label_history" => audience == "self" && monitor,
             "export_audit_bundle" => handoff,
             _ => true,

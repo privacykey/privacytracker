@@ -543,6 +543,36 @@ fn verdict_post(cx: &mut Cx, body: BodyOutcome) -> Response {
     else {
         return bad("appId is required");
     };
+    if prop(&body, "deferDays").is_some() && prop(&body, "verdict").is_some() {
+        return bad("Choose a verdict or a reminder, not both");
+    }
+    if let Some(days) = prop(&body, "deferDays") {
+        let Some(days) = days
+            .as_f64()
+            .filter(|d| [1.0, 7.0, 30.0].contains(d))
+            .map(|d| d as i64)
+        else {
+            return bad("deferDays must be 1, 7 or 30");
+        };
+        if stats::query(
+            cx.w.conn,
+            "SELECT id FROM apps WHERE id = ?",
+            &[Sql::Text(app_id.into())],
+        )
+        .map(|r| r.is_empty())
+        .unwrap_or(true)
+        {
+            return json_error(StatusCode::NOT_FOUND, "App not found");
+        }
+        let until = cx.now + days * 86_400_000;
+        if cx
+            .set(&format!("review.defer.{app_id}"), &until.to_string())
+            .is_err()
+        {
+            return internal_error();
+        }
+        return created(&json!({"deferredUntil":until}));
+    }
     let Some(verdict) = prop(&body, "verdict")
         .and_then(Value::as_str)
         .filter(|v| VERDICTS.contains(v))
@@ -555,6 +585,11 @@ fn verdict_post(cx: &mut Cx, body: BodyOutcome) -> Response {
         Some(_) => return bad("rationale must be a string or null"),
     };
     let now = cx.now;
+    let tx = match cx.w.conn.unchecked_transaction() {
+        Ok(tx) => tx,
+        Err(_) => return internal_error(),
+    };
+    cx.w.mark("BEGIN");
     let outcome = (|| -> Result<Value, String> {
         let existing = read_one(
             cx,
@@ -602,6 +637,17 @@ fn verdict_post(cx: &mut Cx, body: BodyOutcome) -> Response {
             ),
             now,
         );
+        if !cx.get(&format!("review.defer.{app_id}"), "").is_empty() {
+            cx.set(&format!("review.defer.{app_id}"), "")?;
+        }
+        if prop(&body, "clearAcceptance") == Some(&Value::Bool(true)) {
+            cx.set(&format!("review.accept.{app_id}"), "")?;
+        }
+        if prop(&body, "acceptCurrent") == Some(&Value::Bool(true)) && verdict == "safe" {
+            let accepted =
+                super::focus_review::acceptance(cx.w.conn, app_id).map_err(|e| e.to_string())?;
+            cx.set(&format!("review.accept.{app_id}"), &accepted.to_string())?;
+        }
         Ok(verdict_json(
             &id,
             app_id,
@@ -612,8 +658,18 @@ fn verdict_post(cx: &mut Cx, body: BodyOutcome) -> Response {
         ))
     })();
     match outcome {
-        Ok(v) => created(&json!({ "verdict": v })),
-        Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to set verdict"),
+        Ok(v) => {
+            cx.w.mark("COMMIT");
+            if tx.commit().is_err() {
+                return internal_error();
+            }
+            created(&json!({ "verdict": v }))
+        }
+        Err(_) => {
+            cx.w.mark("ROLLBACK");
+            drop(tx);
+            json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to set verdict")
+        }
     }
 }
 
@@ -621,6 +677,12 @@ fn verdict_delete(cx: &mut Cx, query: &[(String, String)]) -> Response {
     let Some(app_id) = first(query, "appId").filter(|s| !s.is_empty()) else {
         return bad("appId is required");
     };
+    if first(query, "deferredOnly") == Some("1") {
+        if cx.set(&format!("review.defer.{app_id}"), "").is_err() {
+            return internal_error();
+        }
+        return json_ok(&json!({"removed":true}));
+    }
     let imported = first(query, "source") == Some("imported");
     let source = if imported { "imported" } else { "user" };
     let source_name = if imported {
@@ -740,6 +802,14 @@ fn verdicts_bulk(cx: &mut Cx, body: BodyOutcome) -> Response {
                         (id, json!(now))
                     }
                 };
+                if !cx.get(&format!("review.defer.{app_id}"), "").is_empty() {
+                    cx.set(&format!("review.defer.{app_id}"), "")?;
+                }
+                if prop(&body, "acceptCurrent") == Some(&Value::Bool(true)) && verdict == "safe" {
+                    let accepted = super::focus_review::acceptance(cx.w.conn, app_id)
+                        .map_err(|e| e.to_string())?;
+                    cx.set(&format!("review.accept.{app_id}"), &accepted.to_string())?;
+                }
                 out.push(verdict_json(
                     &id,
                     app_id,

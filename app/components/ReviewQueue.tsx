@@ -168,6 +168,45 @@ export default function ReviewQueue({
     useState<QueuePreflightChoices>(initialPreflight);
   const [phase, setPhase] = useState<Phase>({ kind: "preflight" });
   const [toast, setToast] = useState<string>("");
+  const [decisions, setDecisions] = useState<{
+    acceptedAppIds: Set<string>;
+    deferredAppIds: Set<string>;
+    reopenedAppIds: Set<string>;
+  } | null>(null);
+  const [decisionError, setDecisionError] = useState(false);
+  const [decisionRetry, setDecisionRetry] = useState(0);
+  useEffect(() => {
+    let live = true;
+    setDecisionError(false);
+    fetch("/api/review-queue?decisions=1")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => {
+        if (
+          ![
+            data.acceptedAppIds,
+            data.deferredAppIds,
+            data.reopenedAppIds,
+          ].every(Array.isArray)
+        ) {
+          throw new Error("Missing decisions");
+        }
+        if (live) {
+          setDecisions({
+            acceptedAppIds: new Set(data.acceptedAppIds),
+            deferredAppIds: new Set(data.deferredAppIds),
+            reopenedAppIds: new Set(data.reopenedAppIds),
+          });
+        }
+      })
+      .catch(() => {
+        if (live) {
+          setDecisionError(true);
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, [decisionRetry]);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -186,6 +225,7 @@ export default function ReviewQueue({
         userVerdicts,
         profileBadges,
         changedAppIds,
+        ...decisions,
       }),
     [
       apps,
@@ -194,10 +234,11 @@ export default function ReviewQueue({
       userVerdicts,
       profileBadges,
       changedAppIds,
+      decisions,
     ]
   );
 
-  const previewCount = queuePreview.length;
+  const previewCount = decisions ? queuePreview.length : 0;
   const previewBatches = countQueueBatches(previewCount, preflight.split);
 
   // Persist preflight choices for next time.
@@ -213,12 +254,16 @@ export default function ReviewQueue({
   }, [preflight]);
 
   const startQueue = useCallback(() => {
+    if (!decisions) {
+      return;
+    }
     const list = computeQueueApps(apps, {
       scope: preflight.scope,
       sort: preflight.sort,
       userVerdicts,
       profileBadges,
       changedAppIds,
+      ...decisions,
     });
     if (list.length === 0) {
       return;
@@ -233,7 +278,7 @@ export default function ReviewQueue({
       totals: EMPTY_SESSION_TOTALS,
       lastDecision: null,
     });
-  }, [apps, preflight, userVerdicts, profileBadges, changedAppIds]);
+  }, [apps, preflight, userVerdicts, profileBadges, changedAppIds, decisions]);
 
   // ─────────────────────────────────────────────
   // Verdict + Annotation save (used during running phase)
@@ -249,6 +294,7 @@ export default function ReviewQueue({
           body: JSON.stringify({
             appId,
             verdict,
+            acceptCurrent: verdict === "safe",
             rationale: note.trim() || null,
           }),
         });
@@ -308,6 +354,9 @@ export default function ReviewQueue({
 
   const advance = useCallback(
     (verdict: VerdictValue, note: string) => {
+      if (deferring.current) {
+        return;
+      }
       setPhase((prev) => {
         if (prev.kind !== "running") {
           return prev;
@@ -359,7 +408,33 @@ export default function ReviewQueue({
     [saveDecision, showToast, t, userVerdicts, writeSessionActivity]
   );
 
-  const skipCurrent = useCallback(() => {
+  const deferring = useRef(false);
+  const skipCurrent = useCallback(async () => {
+    if (deferring.current || phase.kind !== "running") {
+      return;
+    }
+    const appId = phase.batches[phase.batchIndex][phase.cardIndex]?.id;
+    if (!appId) {
+      return;
+    }
+    deferring.current = true;
+    showToast(t("saving_reminder"));
+    try {
+      const response = await fetch("/api/verdicts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appId, deferDays: 7 }),
+      });
+      if (!response.ok) {
+        throw new Error("Could not save reminder");
+      }
+    } catch {
+      deferring.current = false;
+      showToast(t("save_failed_toast"));
+      return;
+    }
+    deferring.current = false;
+    setToast("");
     setPhase((prev) => {
       if (prev.kind !== "running") {
         return prev;
@@ -392,7 +467,7 @@ export default function ReviewQueue({
         lastDecision,
       };
     });
-  }, [writeSessionActivity]);
+  }, [writeSessionActivity, phase, showToast, t]);
 
   const undoLast = useCallback(() => {
     setPhase((prev) => {
@@ -405,8 +480,18 @@ export default function ReviewQueue({
       }
       const ld = prev.lastDecision;
 
-      // Skip is local-only — no API call to reverse, just rewind.
+      // Undo also removes the durable reminder.
       if (ld.kind === "skip") {
+        void fetch(
+          `/api/verdicts?appId=${encodeURIComponent(ld.appId)}&deferredOnly=1`,
+          { method: "DELETE" }
+        )
+          .then((r) => {
+            if (!r.ok) {
+              showToast(t("save_failed_toast"));
+            }
+          })
+          .catch(() => showToast(t("save_failed_toast")));
         return {
           ...prev,
           cardIndex: prev.cardIndex - 1,
@@ -434,6 +519,7 @@ export default function ReviewQueue({
               body: JSON.stringify({
                 appId: ld.appId,
                 verdict: ld.prevVerdict,
+                clearAcceptance: ld.nextVerdict === "safe",
               }),
             });
           } else {
@@ -533,9 +619,13 @@ export default function ReviewQueue({
     return (
       <PreflightModal
         audience={audience}
+        decisionStatus={
+          decisions ? "ready" : decisionError ? "error" : "loading"
+        }
         hasProfile={hasProfile}
         onCancel={onClose}
         onChange={setPreflight}
+        onRetry={() => setDecisionRetry((value) => value + 1)}
         onStart={startQueue}
         preflight={preflight}
         previewBatches={previewBatches}
@@ -621,9 +711,11 @@ export default function ReviewQueue({
 
 interface PreflightProps {
   audience: Audience;
+  decisionStatus: "ready" | "loading" | "error";
   hasProfile: boolean;
   onCancel: () => void;
   onChange: (next: QueuePreflightChoices) => void;
+  onRetry: () => void;
   onStart: () => void;
   preflight: QueuePreflightChoices;
   previewBatches: number;
@@ -633,6 +725,8 @@ interface PreflightProps {
 
 function PreflightModal({
   preflight,
+  decisionStatus,
+  onRetry,
   onChange,
   previewCount,
   previewBatches,
@@ -822,6 +916,26 @@ function PreflightModal({
             : t("preflight.count_summary", { count: previewCount })}
         </div>
 
+        {decisionStatus !== "ready" && (
+          <div role={decisionStatus === "error" ? "alert" : "status"}>
+            <p>
+              {t(
+                decisionStatus === "error"
+                  ? "decisions_error"
+                  : "decisions_loading"
+              )}
+            </p>
+            {decisionStatus === "error" && (
+              <button
+                className="btn btn-secondary"
+                onClick={onRetry}
+                type="button"
+              >
+                {t("decisions_retry")}
+              </button>
+            )}
+          </div>
+        )}
         <div className="review-queue-preflight-footer">
           <button
             className="btn btn-secondary"

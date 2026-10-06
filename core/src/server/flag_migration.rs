@@ -292,6 +292,27 @@ fn set_active_focus(
     cleanup: bool,
 ) -> Result<(), String> {
     transaction(w, |w| {
+        let previous = flags::context_from_db(w.conn).map_err(sql_message)?;
+        if previous.audience != audience
+            || previous.goals.monitor != monitor
+            || previous.goals.cleanup != cleanup
+            || previous.goals.minimal
+            || previous.goals.accessibility
+        {
+            let layout = super::layout::layout_for_focus(
+                super::layout::read_layout(w.conn).map_err(sql_message)?,
+                audience,
+                monitor,
+                cleanup,
+            );
+            w.run(
+                SET_SETTING,
+                vec![
+                    json!("dashboard.layout"),
+                    json!(serde_json::to_string(&layout).unwrap()),
+                ],
+            )?;
+        }
         let workflow = infer_focus_workflow(audience, monitor, cleanup, false);
         for (key, value) in [
             ("flag.focus.audience", audience.to_string()),

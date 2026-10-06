@@ -4,7 +4,7 @@
 
 # privacytracker
 
-**See how iOS apps quietly change what they collect about you.**
+**Keep informed of what your iOS apps say they collect about you.**
 
 [Install for macOS](#macos--homebrew) ·
 [Run with Docker](#linux-windows--self-host) ·
@@ -23,6 +23,9 @@
 <!-- disclosure:end -->
 
 ---
+
+https://github.com/user-attachments/assets/f713c523-f6ed-4aca-9a2d-5ccb3b260537
+
 
 privacytracker watches the privacy labels Apple shows on each app's App Store
 page — *Data Used to Track You*, *Data Linked to You*, *Data Not Linked to
@@ -88,7 +91,7 @@ Grab the latest signed `.dmg` from
 [Releases](https://github.com/privacykey/privacytracker/releases/latest).
 Apple Silicon and Intel builds are both signed and notarised, so they open
 without "unidentified developer" warnings and update themselves in the
-background.
+background. The advantage to the macOS version is the ability to use Apple Configurator to quickly import the list of apps installed on your phone.
 
 ### Linux, Windows & self-host
 

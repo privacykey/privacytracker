@@ -15,6 +15,7 @@ import {
   TIER_RANK,
   TYPE_IDENTIFIER_TO_TIER,
 } from "../../../lib/privacy-profile";
+import DataLabelHint from "../DataLabelHint";
 import InfoTooltip from "../InfoTooltip";
 import PrivacyTypeIcon from "../PrivacyTypeIcon";
 import type { PrivacyType } from "./types";
@@ -262,6 +263,30 @@ export default function PrivacyTypeSection({
                       <InfoTooltip side="right" text={localisedDescription} />
                     </span>
                   )}
+                  {/*
+                    Sibling of the InfoTooltip, same overlay trick and for
+                    the same reason — it renders a <button>, which HTML
+                    disallows inside the <a> next/link produces.
+
+                    Severity is the SECTION's identifier, not a guess: this
+                    shelf is the tier Apple's labels actually declared for
+                    this app, so the vignette that plays is the one that
+                    applies here. (The profile editor, the other caller,
+                    has to follow the user's selected tier instead.)
+
+                    Deliberately additive rather than a replacement for the
+                    tooltip: DataLabelHint self-returns null when
+                    `flag.global.label_hints` is off — which it is for the
+                    guardian and minimal focuses — and swapping the two
+                    would delete the plain-language definition for exactly
+                    those users. Both render; hints-off keeps today's card.
+                  */}
+                  <span className="category-card-hint-overlay">
+                    <DataLabelHint
+                      identifier={cat.identifier}
+                      severity={privacyType.identifier}
+                    />
+                  </span>
                 </div>
               );
             })}

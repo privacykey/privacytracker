@@ -42,6 +42,7 @@ import {
   useRovingRadioGroup,
 } from "../../lib/use-roving-radiogroup";
 import { CardThumbnail } from "./DashboardCardThumbnail";
+import { DashboardLayoutLock } from "./DashboardLayoutLock";
 
 interface Props {
   /**
@@ -182,6 +183,11 @@ function DashboardLayoutEditorInner({
             {t("preset_section_hint")}
           </span>
         </div>
+        <DashboardLayoutLock
+          disabled={saver.savingState === "saving"}
+          fixed={!!saver.layout.keepFixed}
+          onChange={saver.toggleKeepFixed}
+        />
         <div
           aria-label={t("preset_aria_group")}
           className="layout-editor-presets-row"
@@ -206,6 +212,7 @@ function DashboardLayoutEditorInner({
                   }`}
                   data-preset={presetKey}
                   data-severity={meta.severityCls}
+                  disabled={saver.savingState === "saving"}
                   onClick={() => applyPreset(presetKey)}
                   role="radio"
                   tabIndex={rovingTabIndex(

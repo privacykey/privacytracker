@@ -6,7 +6,7 @@ import CleanSlatePulses from "./CleanSlatePulses";
  * Raw location history resolves into two things at once: the address
  * you sleep at (top), and the routine layered on top of it (beneath) —
  * when you leave, where you go, when you're reliably away. The street
- * address is stamped IDENTIFIED; the pattern rows cascade in below it.
+ * address is stamped IDENTIFIABLE; the pattern rows cascade in below it.
  * No verdict badge on the pattern — the rows speak for themselves.
  */
 export default function OutputLocationHome() {
@@ -23,7 +23,7 @@ export default function OutputLocationHome() {
         x="160"
         y="18"
       >
-        WHAT THEY LEARN
+        WHAT COULD BE LEARNED
       </text>
 
       <g className="v-cs-surface">
@@ -63,7 +63,7 @@ export default function OutputLocationHome() {
           x="164"
           y="55"
         >
-          14 Maple St, Apt 3
+          your street & door
         </text>
       </g>
 
@@ -135,7 +135,9 @@ export default function OutputLocationHome() {
         </text>
       </g>
 
-      {/* Stamp punctuates the address (top-right of the card). */}
+      {/* Stamp punctuates the address (top-right of the card). 56 wide for
+          the 12-letter word (52px in Inter at this size); the left edge
+          clears HOME ADDRESS (ends ~240) even at the stamp-in's 1.1 scale. */}
       <g className="v-cs-stamp">
         <rect
           fill="none"
@@ -143,8 +145,8 @@ export default function OutputLocationHome() {
           rx="2.5"
           stroke="var(--red, #dc2626)"
           strokeWidth="1.2"
-          width="46"
-          x="254"
+          width="56"
+          x="245"
           y="30"
         />
         <text
@@ -153,10 +155,10 @@ export default function OutputLocationHome() {
           fontWeight="800"
           letterSpacing="0.4"
           textAnchor="middle"
-          x="277"
+          x="273"
           y="38"
         >
-          IDENTIFIED
+          IDENTIFIABLE
         </text>
       </g>
     </g>

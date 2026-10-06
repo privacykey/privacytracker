@@ -141,12 +141,12 @@ export default function TaskListInteractive({
     return () => window.clearTimeout(timer);
   }, [tasks]);
 
-  // "All settled" = everything is completed AND there's nothing left to
-  // opt into. Otherwise we keep the panel expanded so the user can act.
+  // "All settled" = every included step is completed. Optional extras do
+  // not hold the panel open: a finished check-up used to sit expanded at the
+  // top of the dashboard for as long as any opt-in chip was still on offer.
+  // The chips stay one click away, behind the collapsed chip.
   const allSettled =
-    visibleRows.length > 0 &&
-    visibleRows.every((r) => r.state === "completed") &&
-    candidates.length === 0;
+    visibleRows.length > 0 && visibleRows.every((r) => r.state === "completed");
 
   // Per-session toggle: when the panel is collapsed-as-chip, the user
   // may click to expand. We track that locally — no need to persist.
@@ -233,8 +233,8 @@ export default function TaskListInteractive({
     setGatePrerequisiteId(null);
   }, []);
 
-  // Collapsed-chip path — everything's done AND no opt-in candidates
-  // remain. User can click to expand and review the completed list.
+  // Collapsed-chip path — every included step is done. User can click to
+  // expand and review the completed list plus any opt-in extras.
   if (allSettled && !chipExpanded) {
     return (
       <button

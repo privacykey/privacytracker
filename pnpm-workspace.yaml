@@ -61,20 +61,34 @@ minimumReleaseAgeExclude:
 # (libvips CVE-2026-33327/-33328/-35590/-35591, fixed in sharp 0.35.0).
 # Drop this once Next's own range moves to >=0.35.
 #
-# `nanoid` is force-resolved to the patched 3.3.17 line. It arrives via
+# `nanoid` is force-resolved to the patched 3.3.18 line. It arrives via
 # next > postcss > nanoid, and the postcss override above does NOT lift it:
 # postcss 8.5.18 still declares `nanoid ^3.3.6`, which resolves to 3.3.16.
 # `pnpm audit --prod` rejects that for GHSA-2v37-7h3g-55p8 (custom
-# generators loop indefinitely when size is zero, fixed in 3.3.17). Drop
-# this once postcss's own range moves to >=3.3.17.
+# generators loop indefinitely when size is zero, fixed in 3.3.18). Drop
+# this once postcss's own range moves to >=3.3.18.
+#
+# `source-map-js` is force-resolved to the patched 1.2.2 line. It arrives
+# the same way (next > postcss > source-map-js), and postcss 8.5.18
+# declares `^1.2.1`, which the lockfile held at 1.2.1. `pnpm audit --prod`
+# rejects that for GHSA-68fv-2mgg-jv7q (event-loop denial of service
+# through indexed source-map section offsets, fixed in 1.2.2). Drop this
+# once postcss's own range moves to >=1.2.2.
 overrides:
   postcss: ^8.5.18
   '@babel/core': ^8.0.0
   sharp: ^0.35.0
-  nanoid: ^3.3.17
+  nanoid: ^3.3.18
+  source-map-js: ^1.2.2
 
   # Security patch floors for transitive build tooling. Keep fixes scoped to
   # the affected major versions until upstream consumers raise their floors.
-  'fast-uri@3': ^3.1.6
-  'brace-expansion@5': ^5.0.9
+  'fast-uri@3': ^3.1.8
+  'brace-expansion@1': ^1.1.21
+  'brace-expansion@5': ^5.0.12
   'qs@6': ^6.16.0
+  'js-yaml@4': ^4.3.2
+  'image-size@2': ^2.0.3
+  # Storybook still pins v6; v7 fixes publicPath traversal and keeps the
+  # webpack 5 middleware API. Validate both its static and dev builds.
+  'webpack-dev-middleware@6': ^7.4.5

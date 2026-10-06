@@ -3,6 +3,7 @@
 import { notFound, usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
+import type { FlagValue } from "@/lib/feature-flag-rules";
 import { useFlagBundleStatus, useFlagValues } from "@/lib/use-flag-bundle";
 import AppDetailView, { type DetailFlagState } from "./AppDetailView";
 import { PageSkeleton } from "./LoadingShell";
@@ -28,10 +29,13 @@ import RecordTaskVisit from "./RecordTaskVisit";
  *    useFlagBundle fails closed. On `failedToLoad` the page's own all-on
  *    literal is substituted — the DetailFlagState analogue of
  *    RequireFlagGate's failOpen.
- * 3. TRI-STATE READ. `annotationsSidebar` is "on" | "off" | "collapsed"
- *    with a hard default of "collapsed"; it's read raw via useFlagValues,
- *    never coerced with `=== "on"` (which would hide the rail for the
- *    default self audience).
+ * 3. TRI-STATE READS. Five flags here are "on" | "off" | "collapsed"
+ *    with a hard default of "collapsed" (`TriStateKey` below). They're
+ *    read raw via useFlagValues, never coerced with `=== "on"`: that
+ *    reads the default as off. It hid the accessibility tab for every
+ *    focus without the accessibility modifier, and the policy run-log
+ *    strip and chunk notes for everyone; only the annotations rail was
+ *    read raw.
  * 4. TASK VISIT AFTER THE 404. The first-visit marker is rendered inside
  *    the success branch, so /apps/999999999 does not complete the
  *    "open any app detail" checklist item — the page stamped it only
@@ -58,6 +62,9 @@ const DETAIL_FLAG_KEYS = [
   "flag.detail.labels.profile_mismatch_badges",
   "flag.detail.labels.no_details_warning",
   "flag.detail.labels.trust_card",
+  // Global, not a flag.detail.* one: the same switch DataLabelHint reads.
+  // The labels tab uses it to decide whether to point users at the ✦.
+  "flag.global.label_hints",
   "flag.detail.policy.panel",
   "flag.detail.policy.ai_summary",
   "flag.detail.policy.lens_grid",
@@ -100,14 +107,25 @@ const DETAIL_FLAG_KEYS = [
   "flag.detail.charts.trend_legend",
 ] as const;
 
+/**
+ * The detail flags that can resolve to "collapsed". All five have that
+ * as their hard default, which is also what a missing value falls to.
+ */
+type TriStateKey =
+  | "flag.detail.annotations_sidebar"
+  | "flag.detail.a11y.panel"
+  | "flag.detail.policy.chunk_notes"
+  | "flag.detail.policy.run_log_strip"
+  | "flag.detail.policy.run_log_details";
+
 type Payload = Omit<
   Parameters<typeof AppDetailView>[0],
   "detailFlags" | "onRefresh"
 > & { audience: DetailFlagState["audience"] };
 
 /**
- * The page's resolver-failure fallback, verbatim: all on except the two
- * guarded surfaces, and the tri-state sidebar at its hard default.
+ * The page's resolver-failure fallback: all on except the guarded
+ * surfaces, and the tri-state flags at their hard default.
  */
 const ALL_ON_FLAGS: DetailFlagState = {
   annotationsSidebar: "collapsed",
@@ -121,6 +139,7 @@ const ALL_ON_FLAGS: DetailFlagState = {
   actionsResyncButton: true,
   actionsDeleteButton: true,
   footerImportProvenance: true,
+  labelHints: true,
   labelsCards: true,
   labelsProfileMismatchBadges: true,
   labelsNoDetailsWarning: true,
@@ -132,9 +151,9 @@ const ALL_ON_FLAGS: DetailFlagState = {
   policySafetySummary: false,
   policyHighlights: true,
   policyChangeStrip: true,
-  policyChunkNotes: true,
-  policyRunLogStrip: true,
-  policyRunLogDetails: true,
+  policyChunkNotes: "collapsed",
+  policyRunLogStrip: "collapsed",
+  policyRunLogDetails: "collapsed",
   policyFallbackReferences: true,
   policyWaybackBackupLink: true,
   policySourcePolicyLink: true,
@@ -145,7 +164,7 @@ const ALL_ON_FLAGS: DetailFlagState = {
   policyRescrapeSummariseButton: true,
   policyPreviewToggle: true,
   policyAiSummaryDisclaimer: true,
-  a11yPanel: true,
+  a11yPanel: "collapsed",
   a11yPreferenceHighlights: true,
   reviewPanel: true,
   reviewMarkReviewed: true,
@@ -260,14 +279,13 @@ export default function AppDetailLoader() {
   }
 
   const v = flagValues;
+  // Raw tri-state; missing (unknown key) falls to the hard default.
+  const triState = (key: TriStateKey) =>
+    (v[key] as FlagValue | undefined) ?? "collapsed";
   const detailFlags: DetailFlagState = failedToLoad
     ? { ...ALL_ON_FLAGS, audience: data.audience }
     : {
-        // Raw tri-state; missing (unknown key) falls to the hard default.
-        annotationsSidebar:
-          (v["flag.detail.annotations_sidebar"] as
-            | DetailFlagState["annotationsSidebar"]
-            | undefined) ?? "collapsed",
+        annotationsSidebar: triState("flag.detail.annotations_sidebar"),
         audience: data.audience,
         guardianAgeRating: v["flag.guardian.age_rating"] === "on",
         headerFreshnessBadge: v["flag.detail.header.freshness_badge"] === "on",
@@ -279,6 +297,7 @@ export default function AppDetailLoader() {
         actionsDeleteButton: v["flag.detail.actions.delete_button"] === "on",
         footerImportProvenance:
           v["flag.detail.footer.import_provenance"] === "on",
+        labelHints: v["flag.global.label_hints"] === "on",
         labelsCards: v["flag.detail.labels.cards"] === "on",
         labelsProfileMismatchBadges:
           v["flag.detail.labels.profile_mismatch_badges"] === "on",
@@ -291,9 +310,9 @@ export default function AppDetailLoader() {
         policySafetySummary: v["flag.detail.policy.safety_summary"] === "on",
         policyHighlights: v["flag.detail.policy.highlights"] === "on",
         policyChangeStrip: v["flag.detail.policy.change_strip"] === "on",
-        policyChunkNotes: v["flag.detail.policy.chunk_notes"] === "on",
-        policyRunLogStrip: v["flag.detail.policy.run_log_strip"] === "on",
-        policyRunLogDetails: v["flag.detail.policy.run_log_details"] === "on",
+        policyChunkNotes: triState("flag.detail.policy.chunk_notes"),
+        policyRunLogStrip: triState("flag.detail.policy.run_log_strip"),
+        policyRunLogDetails: triState("flag.detail.policy.run_log_details"),
         policyFallbackReferences:
           v["flag.detail.policy.fallback_references"] === "on",
         policyWaybackBackupLink:
@@ -311,7 +330,7 @@ export default function AppDetailLoader() {
         policyPreviewToggle: v["flag.detail.policy.preview_toggle"] === "on",
         policyAiSummaryDisclaimer:
           v["flag.detail.policy.ai_summary_disclaimer"] === "on",
-        a11yPanel: v["flag.detail.a11y.panel"] === "on",
+        a11yPanel: triState("flag.detail.a11y.panel"),
         a11yPreferenceHighlights:
           v["flag.detail.a11y.preference_highlights"] === "on",
         reviewPanel: v["flag.detail.review.panel"] === "on",

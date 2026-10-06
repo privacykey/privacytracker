@@ -100,6 +100,7 @@ export function applyDashboardPreset(
     v: 1,
     order: [...layout.order],
     hidden: [...layout.hidden],
+    ...(getDashboardLayout().keepFixed ? { keepFixed: true } : {}),
   };
   return saveDashboardLayoutWithLog(stored);
 }
