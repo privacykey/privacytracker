@@ -31,6 +31,7 @@ import { requestOrigin } from "@/lib/deployment-trust";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   ADMIN_TOKEN_COOKIE,
+  adminSessionCookieValue,
   adminTokenConfigured,
   checkRateLimit,
   isSameOriginRequest,
@@ -200,9 +201,13 @@ export async function POST(request: NextRequest) {
   // drop Secure cookies on http://, so always-true would break local
   // installs. We mirror the request's perceived protocol.
   const isHttps = requestOrigin(request)?.startsWith("https:") === true;
+  // The cookie carries this boot's session value (an HMAC of the token
+  // under a secret minted at start), never the token itself: a cookie that
+  // reaches a sibling service on the same host does not disclose the
+  // token, and a restart or a token rotation signs everyone out.
   res.cookies.set({
     name: ADMIN_TOKEN_COOKIE,
-    value: provided,
+    value: adminSessionCookieValue() ?? provided,
     httpOnly: true,
     secure: isHttps,
     sameSite: "strict",

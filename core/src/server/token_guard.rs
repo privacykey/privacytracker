@@ -95,8 +95,10 @@ pub(crate) fn client_key(headers: &HeaderMap) -> Option<String> {
         .filter(|p| !p.is_empty())
 }
 
-/// `presentedAdminCookie`: the first `pt_admin_token` cookie's raw value,
-/// trimmed, when it is not empty, read the way `auth.rs` reads it.
+/// `presentedAdminCookie`: the first non-empty `pt_admin_token` cookie's raw
+/// value, trimmed. One value per request, whatever else is planted beside
+/// it, so a handful of foreign cookies cannot fill a client's guess budget;
+/// `auth.rs` tries every one when it checks.
 fn presented_cookie(cookie_header: Option<&str>) -> Option<&str> {
     for part in cookie_header.unwrap_or("").split(';') {
         let Some(sep) = part.find('=') else { continue };
@@ -104,7 +106,9 @@ fn presented_cookie(cookie_header: Option<&str>) -> Option<&str> {
             continue;
         }
         let value = part[sep + 1..].trim();
-        return (!value.is_empty()).then_some(value);
+        if !value.is_empty() {
+            return Some(value);
+        }
     }
     None
 }

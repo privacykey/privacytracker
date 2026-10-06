@@ -820,6 +820,7 @@ export function adminTokenRequiredForRequest(_request?: Request): boolean {
 
 export {
   ADMIN_TOKEN_COOKIE,
+  adminSessionCookieValue,
   requestHasValidAdminHeader,
   requestHasValidAdminToken,
 } from "./admin-auth";

@@ -8,11 +8,79 @@
 //!      is therefore a plain `false`, never an error.
 //!   2. The cookie fallback only runs when the header is absent or wrong, it
 //!      splits each cookie at the FIRST `=`, trims the name, and percent-
-//!      decodes the value inside a try/catch that yields `false` on a
-//!      malformed escape. A strict cookie parser accepts or rejects a
-//!      different set of malformed inputs than this does.
+//!      decodes the value inside a try/catch that skips a malformed escape.
+//!      A strict cookie parser accepts or rejects a different set of
+//!      malformed inputs than this does.
+//!
+//! Every `pt_admin_token` cookie is tried, not only the first: a browser
+//! sends every cookie whose host and path match, so one planted by another
+//! service on the same host (another port, or a parent domain) could
+//! otherwise shadow the real one and lock the operator out. And what the
+//! login route stores in the cookie is not the token but this boot's
+//! session value, an HMAC of the token under a secret minted at start
+//! ([`admin_session_cookie_value`]); a cookie value is accepted when it is
+//! that, or the token itself.
+
+use ring::hmac;
+use std::sync::Mutex;
 
 pub const ADMIN_TOKEN_COOKIE: &str = "pt_admin_token";
+
+/// The secret this boot derives session cookies from, minted on first use.
+static SESSION_SECRET: Mutex<Option<[u8; 32]>> = Mutex::new(None);
+
+fn session_secret() -> [u8; 32] {
+    let mut guard = SESSION_SECRET
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Some(secret) = *guard {
+        return secret;
+    }
+    let mut minted = [0u8; 32];
+    ring::rand::SecureRandom::fill(&ring::rand::SystemRandom::new(), &mut minted)
+        .expect("the OS CSPRNG is available");
+    *guard = Some(minted);
+    minted
+}
+
+/// Pin the boot secret, so a replay reproduces the oracle's Set-Cookie.
+#[cfg(test)]
+pub(crate) fn set_session_secret_for_tests(secret: [u8; 32]) {
+    *SESSION_SECRET
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(secret);
+}
+
+/// `adminSessionCookieValue`: HMAC-SHA256 of the configured token under the
+/// boot secret, as hex; `None` while no token is configured.
+pub fn admin_session_cookie_value() -> Option<String> {
+    let token = crate::host_env::var("AUDITOR_ADMIN_TOKEN").ok()?;
+    if token.is_empty() {
+        return None;
+    }
+    let key = hmac::Key::new(hmac::HMAC_SHA256, &session_secret());
+    Some(
+        hmac::sign(&key, token.as_bytes())
+            .as_ref()
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect(),
+    )
+}
+
+/// `matchesCookie`: the session value, or the token itself.
+fn matches_cookie(value: &str) -> bool {
+    if value.is_empty() {
+        return false;
+    }
+    let session = admin_session_cookie_value();
+    session.is_some_and(|s| constant_time_eq(value.as_bytes(), s.as_bytes()))
+        || matches_token(Some(value))
+}
+
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+}
 
 /// `adminTokenConfigured()` — truthiness of the env var, so an empty string
 /// counts as unconfigured exactly as `!!process.env.X` does.
@@ -65,7 +133,8 @@ fn percent_decode(s: &str) -> Option<String> {
     String::from_utf8(out).ok()
 }
 
-/// `requestHasValidAdminToken` — header first, then the cookie.
+/// `requestHasValidAdminToken` — header first, then every `pt_admin_token`
+/// cookie; one that fails to decode is skipped.
 pub fn request_has_valid_admin_token(header: Option<&str>, cookie_header: Option<&str>) -> bool {
     if matches_token(header) {
         return true;
@@ -75,12 +144,12 @@ pub fn request_has_valid_admin_token(header: Option<&str>, cookie_header: Option
         if part[..sep].trim() != ADMIN_TOKEN_COOKIE {
             continue;
         }
-        // Node returns from inside the loop on the FIRST name match, so a
-        // second pt_admin_token cookie is never consulted.
-        return match percent_decode(part[sep + 1..].trim()) {
-            Some(decoded) => matches_token(Some(&decoded)),
-            None => false,
+        let Some(decoded) = percent_decode(part[sep + 1..].trim()) else {
+            continue;
         };
+        if matches_cookie(&decoded) {
+            return true;
+        }
     }
     false
 }
@@ -144,7 +213,7 @@ mod tests {
         assert!(!request_has_valid_admin_token(Some("s3cretlonger"), None));
         assert!(!request_has_valid_admin_token(None, None));
 
-        // Cookie fallback, including percent-decoding and the first-match rule.
+        // Cookie fallback, including percent-decoding.
         assert!(request_has_valid_admin_token(
             None,
             Some("pt_admin_token=s3cret")
@@ -168,6 +237,42 @@ mod tests {
         ));
         // A non-matching cookie name is skipped entirely.
         assert!(!request_has_valid_admin_token(None, Some("other=s3cret")));
+        // Every pt_admin_token cookie is tried: a planted first one, nameless
+        // or undecodable, no longer shadows the real one.
+        for planted in [
+            "pt_admin_token=junk; pt_admin_token=s3cret",
+            "=junk; pt_admin_token=s3cret",
+            "pt_admin_token=%zz; pt_admin_token=s3cret",
+            "pt_admin_token=; pt_admin_token=s3cret",
+        ] {
+            assert!(request_has_valid_admin_token(None, Some(planted)), "{planted}");
+        }
+        assert!(!request_has_valid_admin_token(
+            None,
+            Some("pt_admin_token=junk; pt_admin_token=nope")
+        ));
+
+        // The session value the login cookie carries: an HMAC of the token
+        // under the boot secret, accepted as a cookie, never as the header,
+        // and dead once the secret changes.
+        set_session_secret_for_tests([1u8; 32]);
+        let session = admin_session_cookie_value().unwrap();
+        assert_eq!(session.len(), 64);
+        assert_ne!(session, "s3cret");
+        assert!(request_has_valid_admin_token(
+            None,
+            Some(&format!("pt_admin_token={session}"))
+        ));
+        assert!(!request_has_valid_admin_token(Some(&session), None));
+        set_session_secret_for_tests([2u8; 32]);
+        assert_ne!(admin_session_cookie_value().unwrap(), session);
+        assert!(!request_has_valid_admin_token(
+            None,
+            Some(&format!("pt_admin_token={session}"))
+        ));
+        // The same bytes give the same value, as the oracle replay relies on.
+        set_session_secret_for_tests([1u8; 32]);
+        assert_eq!(admin_session_cookie_value().unwrap(), session);
 
         assert!(admin_token_configured());
         env::remove_var("AUDITOR_ADMIN_TOKEN");

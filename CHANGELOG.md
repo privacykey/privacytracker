@@ -53,6 +53,14 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- The admin session cookie no longer carries `AUDITOR_ADMIN_TOKEN` itself. Login
+  stores a value derived from the token under a secret minted at each start, so
+  a cookie that reaches another service on the same host (browsers scope cookies
+  by host, not by port) does not disclose the token, and a restart or a token
+  rotation signs every browser out. Both backends also try every
+  `pt_admin_token` cookie a request carries, so a cookie planted by a sibling
+  service can no longer shadow the real one and lock you out of every private
+  page; a cookie carrying the token itself keeps working.
 - A hostname under `.localhost` is no longer treated as loopback by the host
   allowlist on either backend. Where a resolver sends such a name is up to it,
   so a token-less install on loopback now refuses a page that rebinds one to
