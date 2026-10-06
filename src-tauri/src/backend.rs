@@ -84,13 +84,13 @@ pub fn resolve_data_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
 /// together.
 pub const CREDENTIAL_HEADER: &str = "x-privacytracker-desktop-token";
 
-/// This launch's credential, once the embedded backend has minted it.
-/// Unset on the Node path and when attached to a developer's own server.
+/// This launch's credential, once the backend has minted it: the embedded
+/// backend's, or the one the sidecar was spawned with. Unset when attached
+/// to a developer's own server.
 static CREDENTIAL: OnceLock<String> = OnceLock::new();
 
-/// Record the credential the embedded backend was started with. Once per
-/// process, like the backend itself.
-#[cfg(feature = "rust-backend")]
+/// Record the credential the backend was started with. Once per process,
+/// like the backend itself.
 pub(crate) fn set_credential(credential: String) {
     if CREDENTIAL.set(credential).is_err() {
         log::warn!("the launch credential was already set; keeping the first");
@@ -117,10 +117,12 @@ fn join(base_url: &str, path: &str) -> String {
     format!("{}{path}", base_url.trim_end_matches('/'))
 }
 
-/// Where the window is pointed at boot. On the Rust backend that is a
-/// one-time sign-in link, which hands the webview this launch's
-/// credential as an HttpOnly cookie and redirects to the start page, so
-/// page scripts never see it. Otherwise it is the base URL itself.
+/// Where the window is pointed at boot: a one-time sign-in link, which
+/// hands the webview this launch's credential as an HttpOnly cookie and
+/// redirects to the start page, so page scripts never see it. The embedded
+/// backend issues its link in process; the sidecar's was minted with its
+/// credential and passed to Node in the environment. A backend with no
+/// credential (a developer's own server) gets the base URL itself.
 pub fn entry_url(base_url: &str) -> String {
     #[cfg(feature = "rust-backend")]
     {
@@ -128,7 +130,7 @@ pub fn entry_url(base_url: &str) -> String {
     }
     #[cfg(not(feature = "rust-backend"))]
     {
-        base_url.to_string()
+        crate::sidecar::entry_url(base_url)
     }
 }
 

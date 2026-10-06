@@ -53,6 +53,12 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- The desktop app's Node rollback build now protects its local server the
+  way the Rust build does: the shell mints a credential at every launch, the
+  server refuses any `/api` call without it, and the window receives it as an
+  HttpOnly cookie through a one-time link, so another account on the same Mac
+  can no longer read or drive the install over its loopback port. Nothing
+  changes for the web and Docker deployments.
 - The admin session cookie no longer carries `AUDITOR_ADMIN_TOKEN` itself. Login
   stores a value derived from the token under a secret minted at each start, so
   a cookie that reaches another service on the same host (browsers scope cookies

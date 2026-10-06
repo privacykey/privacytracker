@@ -18,14 +18,34 @@ use std::io;
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Manager};
 
 use crate::backend::Boot;
 
+/// The environment variable the sidecar reads this launch's credential
+/// from (lib/desktop-auth.ts); the Rust backend reads the same name.
+const CREDENTIAL_ENV: &str = "PRIVACYTRACKER_DESKTOP_TOKEN";
+/// The variable carrying the nonce of the one-time sign-in link.
+const BOOTSTRAP_NONCE_ENV: &str = "PRIVACYTRACKER_DESKTOP_BOOTSTRAP_NONCE";
+/// The file under the data directory holding the port, for tools running
+/// as the same user; the embedded backend writes the same file.
+const PORT_FILE: &str = ".desktop-port";
+/// The file under the data directory holding this launch's credential, for
+/// tools running as the same user. Mode 0600, in the 0700 directory.
+const TOKEN_FILE: &str = ".desktop-token";
+
+/// The nonce of this launch's one-time link, once the sidecar was spawned
+/// with it. `entry_url` builds the link from it.
+static BOOTSTRAP_NONCE: OnceLock<String> = OnceLock::new();
+
 pub struct SidecarHandle {
     pub child: Child,
+    /// Where this launch published its credential, to take it back on exit.
+    data_dir: PathBuf,
+    credential: String,
 }
 
 impl SidecarHandle {
@@ -60,6 +80,9 @@ impl SidecarHandle {
     /// handling will respect for an offscreen process, so we fall straight
     /// through to `Child::kill` (`TerminateProcess`).
     pub fn shutdown(mut self) {
+        // The credential dies with the process; a same-user tool must not
+        // find a file naming one that no longer opens anything.
+        forget_credential(&self.data_dir, &self.credential);
         #[cfg(unix)]
         {
             let pid = self.child.id() as i32;
@@ -157,6 +180,28 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
     let server_js = resolve_server_js(app, &data_dir)?;
     let node = resolve_node_binary(&server_js)?;
 
+    // This launch's credential, and the nonce of the one-time link that
+    // hands the window its cookie (lib/desktop-auth.ts). The loopback bind
+    // keeps the network out, not the other processes on the Mac, so the
+    // sidecar requires the credential on every /api call from its first
+    // request: it goes into the environment before the spawn, the shell's
+    // own requests carry it from here on (backend::get / backend::post),
+    // and a same-user tool finds it beside the port file.
+    let credential = mint_secret()?;
+    let nonce = mint_secret()?;
+    crate::backend::set_credential(credential.clone());
+    if let Err(e) = publish_credential(&data_dir, &credential) {
+        log::warn!(
+            "could not write {TOKEN_FILE} ({e}); the app works, but local tools cannot reach its API"
+        );
+    }
+    if let Err(e) = fs::write(data_dir.join(PORT_FILE), port.to_string()) {
+        log::warn!("could not write {PORT_FILE} ({e})");
+    }
+    if BOOTSTRAP_NONCE.set(nonce.clone()).is_err() {
+        log::warn!("the sign-in link was already issued; keeping the first");
+    }
+
     log::info!("Spawning sidecar: {} {}", node.display(), server_js.display());
     log::info!("  PORT={port} PRIVACYTRACKER_DATA_DIR={}", data_dir.display());
 
@@ -184,6 +229,8 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
         .env("NODE_ENV", "production")
         .env("PRIVACYTRACKER_DATA_DIR", &data_dir)
         .env("PRIVACYTRACKER_RUNTIME", "desktop")
+        .env(CREDENTIAL_ENV, &credential)
+        .env(BOOTSTRAP_NONCE_ENV, &nonce)
         // Parent-watchdog handshake. The Node sidecar polls this PID for
         // liveness on a slow timer (see lib/parent-watchdog.ts) and
         // self-exits if the parent is gone. Belt-and-braces for the
@@ -244,8 +291,140 @@ pub fn boot(app: &AppHandle) -> Result<Boot, Box<dyn std::error::Error>> {
     Ok(Boot {
         port,
         base_url,
-        running: Some(SidecarHandle { child }),
+        running: Some(SidecarHandle {
+            child,
+            data_dir,
+            credential,
+        }),
     })
+}
+
+/// Where the window is pointed: the one-time sign-in link when this launch
+/// spawned the sidecar with a credential, else the base URL itself (the
+/// dev escape hatch spawns nothing and has no credential).
+pub fn entry_url(base_url: &str) -> String {
+    entry_url_with(base_url, BOOTSTRAP_NONCE.get().map(String::as_str))
+}
+
+fn entry_url_with(base_url: &str, nonce: Option<&str>) -> String {
+    match nonce {
+        Some(nonce) => format!(
+            "{}/api/desktop/bootstrap?nonce={nonce}",
+            base_url.trim_end_matches('/')
+        ),
+        None => base_url.to_string(),
+    }
+}
+
+/// 32 bytes from the operating system's random source, as 64 hex
+/// characters: the launch credential, and the nonce of the one-time link.
+/// Read from the kernel directly so the Node build adds no Rust dependency
+/// for it; the desktop app ships for macOS, where that source is always
+/// present.
+fn mint_secret() -> Result<String, Box<dyn std::error::Error>> {
+    #[cfg(unix)]
+    {
+        use std::io::Read;
+        let mut bytes = [0u8; 32];
+        File::open("/dev/urandom")?.read_exact(&mut bytes)?;
+        Ok(bytes.iter().map(|b| format!("{b:02x}")).collect())
+    }
+    #[cfg(not(unix))]
+    {
+        Err("no random source for the launch credential on this platform".into())
+    }
+}
+
+/// Write the credential to [`TOKEN_FILE`], readable by this user only.
+/// Written to a fresh temporary file and renamed over the old one, so the
+/// file is never seen half-written or with looser permissions, and a
+/// symlink planted at either name is replaced rather than followed. The
+/// embedded backend (`embedded.rs`) does the same for its own launch.
+fn publish_credential(data_dir: &Path, credential: &str) -> io::Result<()> {
+    use std::io::Write;
+
+    let staged = data_dir.join(format!("{TOKEN_FILE}.{}", std::process::id()));
+    let _ = fs::remove_file(&staged);
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    let written = options.open(&staged).and_then(|mut file| {
+        file.write_all(credential.as_bytes())?;
+        file.sync_all()
+    });
+    let renamed = written.and_then(|()| fs::rename(&staged, data_dir.join(TOKEN_FILE)));
+    if renamed.is_err() {
+        let _ = fs::remove_file(&staged);
+    }
+    renamed
+}
+
+/// Remove [`TOKEN_FILE`] if it still holds `credential`. Another copy of
+/// the app started since may have written its own, which stays.
+fn forget_credential(data_dir: &Path, credential: &str) {
+    let path = data_dir.join(TOKEN_FILE);
+    if let Ok(current) = fs::read_to_string(&path) {
+        if current.trim() == credential {
+            if let Err(e) = fs::remove_file(&path) {
+                log::warn!("could not remove {} ({e})", path.display());
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod credential_tests {
+    use super::*;
+
+    #[test]
+    fn a_minted_secret_is_32_random_bytes_in_hex() {
+        let a = mint_secret().expect("random");
+        let b = mint_secret().expect("random");
+        assert_eq!(a.len(), 64);
+        assert!(a.bytes().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn the_entry_link_carries_the_nonce_or_is_the_base_url() {
+        assert_eq!(
+            entry_url_with("http://127.0.0.1:4321/", Some("abc")),
+            "http://127.0.0.1:4321/api/desktop/bootstrap?nonce=abc"
+        );
+        assert_eq!(
+            entry_url_with("http://127.0.0.1:4321", None),
+            "http://127.0.0.1:4321"
+        );
+    }
+
+    #[test]
+    fn the_credential_file_is_private_and_taken_back_on_exit() {
+        let dir = std::env::temp_dir().join(format!("pt-sidecar-credential-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        publish_credential(&dir, "first").unwrap();
+        assert_eq!(fs::read_to_string(dir.join(TOKEN_FILE)).unwrap(), "first");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(dir.join(TOKEN_FILE)).unwrap().permissions().mode() & 0o777;
+            assert_eq!(mode, 0o600);
+        }
+        // A later launch's file replaces it, and only the launch that wrote
+        // the current file takes it back.
+        publish_credential(&dir, "second").unwrap();
+        forget_credential(&dir, "first");
+        assert_eq!(fs::read_to_string(dir.join(TOKEN_FILE)).unwrap(), "second");
+        forget_credential(&dir, "second");
+        assert!(!dir.join(TOKEN_FILE).exists());
+        let leftovers: Vec<_> = fs::read_dir(&dir).unwrap().collect();
+        assert!(leftovers.is_empty(), "no staging file is left behind");
+        let _ = fs::remove_dir_all(&dir);
+    }
 }
 
 fn pick_free_port() -> io::Result<u16> {
