@@ -28,7 +28,7 @@ use super::{
     url::{normalize_policy_url_language, pin_google_locale, safe_url_label, search_param_get},
 };
 use crate::{
-    jsstr::{js_encode_uri_component, js_length, js_slice_prefix},
+    jsstr::{is_js_whitespace, js_encode_uri_component, js_length, js_slice_prefix},
     outbound::{self, Fetcher, Reply, Request},
     scrape::js::truthy,
 };
@@ -39,6 +39,8 @@ use url::Url;
 
 pub const POLICY_FETCH_MAX_BYTES: usize = 6 * 1024 * 1024;
 pub const WAYBACK_FETCH_MAX_BYTES: usize = 8 * 1024 * 1024;
+/// `MAX_POLICY_SOURCE_CHARS`: how much of the extracted text a fetch keeps.
+pub const MAX_POLICY_SOURCE_CHARS: usize = 300_000;
 const WAYBACK_AVAILABILITY_MAX_BYTES: usize = 512 * 1024;
 /// The policy layer's own allowlist for archive fetches (two hosts, not the
 /// importer's three).
@@ -844,7 +846,10 @@ pub async fn fetch_privacy_policy_source(
     let title_from_url = safe_url_label(policy_url);
 
     if content_type.contains("text/plain") {
-        let text = normalize_extracted_text(&response_text(&raw.reply.body));
+        let text = bound_policy_text(
+            &normalize_extracted_text(&response_text(&raw.reply.body)),
+            log,
+        );
         log.note(
             "fetch:plain-text",
             format!("{} chars, no HTML follow-up.", locale_int(js_length(&text))),
@@ -983,6 +988,7 @@ pub async fn fetch_privacy_policy_source(
         );
     }
 
+    let text = bound_policy_text(&enriched.unwrap_or(text), log);
     Ok(validate_source(
         title,
         if content_type.is_empty() {
@@ -990,10 +996,33 @@ pub async fn fetch_privacy_policy_source(
         } else {
             content_type
         },
-        enriched.unwrap_or(text),
+        text,
         origin,
         fetched_url,
     ))
+}
+
+/// `boundPolicyText`: at most `MAX_POLICY_SOURCE_CHARS` code units of the
+/// extracted text, then trimmed at the end, with a note when it cut. Node
+/// cuts at the cap, or one unit earlier when the unit before the cap is a
+/// high surrogate; `js_slice_prefix` stops before a character that would
+/// straddle the cap, which is the same place.
+fn bound_policy_text(text: &str, log: &mut dyn PolicyLog) -> String {
+    let length = js_length(text);
+    if length <= MAX_POLICY_SOURCE_CHARS {
+        return text.to_string();
+    }
+    let cut = js_slice_prefix(text, MAX_POLICY_SOURCE_CHARS);
+    let bounded = cut.trim_end_matches(is_js_whitespace).to_string();
+    log.note(
+        "fetch:truncated",
+        format!(
+            "Kept the first {} of {} characters; the rest is not stored or summarised.",
+            locale_int(js_length(&bounded)),
+            locale_int(length)
+        ),
+    );
+    bounded
 }
 
 #[cfg(test)]
@@ -1043,6 +1072,45 @@ mod tests {
         assert_eq!(
             detect_google_consent_handoff("<p>plain</p>", "https://example.com/"),
             None
+        );
+    }
+
+    struct Notes(Vec<(String, Option<String>)>);
+    impl PolicyLog for Notes {
+        fn event(&mut self, phase: &str, note: Option<String>, _error: Option<String>) {
+            self.0.push((phase.to_string(), note));
+        }
+    }
+
+    #[test]
+    fn extracted_text_is_bounded_at_the_cap() {
+        let mut log = Notes(vec![]);
+        let at_cap = "a".repeat(MAX_POLICY_SOURCE_CHARS);
+        assert_eq!(bound_policy_text(&at_cap, &mut log), at_cap);
+        assert!(log.0.is_empty(), "nothing cut, nothing noted");
+
+        // One unit over: cut at the cap, the trailing space trimmed, noted.
+        let over = format!(
+            "{} {}",
+            "a".repeat(MAX_POLICY_SOURCE_CHARS - 1),
+            "x".repeat(10)
+        );
+        assert_eq!(
+            bound_policy_text(&over, &mut log),
+            "a".repeat(MAX_POLICY_SOURCE_CHARS - 1)
+        );
+        assert_eq!(log.0[0].0, "fetch:truncated");
+        assert_eq!(
+            log.0[0].1.as_deref(),
+            Some("Kept the first 299,999 of 300,010 characters; the rest is not stored or summarised.")
+        );
+
+        // A pair straddling the cap is left out whole, as Node's cut one
+        // unit before a high surrogate leaves it.
+        let pair = format!("{}\u{1F600}tail", "a".repeat(MAX_POLICY_SOURCE_CHARS - 1));
+        assert_eq!(
+            bound_policy_text(&pair, &mut log),
+            "a".repeat(MAX_POLICY_SOURCE_CHARS - 1)
         );
     }
 

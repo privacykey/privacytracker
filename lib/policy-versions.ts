@@ -35,6 +35,18 @@ export interface PolicyVersionRow {
   source_word_count: number;
 }
 
+/**
+ * How much of an app's version history is kept: the newest
+ * POLICY_VERSION_KEEP_COUNT rows, and no more than
+ * POLICY_VERSION_KEEP_CHARS of source text between them. The row just
+ * written always stays. Without a bound, a page whose text changed on
+ * every fetch (a nonce, a date, a counter) stored a new full copy each
+ * time, and the install's own JSON backup grew past the size the restore
+ * accepts (fingerprint `policy-versions/upsert-policy-version/no-version-retention`).
+ */
+export const POLICY_VERSION_KEEP_COUNT = 20;
+export const POLICY_VERSION_KEEP_CHARS = 8 * 1024 * 1024;
+
 interface UpsertInput {
   appId: string;
   contentHash: string;
@@ -88,7 +100,52 @@ export function upsertPolicyVersion(input: UpsertInput): string {
     input.sourceWordCount,
     input.sourceText
   );
+  prunePolicyVersions(input.appId, id);
   return id;
+}
+
+/**
+ * Drop the versions of `appId` beyond the retention bound, newest first:
+ * every row past the first POLICY_VERSION_KEEP_COUNT, and every row that
+ * would carry the kept text past POLICY_VERSION_KEEP_CHARS. `keepId`, the
+ * row just written, is kept whatever its size. A History entry whose
+ * version was dropped keeps its text; only its "view the captured text"
+ * link answers not found.
+ */
+function prunePolicyVersions(appId: string, keepId: string): void {
+  const rows = db
+    .prepare(
+      `SELECT id, length(source_text) AS chars
+         FROM privacy_policy_versions
+        WHERE app_id = ?
+        ORDER BY first_fetched_at DESC, id DESC`
+    )
+    .all(appId) as Array<{ id: string; chars: number }>;
+  const drop: string[] = [];
+  let kept = 0;
+  let chars = 0;
+  for (const row of rows) {
+    if (row.id === keepId) {
+      kept += 1;
+      chars += row.chars;
+      continue;
+    }
+    if (
+      kept >= POLICY_VERSION_KEEP_COUNT ||
+      chars + row.chars > POLICY_VERSION_KEEP_CHARS
+    ) {
+      drop.push(row.id);
+      continue;
+    }
+    kept += 1;
+    chars += row.chars;
+  }
+  if (drop.length === 0) {
+    return;
+  }
+  db.prepare(
+    `DELETE FROM privacy_policy_versions WHERE id IN (${drop.map(() => "?").join(", ")})`
+  ).run(...drop);
 }
 
 /** Fetch a single version row by id. */
