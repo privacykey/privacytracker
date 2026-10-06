@@ -77,6 +77,21 @@ Going forward, changes are recorded here as they land.
 - The iOS app-list helper (`scripts/ios-app-import/export_ios_apps.py`) quotes
   every CSV field and prefixes a tab to a name that a spreadsheet would read as
   a formula, so an app named like `=HYPERLINK(...)` opens as text.
+- Reading a fetched privacy-policy page into text, and splitting that text
+  into chunks for the AI summariser, now take time proportional to the size
+  of the page on both backends. A page shaped to make the former
+  regular-expression passes backtrack could hold up the server for seconds
+  per megabyte during the automatic policy fetch that follows an import or
+  sync. The text produced is unchanged.
+- Bound what one privacy policy can cost. A fetch keeps at most 300,000
+  characters of a policy's text, one summary makes at most 120 chunk calls to
+  the AI provider, and pressing Stop or closing the tab on a running summary
+  now stops it at its next provider call instead of only hiding its progress.
+  Each app keeps its newest 20 policy versions and no more than 8 MiB of their
+  text, so a page that changes on every fetch can no longer grow the install's
+  backup past the size a restore accepts. The Internet Archive is asked to save
+  a policy only when no copy from the last 45 days is known, and the privacy
+  disclosure now says so.
 - Replace manual network-interface pointer traversal with an owning Rust
   iterator when finding addresses for paired phones.
 - Patch Next.js, DOMPurify and affected build-tool dependencies. The Linux

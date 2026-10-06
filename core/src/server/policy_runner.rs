@@ -611,6 +611,7 @@ async fn walk(
                 phase,
                 force_resummarise: forced,
                 bypass_throttle,
+                cancel: None,
             },
             Some(&mut sink),
         )

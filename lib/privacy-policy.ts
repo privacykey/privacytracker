@@ -34,6 +34,18 @@ const WAYBACK_HOSTS = ["archive.org", "web.archive.org"];
 
 import { appendPolicyChangeEntry, type ChangeEntry } from "./changelog";
 import {
+  blockTagsToText,
+  firstTagBlockInner,
+  metaRefreshUrl,
+  policyContainers,
+  privacyPolicyLinkHref,
+  scriptBlocks,
+  sliceParagraph,
+  stripClassContainers,
+  stripRoleBlocks,
+  stripTagBlocks,
+} from "./policy-html-scan";
+import {
   type AppPolicyAnalysis,
   canSummariseStoredPolicy,
   type ExternalPolicyReference,
@@ -51,11 +63,17 @@ import {
 } from "./policy-summary-meta";
 import {
   getArchiveUrlForHash,
+  getPolicyVersion,
   hasAnyPolicyVersion,
   setPolicyVersionArchiveUrl,
   upsertPolicyVersion,
 } from "./policy-versions";
-import { lookupLatestWaybackSnapshot, submitToWaybackSaveNow } from "./wayback";
+import {
+  extractWaybackTimestamp,
+  lookupLatestWaybackSnapshot,
+  parseWaybackTimestampMs,
+  submitToWaybackSaveNow,
+} from "./wayback";
 
 // Rolling cap for the developer-options debug log. Older rows are pruned on
 // every insert so the table never grows unbounded.
@@ -84,6 +102,22 @@ const POLICY_BROWSER_HEADERS: Record<string, string> = {
 // AI input length caps (separate concept from the source-validation thresholds below).
 const MAX_DIRECT_POLICY_CHARS = 40_000;
 const MAX_CHUNK_CHARS = 12_000;
+
+// What one policy may cost. A fetch keeps at most MAX_POLICY_SOURCE_CHARS of
+// the extracted text (the longest real policies run to about 150,000
+// characters; the fetch cap alone allowed 6 MiB), and one summary makes at
+// most MAX_SUMMARY_CHUNKS chunk calls before its merge, so the number of
+// paid provider calls a developer-controlled page can cause is bounded
+// (fingerprint `privacy-policy/build-policy-summary/no-per-summary-call-budget`).
+// A text under the first cap always fits the second: 300,000 characters in
+// 3,000-character slices is 100 chunks.
+export const MAX_POLICY_SOURCE_CHARS = 300_000;
+export const MAX_SUMMARY_CHUNKS = 120;
+
+// Save Page Now is asked for a policy only when no capture from the last 45
+// days is known, the window the history importer uses for its own requests
+// (fingerprint `privacy-policy/wayback-save-now/fired-on-every-policy-fetch`).
+export const ARCHIVE_RECENT_CAPTURE_MS = 45 * 24 * 60 * 60 * 1000;
 
 // Source-validation thresholds — anything below these is treated as too_short.
 // Bumped from 120 words / 700 chars after observing legal-index pages
@@ -791,6 +825,13 @@ export interface PolicySyncOptions {
    * The regenerate route wires this to a browser-facing NDJSON stream.
    */
   phaseStream?: PolicyPhaseStream;
+  /**
+   * Stops the summarise phase when aborted: between provider calls, and the
+   * call in flight. The regenerate route aborts it when the browser goes
+   * away or the user presses Stop. The chunk notes made so far stay stored
+   * for the next run. The fetch phase ignores it.
+   */
+  signal?: AbortSignal;
 }
 
 export async function syncPrivacyPolicyAnalysis(
@@ -830,6 +871,7 @@ export async function syncPrivacyPolicyAnalysis(
     } else if (phase === "summarise") {
       result = await summariseStoredPolicy(request, logger, {
         forceResummarise,
+        signal: options.signal,
       });
     } else {
       // 'all' — fetch, then summarise only if source landed cleanly. Cache-hit
@@ -845,6 +887,7 @@ export async function syncPrivacyPolicyAnalysis(
       } else if (afterFetch.status === "source_ready") {
         result = await summariseStoredPolicy(request, logger, {
           forceResummarise,
+          signal: options.signal,
         });
       } else {
         result = afterFetch;
@@ -1372,13 +1415,34 @@ async function fetchAndStorePolicySource(
   //       archive.org being unreachable must never block a scrape.
   if (versionId) {
     const archiveTarget = source.finalUrl ?? policyUrl;
+    // The capture already linked to this version: a Save Page Now that
+    // landed on an earlier fetch, which the availability API may not list
+    // yet, or an earlier lookup's find.
+    const linkedUrl = getPolicyVersion(versionId)?.archive_url ?? null;
+    const linkedCaptureMs = linkedUrl
+      ? parseWaybackTimestampMs(extractWaybackTimestamp(linkedUrl))
+      : null;
+    let foundCaptureMs: number | null = null;
     try {
       const existing = await lookupLatestWaybackSnapshot(archiveTarget);
       if (existing?.url) {
-        setPolicyVersionArchiveUrl(versionId, existing.url, Date.now());
-        logger.event("archive-existing", {
-          note: `Linked to existing Wayback snapshot (${existing.timestamp ?? "unknown ts"}).`,
-        });
+        foundCaptureMs = parseWaybackTimestampMs(existing.timestamp);
+        // The newest known capture stays linked: the lookup's find replaces
+        // a linked capture only when it is at least as new (or undated).
+        if (
+          linkedCaptureMs === null ||
+          foundCaptureMs === null ||
+          foundCaptureMs >= linkedCaptureMs
+        ) {
+          setPolicyVersionArchiveUrl(versionId, existing.url, Date.now());
+          logger.event("archive-existing", {
+            note: `Linked to existing Wayback snapshot (${existing.timestamp ?? "unknown ts"}).`,
+          });
+        } else {
+          logger.event("archive-existing", {
+            note: `Kept the newer linked Wayback snapshot; the archive lists ${existing.timestamp ?? "an undated one"}.`,
+          });
+        }
       } else {
         logger.event("archive-existing", {
           note: "No existing Wayback snapshot found.",
@@ -1388,24 +1452,37 @@ async function fetchAndStorePolicySource(
       logger.event("archive-existing", { error: getErrorMessage(error) });
     }
 
-    // Fire-and-forget. A persistent Node process keeps the promise alive
-    // until the event loop clears; next rescrape will re-read whatever we
-    // land. We intentionally do not await, and we swallow every error.
-    const capturedVersionId = versionId;
-    void (async () => {
-      try {
-        const fresh = await submitToWaybackSaveNow(archiveTarget);
-        if (fresh.ok && fresh.snapshot.url) {
-          setPolicyVersionArchiveUrl(
-            capturedVersionId,
-            fresh.snapshot.url,
-            Date.now()
-          );
+    // Save Page Now only when no capture from the last 45 days is known,
+    // found or linked. An unchanged policy fetched every hour used to ask
+    // the Archive for a new copy every hour.
+    const now = Date.now();
+    const hasRecentCapture = [foundCaptureMs, linkedCaptureMs].some(
+      (ms) => ms !== null && now - ms <= ARCHIVE_RECENT_CAPTURE_MS
+    );
+    if (hasRecentCapture) {
+      logger.event("archive-save", {
+        note: "A capture from the last 45 days exists; not asking Save Page Now.",
+      });
+    } else {
+      // Fire-and-forget. A persistent Node process keeps the promise alive
+      // until the event loop clears; next rescrape will re-read whatever we
+      // land. We intentionally do not await, and we swallow every error.
+      const capturedVersionId = versionId;
+      void (async () => {
+        try {
+          const fresh = await submitToWaybackSaveNow(archiveTarget);
+          if (fresh.ok && fresh.snapshot.url) {
+            setPolicyVersionArchiveUrl(
+              capturedVersionId,
+              fresh.snapshot.url,
+              Date.now()
+            );
+          }
+        } catch {
+          // Swallowed on purpose - archive failures must never leak.
         }
-      } catch {
-        // Swallowed on purpose - archive failures must never leak.
-      }
-    })();
+      })();
+    }
   }
 
   try {
@@ -1534,7 +1611,7 @@ async function fetchAndStorePolicySource(
 async function summariseStoredPolicy(
   request: PolicyAnalysisRequest,
   logger: PolicyRunLogger,
-  options: { forceResummarise?: boolean } = {}
+  options: { forceResummarise?: boolean; signal?: AbortSignal } = {}
 ): Promise<AppPolicyAnalysis | null> {
   const { appId, appName, developer, policyUrl } = request;
   if (!policyUrl) {
@@ -1685,6 +1762,7 @@ async function summariseStoredPolicy(
       appId,
       logger,
       audience,
+      signal: options.signal,
     });
     logger.endPhase({ note: `Summary ready (${mode}).` });
 
@@ -2305,7 +2383,7 @@ export async function fetchPrivacyPolicySource(
 
   if (contentType.includes("text/plain")) {
     const rawText = await res.text();
-    const text = normalizeExtractedText(rawText);
+    const text = boundPolicyText(normalizeExtractedText(rawText), logger);
     traceEvent(logger, "fetch:plain-text", {
       note: `${text.length.toLocaleString()} chars, no HTML follow-up.`,
     });
@@ -2455,10 +2533,33 @@ export async function fetchPrivacyPolicySource(
   return validateSource({
     title,
     contentType: contentType || "text/html",
-    text: enriched ?? text,
+    text: boundPolicyText(enriched ?? text, logger),
     origin,
     finalUrl: fetchedUrl,
   });
+}
+
+/**
+ * Keep at most MAX_POLICY_SOURCE_CHARS of the extracted text: cut at the
+ * cap, one unit earlier when the cap would split a surrogate pair, then
+ * trimmed. Everything after this (the hash, the stored source, the version
+ * row, the summariser) sees the bounded text, so a page that grows past
+ * the cap reads as the same text for as long as its first part is the same.
+ */
+function boundPolicyText(text: string, logger?: PolicyFetchLogger): string {
+  if (text.length <= MAX_POLICY_SOURCE_CHARS) {
+    return text;
+  }
+  let cut = MAX_POLICY_SOURCE_CHARS;
+  const unit = text.charCodeAt(cut - 1);
+  if (unit >= 0xd800 && unit <= 0xdbff) {
+    cut -= 1;
+  }
+  const bounded = text.slice(0, cut).trimEnd();
+  traceEvent(logger, "fetch:truncated", {
+    note: `Kept the first ${bounded.length.toLocaleString()} of ${text.length.toLocaleString()} characters; the rest is not stored or summarised.`,
+  });
+  return bounded;
 }
 
 // Extract the target URL from an HTML meta-refresh tag, resolving it against
@@ -2469,17 +2570,17 @@ function extractMetaRefreshTarget(
   baseUrl: string
 ): string | null {
   // <meta http-equiv="refresh" content="0; url=https://...">
-  // The url= token is sometimes quoted, sometimes bare. `0;URL='...'` also exists.
-  const metaMatch = html.match(
-    /<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]*content\s*=\s*["']\s*\d+\s*;\s*url\s*=\s*(?:["']?)([^"'>\s]+)(?:["']?)/i
-  );
-  if (!metaMatch) {
+  // The url= token is sometimes quoted, sometimes bare. `0;URL='...'` also
+  // exists. The scan in `lib/policy-html-scan.ts` reads the tag the way the
+  // former regex did, in time linear in the page.
+  const refreshUrl = metaRefreshUrl(html);
+  if (!refreshUrl) {
     return null;
   }
 
   let target: string;
   try {
-    target = new URL(metaMatch[1], baseUrl).toString();
+    target = new URL(refreshUrl, baseUrl).toString();
   } catch {
     return null;
   }
@@ -2518,10 +2619,10 @@ function extractScriptLocationTarget(
   // crafted pages hide their redirect inside what looks (to our regex)
   // like one giant unterminated script block. CodeQL rule
   // `js/bad-tag-filter` previously flagged the `\s*` variant for
-  // missing the attribute form.
-  const scriptBlocks =
-    html.match(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi) ?? [];
-  for (const block of scriptBlocks) {
+  // missing the attribute form. `scriptBlocks` finds the same blocks the
+  // former `<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>` match did, without
+  // rescanning the page for every unclosed opener.
+  for (const block of scriptBlocks(html)) {
     const m =
       block.match(
         /(?:window\.|document\.|top\.|self\.|parent\.)?location(?:\.href)?\s*=\s*["']([^"']+)["']/i
@@ -2733,10 +2834,10 @@ async function maybeFollowPolicyLink({
     return null;
   }
 
-  const linkMatch = html.match(
-    /<a\s+[^>]*href="([^"#?]+(?:\?[^"#]*)?)"[^>]*>\s*(?:(?:read|view|see|open)[^<]*)?(?:full|complete|detailed)?\s*(?:privacy\s*(?:policy|notice|statement))[^<]*<\/a>/i
-  );
-  if (!linkMatch) {
+  // The first `<a href="…">` whose text reads like a "Privacy Policy" link,
+  // as `lib/policy-html-scan.ts` finds it in time linear in the page.
+  const linkHref = privacyPolicyLinkHref(html);
+  if (!linkHref) {
     traceEvent(logger, "fetch:follow-link-skip", {
       note: `Page only has ${currentText.length.toLocaleString()} chars but no "Privacy Policy" link to follow.`,
     });
@@ -2745,7 +2846,7 @@ async function maybeFollowPolicyLink({
 
   let href: string;
   try {
-    href = new URL(linkMatch[1], baseUrl).toString();
+    href = new URL(linkHref, baseUrl).toString();
   } catch {
     return null;
   }
@@ -2826,72 +2927,62 @@ async function maybeFollowPolicyLink({
 const CHROME_CLASS_PATTERN =
   /(cookie|consent|banner|navbar|nav-|menu|footer|subscribe|signup|breadcrumb|hero-|cta-|sidebar|social|related|share|toolbar|modal|popup)/i;
 
+// The tags whose whole block is chrome, never policy text. Each is removed
+// as `<tag\b[^>]*>[\s\S]*?<\/tag\b[^>]*>`: the closing tag tolerates
+// whitespace AND attributes before the `>` (`</script >`, `</script\n>`,
+// `</script foo="bar">`, etc.), because HTML5 end tags accept them and an
+// attacker-crafted policy page could use any of those forms to keep its
+// `<script>…</script foo>` block from being stripped before the text
+// reaches the AI summariser — script bodies are prime prompt-injection
+// fodder. CodeQL rule `js/bad-tag-filter` flagged the prior `\s*` variants.
+const CHROME_BLOCK_TAGS = [
+  "script",
+  "style",
+  "noscript",
+  "svg",
+  "nav",
+  "header",
+  "aside",
+  "footer",
+  "form",
+];
+
 function stripChromeTags(html: string): string {
-  // Every closing tag below uses `<\/tagname\b[^>]*>` rather than the
-  // literal `<\/tagname>`. HTML5 end tags accept whitespace AND
-  // attributes before the `>` (`</script >`, `</script\n>`,
-  // `</script foo="bar">`, etc.), and an attacker-crafted policy page
-  // could use any of those forms to keep its `<script>…</script foo>`
-  // block from being stripped before the text reaches the AI
-  // summariser — script bodies are prime prompt-injection fodder.
-  // CodeQL rule `js/bad-tag-filter` flagged the prior `\s*` variants.
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ")
-    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\b[^>]*>/gi, " ")
-    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg\b[^>]*>/gi, " ")
-    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav\b[^>]*>/gi, " ")
-    .replace(/<header\b[^>]*>[\s\S]*?<\/header\b[^>]*>/gi, " ")
-    .replace(/<aside\b[^>]*>[\s\S]*?<\/aside\b[^>]*>/gi, " ")
-    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer\b[^>]*>/gi, " ")
-    .replace(/<form\b[^>]*>[\s\S]*?<\/form\b[^>]*>/gi, " ")
-    .replace(
-      /<[^>]+\srole="(navigation|banner|contentinfo|complementary|search)"[^>]*>[\s\S]*?<\/[^>]+\s*>/gi,
-      " "
-    )
-    .replace(
-      /<(div|section|aside|header|footer|ul|ol)\b[^>]*\sclass="[^"]*"[^>]*>[\s\S]*?<\/\1\b[^>]*>/gi,
-      (full) => {
-        const classMatch = full.match(/\sclass="([^"]*)"/i);
-        if (classMatch && CHROME_CLASS_PATTERN.test(classMatch[1])) {
-          return " ";
-        }
-        return full;
-      }
-    );
+  // Each pass below is the linear-time form of a former regex replace (see
+  // `lib/policy-html-scan.ts`): the block tags, then any element carrying
+  // a landmark `role`, then the containers whose `class` names chrome.
+  let stripped = html;
+  for (const tag of CHROME_BLOCK_TAGS) {
+    stripped = stripTagBlocks(stripped, tag);
+  }
+  stripped = stripRoleBlocks(stripped);
+  return stripClassContainers(stripped, (classes) =>
+    CHROME_CLASS_PATTERN.test(classes)
+  );
 }
 
 function htmlBlockToText(html: string): string {
-  const stripped = html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(
-      /<\/(p|div|li|section|article|main|header|h[1-6]|tr|td|blockquote|ul|ol)>/gi,
-      "\n"
-    )
-    .replace(
-      /<(p|div|li|section|article|main|header|h[1-6]|tr|td|blockquote|ul|ol)[^>]*>/gi,
-      "\n"
-    )
-    .replace(/<[^>]+>/g, " ");
-
-  return normalizeExtractedText(decodeHtmlEntities(stripped));
+  // `<br>` and block boundaries become newlines, every other tag a space
+  // (`blockTagsToText`), then entities are decoded and whitespace settled.
+  return normalizeExtractedText(decodeHtmlEntities(blockTagsToText(html)));
 }
 
-function extractPolicyTextFromHtml(html: string, fallbackTitle: string) {
+// Exported for tests/app/policy-html-scan.test.ts; pure, no network and no
+// database.
+export function extractPolicyTextFromHtml(html: string, fallbackTitle: string) {
   // Closing tags below tolerate attributes / whitespace before the `>`
   // for the same reason as `stripChromeTags`: HTML5 end tags are valid
   // with trailing whitespace AND attributes (`</main >`, `</main bar>`),
   // and a strict literal would otherwise fail to extract the policy
   // text from spec-compliant but unusual markup.
   const title =
-    decodeHtmlEntities(
-      html.match(/<title\b[^>]*>([\s\S]*?)<\/title\b[^>]*>/i)?.[1] ?? ""
-    ).trim() || fallbackTitle;
+    decodeHtmlEntities(firstTagBlockInner(html, "title") ?? "").trim() ||
+    fallbackTitle;
 
   const primaryHtml =
-    html.match(/<main\b[^>]*>([\s\S]*?)<\/main\b[^>]*>/i)?.[1] ??
-    html.match(/<article\b[^>]*>([\s\S]*?)<\/article\b[^>]*>/i)?.[1] ??
-    html.match(/<body\b[^>]*>([\s\S]*?)<\/body\b[^>]*>/i)?.[1] ??
+    firstTagBlockInner(html, "main") ??
+    firstTagBlockInner(html, "article") ??
+    firstTagBlockInner(html, "body") ??
     html;
 
   const firstPassText = htmlBlockToText(stripChromeTags(primaryHtml));
@@ -2904,16 +2995,11 @@ function extractPolicyTextFromHtml(html: string, fallbackTitle: string) {
   // Second pass: search the whole document for elements that look policy-ish,
   // rank by extracted length, return the largest.
   const candidates: string[] = [];
-  const containerRegex =
-    /<(div|section|article|main)\b[^>]*\s(?:id|class)="([^"]*(?:policy|privacy|legal|terms|content|main|body|document)[^"]*)"[^>]*>([\s\S]*?)<\/\1>/gi;
-
-  let match: RegExpExecArray | null;
-  while ((match = containerRegex.exec(html)) !== null) {
-    const attrValue = match[2];
-    if (CHROME_CLASS_PATTERN.test(attrValue)) {
+  for (const container of policyContainers(html)) {
+    if (CHROME_CLASS_PATTERN.test(container.attr)) {
       continue;
     }
-    const innerText = htmlBlockToText(stripChromeTags(match[3]));
+    const innerText = htmlBlockToText(stripChromeTags(container.inner));
     if (innerText.length >= POLICY_MIN_CHARS) {
       candidates.push(innerText);
     }
@@ -3016,6 +3102,7 @@ async function buildPolicySummary({
   appId,
   logger,
   audience,
+  signal,
 }: {
   aiConfig: AiRuntimeConfig;
   appName: string;
@@ -3038,6 +3125,8 @@ async function buildPolicySummary({
    * the safety summary on long policies.
    */
   audience: "self" | "loved_one" | "guardian";
+  /** Aborted when the caller cancels; checked before every provider call. */
+  signal?: AbortSignal;
 }): Promise<{ summary: PolicySummary; mode: PolicyAnalysisMode }> {
   const limits = resolvePolicyLengthConfig(aiConfig);
 
@@ -3045,6 +3134,7 @@ async function buildPolicySummary({
     logger.event("ai-direct", {
       note: `Sending ${policyText.length.toLocaleString()} chars in a single call.`,
     });
+    throwIfCancelled(signal);
     const summary = await summarizePolicyDirectly({
       aiConfig,
       appName,
@@ -3054,6 +3144,7 @@ async function buildPolicySummary({
       appId,
       logger,
       audience,
+      signal,
     });
     return { summary, mode: "direct" };
   }
@@ -3062,6 +3153,15 @@ async function buildPolicySummary({
   logger.event("ai-chunked", {
     note: `Splitting source into ${chunks.length} chunks.`,
   });
+
+  // The budget: one summary makes at most MAX_SUMMARY_CHUNKS chunk calls. A
+  // text the fetch bounded always fits; a longer one stored before the bound
+  // existed, or written by another path, is refused before the first call.
+  if (chunks.length > MAX_SUMMARY_CHUNKS) {
+    const message = `Policy text splits into ${chunks.length.toLocaleString()} chunks; one summary makes at most ${MAX_SUMMARY_CHUNKS} chunk calls. Rescrape the policy so its text is bounded, then summarise again.`;
+    logger.event("chunk-budget", { error: message });
+    throw new Error(message);
+  }
 
   // Resumable merge: if the previous run completed every chunk but failed on
   // merge (the typical 90s-timeout footprint), we can skip straight to the
@@ -3080,6 +3180,7 @@ async function buildPolicySummary({
   }
 
   for (let index = chunkNotes.length; index < chunks.length; index += 1) {
+    throwIfCancelled(signal);
     logger.startPhase(
       `chunk-${index + 1}`,
       `Summarising chunk ${index + 1} of ${chunks.length}.`
@@ -3094,6 +3195,7 @@ async function buildPolicySummary({
       totalChunks: chunks.length,
       appId,
       logger,
+      signal,
     });
     logger.endPhase();
     chunkNotes.push(note);
@@ -3114,6 +3216,7 @@ async function buildPolicySummary({
     }
   }
 
+  throwIfCancelled(signal);
   logger.startPhase("chunk-merge", "Merging chunk notes into final summary.");
   const summary = await summarizePolicyFromChunkNotes({
     appName,
@@ -3125,6 +3228,7 @@ async function buildPolicySummary({
     appId,
     logger,
     audience,
+    signal,
   });
   logger.endPhase();
 
@@ -3272,6 +3376,7 @@ async function summarizePolicyDirectly({
   appId,
   logger,
   audience,
+  signal,
 }: {
   aiConfig: AiRuntimeConfig;
   appName: string;
@@ -3281,9 +3386,11 @@ async function summarizePolicyDirectly({
   appId: string;
   logger: PolicyRunLogger;
   audience: "self" | "loved_one" | "guardian";
+  signal?: AbortSignal;
 }): Promise<PolicySummary> {
   const result = await callAiJson<any>({
     aiConfig,
+    signal,
     schemaName: "privacy_policy_summary",
     schema: finalSummarySchema(audience),
     appId,
@@ -3313,6 +3420,7 @@ async function summarizePolicyChunk({
   totalChunks,
   appId,
   logger,
+  signal,
 }: {
   aiConfig: AiRuntimeConfig;
   appName: string;
@@ -3323,11 +3431,13 @@ async function summarizePolicyChunk({
   totalChunks: number;
   appId: string;
   logger: PolicyRunLogger;
+  signal?: AbortSignal;
 }): Promise<ChunkNote> {
   const clueDigest = buildPolicyClueDigest(chunkText);
 
   const result = await callAiJson<any>({
     aiConfig,
+    signal,
     schemaName: "privacy_policy_chunk_note",
     appId,
     appName,
@@ -3409,6 +3519,7 @@ async function summarizePolicyFromChunkNotes({
   appId,
   logger,
   audience,
+  signal,
 }: {
   aiConfig: AiRuntimeConfig;
   appName: string;
@@ -3419,6 +3530,7 @@ async function summarizePolicyFromChunkNotes({
   appId: string;
   logger: PolicyRunLogger;
   audience: "self" | "loved_one" | "guardian";
+  signal?: AbortSignal;
 }): Promise<PolicySummary> {
   const synthesizedNotes = chunkNotes
     .map((note, index) =>
@@ -3432,6 +3544,7 @@ async function summarizePolicyFromChunkNotes({
 
   const result = await callAiJson<any>({
     aiConfig,
+    signal,
     schemaName: "privacy_policy_summary_from_chunks",
     schema: finalSummarySchema(audience),
     appId,
@@ -3649,6 +3762,32 @@ interface AiCallCommonOptions {
    * callers that don't care.
    */
   phaseKind?: AiTimeoutPhase;
+  /**
+   * The caller's cancellation. Combined with the per-phase timeout on the
+   * request; an aborted call is neither retried nor reported as a timeout.
+   */
+  signal?: AbortSignal;
+}
+
+/**
+ * The request's own signal: the phase timeout, and the caller's
+ * cancellation when it has one.
+ */
+function combineAbortSignals(
+  timeoutMs: number,
+  signal?: AbortSignal
+): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return signal ? AbortSignal.any([timeout, signal]) : timeout;
+}
+
+/** Stop a summarise run the caller has cancelled before its next provider call. */
+function throwIfCancelled(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new Error(
+      "Summary cancelled before it finished; the chunk notes made so far are kept for the next run."
+    );
+  }
 }
 
 /**
@@ -3735,6 +3874,7 @@ async function callAiJson<T>({
   phase,
   logger,
   phaseKind = "direct",
+  signal,
 }: {
   aiConfig: AiRuntimeConfig;
   schemaName: string;
@@ -3752,6 +3892,7 @@ async function callAiJson<T>({
       phase,
       logger,
       phaseKind,
+      signal,
     };
     if (aiConfig.provider === "anthropic") {
       return callAnthropicJson<T>(common);
@@ -3771,7 +3912,8 @@ async function callAiJson<T>({
   try {
     return await invoke();
   } catch (error) {
-    if (!isAbortOrTimeoutError(error)) {
+    // A call the caller cancelled is not a hiccup to retry.
+    if (!isAbortOrTimeoutError(error) || signal?.aborted) {
       throw error;
     }
     logger?.event("ai-retry", {
@@ -3791,6 +3933,7 @@ async function callChatCompletionsJson<T>({
   phase,
   logger,
   phaseKind,
+  signal,
 }: {
   aiConfig: AiRuntimeConfig;
   schemaName: string;
@@ -3882,14 +4025,17 @@ async function callChatCompletionsJson<T>({
       // bounce the request (with the user's API key in the
       // Authorization header) to an arbitrary internal target.
       redirect: "error",
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: combineAbortSignals(timeoutMs, signal),
     });
   } catch (error) {
     const observedMs = Date.now() - started;
-    const abort = isAbortOrTimeoutError(error);
-    const message = abort
-      ? `${aiConfig.label} request aborted after ${Math.round(observedMs / 1000)}s (${phaseKindResolved}-phase timeout).`
-      : `${aiConfig.label} request failed: ${getErrorMessage(error)}`;
+    const cancelled = signal?.aborted === true;
+    const abort = !cancelled && isAbortOrTimeoutError(error);
+    const message = cancelled
+      ? `${aiConfig.label} request cancelled after ${Math.round(observedMs / 1000)}s.`
+      : abort
+        ? `${aiConfig.label} request aborted after ${Math.round(observedMs / 1000)}s (${phaseKindResolved}-phase timeout).`
+        : `${aiConfig.label} request failed: ${getErrorMessage(error)}`;
     finishAiDebugCapture(debug, {
       response: "",
       durationMs: observedMs,
@@ -3951,10 +4097,13 @@ async function callChatCompletionsJson<T>({
     }
   } catch (error) {
     const observedMs = Date.now() - started;
-    const abort = isAbortOrTimeoutError(error);
-    const message = abort
-      ? `${aiConfig.label} stream aborted after ${Math.round(observedMs / 1000)}s (${phaseKindResolved}-phase timeout).`
-      : `${aiConfig.label} response processing failed: ${getErrorMessage(error)}`;
+    const cancelled = signal?.aborted === true;
+    const abort = !cancelled && isAbortOrTimeoutError(error);
+    const message = cancelled
+      ? `${aiConfig.label} stream cancelled after ${Math.round(observedMs / 1000)}s.`
+      : abort
+        ? `${aiConfig.label} stream aborted after ${Math.round(observedMs / 1000)}s (${phaseKindResolved}-phase timeout).`
+        : `${aiConfig.label} response processing failed: ${getErrorMessage(error)}`;
     // Best-effort — rawBody might hold the partial stream captured before abort.
     finishAiDebugCapture(debug, {
       response:
@@ -4005,6 +4154,7 @@ async function callAnthropicJson<T>({
   phase,
   logger,
   phaseKind = "direct",
+  signal,
 }: {
   aiConfig: AiRuntimeConfig;
   schemaName: string;
@@ -4067,14 +4217,17 @@ async function callAnthropicJson<T>({
         },
         messages: [{ role: "user", content: prompt }],
       }),
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: combineAbortSignals(timeoutMs, signal),
     });
   } catch (error) {
     const observedMs = Date.now() - started;
-    const abort = isAbortOrTimeoutError(error);
-    const message = abort
-      ? `${aiConfig.label} request aborted after ${Math.round(observedMs / 1000)}s (${phaseKind}-phase timeout).`
-      : `${aiConfig.label} request failed: ${getErrorMessage(error)}`;
+    const cancelled = signal?.aborted === true;
+    const abort = !cancelled && isAbortOrTimeoutError(error);
+    const message = cancelled
+      ? `${aiConfig.label} request cancelled after ${Math.round(observedMs / 1000)}s.`
+      : abort
+        ? `${aiConfig.label} request aborted after ${Math.round(observedMs / 1000)}s (${phaseKind}-phase timeout).`
+        : `${aiConfig.label} request failed: ${getErrorMessage(error)}`;
     finishAiDebugCapture(debug, {
       response: "",
       durationMs: observedMs,
@@ -4284,7 +4437,8 @@ function normalizeSafetySummary(input: any): PolicySummarySafety | undefined {
   return { paragraph: paragraph.slice(0, 1400), concerns };
 }
 
-function chunkPolicyText(text: string, maxChars: number): string[] {
+// Exported for tests/app/policy-html-scan.test.ts; pure.
+export function chunkPolicyText(text: string, maxChars: number): string[] {
   const paragraphs = text
     .split(/\n\n+/)
     .map((part) => part.trim())
@@ -4299,12 +4453,12 @@ function chunkPolicyText(text: string, maxChars: number): string[] {
         current = "";
       }
 
-      const slices = paragraph.match(
-        new RegExp(
-          `[\\s\\S]{1,${Math.max(1000, maxChars - 1000)}}(?:\\s|$)`,
-          "g"
-        )
-      ) ?? [paragraph];
+      // The former `[\s\S]{1,n}(?:\s|$)` scan, in one linear pass
+      // (`sliceParagraph`): the longest run of at most n characters ending
+      // in whitespace, from each position. A paragraph it cannot slice at
+      // all is kept whole, as a `match` with no result left it.
+      const sliced = sliceParagraph(paragraph, Math.max(1000, maxChars - 1000));
+      const slices = sliced.length > 0 ? sliced : [paragraph];
       for (const slice of slices) {
         const trimmed = slice.trim();
         if (trimmed) {
