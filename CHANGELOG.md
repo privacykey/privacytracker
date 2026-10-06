@@ -42,6 +42,12 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- Reading a fetched privacy-policy page into text, and splitting that text
+  into chunks for the AI summariser, now take time proportional to the size
+  of the page on both backends. A page shaped to make the former
+  regular-expression passes backtrack could hold up the server for seconds
+  per megabyte during the automatic policy fetch that follows an import or
+  sync. The text produced is unchanged.
 - Replace manual network-interface pointer traversal with an owning Rust
   iterator when finding addresses for paired phones.
 - Patch Next.js, DOMPurify and affected build-tool dependencies. The Linux

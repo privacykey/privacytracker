@@ -272,11 +272,21 @@ fn strip_class_containers(html: &str) -> String {
     let mut out = String::with_capacity(html.len());
     let mut copied = 0;
     let mut search_from = 0;
+    // Per name, the lowest position from which its closer was found absent:
+    // a search from there or later finds nothing either. Without this each
+    // unclosed opener scanned to the end of the document on its own, which
+    // a page of unclosed chrome containers turned into one scan per opener.
+    let mut none_from: Vec<Option<usize>> = vec![None; closers.len()];
     while let Some(m) = open.captures_at(html, search_from) {
         let whole = m.get(0).unwrap();
         let tag = m[1].to_lowercase();
-        let closer = &closers.iter().find(|(t, _)| *t == tag).unwrap().1;
-        match closer.find_at(html, whole.end()) {
+        let index = closers.iter().position(|(t, _)| *t == tag).unwrap();
+        let closer = &closers[index].1;
+        let found = match none_from[index] {
+            Some(none) if whole.end() >= none => None,
+            _ => closer.find_at(html, whole.end()),
+        };
+        match found {
             Some(close) => {
                 out.push_str(&html[copied..whole.start()]);
                 let full = &html[whole.start()..close.end()];
@@ -291,7 +301,10 @@ fn strip_class_containers(html: &str) -> String {
                 copied = close.end();
                 search_from = close.end();
             }
-            None => search_from = whole.start() + 1,
+            None => {
+                none_from[index] = Some(none_from[index].map_or(whole.end(), |n| n.min(whole.end())));
+                search_from = whole.start() + 1;
+            }
         }
     }
     out.push_str(&html[copied..]);
@@ -414,12 +427,22 @@ pub fn extract_policy_text_from_html(
     });
     let mut candidates: Vec<String> = Vec::new();
     let mut search_from = 0;
+    // As in `strip_class_containers`: a closer found absent from a position
+    // is absent from every later one, so an unclosed container costs one
+    // scan to the end, not one per opener.
+    let mut none_from: Vec<Option<usize>> = vec![None; closers.len()];
     while let Some(m) = open.captures_at(html, search_from) {
         let whole = m.get(0).unwrap();
         let tag = m[1].to_lowercase();
         let attr = &m[2];
-        let closer = &closers.iter().find(|(t, _)| *t == tag).unwrap().1;
-        let Some(close) = closer.find_at(html, whole.end()) else {
+        let index = closers.iter().position(|(t, _)| *t == tag).unwrap();
+        let closer = &closers[index].1;
+        let found = match none_from[index] {
+            Some(none) if whole.end() >= none => None,
+            _ => closer.find_at(html, whole.end()),
+        };
+        let Some(close) = found else {
+            none_from[index] = Some(none_from[index].map_or(whole.end(), |n| n.min(whole.end())));
             search_from = whole.start() + 1;
             continue;
         };
@@ -476,6 +499,35 @@ mod tests {
             strip_class_containers(r#"<ul class="navbar"><li>x</li></ul foo="y">rest"#),
             " rest"
         );
+    }
+
+    #[test]
+    fn unclosed_containers_are_searched_once_per_name() {
+        // Several unclosed openers of one name: the first miss settles every
+        // later one, and the result is what the plain scan gives.
+        let unclosed = r#"<div class="menu">a<div class="menu">b<div class="footer">c"#;
+        assert_eq!(strip_class_containers(unclosed), unclosed);
+        // A miss for one name says nothing about another: the section still
+        // closes and is still stripped, and the div after it still is not.
+        let mixed = r#"<div class="menu"><section class="menu">x</section><div class="menu">y"#;
+        assert_eq!(
+            strip_class_containers(mixed),
+            r#"<div class="menu"> <div class="menu">y"#
+        );
+        // A later closer of the same name, after an earlier miss, is seen:
+        // the miss was recorded from the first opener's end, and the opener
+        // that closes starts before that position only if it contains the
+        // first one, which the scan takes as the match.
+        let late = r#"<ul class="navbar">a<ul class="navbar">b</ul>c"#;
+        assert_eq!(strip_class_containers(late), " c");
+        // The second pass has the same memo: an unclosed policy container
+        // is skipped once, and the one that closes is still found.
+        let page = format!(
+            r#"<div class="policy">lost<div id="legal">{}</div>"#,
+            "privacy words ".repeat(200)
+        );
+        let (_, text) = extract_policy_text_from_html(&page, "t").unwrap();
+        assert!(text.starts_with("lost\nprivacy words"), "{text}");
     }
 
     #[test]
