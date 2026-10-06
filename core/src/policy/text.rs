@@ -302,7 +302,8 @@ fn strip_class_containers(html: &str) -> String {
                 search_from = close.end();
             }
             None => {
-                none_from[index] = Some(none_from[index].map_or(whole.end(), |n| n.min(whole.end())));
+                none_from[index] =
+                    Some(none_from[index].map_or(whole.end(), |n| n.min(whole.end())));
                 search_from = whole.start() + 1;
             }
         }
