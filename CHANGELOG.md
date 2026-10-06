@@ -58,9 +58,9 @@ Going forward, changes are recorded here as they land.
 - Patch Next.js, DOMPurify and affected build-tool dependencies. The Linux
   desktop's upstream GLib iterator warning and Storybook's elliptic warning
   remain tracked in [Dependency security](docs/DEPENDENCY-SECURITY.md).
-- Floor the build-time `source-map-js` dependency, which arrives through
-  Next's PostCSS, at 1.2.2 for GHSA-68fv-2mgg-jv7q (event-loop denial of
-  service through indexed source-map section offsets).
+- Raise `source-map-js` to 1.2.2 (GHSA-68fv-2mgg-jv7q, an event-loop denial
+  of service in source-map parsing), which reaches the app through
+  Next.js's `postcss`.
 
 ### Added
 

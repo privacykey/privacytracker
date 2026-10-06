@@ -69,7 +69,7 @@ minimumReleaseAgeExclude:
 # this once postcss's own range moves to >=3.3.18.
 #
 # `source-map-js` is force-resolved to the patched 1.2.2 line. It arrives
-# the same way (next > postcss > source-map-js), and postcss 8.5.25 still
+# the same way (next > postcss > source-map-js), and postcss 8.5.18
 # declares `^1.2.1`, which the lockfile held at 1.2.1. `pnpm audit --prod`
 # rejects that for GHSA-68fv-2mgg-jv7q (event-loop denial of service
 # through indexed source-map section offsets, fixed in 1.2.2). Drop this
