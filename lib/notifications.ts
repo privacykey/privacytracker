@@ -4,6 +4,7 @@ import type { ChangeEntry } from "./changelog";
 import { DIFF_CHANGE_TYPES, isWholeNewPrivacyType } from "./changelog-types";
 import db from "./db";
 import { HARD_DEFAULTS } from "./feature-flag-rules";
+import { parseStoredPrefs, resolvePrefs } from "./notification-prefs";
 import { postImmediateWebhook } from "./notification-webhooks";
 import type { CategoryMismatch } from "./privacy-profile";
 import { getSetting, setSetting } from "./scheduler";
@@ -518,6 +519,9 @@ export function createVersionUpdateNotification(
   if (input.previousVersion === input.currentVersion) {
     return false;
   }
+  if (!versionUpdateNotificationsEnabled()) {
+    return false;
+  }
 
   const dedupeKey = `version_update_notified_${input.appId}_at`;
   const lastFired = Number(getSetting(dedupeKey, "0")) || 0;
@@ -788,6 +792,21 @@ export function policyUpdateNotificationsEnabled(): boolean {
   }
 }
 
+/**
+ * Whether a new App Store version is worth a bell row: `versionUpdates` in
+ * the stored `notification_prefs` blob, else its default, which is off. An
+ * app update is not a privacy change, and the row used to read as one in
+ * the bell, on the Dock badge and in the desktop toast. Checked where the
+ * row would be written, so turning the type off records nothing rather
+ * than hiding what was recorded; the version still lands on the app row,
+ * its snapshot and the Activity log. Mirrored by `notification_type_enabled`
+ * in core/src/server/user_content.rs, which core/src/scrape/notify.rs calls.
+ */
+export function versionUpdateNotificationsEnabled(): boolean {
+  return resolvePrefs(parseStoredPrefs(getSetting("notification_prefs", "")))
+    .versionUpdates;
+}
+
 function getEnabledTypeFilter(): {
   label_changes: boolean;
   policy_updates: boolean;
@@ -920,6 +939,15 @@ export function getUnreadCount(): number {
     }
   }
   return count;
+}
+
+/**
+ * The bell's "Clear all": every row goes, read or not, hidden by a muted
+ * type or not. Returns how many went. A cleared row is gone from the daily
+ * and weekly webhook digests too, which read this table.
+ */
+export function clearAllNotifications(): number {
+  return db.prepare("DELETE FROM notifications").run().changes;
 }
 
 export function markAllRead(): void {

@@ -485,8 +485,9 @@ try {
     resync: true,
   });
 
-  // 8. Version update with no label changes: the version bell, the snapshot's
-  //    version stamp, the "Version updated" summary, en-AU date in the text.
+  // 8. Version update with no label changes: no version bell (the type is
+  //    off by default; case 27 turns it on), the snapshot's version stamp
+  //    and the "Version updated" summary.
   await run("version update", {
     setup: [{ scrape: { url: url(2006), html: page({ name: "Versioned" }) } }],
     url: url(2006),
@@ -499,7 +500,8 @@ try {
     }),
   });
 
-  // 9. A second version bump inside the one-hour window: no second bell.
+  // 9. A second version bump inside the one-hour window: still no bell, and
+  //    no dedupe stamp is ever written while the type is off.
   await run("version update dedupe window", {
     setup: [
       { scrape: { url: url(2007), html: page({ name: "Rapid" }) } },
@@ -521,7 +523,8 @@ try {
     lookup: lookupReply({ version: "3.0.0", released: "2026-07-04T00:00:00Z" }),
   });
 
-  // 10. Version update AND a label change: both bells, changes win the summary.
+  // 10. Version update AND a label change: the label bell only (the version
+  //     type is off by default), changes win the summary.
   await run("version update with label change", {
     setup: [
       {
@@ -740,6 +743,25 @@ try {
     url: url(2025),
     html: page({ name: "Shelved" }),
     resync: true,
+  });
+
+  // 27. Version update with the type switched on. `versionUpdates` is off by
+  //     default, so cases 8 to 10 record no version bell; this one stores the
+  //     preference and records the bell the writer produces, with the en-AU
+  //     release date in its text and the dedupe stamp.
+  await run("version update with notifications on", {
+    setup: [
+      setting("notification_prefs", '{"versionUpdates":true}'),
+      { scrape: { url: url(2026), html: page({ name: "Announced" }) } },
+    ],
+    url: url(2026),
+    html: page({ name: "Announced" }),
+    resync: true,
+    lookup: lookupReply({
+      version: "2.1.0",
+      released: "2026-09-15T12:00:00Z",
+      notes: "Point release",
+    }),
   });
 
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;

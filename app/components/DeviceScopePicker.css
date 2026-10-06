@@ -170,6 +170,20 @@
   background: var(--border);
 }
 
+/* The Manage devices link: a row in the menu's arrow-key order, set
+   apart from the filters by a rule above it and the accent colour. */
+.device-scope-manage {
+  margin-top: 4px;
+  text-decoration: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--r-md) var(--r-md);
+}
+
+.device-scope-manage .device-scope-row-name {
+  font-size: 12px;
+  color: var(--accent, var(--blue, #0a84ff));
+}
+
 /*
  * The nav's compact tier drops the trigger label; below 640px the
  * popover anchors to the viewport instead of the trigger, matching the

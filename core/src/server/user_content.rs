@@ -172,6 +172,19 @@ pub(super) fn resolved_notification_prefs(enabled: [bool; 4], stored: &Value) ->
     }
     Value::Object(out)
 }
+/// `resolvePrefs(parseStoredPrefs(raw))[key]` for one blob-stored type: the
+/// stored boolean, else the generated default. `parseStoredPrefs` keeps a
+/// key only with a boolean value and reads a blob that is not a JSON object
+/// as empty. The scrape's version-update bell asks this before writing.
+pub(crate) fn notification_type_enabled(raw: &str, key: &str) -> bool {
+    let default = metadata()["notificationDefaults"][key]
+        .as_bool()
+        .unwrap_or(false);
+    match parse(raw) {
+        Ok(Value::Object(stored)) => stored.get(key).and_then(Value::as_bool).unwrap_or(default),
+        _ => default,
+    }
+}
 pub(super) fn notification_prefs(conn: &Connection) -> Result<Value> {
     // Resolver first, then the blob, as Node reads them.
     let enabled = enabled_types(conn);

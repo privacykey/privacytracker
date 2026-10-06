@@ -7,7 +7,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { setDockBadge } from "../../lib/desktop";
 import {
   DEFAULT_NOTIFICATION_PREFS,
+  describeNotificationKind,
   filterNotificationsByPrefs,
+  NOTIFICATION_TYPE_KEYS,
   type NotificationPrefs,
   type NotificationTypeKey,
   resolvePrefs as resolveNotificationPrefs,
@@ -22,7 +24,14 @@ import { useResolvedFlag } from "../../lib/use-flag-bundle";
 interface NotifEntry {
   app_id: string;
   app_name: string;
-  change_summary: { type: string; description: string }[];
+  change_summary: {
+    type: string;
+    description: string;
+    category?: string;
+    /** Set on `version_update` rows, which the bell renders from these. */
+    previousVersion?: string;
+    currentVersion?: string;
+  }[];
   created_at: number;
   iconUrl?: string;
   id: string;
@@ -74,6 +83,20 @@ type ResumeEntryType =
   | "policy_resumed"
   | "policy_stale_cleared";
 
+// The `notification_prefs.*_label` key for each type switch, so the bell's
+// mute panel names a type exactly as Settings → Notifications does.
+const PREF_LABEL_KEYS: Record<NotificationTypeKey, string> = {
+  labelChanges: "label_changes",
+  profileMismatch: "profile_mismatch",
+  policyUpdates: "policy_updates",
+  versionUpdates: "version_updates",
+  importCompleted: "import_completed",
+  manualAppsPrompt: "manual_apps_prompt",
+  aiTimeout: "ai_timeout",
+  jobResumed: "job_resumed",
+  parserFallthrough: "parser_fallthrough",
+};
+
 function timeAgo(t: RelativeTranslator, ts: number): string {
   return formatRelativeTime(t, ts, NOTIFICATION_RELATIVE_TIERS, {
     stringify: true,
@@ -124,6 +147,18 @@ export default function NotificationBell({
   >({ ...DEFAULT_NOTIFICATION_PREFS });
   const dropRef = useRef<HTMLDivElement>(null);
   const bellBtnRef = useRef<HTMLButtonElement>(null);
+  // Header actions. "Clear all" takes two clicks: the first turns the
+  // button into the count it is about to delete, the second deletes. "Mute"
+  // opens the per-type switches inline; they write the same preference the
+  // Settings section does. Both close with the dropdown.
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [muteOpen, setMuteOpen] = useState(false);
+  const [savingPref, setSavingPref] = useState<NotificationTypeKey | null>(
+    null
+  );
+  const tPrefs = useTranslations("notification_prefs");
+  const tKinds = useTranslations("notifications.kinds");
 
   const fetchNotifs = useCallback(async () => {
     const res = await fetch("/api/notifications");
@@ -321,6 +356,77 @@ export default function NotificationBell({
     return () => window.removeEventListener("app:undo", handler);
   }, []);
 
+  useEffect(() => {
+    if (!open) {
+      setConfirmClear(false);
+      setMuteOpen(false);
+    }
+  }, [open]);
+
+  const clearAll = async () => {
+    if (!confirmClear) {
+      setConfirmClear(true);
+      return;
+    }
+    setClearing(true);
+    try {
+      const res = await fetch("/api/notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear" }),
+      });
+      if (!res.ok) {
+        return;
+      }
+      // The rows the undo ring remembers are gone with everything else.
+      undoUnreadIdsRef.current = null;
+      setNotifs([]);
+      setUnread(0);
+      void setDockBadge(0);
+    } catch (err) {
+      console.warn("[notif-bell] clear failed:", err);
+    } finally {
+      setClearing(false);
+      setConfirmClear(false);
+    }
+  };
+
+  // One switch at a time, optimistically: the rows of a type leave the
+  // list as soon as it is unticked and come back if the save fails. The
+  // route merges the one key into the stored blob (or its flag), so the
+  // types the body leaves out keep what Settings stored.
+  const setTypeEnabled = async (key: NotificationTypeKey, enabled: boolean) => {
+    const before = notificationPrefs;
+    setNotificationPrefs({ ...before, [key]: enabled });
+    setSavingPref(key);
+    try {
+      const res = await fetch("/api/notification-prefs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prefs: { [key]: enabled } }),
+      });
+      if (!res.ok) {
+        setNotificationPrefs(before);
+        return;
+      }
+      const data = await res.json();
+      if (data?.prefs && typeof data.prefs === "object") {
+        setNotificationPrefs(
+          resolveNotificationPrefs(data.prefs as NotificationPrefs)
+        );
+      }
+      // Label and policy rows are also filtered on the server, by the
+      // flags this PUT may have just moved, so a type switched on here
+      // only shows its rows after a fresh read.
+      void fetchNotifs();
+    } catch (err) {
+      console.warn("[notif-bell] preference save failed:", err);
+      setNotificationPrefs(before);
+    } finally {
+      setSavingPref(null);
+    }
+  };
+
   // Compose an accessible label — screen readers need the unread count
   // announced with the button name, not only rendered as a coloured chip.
   const ariaLabel =
@@ -364,16 +470,69 @@ export default function NotificationBell({
         >
           <div className="notif-dropdown-header">
             <span className="notif-dropdown-title">{t("title")}</span>
-            {visibleNotifs.length > 0 && (
-              <Link
-                className="btn btn-ghost btn-sm"
-                href="/dashboard/stats"
-                style={{ fontSize: 12 }}
+            <div className="notif-dropdown-actions">
+              <button
+                aria-controls="notif-mute-panel"
+                aria-expanded={muteOpen}
+                className={`btn btn-ghost btn-sm${muteOpen ? " is-active" : ""}`}
+                onClick={() => setMuteOpen((v) => !v)}
+                type="button"
               >
-                {t("view_all")} →
-              </Link>
-            )}
+                {t("mute_toggle")}
+              </button>
+              {notifs.length > 0 && (
+                <button
+                  className={`btn btn-ghost btn-sm notif-clear-all${
+                    confirmClear ? " is-confirming" : ""
+                  }`}
+                  disabled={clearing}
+                  onClick={() => void clearAll()}
+                  type="button"
+                >
+                  {clearing
+                    ? t("clear_all_busy")
+                    : confirmClear
+                      ? t("clear_all_confirm", { count: notifs.length })
+                      : t("clear_all")}
+                </button>
+              )}
+              {visibleNotifs.length > 0 && (
+                <Link className="btn btn-ghost btn-sm" href="/dashboard/stats">
+                  {t("view_all")} →
+                </Link>
+              )}
+            </div>
           </div>
+
+          {muteOpen && (
+            <div className="notif-mute-panel" id="notif-mute-panel">
+              <p className="notif-mute-help">{t("mute_help")}</p>
+              <ul className="notif-mute-list">
+                {NOTIFICATION_TYPE_KEYS.map((key) => (
+                  <li key={key}>
+                    <label className="notif-mute-row">
+                      <input
+                        checked={notificationPrefs[key]}
+                        disabled={savingPref === key}
+                        onChange={(e) =>
+                          void setTypeEnabled(key, e.target.checked)
+                        }
+                        type="checkbox"
+                      />
+                      <span>{tPrefs(`${PREF_LABEL_KEYS[key]}_label`)}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                className="notif-mute-settings"
+                href="/dashboard/settings/you#notifications"
+                onClick={() => setOpen(false)}
+              >
+                {t("mute_settings_link")}
+              </Link>
+            </div>
+          )}
 
           <div className="notif-list">
             {visibleNotifs.length === 0 ? (
@@ -400,6 +559,7 @@ export default function NotificationBell({
               </div>
             ) : (
               visibleNotifs.map((n) => {
+                const kind = describeNotificationKind(n.change_summary);
                 const isTimeout =
                   n.app_id === AI_TIMEOUT_NOTIFICATION_APP_ID ||
                   n.change_summary[0]?.type === "ai_timeout";
@@ -754,14 +914,42 @@ export default function NotificationBell({
                               evt?.description ?? tSublines("resume_default")
                             );
                           })()
-                        : n.change_summary[0]
-                          ? tSublines("n_changes_with_first", {
-                              count: n.change_summary.length,
-                              first: n.change_summary[0].description,
-                            })
-                          : tSublines("n_changes", {
-                              count: n.change_summary.length,
-                            });
+                        : kind === "version_update"
+                          ? (() => {
+                              // An app update is not a change to count.
+                              // Say which version, from the fields the
+                              // row carries; older rows fall back to the
+                              // stored sentence.
+                              const evt = n.change_summary[0];
+                              if (evt?.previousVersion && evt?.currentVersion) {
+                                return tSublines("version_update", {
+                                  previous: evt.previousVersion,
+                                  current: evt.currentVersion,
+                                });
+                              }
+                              return (
+                                evt?.description ??
+                                tSublines("version_update_default")
+                              );
+                            })()
+                          : kind === "privacy_labels" ||
+                              kind === "accessibility" ||
+                              kind === "system"
+                            ? n.change_summary[0]
+                              ? tSublines("n_changes_with_first", {
+                                  count: n.change_summary.length,
+                                  first: n.change_summary[0].description,
+                                })
+                              : tSublines("n_changes", {
+                                  count: n.change_summary.length,
+                                })
+                            : // A policy event, a profile mismatch or a
+                              // parser warning is one sentence, not a
+                              // count of changes.
+                              (n.change_summary[0]?.description ??
+                              tSublines("n_changes", {
+                                count: n.change_summary.length,
+                              }));
                 // Preserve scroll when hopping between app-detail pages from
                 // a notification — the layouts match, so snapping to the top
                 // of the new page is jarring. AppDetailView's own useEffect
@@ -843,6 +1031,9 @@ export default function NotificationBell({
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div className="notif-app-name">
                         {headline}
+                        <span className={`notif-kind notif-kind-${kind}`}>
+                          {tKinds(kind)}
+                        </span>
                         {isStale && (
                           <span
                             className="notif-stale-tag"

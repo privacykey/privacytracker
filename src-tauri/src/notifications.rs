@@ -142,22 +142,111 @@ fn tick(
     Ok(())
 }
 
-/// Turn the change_summary JSON blob into a short human-readable string.
-/// The node side stores it as an array of ChangeEntry objects — we count
-/// entries here rather than re-implement the full ChangeEntry renderer in
-/// Rust. "3 privacy changes detected" is plenty for an OS toast.
+/// Turn the change_summary JSON blob into one line for an OS toast. The
+/// server stores it as an array of ChangeEntry objects. A row whose first
+/// entry is not a privacy-label diff (an app update, a policy event, a
+/// system notice) describes itself in its `description`, so that is the
+/// body: it used to read "1 privacy change detected" for an app that had
+/// merely shipped a new version. Label diffs are counted rather than
+/// re-rendered in Rust.
 fn summary_body(change_summary: &serde_json::Value) -> String {
+    use serde_json::Value;
+    const DIFF_TYPES: [&str; 5] = ["added", "removed", "modified", "policy", "wayback"];
     match change_summary {
-        serde_json::Value::Array(rows) => {
-            let n = rows.len();
-            if n == 1 {
-                "1 privacy change detected".to_string()
-            } else {
-                format!("{n} privacy changes detected")
+        Value::Array(rows) => {
+            let first = rows.first();
+            let kind = first
+                .and_then(|r| r.get("type"))
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            if !DIFF_TYPES.contains(&kind) {
+                if let Some(text) = first
+                    .and_then(|r| r.get("description"))
+                    .and_then(Value::as_str)
+                    .map(str::trim)
+                    .filter(|d| !d.is_empty())
+                {
+                    return text.to_string();
+                }
+            }
+            let all_policy = !rows.is_empty()
+                && rows
+                    .iter()
+                    .all(|r| r.get("category").and_then(Value::as_str) == Some("privacy-policy"));
+            if all_policy {
+                return "Privacy policy text changed".to_string();
+            }
+            match rows.len() {
+                0 => "New notification".to_string(),
+                1 => "1 privacy label change detected".to_string(),
+                n => format!("{n} privacy label changes detected"),
             }
         }
-        serde_json::Value::String(s) => s.clone(),
+        Value::String(s) => s.clone(),
         _ => "Privacy changes detected".to_string(),
+    }
+}
+
+#[cfg(test)]
+mod summary_body_tests {
+    use super::summary_body;
+    use serde_json::json;
+
+    #[test]
+    fn an_app_update_reads_as_its_own_description() {
+        let body = summary_body(&json!([{
+            "type": "version_update",
+            "description": "Maps updated from v1.2 to v1.3 (released 15 Sept 2026).",
+            "previousVersion": "1.2",
+            "currentVersion": "1.3"
+        }]));
+        assert_eq!(
+            body,
+            "Maps updated from v1.2 to v1.3 (released 15 Sept 2026)."
+        );
+    }
+
+    #[test]
+    fn system_notices_read_as_their_description() {
+        let body = summary_body(&json!([{
+            "type": "import_completed",
+            "description": "Imported 42 of 50 from ios-apps.csv."
+        }]));
+        assert_eq!(body, "Imported 42 of 50 from ios-apps.csv.");
+    }
+
+    #[test]
+    fn label_diffs_are_counted() {
+        let one = summary_body(&json!([{ "type": "added", "description": "x" }]));
+        assert_eq!(one, "1 privacy label change detected");
+        let three = summary_body(&json!([
+            { "type": "added", "description": "a" },
+            { "type": "removed", "description": "b" },
+            { "type": "modified", "description": "c" }
+        ]));
+        assert_eq!(three, "3 privacy label changes detected");
+    }
+
+    #[test]
+    fn a_policy_change_is_named_not_counted() {
+        let body = summary_body(&json!([{
+            "type": "policy",
+            "category": "privacy-policy",
+            "description": "Privacy policy text changed at example.com."
+        }]));
+        assert_eq!(body, "Privacy policy text changed");
+    }
+
+    #[test]
+    fn other_shapes_keep_their_fallbacks() {
+        assert_eq!(summary_body(&json!([])), "New notification");
+        assert_eq!(summary_body(&json!("as stored")), "as stored");
+        assert_eq!(summary_body(&json!(null)), "Privacy changes detected");
+        // A non-diff entry with no usable description still gets a line.
+        assert_eq!(
+            summary_body(&json!([{ "type": "version_update", "description": "  " }])),
+            "1 privacy label change detected"
+        );
     }
 }
 

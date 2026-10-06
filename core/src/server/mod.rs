@@ -144,7 +144,7 @@ mod trend;
 pub mod trust;
 mod unread_count;
 mod update_check;
-mod user_content;
+pub(crate) mod user_content;
 mod user_tasks;
 mod wayback_runner;
 #[cfg(test)]

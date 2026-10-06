@@ -30,7 +30,7 @@
     "labelChanges": true,
     "profileMismatch": true,
     "policyUpdates": false,
-    "versionUpdates": true,
+    "versionUpdates": false,
     "importCompleted": true,
     "manualAppsPrompt": true,
     "aiTimeout": true,

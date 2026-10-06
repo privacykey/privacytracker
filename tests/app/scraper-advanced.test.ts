@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import db from "../../lib/db";
+import { setSetting } from "../../lib/scheduler";
 import {
   fetchAndParseApp,
   getAppWithPrivacy,
@@ -92,6 +93,9 @@ test("resync detects privacy-label diffs, bumps change count, and writes a notif
 });
 
 test("resync reports version updates separately from label diffs", async () => {
+  // Version-update bells are off by default and then never written; this
+  // test is about the row the resync writes once the type is on.
+  setSetting("notification_prefs", JSON.stringify({ versionUpdates: true }));
   const privacyItems = [
     privacyType("DATA_LINKED_TO_YOU", "Data Linked to You", [
       ["CONTACT_INFO", "Contact Info"],

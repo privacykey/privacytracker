@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
+  clearAllNotifications,
   getNotifications,
   getUnreadCount,
   markAllRead,
@@ -36,6 +37,13 @@ export async function POST(request: Request) {
   if (body.action === "mark_read") {
     markAllRead();
     return NextResponse.json({ success: true });
+  }
+
+  // The bell's "Clear all". Every row goes, whatever its read state and
+  // whether a muted type hides it; the response says how many.
+  if (body.action === "clear") {
+    const removed = clearAllNotifications();
+    return NextResponse.json({ success: true, removed });
   }
 
   // Cmd-Z undo for the bell's auto-mark-as-read. The client posts

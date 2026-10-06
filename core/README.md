@@ -1610,7 +1610,7 @@ and `recordActivity`. The iTunes lookup is still the caller's (batch 3),
 so `VersionInfo` is an input.
 
 **The oracle — `core/scripts/extract-persist-cases.mjs`.** Runs the REAL
-`fetchAndParseApp` end to end over 26 scenarios and records every write it
+`fetchAndParseApp` end to end over 27 scenarios and records every write it
 makes, in order — each statement's SQL and bound parameters, with
 BEGIN/COMMIT/ROLLBACK markers around the bulk write — then dumps every
 touched table (digested past 100 rows) and the return value or error.
@@ -1984,7 +1984,7 @@ and the manual-app id length answer before the body is read, so an
 oversized body to a missing device is a 404, not a 413.
 
 **The oracle — `core/scripts/extract-library-cases.mjs`.** Runs the REAL
-handlers over 354 requests with foreign keys ON, a frozen clock, counted
+handlers over 363 requests with foreign keys ON, a frozen clock, counted
 ids (the `node:crypto` counter synced into the builtin ESM facade,
 because `lib/devices.ts` imports `randomUUID` by name), a distinct
 forwarded address per case and a write recorder; it records the request,

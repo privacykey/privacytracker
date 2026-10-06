@@ -2709,7 +2709,7 @@
     "policy_updates_desc": "当开发者链接的隐私政策文档自上次同步以来发生实质性变化时。",
     "policy_updates_example": "例如：\"Spotify 的隐私政策已更新 — 新增了第三方共享章节。\"",
     "version_updates_label": "应用版本更新",
-    "version_updates_desc": "当 Apple 报告追踪应用的新 App Store 版本时 — 便于将版本发布与隐私标签变化交叉参考。",
+    "version_updates_desc": "当 Apple 报告追踪应用的新 App Store 版本时，便于将版本发布与隐私标签变化交叉参考。默认关闭：新版本仍会显示在应用页面和活动日志中，在你开启之前不会进入通知铃铛、角标或 webhook。",
     "version_updates_example": "例如：\"Instagram 从 v287.0 更新到 v288.0（2026 年 4 月 14 日发布）。\"",
     "import_completed_label": "导入完成",
     "import_completed_desc": "每次批量导入完成时（包括部分/排队的运行）的一次性确认。",
@@ -2735,6 +2735,25 @@
     "empty_no_changes": "🎉 暂未发现变化",
     "empty_hidden_prefix": "🔕 所有当前通知已被你的偏好隐藏。",
     "empty_hidden_link": "调整偏好 →",
+    "clear_all": "全部清除",
+    "clear_all_confirm": "{count, plural, one {清除 # 条通知？} other {清除 # 条通知？}}",
+    "clear_all_busy": "正在清除…",
+    "mute_toggle": "静音…",
+    "mute_help": "取消勾选某一类型，即可不再在此显示。不会删除任何内容：重新勾选后，这些通知会再次出现。",
+    "mute_settings_link": "全部通知设置 →",
+    "kinds": {
+      "version_update": "应用更新",
+      "privacy_labels": "隐私标签",
+      "privacy_policy": "隐私政策",
+      "accessibility": "无障碍",
+      "profile_mismatch": "隐私配置",
+      "import": "导入",
+      "unmatched": "未匹配的应用",
+      "ai_timeout": "AI 摘要",
+      "job_resumed": "后台任务",
+      "parser_warning": "解析警告",
+      "system": "系统"
+    },
     "stale_app_title": "此通知来源的导入现在指向不同的 App Store 列表。",
     "time_just_now": "刚刚",
     "time_minutes_ago": "{count} 分钟前",
@@ -2781,7 +2800,9 @@
       "policy_stale_cleared": "上次的隐私政策同步锁在服务器重启后处于卡住状态，现已清除。你可以开始新的政策同步。",
       "policy_resumed_with_data": "隐私政策同步已恢复 — 还有 {remaining} / {total} 个应用待处理。正在后台运行。",
       "n_changes_with_first": "检测到 {count} 项变化 · {first}",
-      "n_changes": "检测到 {count} 项变化"
+      "n_changes": "检测到 {count} 项变化",
+      "version_update": "已从 v{previous} 更新到 v{current}",
+      "version_update_default": "App Store 发布了新版本。"
     }
   },
   "changelog_page": {
@@ -3655,6 +3676,7 @@
     "device_sub_no_model": "{count, plural, one {# 个应用} other {# 个应用}}",
     "unattached_label": "未关联设备",
     "unattached_sub": "手动添加或从 CSV 导入的应用",
+    "manage_devices": "管理设备 →",
     "banner_scoped": "你正在查看{scope}。",
     "banner_show_all": "显示全部设备",
     "grid_filtering_by": "正在显示",

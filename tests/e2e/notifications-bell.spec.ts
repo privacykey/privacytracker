@@ -108,3 +108,61 @@ browserFlow(
     await expect(badge).toHaveCount(0);
   }
 );
+
+browserFlow(
+  "notifications bell: rows name their kind, and Clear all empties the list",
+  async ({ page, request }) => {
+    const appsRes = await request.get("/api/apps");
+    await expect(appsRes).toBeOK();
+    const apps = (await appsRes.json()) as Array<{ id: string; name: string }>;
+    const firstApp = apps[0];
+    expect(firstApp, "expected at least one seeded app").toBeDefined();
+
+    const seedNotif = await request.post("/api/dev/seed-notification", {
+      headers: { ...sameOriginHeaders, "content-type": "application/json" },
+      data: {
+        appId: firstApp!.id,
+        appName: firstApp!.name,
+        changes: [
+          {
+            type: "added",
+            category: "privacy-label",
+            description: `${firstApp!.name} now collects Location data`,
+          },
+        ],
+      },
+    });
+    await expect(seedNotif).toBeOK();
+
+    await page.goto("/dashboard");
+    await page.locator(".notif-bell-btn").click();
+    const dropdown = page.locator("#notif-dropdown");
+    await expect(dropdown).toBeVisible();
+
+    // A label-change row is labelled as one; an app update would say
+    // "App update" here instead of counting itself as a change.
+    await expect(dropdown.locator(".notif-item")).toHaveCount(1);
+    await expect(dropdown.locator(".notif-kind")).toHaveText("Privacy labels");
+
+    // Clear all takes two clicks: the first names the count it is about
+    // to delete, the second deletes.
+    await dropdown.getByRole("button", { name: "Clear all" }).click();
+    const confirm = dropdown.getByRole("button", {
+      name: "Clear 1 notification?",
+    });
+    await expect(confirm).toBeVisible();
+    await confirm.click();
+
+    await expect(dropdown.locator(".notif-item")).toHaveCount(0);
+    await expect(dropdown).toContainText("No changes detected yet");
+
+    const listed = await request.get("/api/notifications");
+    await expect(listed).toBeOK();
+    const body = (await listed.json()) as {
+      notifications: unknown[];
+      unreadCount: number;
+    };
+    expect(body.notifications).toHaveLength(0);
+    expect(body.unreadCount).toBe(0);
+  }
+);

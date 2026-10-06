@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -396,6 +397,32 @@ export default function DeviceScopePicker({
               </span>
             </button>
           )}
+
+          {/* The one row that is not a filter: where devices are named,
+              given an owner, re-synced or removed. A menu that only lists
+              devices leaves "where do I manage these?" unanswered, and the
+              answer is otherwise three clicks away in Settings. It joins
+              the arrow-key order through data-scope-row. */}
+          <Link
+            className="device-scope-row device-scope-manage"
+            data-scope-row=""
+            href="/dashboard/settings/devices"
+            onClick={() => setOpen(false)}
+            role="menuitem"
+          >
+            <span aria-hidden="true" className="device-scope-check" />
+            <span
+              aria-hidden="true"
+              className="device-scope-row-icon device-scope-row-icon-text"
+            >
+              ⚙
+            </span>
+            <span className="device-scope-row-text">
+              <span className="device-scope-row-name">
+                {t("manage_devices")}
+              </span>
+            </span>
+          </Link>
 
           {showAudiencePrompt && suggestedAudience && (
             /* The bridge between "whose device is this?" and "what am I

@@ -103,6 +103,12 @@ Going forward, changes are recorded here as they land.
 
 ### Added
 
+- The notification bell says what each row is about (privacy labels, privacy
+  policy, app update, accessibility, import and so on), clears every
+  notification in two clicks with **Clear all**, and mutes a notification type
+  in place with **Mute…**, the same switches as Settings → Notifications. The
+  device menu in the top bar ends with a **Manage devices** link.
+
 - App detail pages now explain what a privacy label *means*, not just what
   it is called. Every category card on the Privacy labels tab gains the
   vignette hint (the ✦ trigger next to the existing ⓘ), playing the short
@@ -180,6 +186,12 @@ Going forward, changes are recorded here as they land.
   in-app change alert privacytracker's bell provides.
 
 ### Changed
+
+- App version updates no longer raise a notification unless **App version
+  updates** is on in Settings → Notifications. The new version still shows on
+  the app's page and in the Activity log. When the type is on, the bell and the
+  desktop toast read "Updated from v1 to v2" instead of "1 privacy change
+  detected".
 
 - All 42 vignette captions are rewritten in a conditional voice, so a
   scenario reads as one possibility rather than a report of what the app in
