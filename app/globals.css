@@ -31116,6 +31116,37 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   border-radius: 999px;
 }
 
+/* The simple view's "Show more detail" control: a quiet note with one button
+   at the bottom of the dashboard. The lists it opens render below it, so the
+   button stays where it was pressed. */
+.home-simple-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  margin: 8px 0 28px;
+  scroll-margin-top: 100px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+}
+.home-simple-more-note {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-2);
+}
+.home-simple-more-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+}
+.home-simple-more-link {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
 /* "Customise dashboard…" link sits at the bottom of HomeView, below the
    last card. Quiet by default — not a primary CTA, just a discoverable
    path to the editor for users who think to look for it. */

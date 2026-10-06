@@ -147,13 +147,7 @@ pub fn presets() -> Vec<(&'static str, Layout)> {
         ("default", default_layout()),
         (
             "minimal",
-            build_preset(&[
-                "review_cta",
-                "hero",
-                "risk_section",
-                "review_section",
-                "glance_section",
-            ]),
+            build_preset(&["review_cta", "hero", "review_section"]),
         ),
         (
             "caretaker",

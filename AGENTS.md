@@ -286,6 +286,28 @@ does not. The split is client-only: the server preview and its Rust mirror are
 unchanged, so the expanded list is still bounded by the preview, and the card
 says how many changed apps it could not carry.
 
+**The simple view folds, it does not switch off.** With the `minimal`
+modifier on, `HomeView` renders `splitSimpleViewOrder(layout.order, true).main`
+and puts the cards in `SIMPLE_VIEW_FOLDED_CARDS` (`risk_section`,
+`profile_mismatch_section`, `stale_section`; `lib/dashboard-layout.ts`) below a
+"Show more detail" control at the bottom of the page (`#simple-view-more`),
+closed on every visit. Their flags stay on and the user's hidden choices still
+apply, so this is a third, presentation-only layer on top of the two axes
+above, and it needs no rule or Rust change. Keep it that way: turning those
+flags off for `minimal` would leave a simple-view user no way to see the lists
+short of changing their focus. The control shows only when a folded card has
+something to render, the edit shell never folds, and a jump to a folded section
+(`staleHref`) lands on the control. Pinned by
+`tests/app/simple-view-fold.test.ts` and
+`tests/e2e/focus-dashboard-decisions.spec.ts`. The layout preset keyed
+`minimal` is labelled "Simple" and lists only what the simple view leads with
+(`review_cta`, `hero`, `review_section`); the key stays `minimal` because the
+preset API and `dashboard_layout_applied` activity rows carry it. The check-up
+follows the same rule as the fold's capability axis: `view_privacy_map` is
+included only while `flag.page.privacy_map` is on (`privacyMapEnabled` in the
+task context, mirrored in `core/src/server/user_tasks.rs`), because the guardian
+rules switch that page off and the step used to open a 404.
+
 `GET /api/triage?overview=1&since=<epoch-ms>` adds a bounded app preview with
 whole-scope counts. Since-last-visit counts mean distinct apps with a live change
 after the supplied timestamp (Wayback imports excluded). `lib/dashboard-visit.ts`

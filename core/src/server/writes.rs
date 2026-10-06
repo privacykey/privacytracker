@@ -172,7 +172,8 @@ const PROFILE_PRESETS: [(&str, &str, [&str; 14]); 4] = [
 ];
 const LAYOUT_PRESET_LABELS: [(&str, &str); 5] = [
     ("default", "Default"),
-    ("minimal", "Minimal"),
+    // The key stays `minimal`; the label mirrors `DASHBOARD_PRESET_META`.
+    ("minimal", "Simple"),
     ("caretaker", "Caretaker"),
     ("watchdog", "Watchdog"),
     ("at_a_glance", "At a glance"),

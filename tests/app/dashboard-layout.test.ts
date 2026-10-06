@@ -221,7 +221,8 @@ test("describeLayoutTransition fires when crossing a preset boundary", () => {
   assert.ok(t, "transition should be recorded");
   assert.equal(t?.detail.from, "default");
   assert.equal(t?.detail.to, "minimal");
-  assert.match(t?.summary ?? "", /Minimal/);
+  // The key is `minimal`; the label people see is "Simple".
+  assert.match(t?.summary ?? "", /Simple/);
 });
 
 test("describeLayoutTransition is silent for custom-to-custom edits", () => {
@@ -271,6 +272,29 @@ test("isCardVisible: callout ignores hidden[] but respects the flag gate", () =>
   assert.equal(isCardVisible("family_callout", layout, "on"), true);
   // Flag-off still hides.
   assert.equal(isCardVisible("family_callout", layout, "off"), false);
+});
+
+test("the Simple preset shows what the simple view leads with and nothing it folds", () => {
+  const preset = DASHBOARD_PRESETS.minimal;
+  for (const id of [
+    "review_cta",
+    "hero",
+    "review_section",
+  ] as DashboardCardId[]) {
+    assert.ok(!preset.hidden.includes(id), `${id} should be visible`);
+  }
+  // The lists the simple view folds, and the glance grid the `minimal`
+  // modifier switches off, must not be promised by the preset.
+  for (const id of [
+    "risk_section",
+    "profile_mismatch_section",
+    "stale_section",
+    "glance_section",
+    "activity_section",
+  ] as DashboardCardId[]) {
+    assert.ok(preset.hidden.includes(id), `${id} should be hidden`);
+  }
+  assert.equal(DASHBOARD_PRESET_META.minimal.label, "Simple");
 });
 
 test("DEFAULT_LAYOUT round-trips to the default preset", () => {

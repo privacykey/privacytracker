@@ -149,6 +149,23 @@ test("comparison checklist follows focus capabilities and explicit overrides", (
   assert.equal(visible({ compareEnabled: false }), false);
 });
 
+test("the Privacy Map step is offered only while its page is on", () => {
+  // The guardian rules switch /dashboard/privacy off; the step that links
+  // there must go with it. A caller that never resolved the flag keeps it.
+  const f = focus({ audience: "guardian" });
+  const visible = (overrides: Partial<TaskCompletionContext> = {}) =>
+    resolveTasks(
+      f,
+      emptyCtx({ focus: f, ...overrides }),
+      { tasks: {} },
+      { isDesktop: false },
+      NOW
+    ).some((task) => task.id === "view_privacy_map");
+  assert.equal(visible(), true);
+  assert.equal(visible({ privacyMapEnabled: true }), true);
+  assert.equal(visible({ privacyMapEnabled: false }), false);
+});
+
 test("opt-in tasks (setup_background_mode, remove_apps_from_phone) are hidden until opted in", () => {
   const f = focus({});
   const ctx = emptyCtx({ focus: f });

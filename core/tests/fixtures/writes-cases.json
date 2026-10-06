@@ -11220,7 +11220,7 @@
     "x-forwarded-for": "10.0.190.1",
     "user-agent": "writes-oracle/1.0"
    },
-   "body": "{\"layout\":{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"risk_section\",\"review_section\",\"glance_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}}",
+   "body": "{\"layout\":{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"review_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}}",
    "adminToken": null,
    "repeat": 1,
    "setup": [],
@@ -11229,7 +11229,7 @@
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "dashboard.layout",
-      "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"risk_section\",\"review_section\",\"glance_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
+      "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"review_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
      ]
     },
     {
@@ -11240,7 +11240,7 @@
       "ok",
       null,
       null,
-      "Dashboard layout set to Minimal",
+      "Dashboard layout set to Simple",
       "{\"from\":\"default\",\"to\":\"minimal\"}",
       1789473600000,
       1789473600000,
@@ -11252,7 +11252,7 @@
     "app_settings": [
      {
       "key": "dashboard.layout",
-      "value": "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"risk_section\",\"review_section\",\"glance_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
+      "value": "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"review_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
      }
     ],
     "feature_flag_overrides": [],
@@ -11263,7 +11263,7 @@
       "status": "ok",
       "app_id": null,
       "app_name": null,
-      "summary": "Dashboard layout set to Minimal",
+      "summary": "Dashboard layout set to Simple",
       "detail": "{\"from\":\"default\",\"to\":\"minimal\"}",
       "started_at": 1789473600000,
       "ended_at": 1789473600000,
@@ -11274,7 +11274,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"layout\":{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"risk_section\",\"review_section\",\"glance_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]},\"matchedPreset\":\"minimal\"}",
+    "body": "{\"layout\":{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"review_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]},\"matchedPreset\":\"minimal\"}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null
@@ -12305,7 +12305,7 @@
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "dashboard.layout",
-      "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"risk_section\",\"review_section\",\"glance_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
+      "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"review_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
      ]
     }
    ],
@@ -12629,7 +12629,7 @@
      "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
      "params": [
       "dashboard.layout",
-      "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"risk_section\",\"review_section\",\"glance_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
+      "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"review_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
      ]
     },
     {
@@ -12640,7 +12640,7 @@
       "ok",
       null,
       null,
-      "Dashboard layout set to Minimal",
+      "Dashboard layout set to Simple",
       "{\"from\":\"default\",\"to\":\"minimal\"}",
       1789473600000,
       1789473600000,
@@ -12652,7 +12652,7 @@
     "app_settings": [
      {
       "key": "dashboard.layout",
-      "value": "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"risk_section\",\"review_section\",\"glance_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
+      "value": "{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"review_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]}"
      }
     ],
     "feature_flag_overrides": [],
@@ -12663,7 +12663,7 @@
       "status": "ok",
       "app_id": null,
       "app_name": null,
-      "summary": "Dashboard layout set to Minimal",
+      "summary": "Dashboard layout set to Simple",
       "detail": "{\"from\":\"default\",\"to\":\"minimal\"}",
       "started_at": 1789473600000,
       "ended_at": 1789473600000,
@@ -12674,7 +12674,7 @@
    },
    "expected": {
     "status": 200,
-    "body": "{\"layout\":{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"risk_section\",\"review_section\",\"glance_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]},\"matchedPreset\":\"minimal\"}",
+    "body": "{\"layout\":{\"v\":1,\"order\":[\"review_cta\",\"hero\",\"review_section\",\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"cleanup_callout\",\"family_callout\",\"age_rating_callout\",\"third_party_callout\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\",\"manual_apps_banner\"],\"hidden\":[\"task_list\",\"focus_strip\",\"background_mode_wizard\",\"risk_section\",\"glance_section\",\"definitions_callout\",\"profile_mismatch_section\",\"stale_section\",\"activity_section\",\"risk_tier_legend\"]},\"matchedPreset\":\"minimal\"}",
     "type": "application/json",
     "retryAfter": null,
     "setCookie": null

@@ -210,12 +210,15 @@ export const DASHBOARD_PRESET_META: Record<
     icon: "🏠",
     severityCls: "severity-unlinked",
   },
+  // The key stays `minimal` (it is in the preset API and in activity rows);
+  // the label follows the "Simple view" vocabulary of the focus modifier,
+  // and the cards match what that view leads with.
   minimal: {
     key: "minimal",
-    label: "Minimal",
-    shortLabel: "Minimal",
+    label: "Simple",
+    shortLabel: "Simple",
     description:
-      "Just the essentials — hero, risk, review, and at-a-glance stats.",
+      "Status and what changed. The longer lists stay behind Show more detail.",
     icon: "🪶",
     severityCls: "severity-none",
   },
@@ -310,13 +313,11 @@ export const DASHBOARD_PRESETS: Record<DashboardPresetKey, DashboardLayout> = {
   // `review_cta` lands near the top of every non-default preset — it's
   // the "you have N apps that need a decision" CTA and we never want
   // it buried under presentation cards.
-  minimal: buildPreset([
-    "review_cta",
-    "hero",
-    "risk_section",
-    "review_section",
-    "glance_section",
-  ]),
+  // Mirrors the simple view: the status block and what changed. The risk
+  // list is what the simple view folds, and the glance grid is what the
+  // `minimal` modifier switches off, so neither belongs in the preset
+  // named after it.
+  minimal: buildPreset(["review_cta", "hero", "review_section"]),
   caretaker: buildPreset([
     "review_cta",
     "risk_section",
@@ -540,6 +541,47 @@ export function describeLayoutTransition(
     };
   }
   return null;
+}
+
+// ─────────────────────────────────────────────
+// "Keep it simple" fold
+// ─────────────────────────────────────────────
+
+/**
+ * The long reference lists the simple view ("Keep it simple", the `minimal`
+ * presentation modifier) folds behind a "Show more detail" control at the
+ * bottom of the dashboard.
+ *
+ * This is presentation, not capability: the cards' flags stay on and the
+ * user's own hidden choices still apply, so one click brings the lists back
+ * for the visit and turning the modifier off brings them back for good.
+ * Switching them off in the rule tables instead would have left a simple-view
+ * user no way to see them short of changing their focus.
+ */
+export const SIMPLE_VIEW_FOLDED_CARDS: ReadonlySet<DashboardCardId> = new Set([
+  "risk_section",
+  "profile_mismatch_section",
+  "stale_section",
+]);
+
+/**
+ * Split a layout's order for the simple view. `main` renders as usual;
+ * `folded` renders below the "Show more detail" control once it is opened.
+ * Both keep the user's order. Outside the simple view nothing is folded.
+ */
+export function splitSimpleViewOrder(
+  order: readonly DashboardCardId[],
+  simpleView: boolean
+): { folded: DashboardCardId[]; main: DashboardCardId[] } {
+  if (!simpleView) {
+    return { main: [...order], folded: [] };
+  }
+  const main: DashboardCardId[] = [];
+  const folded: DashboardCardId[] = [];
+  for (const id of order) {
+    (SIMPLE_VIEW_FOLDED_CARDS.has(id) ? folded : main).push(id);
+  }
+  return { main, folded };
 }
 
 /**
