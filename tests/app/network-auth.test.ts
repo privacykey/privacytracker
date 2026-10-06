@@ -113,6 +113,36 @@ test("cookies never exempt cross-origin or missing-origin mutations", () => {
   );
 });
 
+test("a .localhost Host is refused by the allowlist on a token-less loopback install", () => {
+  process.env.AUDITOR_ADMIN_TOKEN = "";
+  process.env.PRIVACYTRACKER_NETWORK_EXPOSED = "";
+  process.env.PRIVACYTRACKER_BIND_HOST = "127.0.0.1";
+  process.env.PRIVACYTRACKER_ALLOWED_HOSTS = "";
+  // Nothing proves where a resolver sends a `.localhost` name, so a page that
+  // rebinds one to this install is bounced like any other unknown host.
+  for (const host of ["evil.localhost:3000", "evil.example:3000"]) {
+    assert.equal(
+      proxy(request("/api/apps", "GET", { host })).status,
+      400,
+      host
+    );
+  }
+  assert.equal(proxy(request("/api/apps")).status, 200);
+  // Listed, the overlays' default name is served, and as a network host it
+  // needs the admin token, which this install has not configured.
+  process.env.PRIVACYTRACKER_ALLOWED_HOSTS = "privacytracker.localhost";
+  assert.equal(
+    proxy(
+      request("/api/apps", "GET", { host: "privacytracker.localhost:3000" })
+    ).status,
+    401
+  );
+  assert.equal(
+    proxy(request("/api/apps", "GET", { host: "evil.localhost:3000" })).status,
+    400
+  );
+});
+
 test("unknown and wildcard binds fail closed despite spoofed loopback headers", () => {
   process.env.AUDITOR_ADMIN_TOKEN = "";
   process.env.PRIVACYTRACKER_NETWORK_EXPOSED = "";

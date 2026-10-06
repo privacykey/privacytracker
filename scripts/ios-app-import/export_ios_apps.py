@@ -436,6 +436,33 @@ def dedupe_and_sort(records: list[AppRecord]) -> list[AppRecord]:
     return sorted(unique.values(), key=lambda item: (item.name.casefold(), item.bundle_id))
 
 
+# The characters a spreadsheet reads as the start of a formula, with their
+# fullwidth forms. Mirrors `needsTextPrefix` in app/api/export/route.ts.
+FORMULA_LEAD_CHARACTERS = "=+-@＝＋－＠"
+
+
+def neutralise_csv_cell(value: str) -> str:
+    """Keep a spreadsheet from running a cell as a formula.
+
+    App names come from the device and its developers, not from the user. A
+    name such as ``=HYPERLINK(...)`` or ``@SUM(...)`` opened in a spreadsheet
+    would be evaluated, so a cell whose first visible character could start
+    a formula (or that begins with a tab or line break) is prefixed with a
+    tab, which spreadsheets read as text. Embedded line breaks are collapsed
+    to spaces so one record stays one row.
+    """
+    text = value.replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
+    if text[:1] in ("\t", "\r", "\n"):
+        return "\t" + text
+    for character in text:
+        if character.isspace() or ord(character) < 32 or ord(character) == 127:
+            continue
+        if character in FORMULA_LEAD_CHARACTERS:
+            return "\t" + text
+        break
+    return text
+
+
 def write_outputs(records: list[AppRecord], output_dir: Path, basename: str) -> None:
     txt_path = output_dir / f"{basename}.txt"
     csv_path = output_dir / f"{basename}.csv"
@@ -446,11 +473,17 @@ def write_outputs(records: list[AppRecord], output_dir: Path, basename: str) -> 
             handle.write(record.name)
             handle.write("\n")
 
+    # Every field quoted, and formula-shaped cells neutralised: the CSV is
+    # meant for the web onboarding flow, but it opens in a spreadsheet too.
     with csv_path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["name", "bundle_id", "source"])
+        writer = csv.DictWriter(
+            handle, fieldnames=["name", "bundle_id", "source"], quoting=csv.QUOTE_ALL
+        )
         writer.writeheader()
         for record in records:
-            writer.writerow(record.as_export_dict())
+            writer.writerow(
+                {key: neutralise_csv_cell(value) for key, value in record.as_export_dict().items()}
+            )
 
     with json_path.open("w", encoding="utf-8") as handle:
         json.dump(

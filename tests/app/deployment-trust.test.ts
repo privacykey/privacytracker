@@ -80,7 +80,6 @@ test("isLoopbackHost covers loopback addresses but excludes wildcard binds", () 
     "127.0.0.5",
     "127.1.2.3:3000",
     "localhost",
-    "app.localhost",
     "[::1]:3000",
   ]) {
     assert.equal(isLoopbackHost(h), true, `${h} should be loopback`);
@@ -92,9 +91,31 @@ test("isLoopbackHost covers loopback addresses but excludes wildcard binds", () 
     "192.168.1.5",
     "nas.lan",
     "evil.example",
+    // RFC 6761 reserves the suffix, but nothing here proves where a resolver
+    // sends it, so it is an ordinary name for the allowlist to admit.
+    "app.localhost",
+    "evil.localhost:3000",
   ]) {
     assert.equal(isLoopbackHost(h), false, `${h} should NOT be loopback`);
   }
+});
+
+test("a .localhost name is admitted only by the allowlist, and marks the install exposed", () => {
+  withEnv({}, () => {
+    assert.equal(isHostAllowed("evil.localhost:3000"), false);
+    assert.equal(isHostAllowed("privacytracker.localhost"), false);
+  });
+  // The Caddy and Traefik overlays list their default hostname.
+  withEnv({ PRIVACYTRACKER_ALLOWED_HOSTS: "privacytracker.localhost" }, () => {
+    assert.equal(isHostAllowed("privacytracker.localhost:443"), true);
+    assert.equal(isHostAllowed("evil.localhost"), false);
+    assert.equal(isNetworkExposed(), true);
+  });
+  // An operator may still open the whole suffix, explicitly.
+  withEnv({ PRIVACYTRACKER_ALLOWED_HOSTS: "*.localhost" }, () => {
+    assert.equal(isHostAllowed("app.localhost"), true);
+    assert.equal(isNetworkExposed(), true);
+  });
 });
 
 test("isHostAllowed: loopback always allowed; env list only ADDS hosts", () => {
