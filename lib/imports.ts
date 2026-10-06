@@ -228,8 +228,8 @@ interface AddImportItemInput {
  * Why this exists: a 200-row import landing on the synchronous
  * `addImportItems` blocks the event loop for hundreds of milliseconds
  * inside its single `db.transaction(...)`. While blocked, the Node
- * sidecar can't respond to any other HTTP request, which makes the
- * Tauri webview appear frozen. This async variant moves the writes
+ * server can't respond to any other HTTP request, which makes the
+ * UI appear frozen. This async variant moves the writes
  * off the main thread (see lib/db-worker-client.ts), keeping the
  * event loop free to serve other requests during the import.
  *
@@ -458,8 +458,8 @@ export async function addImportItemsAsync(
 
   // Phase 2 (worker thread): execute the planned writes. This is the
   // slow part — N inserts + updates with FK checks and WAL fsync —
-  // and it runs OFF the main event loop so the Node sidecar stays
-  // responsive to webview polls during the import.
+  // and it runs OFF the main event loop so the Node server stays
+  // responsive to the UI's polls during the import.
   if (statements.length > 0) {
     await runBulkWrite(statements);
   }

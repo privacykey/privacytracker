@@ -16,13 +16,13 @@
 //                                            LSTM-only recognition
 //
 // plus THIRD-PARTY-OCR.md and the licence texts it names. `public/` is what
-// reaches every deployment: `next start` serves it, `stage-site.mjs` copies
-// it for the Rust core (the desktop bundle and the Docker image), and
-// `stage-standalone.mjs` copies it for the Node sidecar. The directory is
-// generated, so it is gitignored and rebuilt from node_modules each time.
+// reaches every deployment: `next start` serves it, and `stage-site.mjs`
+// copies it for the Rust core (the desktop bundle and the Docker image).
+// The directory is generated, so it is gitignored and rebuilt from
+// node_modules each time.
 //
-// Run by `pnpm build`, `pnpm build:standalone` and `pnpm dev` before Next
-// starts. Idempotent: wipes the destination first.
+// Run by `pnpm build` and `pnpm dev` before Next starts. Idempotent: wipes
+// the destination first.
 import {
   copyFileSync,
   existsSync,

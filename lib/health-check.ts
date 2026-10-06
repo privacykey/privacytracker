@@ -4,7 +4,7 @@
  * Several self-healing routines today only run **at boot**
  * (`instrumentation.ts` clears stale bulk-job mutexes; `lib/db.ts` resets
  * stuck `run_status='running'` rows). A process that survives for days
- * (Docker `next start`, or the Tauri sidecar that can run for weeks) never
+ * (Docker `next start`, or the desktop app that can run for weeks) never
  * re-applies that hygiene. This module re-applies the safe heals at runtime
  * on a 24h cadence, checkpoints the WAL, and records a structured health
  * report to the activity log.

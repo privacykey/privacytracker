@@ -6,8 +6,8 @@
  * not spawning a thread keeps the test suite fast + portable.
  *
  * The actual worker thread is exercised end-to-end by manual testing
- * (`pnpm run tauri:dev:node`, kick off a 200-app import, watch the Tauri
- * webview stay responsive). That's the integration we care about;
+ * (`pnpm dev`, kick off a 200-app import, watch the UI stay responsive).
+ * That's the integration we care about;
  * unit-level we just want to know the API contract holds.
  */
 

@@ -1,43 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Hardened-runtime entitlements for the bundled Node helper that runs
-  the Next.js standalone server inside privacytracker.app.
+  Hardened-runtime entitlements for privacytracker.app, where the app
+  serves itself from the Rust core and no Node process is bundled. Every
+  entitlement the Node build of releases up to v0.1.2 needed existed for
+  Node, so this file grants none of them.
 
-  Why each entry is here:
+  What that build granted, and why it is gone:
 
   • allow-jit
-      V8 (Node's JS engine) JIT-compiles hot bytecode into native
-      x86_64/arm64 instructions at runtime, which the hardened runtime
-      otherwise blocks. Without this entitlement, Node aborts on
-      startup with EXC_BAD_ACCESS at the first JIT page allocation.
+      V8 JIT-compiles at runtime, which the hardened runtime blocks without
+      this. There is no V8 in this build. The webview still JITs, but
+      WebKit does that in its own process (com.apple.WebKit.WebContent),
+      which Apple ships with its own entitlements; the host app does not
+      need them.
 
   • allow-unsigned-executable-memory
-      Some V8 codepaths (notably the JIT-compiled regex matcher and
-      WebAssembly tier-up) write to memory pages that codesign would
-      otherwise verify as unsigned. allow-jit alone is not enough on
-      every Node version — both flags are the de-facto minimum.
+      For the V8 codepaths that write pages codesign would otherwise
+      reject. Nothing in this build writes executable memory: the server is
+      compiled Rust.
 
   • allow-dyld-environment-variables
-      Lets Node respect DYLD_LIBRARY_PATH etc. so the helper can find
-      adjacent .node bindings (better-sqlite3) when launched from
-      inside the .app bundle rather than a developer shell.
+      So the Node helper could find the adjacent .node bindings. This build
+      loads no dynamic libraries of its own: SQLite is compiled into the
+      binary (rusqlite's bundled build).
 
-  Deliberately NOT set:
+  Still deliberately NOT set:
 
   • disable-library-validation
-      We codesign every .node binding we ship (see
-      scripts/stage-standalone.mjs). With validation left on, a
-      tampered .node will fail to load — that is exactly the
-      supply-chain protection we want.
+      Library validation is what stops a tampered library being loaded into
+      a signed process, and nothing here needs it relaxed.
+
+  An empty dict is intentional: it is the strictest thing that can be
+  signed, and the release verifier (scripts/verify-macos-bundle.mjs)
+  asserts the shipped binary carries none of the three above.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>com.apple.security.cs.allow-jit</key>
-  <true/>
-  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-  <true/>
-  <key>com.apple.security.cs.allow-dyld-environment-variables</key>
-  <true/>
 </dict>
 </plist>

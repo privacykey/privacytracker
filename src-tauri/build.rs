@@ -32,11 +32,21 @@
 // `capabilities/main.json` references the resulting permissions via
 // bare identifiers (`"allow-check-cfgutil"`, etc.).
 fn main() {
+    // The bundle's resources are staged by `pnpm build && stage-site.mjs &&
+    // stage-notices.mjs` (the beforeBuildCommand) and gitignored. tauri-build
+    // refuses a config whose resource paths do not exist, so `cargo check`
+    // and `cargo test` on a fresh clone get the two directories empty; a
+    // real build fills them first.
+    for staged in ["resources/site", "resources/third-party"] {
+        if let Err(error) = std::fs::create_dir_all(staged) {
+            println!("cargo:warning=could not create {staged}: {error}");
+        }
+    }
     tauri_build::try_build(
         tauri_build::Attributes::new().app_manifest(
             tauri_build::AppManifest::new().commands(&[
                 "set_dock_visibility",
-                "sidecar_base_url",
+                "backend_base_url",
                 "open_data_dir",
                 "open_log_dir",
                 "toggle_devtools",

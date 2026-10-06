@@ -53,7 +53,7 @@ function listAfter(source: string, marker: string): string[] {
 
 function handlerCommands(): string[] {
   const main = stripLineComments(read("src-tauri/src/main.rs"));
-  // `commands::sidecar_base_url` → `sidecar_base_url`.
+  // `commands::backend_base_url` → `backend_base_url`.
   return listAfter(main, "tauri::generate_handler!").map(
     (item) => item.split("::").at(-1) ?? item
   );

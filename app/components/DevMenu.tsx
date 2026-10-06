@@ -330,7 +330,7 @@ export default function DevMenu() {
   }, []);
 
   // Server-side state pull. localStorage works for the web build but
-  // breaks across Tauri launches (sidecar gets a fresh port → new
+  // can break across desktop launches (a different port → new
   // origin → empty localStorage). The /api/dev-menu-state endpoint
   // persists the flag in app_settings so it survives quits. We mirror
   // the API's answer back to localStorage so the rest of the file's
@@ -1781,7 +1781,7 @@ export default function DevMenu() {
             {/* Diagnostics dashboard — live runtime metrics (event-loop
                 lag, V8 heap usage, slow-query log, page-fault counts)
                 that the Settings panel doesn't surface. Useful when
-                investigating a slow / unresponsive Tauri sidecar
+                investigating a slow / unresponsive server
                 without attaching a profiler. Plain Link rather than a
                 deep-link into Settings because it's a self-contained
                 page, not a Settings section. */}

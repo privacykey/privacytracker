@@ -1,9 +1,9 @@
 // Tauri commands exposed to the webview via `@tauri-apps/api`'s `invoke`.
 //
 // Kept intentionally thin — every command either tweaks OS-level state that
-// the Node sidecar can't touch (Dock policy, Touch ID, global shortcuts,
+// the backend can't touch (Dock policy, Touch ID, global shortcuts,
 // devtools, native notifications badge) or hands back data the webview
-// needs (sidecar base URL, diagnostics report).
+// needs (backend base URL, diagnostics report).
 //
 // Every command that mutates persisted settings trusts the Node side to be
 // the source of truth: the UI writes to /api/settings/desktop first, then
@@ -14,12 +14,12 @@ use std::time::Duration;
 
 use tauri::{AppHandle, Manager};
 
-/// Returns the base URL the Node sidecar is listening on. The SettingsView
+/// Returns the base URL the backend is listening on. The SettingsView
 /// uses this to build links to /api/... endpoints that the webview is
 /// already pointed at — but it's handy for debug / "open in browser" flows.
 #[tauri::command]
-pub fn sidecar_base_url() -> String {
-    crate::state().sidecar_base_url.clone()
+pub fn backend_base_url() -> String {
+    crate::state().backend_base_url.clone()
 }
 
 /// Reveals the per-user data directory in the OS file manager. Hooked up
@@ -121,7 +121,7 @@ pub fn set_tray_visible(app: AppHandle, visible: bool) -> Result<(), String> {
 /// Fire-and-forget POST to /api/settings/desktop with the new
 /// `devtools_open` value. Spawned on a background thread so the
 /// toggle returns immediately — the user's flip shouldn't block on a
-/// HTTP round-trip to the Node sidecar.
+/// HTTP round-trip to the backend.
 ///
 /// `pub(crate)` so app_menu.rs's "View > Toggle Developer Tools"
 /// handler can call it after running its own toggle inline (the menu
@@ -130,7 +130,7 @@ pub fn set_tray_visible(app: AppHandle, visible: bool) -> Result<(), String> {
 /// command takes the default Wry-typed AppHandle).
 #[cfg(feature = "devtools")]
 pub(crate) fn persist_devtools_open(open: bool) {
-    let base_url = crate::state().sidecar_base_url.clone();
+    let base_url = crate::state().backend_base_url.clone();
     std::thread::spawn(move || {
         let body = format!("{{\"devtools_open\":{}}}", open);
         match crate::backend::post(&base_url, "/api/settings/desktop")
@@ -159,7 +159,7 @@ pub fn register_global_shortcut(shortcut: String, app: AppHandle) -> Result<(), 
 /// webview is the same user-visible outcome either way.
 #[tauri::command]
 pub fn get_diagnostics_report() -> String {
-    let base = &crate::state().sidecar_base_url;
+    let base = &crate::state().backend_base_url;
     crate::diagnostics::build_report(base)
 }
 

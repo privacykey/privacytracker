@@ -92,7 +92,7 @@ pub fn fetch(base_url: &str) -> Result<DesktopSettings, Box<dyn std::error::Erro
     // bundle. Keeping the snake_case → camelCase conversion server-side
     // means Rust has exactly one shape to parse.
     let resp: DesktopSettings = crate::backend::get(base_url, "/api/settings/desktop")
-        // Production sidecars also get PRIVACYTRACKER_RUNTIME=desktop, but
+        // The embedded server also gets PRIVACYTRACKER_RUNTIME=desktop, but
         // `tauri dev` can point at an already-running Next server via
         // PRIVACYTRACKER_DEV_URL. This header lets that server persist the
         // same desktop runtime signal once the Tauri shell connects.

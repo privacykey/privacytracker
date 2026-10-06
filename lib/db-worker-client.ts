@@ -138,7 +138,7 @@ export function clearDbWorkerTimings(): void {
 
 /**
  * Reasons to skip the worker and run inline: WORKER_DISABLED=1,
- * build-phase env (NEXT_PHASE=phase-production-build, BUILD_STANDALONE=1),
+ * build-phase env (NEXT_PHASE=phase-production-build),
  * or a previous spawn attempt failed (re-tried on next process restart).
  */
 function isWorkerEnabled(): boolean {
@@ -149,9 +149,6 @@ function isWorkerEnabled(): boolean {
     return false;
   }
   if (process.env.NEXT_PHASE === "phase-production-build") {
-    return false;
-  }
-  if (process.env.BUILD_STANDALONE === "1") {
     return false;
   }
   return true;
@@ -167,11 +164,9 @@ function spawnWorker(): WorkerLike | null {
     return null;
   }
   try {
-    // Resolve the worker file across dev (repo lib/), Docker (/app/lib),
-    // and the standalone bundle (lib/db-worker.cjs copied next to the
-    // standalone root by scripts/stage-standalone.mjs). Webpack would rewrite
-    // a bare `require.resolve()`, so probe via fs.existsSync against a small
-    // closed set of well-known paths.
+    // Resolve the worker file across dev (repo lib/) and Docker (/app/lib).
+    // Webpack would rewrite a bare `require.resolve()`, so probe via
+    // fs.existsSync against a small closed set of well-known paths.
     //
     // Security note: a previous iteration of this code probed
     // `process.cwd()/lib/db-worker.cjs` unconditionally, which would
@@ -188,8 +183,8 @@ function spawnWorker(): WorkerLike | null {
     // throws — which used to abort candidate construction before the
     // cwd probe below ever ran, silently forcing every production
     // process onto the inline fallback. Guard it so bundled runtimes
-    // (`next start`, Docker, the standalone sidecar) fall through to
-    // the cwd candidate, which all three layouts ship.
+    // (`next start`, Docker) fall through to the cwd candidate, which
+    // both layouts ship.
     const moduleDir: string | undefined = import.meta.dirname;
     const candidates = [
       ...(typeof moduleDir === "string"
@@ -216,8 +211,7 @@ function spawnWorker(): WorkerLike | null {
     if (!workerPath) {
       throw new Error(
         `db-worker.cjs not found. Looked in: ${candidates.join(", ")}. ` +
-          "In standalone builds, scripts/stage-standalone.mjs is responsible for " +
-          "copying lib/db-worker.cjs into the bundle."
+          "The Node server expects lib/db-worker.cjs beside its lib/ directory."
       );
     }
     const w = new workerThreads.Worker(workerPath, {

@@ -57,43 +57,23 @@ storybook:
     pnpm run storybook
 
 # The two `-node` recipes below hard-fail without this; it's a no-op once
-# the binary is present, and the default recipes never need it.
-# src-tauri/binaries/README.md covers why the binary isn't committed and
-# why the version must match your `pnpm install` Node.
-# One-time per clone: fetch + GPG-verify the bundled Node sidecar
-[group("desktop")]
-fetch-node-sidecar:
-    bash scripts/fetch-node-sidecar.sh
-
 # Needs the Rust toolchain. The app serves itself from the Rust core, so
-# there is no sidecar and no standalone tarball, only the frontend
-# `pnpm build` writes, which this runs for you.
-# Run the desktop app on the Rust backend, with devtools
+# the only input is the frontend `pnpm build` writes, which this runs for
+# you.
+# Run the desktop app, with devtools
 [group("desktop")]
 tauri-dev:
     pnpm build
     pnpm run tauri:dev
 
-# The Node sidecar build is the rollback until v0.3.0 has shipped. Needs a one-time
-# `just fetch-node-sidecar`.
-# Run the desktop app on the Node sidecar, with devtools
-[group("desktop")]
-tauri-dev-node: fetch-node-sidecar
-    pnpm run tauri:dev:node
-
 # Stages the frontend and the third-party notices into the bundle's
 # Resources (scripts/stage-site.mjs, scripts/stage-notices.mjs).
-# Production desktop build (.app/.dmg) on the Rust backend
+# Production desktop build (.app/.dmg)
 [group("desktop")]
 tauri-build:
     pnpm run tauri:build
 
-# Production desktop build (.app/.dmg) on the Node sidecar, the rollback
-[group("desktop")]
-tauri-build-node: fetch-node-sidecar
-    pnpm run tauri:build:node
-
-# The names the Rust recipes had while that backend was opt-in.
+# The names the recipes had while the Rust backend was opt-in.
 alias tauri-dev-rust := tauri-dev
 alias tauri-build-rust := tauri-build
 

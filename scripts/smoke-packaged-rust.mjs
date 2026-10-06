@@ -1,7 +1,5 @@
-// Drive a PACKAGED Rust-backend app over HTTP, in a disposable data
-// directory. The Node build has `scripts/smoke-packaged-server.mjs`, which
-// runs the bundled Node against the extracted standalone tree; this is its
-// counterpart for the build where the app IS the server.
+// Drive a PACKAGED app over HTTP, in a disposable data directory. The app
+// IS the server, so this is the only way to exercise what was signed.
 //
 // It exists because the only thing worth verifying at release time is what
 // was actually signed and notarised: the app binary, with the frontend

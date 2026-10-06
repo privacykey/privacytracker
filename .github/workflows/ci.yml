@@ -85,16 +85,9 @@ jobs:
             librsvg2-dev \
             patchelf
 
-      # tauri-build (run by `cargo test` via the build script) reads
-      # `src-tauri/resources/standalone.tar` and panics if it doesn't
-      # exist. The real tarball is the standalone Next.js bundle and
-      # is only produced by `pnpm build:standalone` (~30s). For test
-      # purposes a 0-byte placeholder is enough — cargo's resource-
-      # path validator only does Path::exists().
-      - name: Stub standalone.tar for tauri-build
-        run: node scripts/ensure-standalone-stub.mjs
-
       - name: Test Tauri Rust helpers
+        # build.rs creates the empty resource directories tauri-build
+        # wants to see, so no staging is needed before the tests.
         run: pnpm test:tauri
 
       - name: Audit production dependency tree
@@ -212,17 +205,11 @@ jobs:
             patchelf
 
       - name: Setup Node
-        # Needed only to run the `ensure-standalone-stub.mjs` placeholder
-        # script below. Doesn't need pnpm or a node_modules install.
+        # Needed only to run `scripts/generate-rust-notices.mjs` below.
+        # Doesn't need pnpm or a node_modules install.
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
           node-version-file: '.nvmrc'
-
-      # See the matching note in the `quality` job — tauri-build needs
-      # `resources/standalone.tar` to exist before `cargo check` will
-      # even start compiling, so write a 0-byte placeholder.
-      - name: Stub standalone.tar for tauri-build
-        run: node scripts/ensure-standalone-stub.mjs
 
       - name: Install stable Rust toolchain
         uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable as of 2026-05
@@ -243,23 +230,14 @@ jobs:
             ${{ runner.os }}-cargo-check-
 
       - name: Cargo check
-        # `--no-default-features` matches the BeforeDevCommand /
-        # macOS-release invocation. Defaults turn on `tauri/devtools`
-        # which we don't ship in release.
+        # The shell always embeds the core: there has been one backend since
+        # the Node sidecar was retired ahead of v0.3.0. `--no-default-features`
+        # matches the release invocation; `devtools` is dev-only.
         run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --locked
-
-      - name: Cargo check with the Rust backend
-        # Phase 6, batch 4: with this feature the shell serves the app from
-        # the Rust core instead of spawning the Node sidecar. Release builds
-        # and `pnpm tauri:build` pass it since the cutover; built without it,
-        # the shell is the Node rollback, kept until v0.3.0 has shipped. Both paths have to keep
-        # compiling until then, and this pair of checks is what makes "off
-        # by default" mean something: the check above never links the core.
-        run: cargo check --manifest-path src-tauri/Cargo.toml --no-default-features --features rust-backend --locked
 
       - name: Third-party crate notices are current
         # scripts/generate-rust-notices.mjs walks cargo's dependency graph
-        # for the Rust-backend build and writes what the app discloses. A
+        # for the desktop build and writes what the app discloses. A
         # crate added, removed or bumped without regenerating it is a
         # disclosure that no longer matches what ships, so it fails here
         # rather than at release time. This job already has that graph.
@@ -267,12 +245,12 @@ jobs:
           node scripts/generate-rust-notices.mjs
           git diff --exit-code -- src-tauri/THIRD-PARTY-RUST.md lib/rust-crates.json core/THIRD-PARTY-RUST.md
 
-      - name: Desktop shell tests on the Rust backend
+      - name: Desktop shell tests
         # The shell's own tests, including the boot test: the embedded
         # server started for real over a temporary data directory and a
-        # small build, asked for a page and an API read, then stopped. The
-        # quality job runs the same suite on the Node path (pnpm test:tauri).
-        run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --features rust-backend --locked
+        # small build, asked for a page and an API read, then stopped.
+        # (The quality job runs the same suite through `pnpm test:tauri`.)
+        run: cargo test --manifest-path src-tauri/Cargo.toml --no-default-features --locked
 
       - name: Cache cargo-audit
         id: cargo-audit-cache

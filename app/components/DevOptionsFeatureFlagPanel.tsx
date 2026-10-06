@@ -294,8 +294,8 @@ export default function DevOptionsFeatureFlagPanel() {
   // next to AccessibilityQuickToggles). This toggle is the dev-facing
   // on/off switch persisted in localStorage AND in the
   // /api/dev-menu-state SQLite-backed endpoint — the API store is what
-  // makes the flag survive a Tauri quit/relaunch (each launch's sidecar
-  // origin has fresh empty localStorage). Synced lazily on mount and
+  // makes the flag survive a desktop quit/relaunch (a launch on another
+  // port has fresh empty localStorage). Synced lazily on mount and
   // on cross-tab storage events so flipping it elsewhere keeps both
   // surfaces aligned.
   const [floatingOverlayOn, setFloatingOverlayOn] = useState(false);
@@ -372,7 +372,7 @@ export default function DevOptionsFeatureFlagPanel() {
     window.dispatchEvent(new CustomEvent("dev-menu:changed"));
     // Persist server-side too so the next Tauri launch picks the
     // flag back up — localStorage alone is per-origin and the
-    // sidecar port (and thus the origin) changes on every quit.
+    // port (and thus the origin) can change between launches.
     // Fire-and-forget; failures are logged but don't block the UI.
     fetch("/api/dev-menu-state", {
       method: "POST",

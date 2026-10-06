@@ -2,10 +2,10 @@
  * Server-side verification for Apple MobileSync backups.
  *
  * The native cfgutil bridge verifies the artifact immediately after the
- * command finishes. The sidecar repeats the check before it records a fresh
+ * command finishes. The server repeats the check before it records a fresh
  * backup stamp and whenever the uninstall gate is evaluated. That second
  * check matters because the webview transports the native result to the
- * sidecar, and because a user can move or delete a backup after it was made.
+ * server, and because a user can move or delete a backup after it was made.
  */
 
 import "server-only";

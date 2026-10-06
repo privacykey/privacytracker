@@ -15,25 +15,26 @@ update its row and the diagram label in the same PR.
 
 ## 0 · System map
 
-The desktop app is a Tauri shell that boots a private Next.js server (the "sidecar") on a
-random localhost port, then points its webview at it. Everything privacy-critical happens
-on this machine: scraping, diffing, AI calls, and the SQLite database. The Rust shell is
-the only piece that can touch a connected iPhone. The web/Docker build is the same server
-without the shell column.
+The desktop app is a Tauri shell that serves the app from its own process (the Rust
+core, `core/`) on a remembered loopback port, then points its webview at it. Everything
+privacy-critical happens on this machine: scraping, diffing, AI calls, and the SQLite
+database. The Rust shell is the only piece that can touch a connected iPhone. The
+web/Docker build is the same server without the shell column.
 
-**Since Phase 6 the shipped builds run the Rust port of this server** (`core/`, the
-`pt-core` binary) in place of Next.js: the desktop app serves itself from its own process
-on a remembered loopback port, and the Docker image runs `pt-core serve`. The port follows
+**The server is the Rust port of the Next.js server** (`core/`, the `pt-core` binary):
+the desktop app embeds it, and the Docker image runs `pt-core serve`. The port follows
 these flows route for route, with the Node server as its specification (the parity gates
-compare the two) and as the rollback until v0.3.0 has shipped. The diagrams below still describe the
-Node implementation; `core/README.md` records where the Rust one differs.
+compare the two); the Node Docker image is the only Node rollback left, as the Node
+desktop sidecar of releases up to v0.1.2 was retired ahead of v0.3.0. The diagrams below
+still describe the Node implementation; `core/README.md` records where the Rust one
+differs.
 
 ```mermaid
 flowchart LR
   subgraph mac["This Mac · Tauri desktop app"]
     shell["Rust shell (src-tauri/)<br/>tray · deep links · usb_watcher<br/>cfgutil bridge · Touch ID gate<br/>ACL: 14 allowed commands"]
     webview["Webview (Next.js UI)<br/>dashboard · onboarding wizard<br/>review-and-act wizard · TaskCenter"]
-    sidecar["Node sidecar (Next server)<br/>app/api/* routes → lib/*<br/>9 boot timers · 3 bulk runners"]
+    server["Embedded server (Rust core)<br/>app/api/* routes → lib/* (as specified by Node)<br/>9 boot timers · 3 bulk runners"]
     db[("SQLite data/privacy.db<br/>WAL · synchronous better-sqlite3<br/>apps → types → categories")]
   end
   phone["iPhone / iPad over USB<br/>list · installedApps · backup · remove-app"]
@@ -41,22 +42,23 @@ flowchart LR
   archive["archive.org<br/>availability · replay · Save Page Now"]
   ai["AI provider (optional)<br/>OpenAI / Anthropic / local"]
 
-  shell -->|"spawns · reveals window when /api/apps responds"| sidecar
-  webview <-->|"HTTP 127.0.0.1:&lt;port&gt;"| sidecar
+  shell -->|"serves in process · reveals window once bound"| server
+  webview <-->|"HTTP 127.0.0.1:&lt;port&gt;"| server
   webview -.->|"invoke() IPC · ACL + Touch ID"| shell
   shell -.->|"cfgutil subprocess"| phone
-  sidecar --> db
-  sidecar -.-> apple
-  sidecar -.-> archive
-  sidecar -.-> ai
+  server --> db
+  server -.-> apple
+  server -.-> archive
+  server -.-> ai
 ```
 
-Boot handshake: `sidecar::boot()` binds `127.0.0.1:0` for a free port, spawns Node with
-`PORT`/`PRIVACYTRACKER_DATA_DIR`, polls `GET /api/apps` (≤60s), then navigates the webview
-and reveals the window (optionally behind a Touch ID unlock). Files:
-`src-tauri/src/main.rs`, `src-tauri/src/sidecar.rs`.
+Boot handshake: `embedded::boot()` binds the loopback port this install used last (a
+free one if it is taken), starts the core over `PRIVACYTRACKER_DATA_DIR` in process,
+then navigates the webview through a one-time sign-in link and reveals the window
+(optionally behind a Touch ID unlock). Files: `src-tauri/src/main.rs`,
+`src-tauri/src/embedded.rs`.
 
-Desktop trust boundary on the Rust backend: the loopback bind keeps the network
+Desktop trust boundary: the loopback bind keeps the network
 out, and a per-launch credential keeps other local processes out. `embedded::start`
 mints 32 random bytes each launch and hands them to the core in its environment;
 every `/api/*` request must then carry them (`X-PrivacyTracker-Desktop-Token`
@@ -64,8 +66,7 @@ header or the `pt_desktop_session` cookie), while the static page shells stay
 public. The webview gets the cookie from a one-time link (`/api/desktop/bootstrap`,
 single use, 60 s) that main.rs opens instead of the base URL; the shell's own
 requests send the header (`backend::get` / `backend::post`); same-user tools read
-`.desktop-token` (0600) in the data directory. The Node sidecar rollback has no
-equivalent. Files: `src-tauri/src/embedded.rs`, `src-tauri/src/backend.rs`,
+`.desktop-token` (0600) in the data directory. Files: `src-tauri/src/embedded.rs`, `src-tauri/src/backend.rs`,
 `core/src/server/desktop_auth.rs`, `core/src/server/gate.rs`.
 
 ---
@@ -81,7 +82,7 @@ Files: `lib/scraper.ts`, `lib/changelog.ts`, `lib/privacy-policy.ts`.
 sequenceDiagram
   autonumber
   participant UI as Webview UI
-  participant API as Sidecar API
+  participant API as Server API
   participant LIB as lib/ pipeline
   participant DB as SQLite
   participant EXT as Apple / AI
@@ -125,7 +126,7 @@ sequenceDiagram
   participant WIZ as Onboard wizard
   participant SH as Rust shell
   participant PH as iPhone (USB)
-  participant API as Sidecar API
+  participant API as Server API
   participant AP as Apple
 
   WIZ->>SH: invoke check_cfgutil — PATH + app-bundle probes, cached 5 min
@@ -168,7 +169,7 @@ rather than citing a rule. Files: `app/components/ReviewRecommendationsView.tsx`
 sequenceDiagram
   autonumber
   participant WIZ as Review wizard
-  participant API as Sidecar (gates + audit)
+  participant API as Server (gates + audit)
   participant SH as Rust shell
   participant PH as iPhone (USB)
 
@@ -326,9 +327,9 @@ flip rows as they land, and update the diagram label in the same PR.
 | Ref | Area | Status | Finding → candidate improvement | Effort |
 | --- | --- | --- | --- | --- |
 | §3·1 | Device backup | ✅ fixed | Verified against cfgutil 2.20: `backup` has no destination option and writes to `~/Library/Application Support/MobileSync/Backup`. The native bridge now runs the supported command and queries the selected ECID’s UDID and verifies only that device’s changed directory there. | — |
-| §3·2 | Device backup | ✅ fixed | Native success requires a new/updated, non-empty, regular `Manifest.db`; the sidecar independently canonicalises and rechecks the artifact before stamping and at every uninstall pre-flight. Freshness cannot exceed the manifest timestamp, and future timestamps fail closed. Exit code alone cannot unlock deletion. | — |
+| §3·2 | Device backup | ✅ fixed | Native success requires a new/updated, non-empty, regular `Manifest.db`; the server independently canonicalises and rechecks the artifact before stamping and at every uninstall pre-flight. Freshness cannot exceed the manifest timestamp, and future timestamps fail closed. Exit code alone cannot unlock deletion. | — |
 | §3·3 | Device delete | ✅ fixed | `run_with_timeout` owns a separate subprocess group, kills it and reaps the direct child before returning on timeout or excessive output. Harmless subprocess tests cover descendants and output limits. Device state still needs checking after an interrupted operation. | — |
-| §3·4 | Device backup | ✅ fixed | Removed the caller-controlled destination entirely. Native and sidecar checks canonicalise Apple's fixed MobileSync root, require a direct child directory, and reject symlink escapes. | — |
+| §3·4 | Device backup | ✅ fixed | Removed the caller-controlled destination entirely. Native and server checks canonicalise Apple's fixed MobileSync root, require a direct child directory, and reject symlink escapes. | — |
 | §3·5 | Delete UX / audit | ✅ fixed | Backup-step status, Act banner, final modal, and `acknowledgeNoBackup` now derive from the durable server stamp returned by the GET gate. Reopening the wizard preserves truth; moved/deleted manifests downgrade immediately. | — |
 | §3·6 | Device actions | ✅ fixed | ECID normalisation (`0x`-prefixed) across stamp store, gate, and routes; pinned by tests with real-format ECIDs. | — |
 | §3·7 | Device actions | ✅ fixed | Server gate pre-flights before the first removal (fail closed); recording failures surface in the UI. | — |
@@ -337,7 +338,7 @@ flip rows as they land, and update the diagram label in the same PR.
 | §1·2 | AI summaries | idea | Summarisation silently degrades without a provider; chunking for local models is heuristic. Consider a visible "summary stale/unavailable" state. | S |
 | §2·1 / §4·1 | Rate limiting | open | On 429 the bulk sync abandons the run and restarts the whole fleet next tick. Resume from the state blob's cursor instead; consider shared per-app backoff with the import queue. | M |
 | §2·2 | Cross-platform import | idea | Python export needs a manual round-trip. Drag-drop hint or watch-folder hand-off. | M |
-| §4·2 | Polling | idea | Three pollers (TaskCenter 4s, notification watcher, per-job GETs) → one SSE stream from the sidecar. | L |
+| §4·2 | Polling | idea | Three pollers (TaskCenter 4s, notification watcher, per-job GETs) → one SSE stream from the server. | L |
 | §4·3 | Boot resume | ✅ fixed | A bulk run started before its 8/10/12 s healer fired was "resumed" by its own process: a second runner on the same queue, every pending app fetched twice, and a "resumed after server restart" notification with no restart. Runners now register as live in memory and the healers skip a live job; a crash still clears the registry, so crash-left runs resume as before. Pinned in Node and Rust. | — |
 | §5·1 | Wayback | idea | Track quarters skipped for lack of captures and offer "retry skipped" once Save-Page-Now requests have had time to land. | S–M |
 

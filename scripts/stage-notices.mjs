@@ -1,7 +1,8 @@
-// Stage the notices a Rust-backend bundle must carry (Phase 6, batch 5b).
+// Stage the notices the bundle must carry (Phase 6, batch 5b).
 //
-// The Node build ships Node's own licence inside the standalone tarball.
-// This build ships compiled Rust instead, so five files travel with it:
+// The Node builds of releases up to v0.1.2 shipped Node's own licence
+// inside their tarball. This build ships compiled Rust instead, so five
+// files travel with it:
 //
 //   NOTICE                our own, as the Apache-2.0 licence asks
 //   LICENSE               the licence that notice refers to

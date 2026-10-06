@@ -1,9 +1,8 @@
-// Stage the frontend the RUST backend serves into the Tauri bundle's
-// Resources (Phase 6, batch 4b). The Node backend has its own staging
-// script, `stage-standalone.mjs`, which tars a whole Next.js standalone
-// tree plus a Node binary; this one copies far less, because the Rust
-// core serves the build directly and reads exactly four things from it
-// (`core/src/server/site.rs`):
+// Stage the frontend the app serves into the Tauri bundle's Resources
+// (Phase 6, batch 4b). The Node builds of releases up to v0.1.2 tarred a
+// whole Next.js standalone tree plus a Node binary; this copies far less,
+// because the Rust core serves the build directly and reads exactly four
+// things from it (`core/src/server/site.rs`):
 //
 //   .next/server/app        the prerendered pages, their metadata,
 //                           RSC payloads and segment files
@@ -17,8 +16,8 @@
 // read-only in the bundle and covered by the code signature, which is the
 // other half of why nothing is extracted into the data directory any more.
 //
-// Run via `pnpm stage:site`, or by the Rust bundle's beforeBuildCommand
-// (src-tauri/tauri.rust.conf.json). The Docker image stages the same tree
+// Run via `pnpm stage:site`, or by the bundle's beforeBuildCommand
+// (src-tauri/tauri.conf.json). The Docker image stages the same tree
 // for its server with `--into /app/site`. Idempotent: wipes the destination
 // first, so a page deleted since the last build cannot linger.
 
@@ -42,8 +41,7 @@ const repo = path.resolve(here, "..");
 const SERVED = new Set([".html", ".meta", ".rsc", ".body"]);
 
 /** A runtime database must never end up inside a signed bundle: it would
- *  ship one user's data to everyone and shadow the real one. Same guard
- *  as stage-standalone.mjs, on a much smaller tree. */
+ *  ship one user's data to everyone and shadow the real one. */
 const DB_FILE = /\.db(-wal|-shm)?$/;
 
 /**
@@ -66,7 +64,7 @@ export function stageSite({ root = repo, into } = {}) {
   for (const [what, from] of Object.entries(source)) {
     if (!existsSync(from)) {
       throw new Error(
-        `stage-site: no ${what} at ${from}. Run \`pnpm build\` first — the Rust backend serves that build, not a standalone tree.`
+        `stage-site: no ${what} at ${from}. Run \`pnpm build\` first — the app serves that build.`
       );
     }
   }

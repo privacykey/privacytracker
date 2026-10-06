@@ -1,15 +1,13 @@
 // privacytracker — Tauri desktop shell.
 //
 // Boot sequence:
-//   1-3. Start the backend (backend.rs). By default that spawns the bundled
-//      Node sidecar on a free loopback port, over the per-user data
-//      directory. Built with `--features rust-backend`, the Rust core
-//      serves the app from this process instead, on the port this install
-//      used last. Either way the rest of the shell only sees a base URL.
-//   4. Wait for the sidecar to answer (Node path only: the embedded server
-//      is listening before it reports its address). We poll /api/apps, as
-//      the Docker healthcheck does — the cheapest round-trip that proves
-//      the database opened cleanly.
+//   1-3. Start the backend (backend.rs): the Rust core serves the app from
+//      this process, over the per-user data directory, on the loopback
+//      port this install used last. The rest of the shell only sees a base
+//      URL. (Releases up to v0.1.2 spawned a bundled Node process here
+//      instead; that sidecar was retired ahead of v0.3.0.)
+//   4. The embedded server is listening before it reports its address, so
+//      there is nothing to wait for.
 //   5. Point the main window at 127.0.0.1:<port> and show it — unless the
 //      process was started with --hidden (the LaunchAgent that starts it at
 //      login passes this) or "launch hidden in tray" is on. Showing goes
@@ -22,17 +20,14 @@
 //   9. Wire up the privacytracker:// deep-link handler.
 //
 // Closing the window hides it instead of exiting — the tray keeps the
-// sidecar (and therefore the 30-min background scheduler + crash-safe
+// server (and therefore the 30-min background scheduler + crash-safe
 // wayback/sync/policy resume loops) alive until the user explicitly quits
 // from the tray.
 
 #![cfg_attr(all(not(debug_assertions), target_os = "windows"), windows_subsystem = "windows")]
 
 mod backend;
-#[cfg(feature = "rust-backend")]
 mod embedded;
-#[cfg(not(feature = "rust-backend"))]
-mod sidecar;
 mod tray;
 mod commands;
 mod settings;
@@ -60,13 +55,9 @@ use tauri_plugin_window_state::StateFlags;
 /// State that outlives any one window: the handle that stops the backend
 /// and the port it's listening on. Wrapped in a Mutex so the tray menu and
 /// commands can cooperate with the boot path without racing each other.
-///
-/// The `sidecar_*` names predate the Rust backend and are what the webview
-/// asks for (the `sidecar_base_url` command); they mean "the backend" on
-/// either path.
 pub struct AppState {
-    pub sidecar_port: u16,
-    pub sidecar_base_url: String,
+    pub backend_port: u16,
+    pub backend_base_url: String,
     /// `None` in `tauri dev` when the user is pointing at their own
     /// `next dev` server via the PRIVACYTRACKER_DEV_URL env var. `Some`
     /// in every shipped build.
@@ -93,7 +84,6 @@ fn launched_hidden() -> bool {
 /// never be pointed at a user's data this way. The flag without a
 /// directory exits rather than falling through to a window nobody asked
 /// for.
-#[cfg(feature = "rust-backend")]
 fn smoke_server_dir() -> Option<std::path::PathBuf> {
     let mut args = std::env::args_os().skip(1);
     while let Some(arg) = args.next() {
@@ -114,7 +104,6 @@ fn main() {
     // The release verifier's hidden mode, before anything else starts: it
     // serves over the directory it was given and waits, with no window and
     // no tray. Never returns.
-    #[cfg(feature = "rust-backend")]
     if let Some(dir) = smoke_server_dir() {
         embedded::smoke(&dir);
     }
@@ -142,7 +131,7 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         // relaunch() after an update installs (lib/tauri-updater.ts). The
         // restart goes through RunEvent::ExitRequested below, so the
-        // sidecar is shut down before the new version starts.
+        // server is shut down before the new version starts.
         .plugin(tauri_plugin_process::init())
         // "Start at login" writes a LaunchAgent,
         // ~/Library/LaunchAgents/privacytracker.plist, whose
@@ -189,7 +178,7 @@ fn main() {
         )
         .invoke_handler(tauri::generate_handler![
             commands::set_dock_visibility,
-            commands::sidecar_base_url,
+            commands::backend_base_url,
             commands::open_data_dir,
             commands::open_log_dir,
             commands::toggle_devtools,
@@ -207,17 +196,16 @@ fn main() {
             cfgutil::run_cfgutil_remove_app,
         ])
         .setup(|app| {
-            // 1-3. Spawn sidecar (or accept the dev-server URL).
+            // 1-3. Start the server (or accept the dev-server URL).
             //
-            // Catch errors here for the same reason as the
-            // wait_until_ready check below — Tauri's setup hook
-            // turns Err into a panic inside obj-c
+            // Catch errors here rather than returning them: Tauri's
+            // setup hook turns Err into a panic inside obj-c
             // `did_finish_launching`, which can't unwind across the
             // C ABI and aborts with a 100-line stack trace that
             // hides the real cause. Exiting cleanly keeps the
-            // failure message to the actionable bit (sidecar boot
-            // path's own error string, e.g. "Bundled standalone
-            // tarball is incomplete… delete it and re-run").
+            // failure message to the actionable bit (the boot path's
+            // own error string, e.g. which directory could not be
+            // opened).
             let boot = match backend::boot(&app.handle()) {
                 Ok(b) => b,
                 Err(e) => {
@@ -228,54 +216,15 @@ fn main() {
 
             STATE
                 .set(AppState {
-                    sidecar_port: boot.port,
-                    sidecar_base_url: boot.base_url.clone(),
+                    backend_port: boot.port,
+                    backend_base_url: boot.base_url.clone(),
                     backend: Mutex::new(boot.running),
                 })
                 .ok()
                 .expect("AppState already initialised");
 
-            // 4. Wait for /api/apps to respond before we reveal the window.
-            //
-            // Exit cleanly on timeout instead of returning the error up
-            // through Tauri's setup hook. A returned Err from the setup
-            // closure becomes a Rust panic inside `did_finish_launching`
-            // (an Objective-C callback the app delegate fires), and
-            // panics can't unwind across the C ABI → the process aborts
-            // with a noisy "panic in a function that cannot unwind"
-            // stack trace from tao's macos/app_delegate.rs:125. That
-            // hides the actual cause (sidecar didn't boot) behind a
-            // wall of Rust internals.
-            //
-            // Doing process::exit(1) here keeps the visible failure
-            // crisp: a single log line saying exactly what went wrong
-            // and how to recover, no obj-c boundary panic, no stack
-            // trace. The user sees the actionable message and we exit
-            // with a non-zero status that any wrapper script (CI,
-            // make, etc.) treats as a failure normally.
-            //
-            // The embedded backend has nothing to wait for: its listener
-            // is bound and its router built before `boot` returns.
-            #[cfg(not(feature = "rust-backend"))]
-            if let Err(e) = sidecar::wait_until_ready(&boot.base_url) {
-                eprintln!("\n[privacytracker] FATAL: {e}\n");
-                eprintln!(
-                    "The Node sidecar at {} didn't respond before the readiness deadline.\n\
-                     \n\
-                     Most common cause: the bundled standalone tarball at\n\
-                       src-tauri/resources/standalone.tar\n\
-                     is incomplete (left over from a previous `pnpm tauri:dev:node` that was\n\
-                     killed before stage-standalone.mjs finished writing it). Recover with:\n\
-                     \n\
-                       rm src-tauri/resources/standalone.tar\n\
-                       pnpm tauri:dev:node\n\
-                     \n\
-                     The next BeforeDevCommand will write a fresh tarball and the sidecar\n\
-                     will extract it cleanly.\n",
-                    boot.base_url,
-                );
-                std::process::exit(1);
-            }
+            // 4. Nothing to wait for: the embedded server's listener is
+            // bound and its router built before `boot` returns.
 
             // Fetch the full desktop settings bundle in one round-trip. Used
             // by the boot path to decide whether to show the window, whether
@@ -348,13 +297,13 @@ fn main() {
             //     the window is created because the predefined menu
             //     items take an &AppHandle and the OS attaches them to
             //     the responder chain on focus, but it doesn't have to
-            //     wait on the sidecar — putting it here keeps the boot
+            //     wait on the server — putting it here keeps the boot
             //     ordering readable (window first, then chrome that
             //     decorates it).
             //
             //     The Dev submenu is gated on the `dev_menu_enabled`
             //     persisted setting. Read it via ureq up front (one
-            //     tiny GET to the loopback sidecar) so the menu tree
+            //     tiny GET to the loopback server) so the menu tree
             //     reflects the user's choice from launch. Flipping
             //     the flag at runtime requires an app restart.
             let dev_menu_enabled = {
@@ -434,19 +383,13 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app_handle, event| {
-            // Graceful sidecar shutdown.
+            // Graceful server shutdown.
             //
-            // We can't put this in `impl Drop for SidecarHandle` because
+            // We can't put this in `impl Drop for EmbeddedServer` because
             // `AppState` lives inside a `static OnceCell<AppState>` and
             // Rust doesn't run destructors of statics at process exit —
-            // so the Drop impl was unreachable, which is why the Node
-            // helper used to survive a Tauri quit.
-            //
-            // We also can't rely on SIGHUP from the parent dying:
-            // `sidecar::boot` calls `setsid()` in pre_exec to detach the
-            // child from our Cocoa session (keeps the Dock clean), and
-            // that same detachment means the kernel won't deliver SIGHUP
-            // when we go away. The signal has to come from us.
+            // so a Drop impl would be unreachable (which is how the Node
+            // helper of releases up to v0.1.2 used to survive a quit).
             //
             // `RunEvent::ExitRequested` fires for every quit path —
             // tray "Quit" (`app.exit(0)`), Cmd+Q on macOS, the menu-bar

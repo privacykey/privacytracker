@@ -1,23 +1,17 @@
 //! The shell's view of its backend: where it is, how it stops, where the
 //! window goes first, and the one way the shell sends it a request.
 //!
-//! Which backend that is, is decided when the shell is compiled:
+//! The backend is the Rust core served from this process (`embedded.rs`).
+//! Releases up to v0.1.2 spawned a bundled Node process running Next.js
+//! instead, behind the same module; that sidecar was retired ahead of
+//! v0.3.0, and everything else in the shell is still written against this
+//! module alone.
 //!
-//! - by default, the bundled Node sidecar (`sidecar.rs`), a second process
-//!   running Next.js;
-//! - with `--features rust-backend`, the Rust core served from this
-//!   process (`embedded.rs`).
-//!
-//! Everything else in the shell is written against this module and does
-//! not know which one it got. The feature is off in Cargo's default set so
-//! a build without it stays the pure Node rollback, and CI compiles both.
-//!
-//! **The launch credential.** The Rust backend answers `/api` only to a
-//! caller holding the credential it was started with, which is minted
-//! afresh every launch (`embedded.rs`). The shell's own requests carry it
-//! in [`CREDENTIAL_HEADER`] because they go through [`get`] and [`post`];
-//! a test below fails on a request built anywhere else. The Node sidecar
-//! is started without one, and nothing is sent to it.
+//! **The launch credential.** The backend answers `/api` only to a caller
+//! holding the credential it was started with, which is minted afresh
+//! every launch (`embedded.rs`). The shell's own requests carry it in
+//! [`CREDENTIAL_HEADER`] because they go through [`get`] and [`post`]; a
+//! test below fails on a request built anywhere else.
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -31,14 +25,10 @@ pub struct Boot {
     pub running: Option<Running>,
 }
 
-#[cfg(not(feature = "rust-backend"))]
-pub use crate::sidecar::{boot, SidecarHandle as Running};
-
-#[cfg(feature = "rust-backend")]
 pub use crate::embedded::{boot, EmbeddedServer as Running};
 
 /// The Mac's name as set in System Settings → General → About ("Adam's
-/// MacBook Pro"). Either backend gets it as `PRIVACYTRACKER_COMPUTER_NAME`,
+/// MacBook Pro"). The backend gets it as `PRIVACYTRACKER_COMPUTER_NAME`,
 /// and the companion app calls the instance by it until someone names it
 /// in Settings → Companion. `None` when it cannot be read; the backend then
 /// says "My Mac".
@@ -61,7 +51,7 @@ pub fn computer_name() -> Option<String> {
 }
 
 /// The per-user data directory, and therefore the database. The same path
-/// on both backends, so either build opens what the other wrote.
+/// every release has used, so an upgraded install opens what it had.
 ///
 /// macOS: `~/Library/Application Support/privacytracker`.
 /// Windows: `%APPDATA%\privacytracker`.
@@ -80,13 +70,12 @@ pub fn resolve_data_dir() -> Result<PathBuf, Box<dyn std::error::Error>> {
 }
 
 /// The header the shell's requests carry the launch credential in. The
-/// Rust backend reads the same name; a test in `embedded.rs` holds the two
+/// backend reads the same name; a test in `embedded.rs` holds the two
 /// together.
 pub const CREDENTIAL_HEADER: &str = "x-privacytracker-desktop-token";
 
-/// This launch's credential, once the backend has minted it: the embedded
-/// backend's, or the one the sidecar was spawned with. Unset when attached
-/// to a developer's own server.
+/// This launch's credential, once the backend has minted it. Unset when
+/// attached to a developer's own server.
 static CREDENTIAL: OnceLock<String> = OnceLock::new();
 
 /// Record the credential the backend was started with. Once per process,
@@ -97,7 +86,6 @@ pub(crate) fn set_credential(credential: String) {
     }
 }
 
-#[cfg(feature = "rust-backend")]
 pub(crate) fn has_credential() -> bool {
     CREDENTIAL.get().is_some()
 }
@@ -119,19 +107,10 @@ fn join(base_url: &str, path: &str) -> String {
 
 /// Where the window is pointed at boot: a one-time sign-in link, which
 /// hands the webview this launch's credential as an HttpOnly cookie and
-/// redirects to the start page, so page scripts never see it. The embedded
-/// backend issues its link in process; the sidecar's was minted with its
-/// credential and passed to Node in the environment. A backend with no
-/// credential (a developer's own server) gets the base URL itself.
+/// redirects to the start page, so page scripts never see it. A backend
+/// with no credential (a developer's own server) gets the base URL itself.
 pub fn entry_url(base_url: &str) -> String {
-    #[cfg(feature = "rust-backend")]
-    {
-        crate::embedded::entry_url(base_url)
-    }
-    #[cfg(not(feature = "rust-backend"))]
-    {
-        crate::sidecar::entry_url(base_url)
-    }
+    crate::embedded::entry_url(base_url)
 }
 
 /// Start a GET to the backend at `base_url` + `path`, carrying the launch
@@ -146,10 +125,10 @@ pub fn get(base_url: &str, path: &str) -> ureq::Request {
 /// credential, and an `Origin` as well: the CSRF gate answers a mutating
 /// `/api` request with 403 "Cross-origin mutation rejected" unless its
 /// `Origin` matches the Host it was sent to or it carries a token header,
-/// and the Node sidecar, which has no launch credential, still needs the
-/// Origin. The webview's own fetches get an Origin from the browser. ureq
-/// sends none, and the desktop has no admin token: neither backend is
-/// given one.
+/// and a developer's own server behind `PRIVACYTRACKER_DEV_URL`, which has
+/// no launch credential, still needs the Origin. The webview's own fetches
+/// get an Origin from the browser. ureq sends none, and the desktop has no
+/// admin token: the backend is never given one.
 ///
 /// The Origin is serialised from the same parsed URL that ureq writes
 /// `Host` from, so the two agree whatever the base URL looks like: a
@@ -218,25 +197,16 @@ mod tests {
         assert_eq!(request.url(), "http://127.0.0.1:49152/api/notifications");
     }
 
-    /// With a credential, a request carries it; with none (the Node
-    /// sidecar, a developer's own server) nothing extra is sent. The
-    /// process-wide credential is left alone here: the embedded boot test
-    /// sets the real one, and proves both helpers send it by being let in.
+    /// With a credential, a request carries it; with none (a developer's
+    /// own server) nothing extra is sent. The process-wide credential is
+    /// left alone here: the embedded boot test sets the real one, and
+    /// proves both helpers send it by being let in.
     #[test]
     fn a_request_carries_the_credential_only_when_there_is_one() {
         let with = attach(ureq::agent().get("http://127.0.0.1:1/"), Some("abc"));
         assert_eq!(with.header(CREDENTIAL_HEADER), Some("abc"));
         let without = attach(ureq::agent().get("http://127.0.0.1:1/"), None);
         assert_eq!(without.header(CREDENTIAL_HEADER), None);
-
-        // Nothing on the Node path ever sets one.
-        #[cfg(not(feature = "rust-backend"))]
-        for request in [
-            get("http://127.0.0.1:49152", "/api/apps"),
-            post("http://127.0.0.1:49152", "/api/sync/trigger"),
-        ] {
-            assert_eq!(request.header(CREDENTIAL_HEADER), None);
-        }
     }
 
     /// A ureq request that bypasses `get` and `post` goes out with no

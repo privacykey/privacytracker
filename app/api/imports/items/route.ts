@@ -160,8 +160,8 @@ async function addImportItemsRoute(request: Request) {
     }
 
     // Route through the worker-backed async variant so a 200-row
-    // import doesn't block the Node sidecar's event loop. The Tauri
-    // webview polls /api/tasks/active and /api/notifications during
+    // import doesn't block the Node server's event loop. The UI
+    // polls /api/tasks/active and /api/notifications during
     // an import; if those polls time out because writes are blocking,
     // the UI looks frozen even though the import is making progress.
     // See lib/db-worker-client.ts for the worker plumbing.

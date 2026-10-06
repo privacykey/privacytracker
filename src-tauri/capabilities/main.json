@@ -19,7 +19,7 @@
     "deep-link:default",
     "log:default",
     "allow-set-dock-visibility",
-    "allow-sidecar-base-url",
+    "allow-backend-base-url",
     "allow-open-data-dir",
     "allow-open-log-dir",
     "allow-toggle-devtools",

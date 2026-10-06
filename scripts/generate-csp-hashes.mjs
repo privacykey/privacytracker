@@ -20,7 +20,7 @@
  *
  * Output: <distDir>/csp-hashes.json → { generatedAt, routes: {route:
  * ["sha256-…"]}, all: ["sha256-…"] }. proxy.ts reads it at runtime;
- * stage-standalone.mjs copies it into the standalone tree.
+ * stage-site.mjs copies it into the desktop bundle for the Rust core.
  */
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";

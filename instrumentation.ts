@@ -1,26 +1,5 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
-    // Parent-process watchdog. When the Tauri shell launches us it sets
-    // PRIVACYTRACKER_PARENT_PID to its own PID; this watcher polls that
-    // PID every few seconds and self-exits if it disappears. Closes the
-    // gap left by SIGKILL / Force-Quit / runtime-panic of the parent —
-    // those paths skip Tauri's RunEvent::ExitRequested handler, and
-    // because the child is `setsid()`'d the kernel won't send SIGHUP
-    // either, so without this hook the Node sidecar would survive an
-    // unclean parent quit indefinitely. No-op when the env var isn't
-    // set (Docker, `npm run dev`, CI). See `lib/parent-watchdog.ts`
-    // for the full failure-mode rationale. Runs first because it has
-    // zero dependencies on the rest of the boot path and we want it
-    // active as early as possible.
-    try {
-      const { installParentWatchdog } = await import("./lib/parent-watchdog");
-      installParentWatchdog();
-    } catch (e) {
-      console.error("[parent-watchdog] install failed:", e);
-      // Never fatal — the cleanup-on-exit Rust path still works for
-      // graceful quits even if the watchdog can't start.
-    }
-
     // Error / warning ring buffer. Patches console.error + console.warn
     // before any other lib starts emitting so the very first complaint
     // about a missing migration / unreachable upstream / etc. is

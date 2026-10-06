@@ -1,37 +1,35 @@
-#![cfg(feature = "rust-backend")]
-//! The Rust backend: this process serves the app itself.
+//! The backend: this process serves the app itself, from the Rust core.
 //!
-//! Compiled only with `--features rust-backend`. The desktop release and
-//! `just tauri-dev` pass it; a build without it spawns the Node sidecar
-//! (`sidecar.rs`) instead, which stays buildable for rollback until v0.3.0 has shipped.
-//! Everything above this module is unchanged either way: the shell talks
+//! Releases up to v0.1.2 spawned a bundled Node process (the "sidecar")
+//! running the Next.js server, extracted into the data directory. That
+//! build was retired ahead of v0.3.0; everything above this module talks
 //! to a base URL, and this one is its own.
 //!
 //! **An upgraded install is tidied.** The Node build extracted its server
 //! into the data directory; once this backend is serving, that goes
 //! ([`remove_node_leftovers`]).
 //!
-//! What the sidecar does with a process and an environment, this does with
-//! a call:
+//! What the Node build did with a process and an environment, this does
+//! with a call:
 //!
 //! - the data directory is the same one (`backend::resolve_data_dir`), so
-//!   either build opens the same database;
+//!   an upgraded install opens the database it already had;
 //! - the environment is passed as a map rather than set on this process,
 //!   because setting variables inside a running GUI process is unsound and
-//!   because the server must see exactly what the sidecar's `env_clear()`
-//!   gave Node: the data directory, a loopback bind, the desktop runtime,
-//!   and no admin token. One variable is this backend's own: the launch
-//!   credential (below);
-//! - the site is the same `next build` output the Node path serves, staged
-//!   beside the binary rather than extracted into the data directory;
-//! - shutdown gets the same three seconds requests in flight had before
-//!   the sidecar was killed.
+//!   because the server must see exactly what the Node build's
+//!   `env_clear()` gave it: the data directory, a loopback bind, the
+//!   desktop runtime, and no admin token. One variable is this backend's
+//!   own: the launch credential (below);
+//! - the site is the same `next build` output, staged beside the binary
+//!   rather than extracted into the data directory;
+//! - shutdown gives requests in flight three seconds, as the Node process
+//!   had before it was killed.
 //!
-//! **The port is remembered.** The sidecar takes a fresh random port every
-//! launch, and a page's origin includes its port, so everything the app
-//! keeps in local storage (the accessibility quick toggles, among others)
-//! is lost on every relaunch. Here the last port is reused when it is
-//! still free, so the origin survives.
+//! **The port is remembered.** The Node build took a fresh random port
+//! every launch, and a page's origin includes its port, so everything the
+//! app keeps in local storage (the accessibility quick toggles, among
+//! others) was lost on every relaunch. Here the last port is reused when
+//! it is still free, so the origin survives.
 //!
 //! **The API answers only to this launch.** A loopback bind keeps the
 //! network out, not the other processes on the Mac. So every launch mints
@@ -45,7 +43,7 @@
 //! stay public: they are the same static files for everyone. This is not
 //! the admin token, whose presence the frontend reads as a network
 //! deployment (login page, unlock card, dev routes); nothing the user sees
-//! changes. The Node sidecar rollback has no counterpart.
+//! changes.
 
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr};
@@ -61,7 +59,7 @@ use crate::backend::Boot;
 type BoxError = Box<dyn std::error::Error>;
 
 /// What requests in flight get when the app quits, matching the grace the
-/// sidecar had between SIGTERM and SIGKILL.
+/// Node process of releases up to v0.1.2 had between SIGTERM and SIGKILL.
 const SHUTDOWN_GRACE: Duration = Duration::from_secs(3);
 
 /// The file under the data directory holding the port to try first.
@@ -71,9 +69,9 @@ const PORT_FILE: &str = ".desktop-port";
 /// for tools running as the same user. Mode 0600, in the 0700 directory.
 const TOKEN_FILE: &str = ".desktop-token";
 
-/// What the Node sidecar extracts into the data directory (`sidecar.rs`):
-/// its server, about 200 MB, and the markers recording which tarball that
-/// came from. Nothing on this path reads any of it.
+/// What the Node build (releases up to v0.1.2) extracted into the data
+/// directory: its server, about 200 MB, and the markers recording which
+/// tarball that came from. Nothing here reads any of it.
 const NODE_TREE: &str = "standalone";
 const NODE_MARKERS: [&str; 2] = [
     ".standalone-extracted-from-size-mtime",
@@ -117,7 +115,7 @@ pub struct Started {
 
 /// Serve the app from this process and report where.
 pub fn boot(app: &AppHandle) -> Result<Boot, BoxError> {
-    // The same dev escape hatch the sidecar has: point at a server the
+    // The dev escape hatch: point at a server the
     // developer is already running and own nothing. Debug builds only, so
     // a release build cannot be redirected by an environment variable.
     #[cfg(debug_assertions)]
@@ -137,8 +135,8 @@ pub fn boot(app: &AppHandle) -> Result<Boot, BoxError> {
 
     let data_dir = crate::backend::resolve_data_dir()?;
     std::fs::create_dir_all(&data_dir)?;
-    // Private before anything is written, as on the sidecar path. The
-    // core tightens the database files themselves when it opens them.
+    // Private before anything is written. The core tightens the database
+    // files themselves when it opens them.
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -334,8 +332,8 @@ fn resources_beside_executable() -> Option<PathBuf> {
     Some(exe.parent()?.parent()?.join("Resources"))
 }
 
-/// The server's whole environment, as `env_clear()` plus a handful of
-/// variables was the sidecar's, and this launch's credential.
+/// The server's whole environment: the handful of variables the Node
+/// build used to pass after `env_clear()`, and this launch's credential.
 ///
 /// No `AUDITOR_ADMIN_TOKEN`: the frontend reads a configured admin token as
 /// a network deployment (pages redirect to the sign-in page, Settings shows
@@ -405,18 +403,17 @@ fn remember_port(data_dir: &Path, port: u16) {
     }
 }
 
-/// Remove what the Node sidecar extracted into `data_dir`. Best effort: a
+/// Remove what the Node build extracted into `data_dir`. Best effort: a
 /// failure is logged and costs disk space, nothing more.
 ///
 /// It touches only the names above, and the tree only when it is a real
-/// directory that looks like the sidecar's: a symlink is left alone, and
-/// so is wherever it points.
+/// directory that looks like the Node build's: a symlink is left alone,
+/// and so is wherever it points.
 ///
 /// The tree is renamed before it is deleted, so `standalone` is only ever
 /// whole or gone. An interrupted delete leaves [`NODE_TREE_REMOVING`] for
-/// the next launch to finish, and a rollback build that finds no
-/// `standalone/server.js` extracts its tarball again whatever its marker
-/// says (`sidecar.rs`), so neither build ever runs from a half-deleted tree.
+/// the next launch to finish, so nothing ever runs from a half-deleted
+/// tree.
 fn remove_node_leftovers(data_dir: &Path) {
     remove_tree(&data_dir.join(NODE_TREE_REMOVING));
 
@@ -447,7 +444,7 @@ fn remove_node_leftovers(data_dir: &Path) {
     }
 }
 
-/// The sidecar's tree holds its server and that server's modules; a
+/// The Node build's tree holds its server and that server's modules; a
 /// directory that merely shares the name does not.
 fn looks_like_node_tree(dir: &Path) -> bool {
     dir.join("server.js").is_file() || dir.join("node_modules").is_dir()
@@ -532,8 +529,8 @@ fn choose_site(staged: &Path, exe: Option<&Path>, cwd: &Path) -> Option<PathBuf>
     is_site(staged).then(|| staged.to_path_buf())
 }
 
-/// The repository's own build, walking up from `cwd` as the sidecar's
-/// standalone probe does: `tauri dev` runs the binary from src-tauri/,
+/// The repository's own build, walking up from `cwd`: `tauri dev` runs
+/// the binary from src-tauri/,
 /// plain `cargo run` from the repository root, and a nested workspace
 /// deeper still.
 fn repository_build(cwd: &Path) -> Option<PathBuf> {
@@ -858,7 +855,7 @@ mod tests {
         dir
     }
 
-    /// What the sidecar extracts: a server and the modules it requires.
+    /// What the Node build extracted: a server and the modules it requires.
     fn write_node_tree(tree: &Path) {
         let next = tree.join("node_modules").join("next");
         std::fs::create_dir_all(&next).expect("tree");

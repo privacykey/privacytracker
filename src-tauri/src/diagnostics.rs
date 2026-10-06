@@ -8,8 +8,8 @@
 // We pull:
 //   - app version + build target from Cargo metadata at compile time
 //   - OS name + version via std::env + sysctl-style probes
-//   - data dir path (the one we passed to the sidecar)
-//   - sidecar URL + last-known /api/apps reachability
+//   - data dir path (the one we passed to the backend)
+//   - backend URL + last-known /api/apps reachability
 //   - an arbitrary JSON blob from /api/desktop/diagnostics (node version,
 //     last sync timestamps, pending bulk runs, etc. — the node side owns
 //     its own diagnostics because only it knows those).
@@ -33,7 +33,7 @@ pub fn build_report(base_url: &str) -> String {
     out.push_str(&format!("  Family:        {}\n", std::env::consts::FAMILY));
     out.push_str(&format!("  OS:            {}\n", std::env::consts::OS));
     out.push_str(&format!("  Arch:          {}\n", std::env::consts::ARCH));
-    out.push_str("-- Sidecar --\n");
+    out.push_str("-- Backend --\n");
     out.push_str(&format!("  Base URL:      {}\n", base_url));
     out.push_str(&format!("  Data dir:      {}\n", data_dir_display()));
 
@@ -106,7 +106,7 @@ fn chrono_like_now() -> String {
         .duration_since(UNIX_EPOCH)
         .unwrap_or(Duration::ZERO);
     // epoch seconds → "YYYY-MM-DDTHH:MM:SSZ". We only need coarse
-    // granularity — the sidecar's activity log is the precise timestamp.
+    // granularity — the backend's activity log is the precise timestamp.
     let secs = dur.as_secs() as i64;
     format_epoch(secs)
 }
