@@ -38,9 +38,10 @@
 //! **Scope.** Web and Docker never set the variable, so nothing changes
 //! there, and the parity harnesses never see this mode: it has no route in
 //! the router (the gate answers the link itself) and no `app/api` file,
-//! so the manifest has nothing to classify. The Node server has no
-//! counterpart: the desktop rollback build, which spawns it as a sidecar,
-//! runs without this protection.
+//! so the manifest has nothing to classify. The Node server's counterpart
+//! is `lib/desktop-auth.ts`, which the proxy runs as its step 0.75: the
+//! desktop rollback build spawns the sidecar with the same variable and a
+//! single bootstrap nonce in `PRIVACYTRACKER_DESKTOP_BOOTSTRAP_NONCE`.
 
 use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant};

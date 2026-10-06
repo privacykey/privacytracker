@@ -135,7 +135,20 @@ export async function POST(request: Request) {
       // progressively so the "Thinking" indicator stays fresh.
       const encoder = new TextEncoder();
 
+      // The browser going away (Stop, a closed tab, a lost connection)
+      // cancels the stream, or aborts the request; either stops the
+      // summarise loop at its next provider call instead of letting a long
+      // policy run on, and be paid for, with nobody reading the result.
+      const cancel = new AbortController();
+      const abortFromRequest = () => cancel.abort();
+      request.signal.addEventListener("abort", abortFromRequest, {
+        once: true,
+      });
+
       const stream = new ReadableStream<Uint8Array>({
+        cancel() {
+          cancel.abort();
+        },
         async start(controller) {
           const write = (obj: unknown) => {
             try {
@@ -158,7 +171,13 @@ export async function POST(request: Request) {
                 developer: app.developer ?? undefined,
                 policyUrl: app.privacyPolicyUrl!,
               },
-              { phase, phaseStream, forceResummarise, bypassThrottle }
+              {
+                phase,
+                phaseStream,
+                forceResummarise,
+                bypassThrottle,
+                signal: cancel.signal,
+              }
             );
 
             write({ type: "done", analysis });
@@ -182,6 +201,7 @@ export async function POST(request: Request) {
               detail: `appId=${appId} phase=${phase} stream=1 ${message.slice(0, 200)}`,
             });
           } finally {
+            request.signal.removeEventListener("abort", abortFromRequest);
             try {
               controller.close();
             } catch {
@@ -207,7 +227,7 @@ export async function POST(request: Request) {
         developer: app.developer ?? undefined,
         policyUrl: app.privacyPolicyUrl,
       },
-      { phase, forceResummarise, bypassThrottle }
+      { phase, forceResummarise, bypassThrottle, signal: request.signal }
     );
 
     recordAudit({

@@ -47,7 +47,10 @@ use axum::{
     response::Response,
 };
 use serde_json::{json, Map, Value};
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 const REGENERATE: &str = "/api/policy/regenerate";
 const SAMPLE: &str = "/api/ai/policy-sample";
@@ -1005,11 +1008,12 @@ fn prepare(w: &mut Writer, body: BodyOutcome) -> Result<Result<Ready, Response>,
 /// The options the route runs with: an explicit regenerate always wants
 /// fresh work and a fresh summary, and passes the scrape throttle when the
 /// body asks.
-fn options(phase: Phase, bypass_throttle: bool) -> SyncOptions {
+fn options(phase: Phase, bypass_throttle: bool, cancel: Option<Arc<AtomicBool>>) -> SyncOptions {
     SyncOptions {
         phase,
         force_resummarise: true,
         bypass_throttle,
+        cancel,
     }
 }
 
@@ -1067,6 +1071,12 @@ async fn regenerate(
                 ip: actor.ip.clone(),
                 user_agent: actor.user_agent.clone(),
             };
+            // The client going away (Stop, a closed tab) closes the stream.
+            // The next line the run writes finds it closed and raises the
+            // flag, and the summariser stops before its next provider call
+            // instead of running a long policy on for nobody, as Node's
+            // regenerate aborts its signal.
+            let cancel = Arc::new(AtomicBool::new(false));
             tokio::spawn(async move {
                 let Detached {
                     mut db,
@@ -1074,12 +1084,21 @@ async fn regenerate(
                     fetcher,
                     clock,
                 } = run;
+                let gone = cancel.clone();
                 let mut write = |line: Vec<u8>| {
-                    // A closed stream (the client went away) is ignored.
-                    let _ = tx.send(line);
+                    if tx.send(line).is_err() {
+                        gone.store(true, Ordering::SeqCst);
+                    }
                 };
                 let follow_ups = stream_run(
-                    &mut *db, &mut *ids, &*fetcher, &*clock, &ready, &actor, &mut write,
+                    &mut *db,
+                    &mut *ids,
+                    &*fetcher,
+                    &*clock,
+                    &ready,
+                    &actor,
+                    Some(cancel),
+                    &mut write,
                 )
                 .await;
                 policy_store::run_follow_ups(&mut *db, &*fetcher, &*clock, follow_ups).await;
@@ -1092,9 +1111,16 @@ async fn regenerate(
             return (ndjson_response(Body::from_stream(lines)), none());
         }
         let mut body = Vec::new();
-        let follow_ups = stream_run(db, ids, fetcher, &*clock, &ready, actor, &mut |line| {
-            body.extend(line)
-        })
+        let follow_ups = stream_run(
+            db,
+            ids,
+            fetcher,
+            &*clock,
+            &ready,
+            actor,
+            None,
+            &mut |line| body.extend(line),
+        )
         .await;
         return (ndjson_response(Body::from(body)), follow_ups);
     }
@@ -1104,7 +1130,7 @@ async fn regenerate(
         fetcher,
         &*clock,
         &ready.request,
-        options(ready.phase, ready.bypass_throttle),
+        options(ready.phase, ready.bypass_throttle, None),
     )
     .await;
     match synced {
@@ -1144,6 +1170,7 @@ async fn stream_run(
     clock: &dyn Clock,
     ready: &Ready,
     actor: &Actor,
+    cancel: Option<Arc<AtomicBool>>,
     write: &mut (dyn FnMut(Vec<u8>) + Send),
 ) -> FollowUps {
     let outcome = {
@@ -1156,7 +1183,7 @@ async fn stream_run(
             fetcher,
             clock,
             &ready.request,
-            options(ready.phase, ready.bypass_throttle),
+            options(ready.phase, ready.bypass_throttle, cancel),
             Some(&mut sink),
         )
         .await

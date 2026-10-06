@@ -260,7 +260,8 @@ export async function submitToWaybackSaveNow(
   }
 }
 
-function extractWaybackTimestamp(url: string): string | undefined {
+/** The `YYYYMMDDhhmmss` (or shorter) timestamp in a Wayback replay URL. */
+export function extractWaybackTimestamp(url: string): string | undefined {
   const match = url.match(/\/web\/(\d{4,14})(?:[a-z_]+)?\//i);
   return match?.[1];
 }

@@ -163,6 +163,45 @@ Every change since v0.1.2 is listed in
 
 ### Security
 
+- The desktop app's Node rollback build now protects its local server the
+  way the Rust build does: the shell mints a credential at every launch, the
+  server refuses any `/api` call without it, and the window receives it as an
+  HttpOnly cookie through a one-time link, so another account on the same Mac
+  can no longer read or drive the install over its loopback port. Nothing
+  changes for the web and Docker deployments.
+- The admin session cookie no longer carries `AUDITOR_ADMIN_TOKEN` itself. Login
+  stores a value derived from the token under a secret minted at each start, so
+  a cookie that reaches another service on the same host (browsers scope cookies
+  by host, not by port) does not disclose the token, and a restart or a token
+  rotation signs every browser out. Both backends also try every
+  `pt_admin_token` cookie a request carries, so a cookie planted by a sibling
+  service can no longer shadow the real one and lock you out of every private
+  page; a cookie carrying the token itself keeps working.
+- A hostname under `.localhost` is no longer treated as loopback by the host
+  allowlist on either backend. Where a resolver sends such a name is up to it,
+  so a token-less install on loopback now refuses a page that rebinds one to
+  127.0.0.1, as it refuses any other unknown host. The Caddy and Traefik
+  overlays already list `privacytracker.localhost` in
+  `PRIVACYTRACKER_ALLOWED_HOSTS`; a hand-rolled setup that relied on the old
+  rule needs the same entry, and the admin token that comes with it.
+- The iOS app-list helper (`scripts/ios-app-import/export_ios_apps.py`) quotes
+  every CSV field and prefixes a tab to a name that a spreadsheet would read as
+  a formula, so an app named like `=HYPERLINK(...)` opens as text.
+- Reading a fetched privacy-policy page into text, and splitting that text
+  into chunks for the AI summariser, now take time proportional to the size
+  of the page on both backends. A page shaped to make the former
+  regular-expression passes backtrack could hold up the server for seconds
+  per megabyte during the automatic policy fetch that follows an import or
+  sync. The text produced is unchanged.
+- Bound what one privacy policy can cost. A fetch keeps at most 300,000
+  characters of a policy's text, one summary makes at most 120 chunk calls to
+  the AI provider, and pressing Stop or closing the tab on a running summary
+  now stops it at its next provider call instead of only hiding its progress.
+  Each app keeps its newest 20 policy versions and no more than 8 MiB of their
+  text, so a page that changes on every fetch can no longer grow the install's
+  backup past the size a restore accepts. The Internet Archive is asked to save
+  a policy only when no copy from the last 45 days is known, and the privacy
+  disclosure now says so.
 - Replace manual network-interface pointer traversal with an owning Rust
   iterator when finding addresses for paired phones.
 - Patch Next.js, DOMPurify and affected build-tool dependencies. The Linux

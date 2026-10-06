@@ -11,7 +11,7 @@ use super::{
     activity_log::record_activity,
     auth::{
         admin_token_configured, login_brute_force_tripped, record_login_failure,
-        request_has_valid_admin_token, ADMIN_TOKEN_COOKIE,
+        admin_session_cookie_value, request_has_valid_admin_token, ADMIN_TOKEN_COOKIE,
     },
     body::{body_error_response, BodyOutcome},
     csp_reports, diag,
@@ -458,10 +458,12 @@ fn login(cx: &mut Cx, body: BodyOutcome, headers: &HeaderMap, actor: &Actor) -> 
     record_audit(cx.w, cx.ids, cx.now, "admin_token.login", actor, None, true);
     // `Secure` only over HTTPS, read off the request's perceived scheme;
     // Next serialises the eight-hour cookie with both Expires and Max-Age.
+    // The cookie carries this boot's session value, not the token.
     let https = request_origin(headers, trust_proxy()).is_some_and(|o| o.starts_with("https:"));
+    let session = admin_session_cookie_value().unwrap_or_else(|| provided.to_string());
     let cookie = format!(
         "{ADMIN_TOKEN_COOKIE}={}; Path=/; Expires={}; Max-Age={ADMIN_TOKEN_MAX_AGE_SECONDS}; {}HttpOnly; SameSite=strict",
-        js_encode_uri_component(provided),
+        js_encode_uri_component(&session),
         js_utc_string(cx.now + ADMIN_TOKEN_MAX_AGE_SECONDS * 1000),
         if https { "Secure; " } else { "" }
     );

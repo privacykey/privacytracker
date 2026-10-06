@@ -49,9 +49,12 @@ pub fn normalize_host(raw: Option<&str>) -> Option<String> {
     }
 }
 
-/// Port of `isLoopbackNormalized`: 127.0.0.0/8, ::1, localhost, *.localhost.
+/// Port of `isLoopbackNormalized`: 127.0.0.0/8, ::1 and the literal
+/// `localhost`. A name under `.localhost` is not loopback: whether a browser
+/// or resolver keeps it on the loopback interface is up to each of them, so
+/// the host allowlist must admit it explicitly, as it does any other name.
 pub fn is_loopback_normalized(h: &str) -> bool {
-    if h == "localhost" || h.ends_with(".localhost") {
+    if h == "localhost" {
         return true;
     }
     if h == "::1" || h == "0:0:0:0:0:0:0:1" {
@@ -394,16 +397,17 @@ mod tests {
 
     #[test]
     fn detects_loopback() {
-        for h in [
-            "127.0.0.1",
-            "127.1.2.3",
-            "localhost",
-            "app.localhost",
-            "::1",
-        ] {
+        for h in ["127.0.0.1", "127.1.2.3", "localhost", "::1"] {
             assert!(is_loopback_normalized(h), "{h} should be loopback");
         }
-        for h in ["10.0.0.1", "example.com", "0.0.0.0", "128.0.0.1"] {
+        for h in [
+            "10.0.0.1",
+            "example.com",
+            "0.0.0.0",
+            "128.0.0.1",
+            "app.localhost",
+            "evil.localhost",
+        ] {
             assert!(!is_loopback_normalized(h), "{h} should NOT be loopback");
         }
     }
@@ -412,6 +416,7 @@ mod tests {
     fn loopback_hosts_are_allowed_without_an_allowlist() {
         assert!(is_host_allowed(Some("127.0.0.1:3001")));
         assert!(is_host_allowed(Some("localhost:3000")));
+        assert!(!is_host_allowed(Some("evil.localhost:3000")));
         assert!(!is_host_allowed(None));
     }
 

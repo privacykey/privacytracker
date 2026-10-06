@@ -3188,7 +3188,14 @@ the first closing tag of the same name is searched from the end of the
 opening tag, and on a miss the scan resumes one character after the
 opening `<` — what a backtracking engine does with a global regex — so
 nested, unclosed and oddly closed containers behave as they do on Node,
-and the fixture holds one of each.
+and the fixture holds one of each. Each scanner remembers, per tag name,
+the position from which a closer was found absent, since a search from
+there or later finds nothing either: a page of unclosed containers costs
+one scan to the end, not one per opener. Node has since moved its whole
+extraction to scanners of its own (`lib/policy-html-scan.ts`): most
+reproduce their regex exactly, and the two container passes follow these
+two, so the sides now agree on every page rather than on the recorded
+ones alone.
 
 **Negative controls, predicted before running.** A missing Content-Type
 read as HTML: exactly the one case that has none. The browser bundle's

@@ -20,6 +20,13 @@ import {
   isSameOriginRequest,
   requestOrigin,
 } from "@/lib/deployment-trust";
+import {
+  DESKTOP_CREDENTIAL_REQUIRED,
+  DESKTOP_LINK_REFUSED,
+  decideDesktopCredential,
+  desktopCredential,
+  desktopHeaderPresented,
+} from "@/lib/desktop-auth";
 import { OCR_WORKER_CSP_DIRECTIVES, OCR_WORKER_PATH } from "@/lib/ocr-assets";
 
 /**
@@ -302,6 +309,51 @@ export function proxy(request: NextRequest) {
     return attachSecurityHeaders(res, pathname);
   }
 
+  // Step 0.75 (desktop app only) — the launch credential. Every /api call
+  // needs it, the public reads, the CSP report and the login routes
+  // included; the one-time link that hands the webview its cookie is
+  // answered here. The Rust server's gate has the same step
+  // (core/src/server/gate.rs); see lib/desktop-auth.ts.
+  const launchCredential = desktopCredential();
+  if (launchCredential !== null) {
+    const decision = decideDesktopCredential(
+      method,
+      pathname,
+      request.nextUrl.searchParams.get("nonce"),
+      request.headers,
+      launchCredential
+    );
+    if (decision.kind === "refused") {
+      const res = NextResponse.json(
+        { error: DESKTOP_CREDENTIAL_REQUIRED },
+        { status: 401 }
+      );
+      res.headers.set("Cache-Control", "no-store");
+      return attachSecurityHeaders(res, pathname);
+    }
+    if (decision.kind === "link_refused") {
+      const res = NextResponse.json(
+        { error: DESKTOP_LINK_REFUSED },
+        { status: 403 }
+      );
+      res.headers.set("Cache-Control", "no-store");
+      return attachSecurityHeaders(res, pathname);
+    }
+    if (decision.kind === "signed_in") {
+      // The start page on the origin the window asked, as the login
+      // redirect below builds its Location.
+      const res = NextResponse.redirect(
+        new URL("/", requestOrigin(request) ?? request.url),
+        303
+      );
+      if (decision.setCookie) {
+        res.headers.append("Set-Cookie", decision.setCookie);
+      }
+      res.headers.set("Cache-Control", "no-store");
+      return attachSecurityHeaders(res, pathname);
+    }
+  }
+
   // Browsers send CSP violation reports as anonymous POSTs (no custom
   // headers, cookies optional). The endpoint only appends to a small,
   // rate-limited in-memory ring, so it is exempt from BOTH the auth gate
@@ -340,12 +392,21 @@ export function proxy(request: NextRequest) {
   }
 
   // CSRF: reject mutating API calls that are neither same-origin nor
-  // carry an explicit admin-token header. Cookies never exempt the Origin check.
+  // carry an explicit admin-token header. Cookies never exempt the Origin
+  // check, the desktop session cookie included: only the credential's
+  // header form stands in for an Origin, as the shell's own requests send it.
+  const launchCredentialHeader =
+    launchCredential !== null &&
+    desktopHeaderPresented(request.headers, launchCredential);
   if (
     MUTATING_METHODS.has(method) &&
     !cspReport &&
     pathname.startsWith(ALWAYS_REQUIRE_ORIGIN_PREFIX) &&
-    !(isSameOriginRequest(request) || requestHasValidAdminHeader(request))
+    !(
+      isSameOriginRequest(request) ||
+      requestHasValidAdminHeader(request) ||
+      launchCredentialHeader
+    )
   ) {
     const res = NextResponse.json(
       { error: "Cross-origin mutation rejected" },

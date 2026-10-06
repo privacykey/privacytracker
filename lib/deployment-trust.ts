@@ -102,18 +102,23 @@ export function normalizeHost(raw: string | null | undefined): string | null {
 }
 
 function isLoopbackNormalized(h: string): boolean {
-  return (
-    h === "localhost" ||
-    h.endsWith(".localhost") ||
-    h === "::1" ||
-    /^127(?:\.\d{1,3}){3}$/.test(h)
-  );
+  return h === "localhost" || h === "::1" || /^127(?:\.\d{1,3}){3}$/.test(h);
 }
 
 /**
- * Canonical loopback classification. Treats all of 127.0.0.0/8, ::1, the
- * localhost and *.localhost as loopback. Unspecified addresses are not local.
+ * Canonical loopback classification. Treats all of 127.0.0.0/8, ::1 and the
+ * literal `localhost` as loopback. Unspecified addresses are not local.
  * (Fixes the old diagnostics check that only matched the literal "127.0.0.1".)
+ *
+ * Names under `.localhost` are NOT loopback here. RFC 6761 reserves the
+ * suffix, but whether a browser or a resolver keeps such a name on the
+ * loopback interface is up to each of them, and the host allowlist is the
+ * DNS-rebinding defence for a token-less loopback install: a page that
+ * rebinds `evil.localhost` to 127.0.0.1 must be refused like any other name.
+ * A `.localhost` hostname an operator serves on purpose (the Caddy and
+ * Traefik overlays default to `privacytracker.localhost`) is listed in
+ * `PRIVACYTRACKER_ALLOWED_HOSTS` like any other, which also marks the
+ * install network-exposed, so the admin token is required there.
  */
 export function isLoopbackHost(raw: string | null | undefined): boolean {
   const h = normalizeHost(raw);

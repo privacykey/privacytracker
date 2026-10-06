@@ -55,6 +55,13 @@ delete process.env.AUDITOR_ADMIN_TOKEN;
 delete process.env.PRIVACYTRACKER_RUNTIME;
 delete process.env.PRIVACYTRACKER_NETWORK_EXPOSED;
 delete process.env.PRIVACYTRACKER_PARENT_PID;
+// The admin session cookie is an HMAC of the token under a secret minted
+// per boot (lib/admin-auth.cjs). Pinned here so the login cases' Set-Cookie
+// is reproducible; maintenance_tests.rs sets the same 32 bytes.
+globalThis[Symbol.for("privacytracker.admin-session-secret")] = Buffer.alloc(
+  32,
+  0x5a
+);
 
 const now = Date.UTC(2026, 8, 15, 12);
 const RealDate = Date;

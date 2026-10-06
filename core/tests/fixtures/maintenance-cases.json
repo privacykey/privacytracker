@@ -18315,7 +18315,7 @@
         "body": "{\"ok\":true}",
         "type": "application/json",
         "retryAfter": null,
-        "setCookie": "pt_admin_token=secret-token; Path=/; Expires=Tue, 15 Sep 2026 20:00:00 GMT; Max-Age=28800; HttpOnly; SameSite=strict"
+        "setCookie": "pt_admin_token=640043e18ffdef19a405442aeee13b349f9b7c1a043d3a5d6161b233f7c03947; Path=/; Expires=Tue, 15 Sep 2026 20:00:00 GMT; Max-Age=28800; HttpOnly; SameSite=strict"
       }
     },
     {
@@ -18414,7 +18414,7 @@
         "body": "{\"ok\":true}",
         "type": "application/json",
         "retryAfter": null,
-        "setCookie": "pt_admin_token=secret-token; Path=/; Expires=Tue, 15 Sep 2026 20:00:00 GMT; Max-Age=28800; Secure; HttpOnly; SameSite=strict"
+        "setCookie": "pt_admin_token=640043e18ffdef19a405442aeee13b349f9b7c1a043d3a5d6161b233f7c03947; Path=/; Expires=Tue, 15 Sep 2026 20:00:00 GMT; Max-Age=28800; Secure; HttpOnly; SameSite=strict"
       }
     },
     {
