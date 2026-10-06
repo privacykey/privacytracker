@@ -2,12 +2,6 @@ name: macOS desktop release
 
 on:
   workflow_call:
-    inputs:
-      backend:
-        description: 'Which backend the app ships: rust (the app serves itself) or node (the bundled sidecar, kept for rollback until v0.3.0 has shipped).'
-        required: false
-        default: rust
-        type: string
   workflow_dispatch:
     inputs:
       tag:
@@ -19,26 +13,6 @@ on:
         required: false
         default: false
         type: boolean
-      backend:
-        description: 'Which backend the app ships.'
-        required: false
-        default: rust
-        type: choice
-        options:
-          - rust
-          - node
-
-env:
-  # Node 24 LTS ("Krypton"), active-LTS channel through Apr 2028.
-  # Must match the sidecar Node version packaged into src-tauri/binaries/
-  # so better-sqlite3's native ABI lines up — see comments further down.
-  # The `rust` backend ships no Node, so its leg builds under .nvmrc
-  # instead and this pin does not apply to it.
-  NODE_VERSION: '24.20.0'
-  # rust since the desktop cutover; node builds the sidecar release, kept
-  # for a rollback until v0.3.0 has shipped. Every Node-only step below is gated on this,
-  # and the verifier is told which bundle it is looking at.
-  BACKEND: ${{ inputs.backend || 'rust' }}
 
 permissions:
   actions: read
@@ -99,22 +73,10 @@ jobs:
         # package.json, the single source of truth.
         uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271  # v6
 
-      - name: Install Node (node backend)
-        if: ${{ env.BACKEND == 'node' }}
+      - name: Install Node
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
         with:
-          # Deliberately NOT `node-version-file: .nvmrc` (major-only): the
-          # build Node must be the exact sidecar version pinned in
-          # NODE_VERSION at the top of this file so better-sqlite3's
-          # native ABI lines up with the bundled runtime.
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'pnpm'
-
-      - name: Install Node (rust backend)
-        if: ${{ env.BACKEND == 'rust' }}
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38  # v6
-        with:
-          # Nothing of Node ships in this build, so nothing constrains the
+          # Nothing of Node ships in the app, so nothing constrains the
           # version beyond what the repository asks for: Node only builds
           # the frontend here, and the app serves it with SQLite compiled
           # into the binary.
@@ -162,123 +124,13 @@ jobs:
           node -e 'if (process.arch !== process.env.EXPECTED_ARCH) throw new Error("Wrong runner architecture")'
           pnpm install --frozen-lockfile
 
-      - name: Check the native SQLite addon loads
-        # Only the node backend ships better-sqlite3; the rust one compiles
-        # SQLite into the binary, so this check has nothing to say about it.
-        if: ${{ env.BACKEND == 'node' }}
-        run: node -e 'const db = require("better-sqlite3") (":memory:"); db.close()'
-
-      # Fetch the exact Node binary we ship as a sidecar. Must match the
-      # NODE_MODULE_VERSION that `better-sqlite3` was installed against in
-      # the step above — pinning NODE_VERSION at the top of this file and
-      # passing it through here guarantees the match.
-      #
-      # The script GPG-verifies against the Node.js release-team signing
-      # keys, THEN hash-verifies against the now-trusted SHASUMS256.txt
-      # before extraction. The bundled binary lands inside the signed +
-      # notarised app, so a compromise of the nodejs.org distribution host
-      # (or any TLS-MITM the GitHub runner walks into) would otherwise
-      # propagate a tampered Node into every privacytracker auto-update.
-      # Notarisation / Gatekeeper only verify the cert chain — they don't
-      # know what bytes Node was supposed to be. The detached
-      # SHASUMS256.txt.sig closes the gap a bare hash check left open: an
-      # attacker who can swap the tarball can equally swap SHASUMS256.txt,
-      # but cannot forge a Node release-team signature over it.
-      #
-      # This used to be ~40 lines of inline shell with its own copy of the
-      # release-key fingerprints. It shares `scripts/fetch-node-sidecar.sh`
-      # with local desktop builds now, so the key list has exactly one home
-      # (in that script) and cannot drift between here and a dev machine.
-      # TAURI_BUILD_TARGET is the same variable stage-standalone.mjs reads
-      # when it picks which binary to wrap, so both halves stay in step.
-      - name: Download + verify bundled Node ${{ env.NODE_VERSION }} (${{ matrix.node_arch }})
-        if: ${{ env.BACKEND == 'node' }}
-        env:
-          # NODE_VERSION comes from the workflow-level `env:` block.
-          TAURI_BUILD_TARGET: ${{ matrix.target }}
-        run: bash scripts/fetch-node-sidecar.sh
-
-      # Set up a dedicated signing keychain so the staging script
-      # below can codesign Mach-O binaries inside standalone.tar
-      # BEFORE the tarball gets sealed into the .app bundle.
-      # tauri-action sets up its own (separate) keychain for signing
-      # the outer .app, but it does so after `beforeBuildCommand`
-      # fires — too late to help us sign the contents we need to ship
-      # inside the tar. Two keychains on the search list co-exist
-      # cleanly; the cleanup step at the bottom removes ours.
-      - name: Set up staging signing keychain
-        # Only the node backend needs it: it exists so stage-standalone.mjs
-        # can codesign the Mach-O files it puts inside standalone.tar. The
-        # rust backend stages a directory of pages and assets, none of which
-        # is code, and tauri-action's own keychain signs the app.
-        if: ${{ env.BACKEND == 'node' }}
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: |
-          set -euo pipefail
-          KEYCHAIN_PASS="$(openssl rand -base64 24)"
-          KEYCHAIN_PATH="${RUNNER_TEMP}/staging.keychain-db"
-          CERT_PATH="${RUNNER_TEMP}/staging-cert.p12"
-          # Stash the path + password for later step env (and cleanup).
-          echo "STAGING_KEYCHAIN_PATH=${KEYCHAIN_PATH}" >> "$GITHUB_ENV"
-          echo "::add-mask::${KEYCHAIN_PASS}"
-          echo "STAGING_KEYCHAIN_PASS=${KEYCHAIN_PASS}" >> "$GITHUB_ENV"
-          umask 077
-          printf '%s' "${APPLE_CERTIFICATE}" | base64 --decode > "${CERT_PATH}"
-          security create-keychain -p "${KEYCHAIN_PASS}" "${KEYCHAIN_PATH}"
-          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
-          security unlock-keychain -p "${KEYCHAIN_PASS}" "${KEYCHAIN_PATH}"
-          security import "${CERT_PATH}" \
-            -P "${APPLE_CERTIFICATE_PASSWORD}" \
-            -A -t cert -f pkcs12 \
-            -k "${KEYCHAIN_PATH}"
-          # Append our keychain to the user search list so codesign
-          # finds the cert without us having to pass --keychain everywhere.
-          keychains=()
-          while IFS= read -r keychain; do keychains+=("$keychain"); done < <(security list-keychain -d user | sed 's/^ *"//; s/"$//')
-          security list-keychain -d user -s "${KEYCHAIN_PATH}" "${keychains[@]}"
-          # Permit codesign / productsign to access the private key
-          # without the interactive password prompt that runs would
-          # block on.
-          security set-key-partition-list \
-            -S apple-tool:,apple:,codesign: \
-            -s -k "${KEYCHAIN_PASS}" "${KEYCHAIN_PATH}"
-          rm -f "${CERT_PATH}"
-          # Sanity-check: the identity must be visible to codesign
-          # right now, otherwise the staging step below will fail
-          # with the same "item could not be found in the keychain"
-          # the previous attempt died on.
-          security find-identity -v -p codesigning "${KEYCHAIN_PATH}"
-
-      - name: Stage Next.js standalone bundle
-        # TAURI_BUILD_TARGET tells scripts/stage-standalone.mjs which
-        # Node binary to drop into the .node-helper.app bundle that
-        # ships inside standalone.tar. Each leg builds on a runner of its
-        # own architecture (macos-15-intel for x86_64), so the target and
-        # the host agree today; naming the target explicitly keeps the
-        # Intel .app from ever carrying an arm64 Node if a leg is moved to
-        # another runner.
-        #
-        # APPLE_SIGNING_IDENTITY is the trigger for the codesign pass
-        # inside stage-standalone.mjs — without it the script prunes
-        # but does not sign, leaving notarytool to reject every
-        # surviving .node / .dylib inside standalone.tar.
-        if: ${{ env.BACKEND == 'node' }}
-        env:
-          TAURI_BUILD_TARGET: ${{ matrix.target }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-        run: pnpm build:standalone
-
-      # The rust backend's equivalent, and far less: the frontend the app
-      # serves, staged as a directory inside the bundle. No Node, no
-      # tarball, nothing to codesign (scripts/stage-site.mjs refuses to
-      # stage anything but pages, assets and the CSP hashes). The tauri
-      # build below runs the same two commands through the overlay's
-      # beforeBuildCommand; doing it here as well keeps the failure close
-      # to its cause when a build is broken.
+      # The frontend the app serves, staged as a directory inside the
+      # bundle. No Node, no tarball, nothing to codesign
+      # (scripts/stage-site.mjs refuses to stage anything but pages, assets
+      # and the CSP hashes). The tauri build below runs the same commands
+      # through the config's beforeBuildCommand; doing it here as well
+      # keeps the failure close to its cause when a build is broken.
       - name: Build and stage the frontend and notices
-        if: ${{ env.BACKEND == 'rust' }}
         run: |
           pnpm build
           pnpm stage:site
@@ -356,32 +208,6 @@ jobs:
 
           RELEASE_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
 
-          # --- Build target awareness ---
-          # tauri-action runs `tauri build --target ${{ matrix.target }}`
-          # which invokes the beforeBuildCommand (pnpm build:standalone on
-          # the node backend), which calls scripts/stage-standalone.mjs.
-          # The staging script picks the bundled Node binary based on
-          # TAURI_BUILD_TARGET rather than the host arch (see the comment
-          # in that script). This export keeps the explicit-stage step
-          # (above) and the tauri-action's implicit re-run consistent.
-          TAURI_BUILD_TARGET: ${{ matrix.target }}
-
-          # --- Skip the redundant beforeBuildCommand re-stage ---
-          # stage-standalone has already run once above (in the
-          # explicit "Stage Next.js standalone bundle" step) with our
-          # staging keychain on the search list, which is where the
-          # codesign pass on every .node / .dylib inside standalone.tar
-          # actually succeeds. tauri-action's keychain isn't visible to
-          # codesign at the moment beforeBuildCommand fires inside
-          # `tauri build`, so without this guard the second run would
-          # wipe the pre-signed tarball and die on the codesign call.
-          # See the matching `STANDALONE_PRE_BUILT === '1'` early-exit
-          # in scripts/stage-standalone.mjs. The rust backend has no
-          # pre-signed tarball to protect: its beforeBuildCommand only
-          # rebuilds and re-stages the frontend, which costs nothing to
-          # repeat and keeps the bundle's contents a function of the build
-          # that produced it.
-          STANDALONE_PRE_BUILT: ${{ env.BACKEND == 'node' && '1' || '' }}
         with:
           # `pnpm tauri` without the trailing `--`. pnpm 11.0.x silently
           # stripped a trailing `--` separator before running the script;
@@ -391,11 +217,10 @@ jobs:
           # equivalent for arg forwarding — pnpm already passes the
           # action's `build --target …` straight through to the script.
           tauriScript: node scripts/run-release-tauri.mjs
-          # The rust backend adds three things: the cargo feature, the
-          # config overlay that bundles the staged site and swaps in the
-          # stricter entitlements, and `--no-default-features` for cargo
-          # AFTER the separator — the tauri CLI rejects it before one.
-          args: ${{ env.BACKEND == 'rust' && format('--target {0} --features rust-backend --config src-tauri/tauri.rust.conf.json -- --no-default-features', matrix.target) || format('--target {0}', matrix.target) }}
+          # `--no-default-features` for cargo goes AFTER the separator —
+          # the tauri CLI rejects it before one. Defaults would turn on
+          # `tauri/devtools`, which release builds must not ship.
+          args: ${{ format('--target {0} -- --no-default-features', matrix.target) }}
           # Draft release keyed on the git tag. On tag push, GITHUB_REF_NAME
           # is the tag (e.g. v0.1.0). On workflow_dispatch, use the input.
           tagName: ${{ !inputs.dry_run && github.ref_name || '' }}
@@ -427,7 +252,7 @@ jobs:
           TARGET: ${{ matrix.target }}
           NODE_ARCH: ${{ matrix.node_arch }}
           RELEASE_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
-        run: node scripts/verify-macos-bundle.mjs "src-tauri/target/$TARGET/release/bundle/macos/privacytracker.app" "$NODE_ARCH" "$BACKEND"
+        run: node scripts/verify-macos-bundle.mjs "src-tauri/target/$TARGET/release/bundle/macos/privacytracker.app" "$NODE_ARCH"
 
       # The updater archive is the one thing the release signs with the
       # updater key, so it is packed here from the bundle the step above
@@ -483,14 +308,6 @@ jobs:
         run: |
           rm -f "${{ steps.write-api-key.outputs.p8_path }}" 2>/dev/null || true
           security delete-keychain build.keychain 2>/dev/null || true
-          # Our staging keychain (set up early in the job to let
-          # stage-standalone.mjs codesign Mach-O binaries inside
-          # standalone.tar before tar). Best-effort delete; the runner
-          # VM is destroyed at job-end anyway.
-          if [ -n "${STAGING_KEYCHAIN_PATH:-}" ] && [ -f "${STAGING_KEYCHAIN_PATH}" ]; then
-            security delete-keychain "${STAGING_KEYCHAIN_PATH}" 2>/dev/null || true
-            rm -f "${STAGING_KEYCHAIN_PATH}" 2>/dev/null || true
-          fi
 
   assemble-latest-json:
     name: Verify and assemble both update feeds

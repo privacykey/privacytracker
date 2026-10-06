@@ -7,12 +7,9 @@ import Database from "better-sqlite3";
  * worker subprocesses, all of which would race to open + migrate the same
  * on-disk SQLite file (SQLITE_BUSY despite `busy_timeout = 5000`). Build
  * doesn't actually use the DB — only needs modules to evaluate cleanly —
- * so we open an in-memory database per worker. NEXT_PHASE is set by Next;
- * BUILD_STANDALONE is set by package.json's build:standalone script.
+ * so we open an in-memory database per worker. NEXT_PHASE is set by Next.
  */
-export const isBuildPhase =
-  process.env.NEXT_PHASE === "phase-production-build" ||
-  process.env.BUILD_STANDALONE === "1";
+export const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 
 /*
  * Resolve the data directory.

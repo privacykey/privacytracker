@@ -575,17 +575,6 @@ export const DEV_DEPENDENCY_NOTES: Record<string, DependencyNotes> = {
       npm: "https://www.npmjs.com/package/@types/react-dom",
     },
   },
-  "cross-env": {
-    license: "MIT",
-    about:
-      "Tiny shim that sets environment variables the same way across Unix and Windows shells.",
-    usage:
-      "Used in the build:standalone script to set BUILD_STANDALONE=1 before running next build, so the same command works on macOS, Linux and Windows.",
-    links: {
-      repo: "https://github.com/kentcdodds/cross-env",
-      npm: "https://www.npmjs.com/package/cross-env",
-    },
-  },
 };
 
 export function devDependencyEntries(): DependencyEntry[] {

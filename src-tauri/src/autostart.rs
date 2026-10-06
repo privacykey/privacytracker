@@ -70,7 +70,7 @@ fn run<R: Runtime>(app: &AppHandle<R>) -> Result<(), String> {
         return Ok(());
     }
     let state = crate::STATE.get().ok_or("the backend isn't running")?;
-    let settings = crate::settings::fetch(&state.sidecar_base_url).map_err(|e| e.to_string())?;
+    let settings = crate::settings::fetch(&state.backend_base_url).map_err(|e| e.to_string())?;
     let manager = app.autolaunch();
     let launch_agent_exists = manager.is_enabled().map_err(|e| e.to_string())?;
 

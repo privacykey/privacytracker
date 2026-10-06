@@ -136,8 +136,8 @@ token is configured, and are kept in memory, so a restart clears them.
 
 The Node server (`pnpm start`, and the rollback image built with
 `--build-arg BACKEND=node`) needs `lib/request-limits.cjs` loaded before Next.
-The supplied `pnpm start`, `pnpm dev`, Node image command and staged sidecar entry
-point do this automatically.
+The supplied `pnpm start`, `pnpm dev` and Node image command do this
+automatically.
 It limits raw HTTP uploads before Next Proxy clones their bodies: 4 KiB for
 sign-in, 512 KiB for ordinary requests, 8 MiB for audit bundles and 100 MiB for
 backup preview/restore, with a 30-second upload deadline. The larger import limits

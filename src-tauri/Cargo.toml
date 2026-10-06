@@ -14,9 +14,8 @@ tauri-build = { version = "2", features = [] }
 # `devtools` is no longer compiled in by default — it's an opt-in cargo
 # feature on this crate (`--features devtools`). Production release builds
 # omit it so a local attacker can't attach the Web Inspector to the running
-# webview and dump in-memory app state. Dev builds (`pnpm tauri:dev`, and
-# `pnpm tauri:dev:node` for the sidecar) pass `--features devtools` to
-# preserve the diagnostic affordance.
+# webview and dump in-memory app state. Dev builds (`pnpm tauri:dev`) pass
+# `--features devtools` to preserve the diagnostic affordance.
 tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
 tauri-plugin-shell = "2"
 # Updater is wired up so we don't have to add it later. The release CI signs
@@ -61,49 +60,39 @@ tauri-plugin-log = "2"
 
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-# Blocking HTTP client, used only to poll http://127.0.0.1:<port>/api/apps
-# during boot so we don't open the webview until Next.js is actually ready to
-# serve. rustls-tls to avoid dragging in an OpenSSL build dep on every target.
-# `json` is required for `Response::into_json::<T>()` — it's an opt-in feature
-# in ureq 2.x because pulling serde_json bloats no-json users. We use it in
-# sidecar.rs / settings.rs / notifications.rs / diagnostics.rs.
+# Blocking HTTP client for the shell's own requests to the embedded server
+# (backend.rs). rustls-tls to avoid dragging in an OpenSSL build dep on every
+# target. `json` is required for `Response::into_json::<T>()` — it's an
+# opt-in feature in ureq 2.x because pulling serde_json bloats no-json users.
+# We use it in settings.rs / notifications.rs / diagnostics.rs.
 ureq = { version = "2", default-features = false, features = ["tls", "json"] }
 # std::sync::Mutex is fine for the tray state; no need for parking_lot here.
 once_cell = "1"
-# Cross-platform "what's the per-user app-data folder" resolver. We pass the
-# path we pick into the Node sidecar via PRIVACYTRACKER_DATA_DIR so lib/db.ts
-# writes privacy.db into ~/Library/Application Support/privacytracker/ (mac) or
+# Cross-platform "what's the per-user app-data folder" resolver. The path it
+# picks is the embedded server's data directory, so privacy.db lands in
+# ~/Library/Application Support/privacytracker/ (mac) or
 # %APPDATA%\privacytracker\ (win). Using dirs (not dirs_next, which is unmaintained).
 dirs = "6"
 log = "0.4"
 # env_logger removed — `tauri-plugin-log` is the single owner of the
 # `log` facade subscriber. See main.rs for the plugin's target setup
 # (stdout + ~/Library/Logs/<bundle-id>/ + the webview inspector).
-# Used by sidecar.rs to extract `standalone.tar` into the per-user data
-# dir on first run. We bundle the Next.js standalone tree as a single
-# tarball (rather than a directory with thousands of files) because
-# Tauri's resource-glob matcher silently drops files inside dotfile-
-# prefixed dirs like `.next/`. tar 0.4 is already a transitive dep
-# via tauri-plugin-updater so this declaration costs nothing extra.
+# update_guard.rs reads the signed update archive with it. tar 0.4 is
+# already a transitive dep via tauri-plugin-updater so this declaration
+# costs nothing extra.
 tar = "0.4"
-# The Rust backend (Phase 6), behind the `rust-backend` feature and off by
-# default: with it, this process serves the app itself instead of spawning
-# the Node sidecar (see src/backend.rs). Release builds and
-# `pnpm tauri:build` pass it since the cutover. Optional, so a build
-# without it neither compiles nor links the crate: that build is the Node
-# rollback, kept until v0.3.0 has shipped.
-privacytracker-core = { path = "../core", optional = true }
-# Only the embedded backend needs an async runtime of its own: the server
-# is started on Tauri's, and the shutdown waits on it.
-tokio = { version = "1", default-features = false, features = ["net", "rt"], optional = true }
+# The server. This process serves the app itself from the Rust core (see
+# src/backend.rs and src/embedded.rs); there is no other backend since the
+# Node sidecar was retired ahead of v0.3.0.
+privacytracker-core = { path = "../core" }
+# The embedded backend's own async runtime: the server is started on
+# Tauri's, and the shutdown waits on it.
+tokio = { version = "1", default-features = false, features = ["net", "rt"] }
 
 [target.'cfg(unix)'.dependencies]
-# Used by sidecar.rs's pre_exec hook to call setsid() on the spawned
-# Node sidecar — detaches it from our Cocoa app's WindowServer / Dock
-# session so it doesn't show up as a "node / exec" icon in the macOS
-# Dock. libc is already a transitive dep via every system-call-using
-# crate in the tree (tokio, tauri, etc.), so declaring it directly
-# costs nothing.
+# cfgutil.rs kills a subprocess's whole process group with it. libc is
+# already a transitive dep via every system-call-using crate in the tree
+# (tokio, tauri, etc.), so declaring it directly costs nothing.
 libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -150,15 +139,9 @@ core-foundation = "0.10"
 core-foundation-sys = "0.8"
 
 [features]
-# Serve the app from this process with the Rust core instead of spawning
-# the Node sidecar (Phase 6). The desktop release and `just tauri-dev` pass
-# it. It stays out of the default set so that a build without it is still
-# the Node sidecar, the rollback until v0.3.0 has shipped; CI's `cargo check` covers both
-# paths.
-rust-backend = ["dep:privacytracker-core", "dep:tokio"]
 # Enable `tauri build` without devtools baked into the bundle.
 custom-protocol = ["tauri/custom-protocol"]
-# Opt-in devtools. CI release jobs leave this off; `pnpm tauri:dev` and
-# `pnpm tauri:dev:node` pass `--features devtools` so contributors keep the
-# Web Inspector during local development.
+# Opt-in devtools. CI release jobs leave this off; `pnpm tauri:dev` passes
+# `--features devtools` so contributors keep the Web Inspector during local
+# development.
 devtools = ["tauri/devtools"]

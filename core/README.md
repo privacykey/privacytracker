@@ -4509,6 +4509,11 @@ Source restored byte for byte after each, fixed tree green.
 Rust suite: 306 lib tests pass (301 + 5), plus the embed test.
 ### Batch 4a — the desktop app on this server, behind a feature
 
+> Superseded: the feature and the Node sidecar were retired ahead of
+> v0.3.0. The core is a plain dependency of the shell now, `sidecar.rs`
+> is gone, and `backend.rs` has one implementation (`embedded.rs`). The
+> batch notes below are kept as the record of how it was built.
+
 The Tauri shell can now serve the app from this crate instead of
 spawning the Node sidecar. It is a cargo feature that is off by default
 (`rust-backend`), so every shipped build still runs Node until the

@@ -337,7 +337,7 @@ export function countRecentActivity(opts: ActivityFilterOptions = {}): number {
 
 /**
  * Fallback id generator for runtimes without `crypto.randomUUID`. We pin
- * Node 24 LTS everywhere (Docker, Tauri sidecar, `engines` in package.json),
+ * Node 24 LTS everywhere (Docker, `engines` in package.json),
  * all of which have it, so this is purely a safety net.
  */
 function fallbackId(): string {

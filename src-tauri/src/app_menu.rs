@@ -50,7 +50,7 @@ const ISSUE_URL: &str =
 /// every item the OS draws needs to know which app owns it.
 ///
 /// `dev_menu_enabled` controls whether the Dev submenu is included.
-/// main.rs reads `dev_menu_enabled` from the sidecar's app_settings
+/// main.rs reads `dev_menu_enabled` from the backend's app_settings
 /// once at boot and threads it here; flipping the toggle at runtime
 /// requires an app restart to see the change (acceptable UX for a
 /// dev-mode-on flag — it's not a frequently-flipped switch).
@@ -508,7 +508,7 @@ fn open_path_in_file_manager(dir: &std::path::Path) {
 }
 
 /// Reveal the main window if hidden and navigate it to a relative
-/// path inside the Next sidecar. Shared by every "Go" menu entry so
+/// path inside the backend. Shared by every "Go" menu entry so
 /// the surface + navigate behaviour stays consistent. The reveal goes
 /// through window_lock, so a locked window asks for Touch ID / password
 /// first. `path` is
@@ -549,7 +549,7 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // expect Cmd+, to surface the Settings page even if the app
             // was idling in the tray. Then navigate the webview to the
             // settings route. Using a relative path means we don't need
-            // to thread the dynamic sidecar port through the menu
+            // to thread the dynamic backend port through the menu
             // module — the webview is already on the localhost origin
             // by the time the menu can fire. The reveal goes through
             // window_lock, so a locked window asks to unlock first.
@@ -570,7 +570,7 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // `location.reload(true)` form even though modern browsers
             // ignore the boolean — paired with a cache-busting query
             // string so the next request actually re-fetches from the
-            // sidecar rather than ServiceWorker / disk cache.
+            // backend rather than ServiceWorker / disk cache.
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.eval(
                     "(() => { \
@@ -591,7 +591,7 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
             // Hide the main window without quitting the app. The tray
             // icon (see src/tray.rs) stays visible in the menu bar so
             // the user can re-show the window via tray click or the
-            // "Show privacytracker" tray menu item. The Node sidecar
+            // "Show privacytracker" tray menu item. The backend
             // and the 30-min scheduler keep ticking in the
             // background — this is the polite alternative to Cmd+Q
             // for users who want background syncing without a Dock
@@ -639,7 +639,7 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         }
         // Page jumps. Each one shows the window first (in case the user
         // had hidden it to the menu bar) and then assigns the route.
-        // Relative paths so we don't need to thread the sidecar port
+        // Relative paths so we don't need to thread the backend port
         // through the menu module.
         "menu.go.dashboard" => navigate(app, "/dashboard"),
         "menu.go.add_apps" => navigate(app, "/onboard"),
@@ -648,7 +648,7 @@ pub fn handle_event<R: Runtime>(app: &AppHandle<R>, event: MenuEvent) {
         "menu.go.activity" => navigate(app, "/changelog"),
         "menu.go.diagnostics" => navigate(app, "/dashboard/diagnostics"),
         "menu.file.sync_now" => {
-            // Fire a same-origin POST against the sidecar's manual-sync
+            // Fire a same-origin POST against the backend's manual-sync
             // endpoint. The endpoint is rate-limited (10/10min) and
             // surfaces a toast / activity-log row on completion, so
             // there's nothing for us to render here. The IIFE swallows

@@ -348,6 +348,15 @@ Going forward, changes are recorded here as they land.
   item then shows as done and says auto-sync is on, instead of asking you
   to turn it on. Both servers behave the same.
 
+### Removed
+
+- The desktop app no longer carries a Node runtime, and the Node sidecar
+  build (the way releases up to v0.1.2 ran the app) is gone: no bundled Node
+  binary, no standalone tarball extracted into the data directory, and none
+  of the three hardened-runtime entitlements V8 needed. The app serves
+  itself from the Rust core. An installation upgraded from v0.1.2 is tidied
+  on its first launch, as before.
+
 ### Fixed
 
 - The vignette popover could only ever work as a tooltip. It closed the

@@ -323,7 +323,7 @@ fn refresh_policy() {
     let Some(state) = crate::STATE.get() else {
         return;
     };
-    match crate::settings::fetch(&state.sidecar_base_url) {
+    match crate::settings::fetch(&state.backend_base_url) {
         Ok(settings) => {
             lock().set_policy(settings.require_unlock, settings.auto_lock_idle_minutes);
         }

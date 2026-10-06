@@ -369,7 +369,7 @@ export default function DesktopAppSection() {
       {/* Menu-bar tray icon — show/hide live. Default on. When off, the
           tray icon disappears from the macOS menu bar and the only way
           to bring the window back is via the Dock (or `open` from
-          Terminal). The Node sidecar + scheduler keep running either
+          Terminal). The server + scheduler keep running either
           way; this is purely about the visible affordance. */}
       <label className="settings-row">
         <input

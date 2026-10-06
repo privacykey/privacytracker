@@ -127,7 +127,7 @@ fn apply<R: Runtime>(app: &AppHandle<R>, level: f64) {
 /// the final level. Mirrors commands::persist_devtools_open otherwise.
 fn persist_debounced(level: f64) {
     let generation = GENERATION.fetch_add(1, Ordering::SeqCst) + 1;
-    let base_url = crate::state().sidecar_base_url.clone();
+    let base_url = crate::state().backend_base_url.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_millis(800));
         if GENERATION.load(Ordering::SeqCst) != generation {

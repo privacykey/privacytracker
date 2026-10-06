@@ -13,7 +13,7 @@
 //   - ─────────
 //   - Quit privacytracker         (clean app.exit(0))
 //
-// "Sync now" and "Wayback import" fire POSTs against the sidecar so the
+// "Sync now" and "Wayback import" fire POSTs against the backend so the
 // tray does the same thing the Settings buttons do. Both go through
 // backend::post, which adds the Origin header the server's CSRF gate
 // requires. Without it every tray POST was refused with a 403.

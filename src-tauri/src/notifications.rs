@@ -10,7 +10,7 @@
 //      who turn off "Native notifications" in settings see the bell but no OS
 //      toast. The dock badge is always on when the app is running.
 //
-// The poll is intentionally generous (15s). The scheduler inside the sidecar
+// The poll is intentionally generous (15s). The scheduler inside the backend
 // runs every 30 minutes, so we're not going to miss anything — the badge
 // exists so users can see "there's something new" without opening the window.
 //

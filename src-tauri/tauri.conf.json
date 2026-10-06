@@ -4,8 +4,8 @@
   "version": "../package.json",
   "identifier": "org.privacykey.privacytracker",
   "build": {
-    "beforeDevCommand": "pnpm build:standalone:dev",
-    "beforeBuildCommand": "pnpm build:standalone",
+    "beforeDevCommand": "pnpm build",
+    "beforeBuildCommand": "pnpm build && node scripts/stage-site.mjs && node scripts/stage-notices.mjs",
     "frontendDist": "../src-tauri/resources/frontend-placeholder",
     "devUrl": null
   },
@@ -41,9 +41,9 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "resources/standalone.tar": "standalone.tar"
+      "resources/site": "site",
+      "resources/third-party": "third-party"
     },
-    "externalBin": [],
     "category": "DeveloperTool",
     "shortDescription": "Apple App Store privacy-label tracker",
     "longDescription": "privacytracker watches the privacy labels Apple publishes for the apps you install on your iPhone, diffs each one over time, summarises developer privacy policies with a local or cloud LLM, and back-fills history from the Internet Archive.",

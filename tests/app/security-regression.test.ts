@@ -329,7 +329,7 @@ test("policy URL sanitiser keeps metadata endpoints blocked even for localhost-f
 // --- Tauri IPC in connect-src (desktop only) -------------------------------
 // PR #212's hash-based CSP shipped `connect-src 'self'`, which blocks Tauri
 // v2's custom IPC protocol: the page origin inside the desktop app is the
-// Node sidecar's `http://127.0.0.1:<port>`, and `invoke()` fetches
+// embedded server's `http://127.0.0.1:<port>`, and `invoke()` fetches
 // `ipc://localhost/...` (macOS/Linux) or `http://ipc.localhost/...`
 // (Windows). tauri-plugin-notification's injected boot script tripped this
 // on every page load. The allowance is gated on the desktop runtime so the

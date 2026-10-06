@@ -660,8 +660,8 @@ export function checkRateLimit({
   if (bucket.timestamps.length >= limit) {
     rateLimitDenials += 1;
     const retryAfterMs = bucket.timestamps[0] + windowMs - now;
-    // Surface the deny as a server-log warning so when the Tauri
-    // sidecar's queue drain (or any other internal call) gets bounced
+    // Surface the deny as a server-log warning so when the import
+    // queue drain (or any other internal call) gets bounced
     // off /api/scrape's per-IP throttle (limit=30/min) or
     // /api/search's (limit=60/min), the log shows it instead of
     // silently failing. Without this, a stuck drain looks identical

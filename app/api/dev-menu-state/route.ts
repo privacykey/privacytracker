@@ -6,8 +6,8 @@ import { readBoundedJson } from "@/lib/security";
 
 /**
  * Floating dev-menu opt-in state, persisted in `app_settings` so it
- * survives Tauri sidecar restarts (the localhost port changes per launch
- * so localStorage scope changes too).
+ * survives a desktop relaunch (the loopback port can change, and with it
+ * the origin localStorage is scoped to).
  *
  *   GET  → { enabled: boolean }
  *   POST { enabled: boolean } → echoes back the new state

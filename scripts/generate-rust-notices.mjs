@@ -4,11 +4,9 @@
 // directly. The Rust build ships compiled crates instead, so the list has
 // to be taken from cargo. Two binaries ship, each with its own list:
 //
-//   src-tauri/THIRD-PARTY-RUST.md   the desktop app: the shell built with
-//                                   `--features rust-backend`, for one
-//                                   macOS target. Staged into the bundle
-//                                   beside NOTICE, LICENSE and
-//                                   core/V8-LICENSE.
+//   src-tauri/THIRD-PARTY-RUST.md   the desktop app, for one macOS
+//                                   target. Staged into the bundle beside
+//                                   NOTICE, LICENSE and core/V8-LICENSE.
 //   lib/rust-crates.json            a summary of that list /legal renders:
 //                                   the licence breakdown and the crates we
 //                                   chose ourselves. Small on purpose,
@@ -49,10 +47,10 @@ const repo = path.resolve(here, "..");
 const LISTS = [
   {
     manifest: path.join(repo, "src-tauri", "Cargo.toml"),
-    features: ["--no-default-features", "--features", "rust-backend"],
+    features: ["--no-default-features"],
     targets: ["aarch64-apple-darwin"],
     out: path.join(repo, "src-tauri", "THIRD-PARTY-RUST.md"),
-    what: "The desktop app built on the Rust backend",
+    what: "The desktop app",
     carrier: "app",
     summary: path.join(repo, "lib", "rust-crates.json"),
   },

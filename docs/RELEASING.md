@@ -116,10 +116,9 @@ names a build of main.
    rely on a `GITHUB_TOKEN` push triggering another workflow. Approve signing
    only after checking the tag and commit.
 4. Desktop jobs build natively on Intel and Apple Silicon. They check bundle
-   version, OS minimum, architecture, native-addon loading, code signatures,
-   notarization and Gatekeeper. The server must also pass an isolated
-   v0.1.2 upgrade, authenticated restore and restart rehearsal: the extracted
-   standalone tree on the node backend, the packaged app itself on the rust one.
+   version, OS minimum, architecture, code signatures, notarization and
+   Gatekeeper. The packaged app itself must also pass an isolated v0.1.2
+   upgrade, authenticated restore and restart rehearsal.
    Each job then packs the updater archive from the bundle it has just
    verified, checks that the archive holds that same signed app and nothing
    else, signs it with the updater key and records its SHA-256 in
@@ -146,40 +145,32 @@ names a build of main.
    `ghcr.io/privacykey/privacytracker-edge` instead, where PR previews
    (`pr-<n>`) go too; nothing unreleased reaches the public package.
 
-### Which backend a build ships
+### What a build ships
 
-**macOS desktop release** takes a `backend` input. `rust`, the default since
-the desktop cutover, ships the Rust backend: the app serves itself, the
-frontend is staged into `Contents/Resources/site` (about 9 MB against the
-Node tarball's ~200 MB), no Node is fetched or bundled, and the bundle is
-signed with `entitlements-rust.plist`, which grants none of the three
-entitlements V8 needed. `node` bundles the Next.js standalone tree and a
-verified Node binary, as every release up to v0.1.2 did. It stays buildable
-as the rollback until v0.3.0 has shipped.
+**macOS desktop release** builds the app that serves itself from the Rust
+core: the frontend is staged into `Contents/Resources/site` (about 9 MB
+against the ~200 MB tarball of releases up to v0.1.2), no Node is fetched
+or bundled, and the bundle is signed with `entitlements.plist`, which grants
+none of the three entitlements V8 needed. The Node sidecar build was retired
+ahead of v0.3.0; there is no desktop rollback to a Node build, and the
+updater never installs an older version anyway. To rehearse a build without
+releasing, dispatch **macOS desktop release** on a reviewed tag with
+`dry_run=true`.
 
-`Prepare verified release draft` passes `backend: rust`. To roll back,
-change that line in `.github/workflows/release.yml` to `node` in a reviewed
-PR and release a NEW patch version: the updater never installs an older
-version, so an earlier Node build cannot be re-promoted. Either backend
-opens the database the other wrote (CI's handoff test checks both ways), so
-a rollback needs no data migration. To rehearse a build without releasing,
-dispatch **macOS desktop release** on a reviewed tag with `dry_run=true`,
-and `backend=node` for the rollback build.
-
-**Build & Push Docker image** takes the same `backend` input, passed to the
+**Build & Push Docker image** takes a `backend` input, passed to the
 Dockerfile as its `BACKEND` build argument, and `Prepare verified release
-draft` passes `backend: rust` to it as well. `rust` builds the Rust server on
-Alpine (about 56 MB, no Node); `node` builds the `next start` image every
-release up to v0.1.2 shipped. The two open the same volume as the same user,
-so a Docker rollback is the same one-line change in `release.yml` and a new
-patch version. A self-hoster who builds from the compose file rolls back with
-`PRIVACYTRACKER_BACKEND=node` in `.env`.
+draft` passes `backend: rust` to it. `rust` builds the Rust server on Alpine
+(about 56 MB, no Node); `node` builds the `next start` image every release
+up to v0.1.2 shipped and is kept as the image's rollback. The two open the
+same volume as the same user, so a Docker rollback is a one-line change in
+`release.yml` and a new patch version. A self-hoster who builds from the
+compose file rolls back with `PRIVACYTRACKER_BACKEND=node` in `.env`.
 
-Either way the verifier checks the same things about the bundle (version,
-OS minimum, architecture, signature, notarisation) and then what is specific
-to the backend: for `rust`, that no Node ships, that the staged site is
-complete, that the entitlements are the strict set, and that the packaged
-app itself opens a v0.1.2 database, serves its pages and survives a restart.
+The verifier checks the bundle's version, OS minimum, architecture,
+signature and notarisation, then that no Node ships, that the staged site
+is complete, that the entitlements are the strict set, and that the
+packaged app itself opens a v0.1.2 database, serves its pages and survives
+a restart.
 
 For a signing-only rehearsal, run **macOS desktop release** on an existing
 reviewed tag with the same `tag` input and `dry_run=true`. It uploads workflow
@@ -226,9 +217,7 @@ OS versions and results in the release review. A green PR alone is insufficient.
       `standalone/` is gone from the data directory after the first launch,
       and that the accessibility quick toggles survive a quit and relaunch
       (the port is stable now, so the page's storage is too). Compare the
-      bundle's size and the running app's memory with the Node build. Then
-      rehearse the rollback: run a `backend=node` dry-run build over the data
-      directory the Rust build wrote, and confirm it serves it.
+      bundle's size and the running app's memory with the Node build.
 - [ ] Upgrade an existing Docker volume and the optional bind-mount deployment.
       On the first release on the Rust backend, the volume must be one the last
       Node image (v0.1.2) wrote (build it from the `v0.1.2` tag if the registry

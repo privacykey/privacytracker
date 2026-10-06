@@ -207,16 +207,17 @@ export async function setTrayVisible(visible: boolean): Promise<boolean> {
 }
 
 /**
- * Returns the base URL the Node sidecar is listening on. In the Docker/web
- * build, this is undefined — callers should fall back to `location.origin`.
+ * Returns the base URL the desktop app's embedded server is listening on.
+ * In the Docker/web build, this is undefined — callers should fall back to
+ * `location.origin`.
  */
-export async function sidecarBaseUrl(): Promise<string | undefined> {
+export async function backendBaseUrl(): Promise<string | undefined> {
   const invoke = getInvoke();
   if (!invoke) {
     return;
   }
   try {
-    const url = await invoke("sidecar_base_url");
+    const url = await invoke("backend_base_url");
     return typeof url === "string" ? url : undefined;
   } catch {}
 }

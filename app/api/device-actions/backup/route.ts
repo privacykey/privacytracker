@@ -2,7 +2,7 @@
  * /api/device-actions/backup — verify and record a completed cfgutil backup.
  *
  * The actual subprocess runs Tauri-side via `run_cfgutil_backup`. This
- * endpoint exists so the sidecar can independently canonicalise the path,
+ * endpoint exists so the server can independently canonicalise the path,
  * require a non-empty Manifest.db under Apple's MobileSync root, generate
  * an artifact-based completion timestamp, persist the stamp into `app_settings`,
  * and write an activity row. The uninstall gate revalidates the same

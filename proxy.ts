@@ -20,13 +20,6 @@ import {
   isSameOriginRequest,
   requestOrigin,
 } from "@/lib/deployment-trust";
-import {
-  DESKTOP_CREDENTIAL_REQUIRED,
-  DESKTOP_LINK_REFUSED,
-  decideDesktopCredential,
-  desktopCredential,
-  desktopHeaderPresented,
-} from "@/lib/desktop-auth";
 import { OCR_WORKER_CSP_DIRECTIVES, OCR_WORKER_PATH } from "@/lib/ocr-assets";
 
 /**
@@ -88,8 +81,8 @@ const APPLE_IMG_HOSTS =
  * Tauri v2 routes every `invoke()` over a custom protocol whose origin is
  * platform-dependent: `ipc://localhost` on macOS/Linux, `http://ipc.localhost`
  * on Windows/Android (see `convertFileSrc` in tauri's injected core.js).
- * Neither is covered by `'self'` when the page is served by the Node sidecar
- * at `http://127.0.0.1:<port>`, so under a hash-based CSP every invoke trips
+ * Neither is covered by `'self'` when the page is served from
+ * `http://127.0.0.1:<port>` inside the desktop app, so under a hash-based CSP every invoke trips
  * `connect-src` — including tauri-plugin-notification's `js_init_script`,
  * which probes `plugin:notification|is_permission_granted` on every page load.
  *
@@ -109,9 +102,11 @@ const APPLE_IMG_HOSTS =
 const TAURI_IPC_SOURCES = "ipc: http://ipc.localhost";
 
 /**
- * True only inside the Tauri desktop app: src-tauri/src/sidecar.rs sets
- * PRIVACYTRACKER_RUNTIME=desktop on the Node child it spawns. Read per
- * request (not cached at module load) so tests can flip it.
+ * True only when this server is told it runs inside the desktop app
+ * (PRIVACYTRACKER_RUNTIME=desktop). The desktop app serves itself from the
+ * Rust core, whose csp_policy.rs mirrors this; the Node server keeps the
+ * branch for parity. Read per request (not cached at module load) so tests
+ * can flip it.
  *
  * Browser and Docker deployments never see this, so their `connect-src`
  * stays exactly `'self'`.
@@ -309,50 +304,9 @@ export function proxy(request: NextRequest) {
     return attachSecurityHeaders(res, pathname);
   }
 
-  // Step 0.75 (desktop app only) — the launch credential. Every /api call
-  // needs it, the public reads, the CSP report and the login routes
-  // included; the one-time link that hands the webview its cookie is
-  // answered here. The Rust server's gate has the same step
-  // (core/src/server/gate.rs); see lib/desktop-auth.ts.
-  const launchCredential = desktopCredential();
-  if (launchCredential !== null) {
-    const decision = decideDesktopCredential(
-      method,
-      pathname,
-      request.nextUrl.searchParams.get("nonce"),
-      request.headers,
-      launchCredential
-    );
-    if (decision.kind === "refused") {
-      const res = NextResponse.json(
-        { error: DESKTOP_CREDENTIAL_REQUIRED },
-        { status: 401 }
-      );
-      res.headers.set("Cache-Control", "no-store");
-      return attachSecurityHeaders(res, pathname);
-    }
-    if (decision.kind === "link_refused") {
-      const res = NextResponse.json(
-        { error: DESKTOP_LINK_REFUSED },
-        { status: 403 }
-      );
-      res.headers.set("Cache-Control", "no-store");
-      return attachSecurityHeaders(res, pathname);
-    }
-    if (decision.kind === "signed_in") {
-      // The start page on the origin the window asked, as the login
-      // redirect below builds its Location.
-      const res = NextResponse.redirect(
-        new URL("/", requestOrigin(request) ?? request.url),
-        303
-      );
-      if (decision.setCookie) {
-        res.headers.append("Set-Cookie", decision.setCookie);
-      }
-      res.headers.set("Cache-Control", "no-store");
-      return attachSecurityHeaders(res, pathname);
-    }
-  }
+  // (Step 0.75, the desktop launch credential, exists only in the Rust
+  // server's gate, core/src/server/gate.rs: the desktop app serves itself
+  // from the core, and this Node server never runs inside it.)
 
   // Browsers send CSP violation reports as anonymous POSTs (no custom
   // headers, cookies optional). The endpoint only appends to a small,
@@ -393,20 +347,12 @@ export function proxy(request: NextRequest) {
 
   // CSRF: reject mutating API calls that are neither same-origin nor
   // carry an explicit admin-token header. Cookies never exempt the Origin
-  // check, the desktop session cookie included: only the credential's
-  // header form stands in for an Origin, as the shell's own requests send it.
-  const launchCredentialHeader =
-    launchCredential !== null &&
-    desktopHeaderPresented(request.headers, launchCredential);
+  // check.
   if (
     MUTATING_METHODS.has(method) &&
     !cspReport &&
     pathname.startsWith(ALWAYS_REQUIRE_ORIGIN_PREFIX) &&
-    !(
-      isSameOriginRequest(request) ||
-      requestHasValidAdminHeader(request) ||
-      launchCredentialHeader
-    )
+    !(isSameOriginRequest(request) || requestHasValidAdminHeader(request))
   ) {
     const res = NextResponse.json(
       { error: "Cross-origin mutation rejected" },

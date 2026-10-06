@@ -862,7 +862,7 @@ export default function DiagnosticsView() {
       <StatusBanner summary={status} />
 
       {/* Server-unresponsive banner. If runtime polls have stopped landing
-          for >15s, the Node sidecar is likely blocked on something (DB
+          for >15s, the server is likely blocked on something (DB
           lock during a scrape commit is the usual suspect). Banner stays
           up until a fresh poll succeeds. */}
       {serverStallMs > 15_000 && (

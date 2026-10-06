@@ -18,7 +18,7 @@ import { ADMIN_TOKEN_CHANGED_EVENT } from "./AdminTokenBridge";
  * card. It re-checks on ADMIN_TOKEN_CHANGED_EVENT so a successful
  * login clears it without a reload.
  *
- * Renders nothing on loopback hosts (the localhost / Tauri-sidecar
+ * Renders nothing on loopback hosts (the localhost / desktop-app
  * common case) — the status fetch is skipped entirely there. Dismissal
  * is per-tab-session (sessionStorage), so it returns on the next visit
  * but doesn't nag within one.

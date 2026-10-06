@@ -35,10 +35,8 @@ const nextConfig = {
   // Pin the file-tracing / Turbopack root to this directory. Without it Next
   // walks up looking for lockfiles and, inside a git worktree nested under
   // the main clone's `.claude/worktrees/<name>/`, picks the PARENT clone's
-  // pnpm-workspace.yaml instead. That warns on every build and breaks
-  // `pnpm build:standalone`: server.js lands at
-  // `.next/standalone/.claude/worktrees/<name>/server.js`, where
-  // scripts/stage-standalone.mjs can't find it. In the main clone, CI and
+  // pnpm-workspace.yaml instead. That warns on every build and put the
+  // build's traced files under a nested path. In the main clone, CI and
   // Docker (`/app`) this resolves to exactly the root Next would infer.
   // biome-ignore lint/correctness/noGlobalDirnameFilename: this file is CommonJS (require/module.exports), so import.meta.dirname is unavailable.
   outputFileTracingRoot: __dirname,
@@ -52,11 +50,6 @@ const nextConfig = {
   // Allow redirecting the build output dir for sandboxed / FUSE-mounted envs
   // where the default `.next` can't be unlinked.
   ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
-  // Emit a self-contained `.next/standalone/` tree only when building for
-  // the Tauri desktop sidecar. Next 16 doesn't support `next start` alongside
-  // `output: 'standalone'`, so the Docker / web path keeps the default output
-  // and `npm run build:standalone` flips this flag via `BUILD_STANDALONE=1`.
-  ...(process.env.BUILD_STANDALONE ? { output: "standalone" } : {}),
   // better-sqlite3 is a native binding; Next must not bundle it.
   serverExternalPackages: ["better-sqlite3"],
   // The raw HTTP guard bounds each endpoint before Proxy buffers its body.
@@ -81,10 +74,10 @@ const nextConfig = {
   // `unoptimized: true` short-circuits the /_next/image endpoint and
   // serves originals straight from the configured remote patterns. The
   // optimiser relies on `sharp`, which ships unsigned platform-specific
-  // .node + libvips .dylib binaries — those get rejected by Apple's
-  // notarytool when Tauri tars them into the desktop release's
-  // standalone.tar (notarytool recurses into archives in
-  // Contents/Resources). Optimisation buys almost nothing for our
+  // .node + libvips .dylib binaries — exactly what Apple's notarytool
+  // rejected when the Node desktop builds bundled them (the desktop app
+  // ships no Node now, but the Docker image has no use for them either).
+  // Optimisation buys almost nothing for our
   // workload anyway: App Store icons are already 100x100 / ~3 KB and
   // every request rides loopback. <Image> still gives us layout, lazy-
   // loading, and blur placeholders without the native dep.
