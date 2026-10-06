@@ -34,6 +34,18 @@ const WAYBACK_HOSTS = ["archive.org", "web.archive.org"];
 
 import { appendPolicyChangeEntry, type ChangeEntry } from "./changelog";
 import {
+  blockTagsToText,
+  firstTagBlockInner,
+  metaRefreshUrl,
+  policyContainers,
+  privacyPolicyLinkHref,
+  scriptBlocks,
+  sliceParagraph,
+  stripClassContainers,
+  stripRoleBlocks,
+  stripTagBlocks,
+} from "./policy-html-scan";
+import {
   type AppPolicyAnalysis,
   canSummariseStoredPolicy,
   type ExternalPolicyReference,
@@ -2469,17 +2481,17 @@ function extractMetaRefreshTarget(
   baseUrl: string
 ): string | null {
   // <meta http-equiv="refresh" content="0; url=https://...">
-  // The url= token is sometimes quoted, sometimes bare. `0;URL='...'` also exists.
-  const metaMatch = html.match(
-    /<meta[^>]+http-equiv\s*=\s*["']?refresh["']?[^>]*content\s*=\s*["']\s*\d+\s*;\s*url\s*=\s*(?:["']?)([^"'>\s]+)(?:["']?)/i
-  );
-  if (!metaMatch) {
+  // The url= token is sometimes quoted, sometimes bare. `0;URL='...'` also
+  // exists. The scan in `lib/policy-html-scan.ts` reads the tag the way the
+  // former regex did, in time linear in the page.
+  const refreshUrl = metaRefreshUrl(html);
+  if (!refreshUrl) {
     return null;
   }
 
   let target: string;
   try {
-    target = new URL(metaMatch[1], baseUrl).toString();
+    target = new URL(refreshUrl, baseUrl).toString();
   } catch {
     return null;
   }
@@ -2518,10 +2530,10 @@ function extractScriptLocationTarget(
   // crafted pages hide their redirect inside what looks (to our regex)
   // like one giant unterminated script block. CodeQL rule
   // `js/bad-tag-filter` previously flagged the `\s*` variant for
-  // missing the attribute form.
-  const scriptBlocks =
-    html.match(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi) ?? [];
-  for (const block of scriptBlocks) {
+  // missing the attribute form. `scriptBlocks` finds the same blocks the
+  // former `<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>` match did, without
+  // rescanning the page for every unclosed opener.
+  for (const block of scriptBlocks(html)) {
     const m =
       block.match(
         /(?:window\.|document\.|top\.|self\.|parent\.)?location(?:\.href)?\s*=\s*["']([^"']+)["']/i
@@ -2733,10 +2745,10 @@ async function maybeFollowPolicyLink({
     return null;
   }
 
-  const linkMatch = html.match(
-    /<a\s+[^>]*href="([^"#?]+(?:\?[^"#]*)?)"[^>]*>\s*(?:(?:read|view|see|open)[^<]*)?(?:full|complete|detailed)?\s*(?:privacy\s*(?:policy|notice|statement))[^<]*<\/a>/i
-  );
-  if (!linkMatch) {
+  // The first `<a href="…">` whose text reads like a "Privacy Policy" link,
+  // as `lib/policy-html-scan.ts` finds it in time linear in the page.
+  const linkHref = privacyPolicyLinkHref(html);
+  if (!linkHref) {
     traceEvent(logger, "fetch:follow-link-skip", {
       note: `Page only has ${currentText.length.toLocaleString()} chars but no "Privacy Policy" link to follow.`,
     });
@@ -2745,7 +2757,7 @@ async function maybeFollowPolicyLink({
 
   let href: string;
   try {
-    href = new URL(linkMatch[1], baseUrl).toString();
+    href = new URL(linkHref, baseUrl).toString();
   } catch {
     return null;
   }
@@ -2826,72 +2838,62 @@ async function maybeFollowPolicyLink({
 const CHROME_CLASS_PATTERN =
   /(cookie|consent|banner|navbar|nav-|menu|footer|subscribe|signup|breadcrumb|hero-|cta-|sidebar|social|related|share|toolbar|modal|popup)/i;
 
+// The tags whose whole block is chrome, never policy text. Each is removed
+// as `<tag\b[^>]*>[\s\S]*?<\/tag\b[^>]*>`: the closing tag tolerates
+// whitespace AND attributes before the `>` (`</script >`, `</script\n>`,
+// `</script foo="bar">`, etc.), because HTML5 end tags accept them and an
+// attacker-crafted policy page could use any of those forms to keep its
+// `<script>…</script foo>` block from being stripped before the text
+// reaches the AI summariser — script bodies are prime prompt-injection
+// fodder. CodeQL rule `js/bad-tag-filter` flagged the prior `\s*` variants.
+const CHROME_BLOCK_TAGS = [
+  "script",
+  "style",
+  "noscript",
+  "svg",
+  "nav",
+  "header",
+  "aside",
+  "footer",
+  "form",
+];
+
 function stripChromeTags(html: string): string {
-  // Every closing tag below uses `<\/tagname\b[^>]*>` rather than the
-  // literal `<\/tagname>`. HTML5 end tags accept whitespace AND
-  // attributes before the `>` (`</script >`, `</script\n>`,
-  // `</script foo="bar">`, etc.), and an attacker-crafted policy page
-  // could use any of those forms to keep its `<script>…</script foo>`
-  // block from being stripped before the text reaches the AI
-  // summariser — script bodies are prime prompt-injection fodder.
-  // CodeQL rule `js/bad-tag-filter` flagged the prior `\s*` variants.
-  return html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\b[^>]*>/gi, " ")
-    .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript\b[^>]*>/gi, " ")
-    .replace(/<svg\b[^>]*>[\s\S]*?<\/svg\b[^>]*>/gi, " ")
-    .replace(/<nav\b[^>]*>[\s\S]*?<\/nav\b[^>]*>/gi, " ")
-    .replace(/<header\b[^>]*>[\s\S]*?<\/header\b[^>]*>/gi, " ")
-    .replace(/<aside\b[^>]*>[\s\S]*?<\/aside\b[^>]*>/gi, " ")
-    .replace(/<footer\b[^>]*>[\s\S]*?<\/footer\b[^>]*>/gi, " ")
-    .replace(/<form\b[^>]*>[\s\S]*?<\/form\b[^>]*>/gi, " ")
-    .replace(
-      /<[^>]+\srole="(navigation|banner|contentinfo|complementary|search)"[^>]*>[\s\S]*?<\/[^>]+\s*>/gi,
-      " "
-    )
-    .replace(
-      /<(div|section|aside|header|footer|ul|ol)\b[^>]*\sclass="[^"]*"[^>]*>[\s\S]*?<\/\1\b[^>]*>/gi,
-      (full) => {
-        const classMatch = full.match(/\sclass="([^"]*)"/i);
-        if (classMatch && CHROME_CLASS_PATTERN.test(classMatch[1])) {
-          return " ";
-        }
-        return full;
-      }
-    );
+  // Each pass below is the linear-time form of a former regex replace (see
+  // `lib/policy-html-scan.ts`): the block tags, then any element carrying
+  // a landmark `role`, then the containers whose `class` names chrome.
+  let stripped = html;
+  for (const tag of CHROME_BLOCK_TAGS) {
+    stripped = stripTagBlocks(stripped, tag);
+  }
+  stripped = stripRoleBlocks(stripped);
+  return stripClassContainers(stripped, (classes) =>
+    CHROME_CLASS_PATTERN.test(classes)
+  );
 }
 
 function htmlBlockToText(html: string): string {
-  const stripped = html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(
-      /<\/(p|div|li|section|article|main|header|h[1-6]|tr|td|blockquote|ul|ol)>/gi,
-      "\n"
-    )
-    .replace(
-      /<(p|div|li|section|article|main|header|h[1-6]|tr|td|blockquote|ul|ol)[^>]*>/gi,
-      "\n"
-    )
-    .replace(/<[^>]+>/g, " ");
-
-  return normalizeExtractedText(decodeHtmlEntities(stripped));
+  // `<br>` and block boundaries become newlines, every other tag a space
+  // (`blockTagsToText`), then entities are decoded and whitespace settled.
+  return normalizeExtractedText(decodeHtmlEntities(blockTagsToText(html)));
 }
 
-function extractPolicyTextFromHtml(html: string, fallbackTitle: string) {
+// Exported for tests/app/policy-html-scan.test.ts; pure, no network and no
+// database.
+export function extractPolicyTextFromHtml(html: string, fallbackTitle: string) {
   // Closing tags below tolerate attributes / whitespace before the `>`
   // for the same reason as `stripChromeTags`: HTML5 end tags are valid
   // with trailing whitespace AND attributes (`</main >`, `</main bar>`),
   // and a strict literal would otherwise fail to extract the policy
   // text from spec-compliant but unusual markup.
   const title =
-    decodeHtmlEntities(
-      html.match(/<title\b[^>]*>([\s\S]*?)<\/title\b[^>]*>/i)?.[1] ?? ""
-    ).trim() || fallbackTitle;
+    decodeHtmlEntities(firstTagBlockInner(html, "title") ?? "").trim() ||
+    fallbackTitle;
 
   const primaryHtml =
-    html.match(/<main\b[^>]*>([\s\S]*?)<\/main\b[^>]*>/i)?.[1] ??
-    html.match(/<article\b[^>]*>([\s\S]*?)<\/article\b[^>]*>/i)?.[1] ??
-    html.match(/<body\b[^>]*>([\s\S]*?)<\/body\b[^>]*>/i)?.[1] ??
+    firstTagBlockInner(html, "main") ??
+    firstTagBlockInner(html, "article") ??
+    firstTagBlockInner(html, "body") ??
     html;
 
   const firstPassText = htmlBlockToText(stripChromeTags(primaryHtml));
@@ -2904,16 +2906,11 @@ function extractPolicyTextFromHtml(html: string, fallbackTitle: string) {
   // Second pass: search the whole document for elements that look policy-ish,
   // rank by extracted length, return the largest.
   const candidates: string[] = [];
-  const containerRegex =
-    /<(div|section|article|main)\b[^>]*\s(?:id|class)="([^"]*(?:policy|privacy|legal|terms|content|main|body|document)[^"]*)"[^>]*>([\s\S]*?)<\/\1>/gi;
-
-  let match: RegExpExecArray | null;
-  while ((match = containerRegex.exec(html)) !== null) {
-    const attrValue = match[2];
-    if (CHROME_CLASS_PATTERN.test(attrValue)) {
+  for (const container of policyContainers(html)) {
+    if (CHROME_CLASS_PATTERN.test(container.attr)) {
       continue;
     }
-    const innerText = htmlBlockToText(stripChromeTags(match[3]));
+    const innerText = htmlBlockToText(stripChromeTags(container.inner));
     if (innerText.length >= POLICY_MIN_CHARS) {
       candidates.push(innerText);
     }
@@ -4284,7 +4281,8 @@ function normalizeSafetySummary(input: any): PolicySummarySafety | undefined {
   return { paragraph: paragraph.slice(0, 1400), concerns };
 }
 
-function chunkPolicyText(text: string, maxChars: number): string[] {
+// Exported for tests/app/policy-html-scan.test.ts; pure.
+export function chunkPolicyText(text: string, maxChars: number): string[] {
   const paragraphs = text
     .split(/\n\n+/)
     .map((part) => part.trim())
@@ -4299,12 +4297,12 @@ function chunkPolicyText(text: string, maxChars: number): string[] {
         current = "";
       }
 
-      const slices = paragraph.match(
-        new RegExp(
-          `[\\s\\S]{1,${Math.max(1000, maxChars - 1000)}}(?:\\s|$)`,
-          "g"
-        )
-      ) ?? [paragraph];
+      // The former `[\s\S]{1,n}(?:\s|$)` scan, in one linear pass
+      // (`sliceParagraph`): the longest run of at most n characters ending
+      // in whitespace, from each position. A paragraph it cannot slice at
+      // all is kept whole, as a `match` with no result left it.
+      const sliced = sliceParagraph(paragraph, Math.max(1000, maxChars - 1000));
+      const slices = sliced.length > 0 ? sliced : [paragraph];
       for (const slice of slices) {
         const trimmed = slice.trim();
         if (trimmed) {
