@@ -162,3 +162,16 @@ custom-protocol = ["tauri/custom-protocol"]
 # `pnpm tauri:dev:node` pass `--features devtools` so contributors keep the
 # Web Inspector during local development.
 devtools = ["tauri/devtools"]
+
+# Leave proc macros and build scripts unstripped in release builds. `tauri
+# build` sets MACOSX_DEPLOYMENT_TARGET from bundle.macOS.minimumSystemVersion
+# (13.5), and under that target the debuginfo strip (rustc runs its bundled
+# `rust-objcopy --strip-debug`) leaves a dylib's LINKEDIT string pool 4-byte
+# aligned. macOS 27's dyld refuses to dlopen such a dylib, so rustc cannot
+# load the proc macros and the build stops with E0463 "can't find crate for
+# `ctor_proc_macro`" (or a dlopen error naming the dylib). Executables still
+# launch, and neither of these ships in the bundle, so nothing is lost. Debug
+# builds never strip, which is why `tauri dev` works. A workaround for a
+# toolchain bug: issue #382 says how to tell when it can go.
+[profile.release.build-override]
+strip = false
