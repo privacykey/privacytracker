@@ -54,8 +54,11 @@ const INSERT_NOTIFICATION: &str = "\n    INSERT INTO notifications (id, app_id, 
 const WAYBACK_RESUME_NOTIFICATION_APP_ID: &str = "__wayback_resume__";
 const MAX_RATE_LIMIT_RETRIES: u32 = 1;
 const RATE_LIMIT_MIN_BACKOFF_MS: i64 = 1_000;
-const RATE_LIMIT_DEFAULT_BACKOFF_MS: i64 = 30_000;
-const RATE_LIMIT_MAX_BACKOFF_MS: i64 = 120_000;
+/// With no Retry-After (always the case for a refused connection) the wait
+/// is five minutes: archive.org's blocks have been reported to last about
+/// that long, so a shorter retry lands inside the block and extends it.
+const RATE_LIMIT_DEFAULT_BACKOFF_MS: i64 = 300_000;
+const RATE_LIMIT_MAX_BACKOFF_MS: i64 = 900_000;
 
 // ── The state blob as JavaScript sees it ─────────────────────────────
 
@@ -1323,9 +1326,10 @@ mod tests {
 
     #[test]
     fn backoff_is_bounded() {
-        assert_eq!(rate_limit_backoff_ms(None), 30_000);
+        assert_eq!(rate_limit_backoff_ms(None), 300_000);
         assert_eq!(rate_limit_backoff_ms(Some(1)), 1_000);
         assert_eq!(rate_limit_backoff_ms(Some(5_000)), 5_000);
-        assert_eq!(rate_limit_backoff_ms(Some(900_000)), 120_000);
+        assert_eq!(rate_limit_backoff_ms(Some(600_000)), 600_000);
+        assert_eq!(rate_limit_backoff_ms(Some(3_600_000)), 900_000);
     }
 }

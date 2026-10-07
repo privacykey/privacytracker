@@ -1,8 +1,9 @@
 //! lib/wayback.ts: the archive.org client the historical import drives —
 //! the CDX index listing, the availability API, Save Page Now, and the
 //! timestamp arithmetic between them. A 429 or 5xx from the index, the
-//! availability API or a replay is `Unavailable`, which the import
-//! surfaces to its caller; every other failure is a quiet `None`.
+//! availability API or a replay is `Unavailable`, and so is a request that
+//! fails below HTTP ([`Unavailable::transport`]); the import surfaces it to
+//! its caller. Every other failure is a quiet `None`.
 use super::js::truthy;
 use crate::{
     jsdate::{self, civil_from_days, days_from_civil},
@@ -24,7 +25,8 @@ const CDX_MAX_BYTES: usize = 1024 * 1024;
 const CDX_TIMEOUT_MS: u64 = 20_000;
 const CDX_ROW_LIMIT: usize = 5000;
 
-/// `WaybackUnavailableError`: archive.org throttling or failing.
+/// `WaybackUnavailableError`: archive.org throttling or failing. `status`
+/// is 0 when no response came.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Unavailable {
     pub status: u16,
@@ -39,6 +41,10 @@ impl Unavailable {
         } else {
             format!("unavailable (HTTP {status})")
         };
+        Self::labelled(status, retry_after_ms, endpoint, &label)
+    }
+
+    fn labelled(status: u16, retry_after_ms: Option<i64>, endpoint: &str, label: &str) -> Self {
         let retry = retry_after_ms.map_or(String::new(), |ms| {
             format!(" — retry after {}s", (ms as f64 / 1000.0).ceil() as i64)
         });
@@ -47,6 +53,30 @@ impl Unavailable {
             retry_after_ms,
             message: format!("archive.org {label} for {endpoint}{retry}"),
         }
+    }
+
+    /// `waybackTransportFailure`: a fetch error that means archive.org
+    /// would not talk to us — the connection refused or reset (`fetch
+    /// failed`), dropped mid-body (`terminated`), timed out, or the host
+    /// not resolving. After throttling a client for long enough it stops
+    /// answering 429 and refuses the connection, so reading this as "no
+    /// capture" would record an empty quarter for every target. Any other
+    /// error (a blocked URL, a body over the cap, a redirect loop) is not
+    /// archive.org refusing us and is `None`.
+    pub fn transport(error: &str, endpoint: &str) -> Option<Self> {
+        static DNS: OnceLock<Regex> = OnceLock::new();
+        let dns = DNS.get_or_init(|| {
+            Regex::new(r"^Blocked URL: host \S+ did not resolve to a public address$")
+                .expect("static regex")
+        });
+        let label = match error {
+            "fetch failed" => "refused the connection",
+            "terminated" => "dropped the connection",
+            outbound::TIMEOUT_MESSAGE => "timed out",
+            _ if dns.is_match(error) => "could not be resolved",
+            _ => return None,
+        };
+        Some(Self::labelled(0, None, endpoint, label))
     }
 }
 
@@ -146,9 +176,10 @@ fn request(
     request
 }
 
-/// `listWaybackCaptures(url, { from })`: `None` when the index cannot be
-/// used and the import must probe instead, `Some(vec![])` for an empty
-/// index. Rows are the CDX JSON form, header row included, filtered to
+/// `listWaybackCaptures(url, { from })`: `None` when the index answers
+/// with something unusable and the import must probe instead,
+/// `Some(vec![])` for an empty index, `Unavailable` for throttling or a
+/// transport failure. Rows are the CDX JSON form, header row included, filtered to
 /// unique fourteen-digit timestamps and sorted.
 pub async fn list_captures(
     fetcher: &dyn Fetcher,
@@ -183,8 +214,11 @@ pub async fn list_captures(
         CDX_TIMEOUT_MS,
         &[("Accept", "application/json"), ("User-Agent", USER_AGENT)],
     );
-    let Ok(reply) = fetcher.fetch(req).await else {
-        return Ok(None);
+    // Falling back to availability probes on a refused connection would
+    // turn it into up to seven more per target.
+    let reply = match fetcher.fetch(req).await {
+        Ok(reply) => reply,
+        Err(error) => return Unavailable::transport(&error, "CDX index").map_or(Ok(None), Err),
     };
     unavailable_if(&reply, "CDX index", now)?;
     if reply.status != 200 {
@@ -265,7 +299,8 @@ pub async fn lookup_latest(fetcher: &dyn Fetcher, target_url: &str) -> Option<Sn
 }
 
 /// `lookupWaybackSnapshotNear`: the availability API's closest capture to
-/// a date, or `None` for anything it cannot answer.
+/// a date, `None` for an answer without one, or `Unavailable` for
+/// throttling or a transport failure.
 pub async fn lookup_near(
     fetcher: &dyn Fetcher,
     target_url: &str,
@@ -287,8 +322,11 @@ pub async fn lookup_near(
         AVAILABILITY_TIMEOUT_MS,
         &[("Accept", "application/json"), ("User-Agent", USER_AGENT)],
     );
-    let Ok(reply) = fetcher.fetch(req).await else {
-        return Ok(None);
+    let reply = match fetcher.fetch(req).await {
+        Ok(reply) => reply,
+        Err(error) => {
+            return Unavailable::transport(&error, "availability API").map_or(Ok(None), Err)
+        }
     };
     unavailable_if(&reply, "availability API", now)?;
     let Ok(parsed) = serde_json::from_str::<Value>(&String::from_utf8_lossy(&reply.body)) else {
@@ -396,7 +434,40 @@ fn snapshot_from_header(raw: Option<&str>, base: &str) -> Option<Snapshot> {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_timestamp, parse_retry_after_ms, parse_timestamp_ms};
+    use super::{format_timestamp, parse_retry_after_ms, parse_timestamp_ms, Unavailable};
+
+    #[test]
+    fn transport_failures_are_unavailable_and_nothing_else_is() {
+        // What the transport reports for each, as Node's undici does.
+        for (error, message) in [
+            ("fetch failed", "archive.org refused the connection for CDX index"),
+            ("terminated", "archive.org dropped the connection for CDX index"),
+            (
+                "The operation was aborted due to timeout",
+                "archive.org timed out for CDX index",
+            ),
+            (
+                "Blocked URL: host web.archive.org did not resolve to a public address",
+                "archive.org could not be resolved for CDX index",
+            ),
+        ] {
+            let unavailable = Unavailable::transport(error, "CDX index").expect(error);
+            assert_eq!(unavailable.message, message);
+            assert_eq!((unavailable.status, unavailable.retry_after_ms), (0, None));
+        }
+        // Not archive.org refusing us: a policy block, a body over the cap,
+        // a redirect loop, a cancelled run.
+        for error in [
+            "Blocked URL: invalid_url — https://example.com",
+            "safeFetch: response exceeded 1048576 bytes",
+            "safeFetch: declared content-length 2000000 exceeds cap 1048576",
+            "safeFetch: too many redirects (6)",
+            "This operation was aborted",
+            "",
+        ] {
+            assert_eq!(Unavailable::transport(error, "CDX index"), None, "{error}");
+        }
+    }
 
     #[test]
     fn timestamps_and_retry_after_follow_node() {

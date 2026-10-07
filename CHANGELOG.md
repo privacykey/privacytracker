@@ -12,6 +12,20 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Fixed
+
+- The Wayback history import no longer records empty history when
+  archive.org refuses the connection. After throttling a client for a
+  while, archive.org stops answering "too many requests" and refuses
+  connections instead; the import read that as "no capture", so a resumed
+  bulk import marked every app done with nothing imported and kept
+  retrying the archive while it was blocked. A refused, dropped or
+  timed-out connection now counts as throttling: the bulk import waits
+  five minutes (up from 30 seconds, as blocks last about that long),
+  retries once, then pauses the queue for you to resume later, and the
+  single-app import says the archive is busy. Both the Rust server and the
+  Node rollback.
+
 ### Security
 
 - Raise `sharp` to 0.35.5 (GHSA-wq5f-xc86-pv6w, a vulnerability in the

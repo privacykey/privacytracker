@@ -12150,6 +12150,696 @@
         ]
       },
       "expected": null
+    },
+    {
+      "name": "bulk import connection refused backs off for the default wait",
+      "kind": "route",
+      "delay": null,
+      "route": "/api/wayback/import-all",
+      "method": "POST",
+      "search": "?stream=1",
+      "query": [
+        [
+          "stream",
+          "1"
+        ]
+      ],
+      "headers": {
+        "x-forwarded-for": "10.0.48.5",
+        "user-agent": "wayback-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "repeat": 1,
+      "awaitRun": false,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "runtime_environment",
+            ""
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000222",
+            "Fixture Two",
+            "https://apps.apple.com/us/app/fixture/id555000222",
+            1789041600000,
+            1789041600000
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "error": "fetch failed"
+        }
+      ],
+      "hooks": [
+        {
+          "atCall": 0,
+          "action": "cancel",
+          "afterMs": 100
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "wayback.import.bulk.start",
+            "10.0.48.5",
+            "wayback-oracle/1.0",
+            "apps=2 stream=1",
+            1
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_import_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\"},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":true}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000111\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":true}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\",\"startedAt\":1789473600000,\"error\":\"archive.org refused the connection for CDX index\"},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":true}"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "wayback_import",
+            "partial",
+            "555000111",
+            "Fixture One",
+            "archive.org throttled the Wayback import — waiting 300s before retrying Fixture One",
+            "{\"mode\":\"bulk-backoff\",\"delayMs\":300000,\"errorMessage\":\"archive.org refused the connection for CDX index\",\"resumedRun\":false}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"cancel_requested\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\",\"startedAt\":1789473600000,\"error\":\"archive.org refused the connection for CDX index\"},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":true,\"cancelRequestedAt\":1789473600000}"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            1789473600000,
+            "wayback.import.bulk.cancel_requested",
+            "10.0.48.5",
+            "wayback-oracle/1.0",
+            "runId=00000000-0000-4000-8000-000000000002 aborted=1",
+            1
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000005",
+            "wayback_import",
+            "cancelled",
+            null,
+            null,
+            "Wayback import cancelled — 2 of 2 apps not processed",
+            "{\"mode\":\"bulk\",\"cancelled\":true,\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\",\"remaining\":2,\"total\":2}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000006",
+            1789473600000,
+            "wayback.import.bulk.cancelled",
+            "10.0.48.5",
+            "wayback-oracle/1.0",
+            "remaining=2 total=2",
+            1
+          ]
+        },
+        {
+          "sql": "DELETE FROM app_settings WHERE key = ?",
+          "params": [
+            "wayback_bulk_state"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_import_running",
+            "false"
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "555000222",
+            "name": "Fixture Two",
+            "url": "https://apps.apple.com/us/app/fixture/id555000222",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "type": "wayback_import",
+            "status": "partial",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "summary": "archive.org throttled the Wayback import — waiting 300s before retrying Fixture One",
+            "detail": "{\"mode\":\"bulk-backoff\",\"delayMs\":300000,\"errorMessage\":\"archive.org refused the connection for CDX index\",\"resumedRun\":false}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "type": "wayback_import",
+            "status": "cancelled",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Wayback import cancelled — 2 of 2 apps not processed",
+            "detail": "{\"mode\":\"bulk\",\"cancelled\":true,\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\",\"remaining\":2,\"total\":2}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "wayback.import.bulk.start",
+            "actor_ip": "10.0.48.5",
+            "user_agent": "wayback-oracle/1.0",
+            "detail": "apps=2 stream=1",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "created_at": 1789473600000,
+            "action": "wayback.import.bulk.cancel_requested",
+            "actor_ip": "10.0.48.5",
+            "user_agent": "wayback-oracle/1.0",
+            "detail": "runId=00000000-0000-4000-8000-000000000002 aborted=1",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "created_at": 1789473600000,
+            "action": "wayback.import.bulk.cancelled",
+            "actor_ip": "10.0.48.5",
+            "user_agent": "wayback-oracle/1.0",
+            "detail": "remaining=2 total=2",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          },
+          {
+            "key": "wayback_import_running",
+            "value": "false"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"type\":\"batch-start\",\"total\":2,\"startedAt\":1789473600000,\"initiator\":\"manual\",\"runId\":\"00000000-0000-4000-8000-000000000002\"}\n{\"type\":\"app-start\",\"appId\":\"555000111\",\"name\":\"Fixture One\",\"index\":0,\"total\":2}\n{\"type\":\"backoff\",\"appId\":\"555000111\",\"name\":\"Fixture One\",\"delayMs\":300000,\"reason\":\"archive.org refused the connection for CDX index\"}\n{\"type\":\"cancelled\",\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"durationMs\":0,\"summary\":{\"total\":2,\"pending\":2,\"inProgress\":0,\"done\":0,\"failed\":0,\"remaining\":2}}\n",
+        "type": "application/x-ndjson; charset=utf-8",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "bulk import throttled then refused pauses the queue",
+      "kind": "route",
+      "delay": null,
+      "route": "/api/wayback/import-all",
+      "method": "POST",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.49.5",
+        "user-agent": "wayback-oracle/1.0"
+      },
+      "body": null,
+      "adminToken": null,
+      "repeat": 1,
+      "awaitRun": false,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "feature_flag_migration_version",
+            "2"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "runtime_environment",
+            ""
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000222",
+            "Fixture Two",
+            "https://apps.apple.com/us/app/fixture/id555000222",
+            1789041600000,
+            1789041600000
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 429,
+          "headers": {
+            "retry-after": "1"
+          },
+          "body": ""
+        },
+        {
+          "error": "fetch failed"
+        }
+      ],
+      "hooks": [],
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "wayback.import.bulk.start",
+            "10.0.49.5",
+            "wayback-oracle/1.0",
+            "apps=2 stream=0",
+            1
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_import_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\"},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000111\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\",\"startedAt\":1789473600000,\"error\":\"archive.org rate-limited for CDX index — retry after 1s\"},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "wayback_import",
+            "partial",
+            "555000111",
+            "Fixture One",
+            "archive.org throttled the Wayback import — waiting 1s before retrying Fixture One",
+            "{\"mode\":\"bulk-backoff\",\"delayMs\":1000,\"errorMessage\":\"archive.org rate-limited for CDX index — retry after 1s\",\"resumedRun\":false}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":\"555000111\",\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"in_progress\",\"startedAt\":1789473600000},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":1,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"running\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\",\"startedAt\":1789473600000,\"error\":\"archive.org refused the connection for CDX index\"},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_bulk_state",
+            "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"paused\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\",\"startedAt\":1789473600000,\"error\":\"archive.org refused the connection for CDX index\"},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false,\"pausedAt\":1789473600000,\"pauseCause\":\"rate_limited\"}"
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback_import_running",
+            "false"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "wayback_import",
+            "cancelled",
+            null,
+            null,
+            "Wayback import paused — archive.org is rate-limiting requests; 2 of 2 apps remaining. Resume from Settings once it clears.",
+            "{\"mode\":\"bulk-paused\",\"cause\":\"rate_limited\",\"errorMessage\":\"archive.org refused the connection for CDX index\",\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000005",
+            1789473600000,
+            "wayback.import.bulk.paused",
+            "10.0.49.5",
+            "wayback-oracle/1.0",
+            "cause=rate_limited remaining=2 total=2",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          },
+          {
+            "id": "555000222",
+            "name": "Fixture Two",
+            "url": "https://apps.apple.com/us/app/fixture/id555000222",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_snapshots": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "type": "wayback_import",
+            "status": "partial",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "summary": "archive.org throttled the Wayback import — waiting 1s before retrying Fixture One",
+            "detail": "{\"mode\":\"bulk-backoff\",\"delayMs\":1000,\"errorMessage\":\"archive.org rate-limited for CDX index — retry after 1s\",\"resumedRun\":false}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "wayback_import",
+            "status": "cancelled",
+            "app_id": null,
+            "app_name": null,
+            "summary": "Wayback import paused — archive.org is rate-limiting requests; 2 of 2 apps remaining. Resume from Settings once it clears.",
+            "detail": "{\"mode\":\"bulk-paused\",\"cause\":\"rate_limited\",\"errorMessage\":\"archive.org refused the connection for CDX index\",\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"runId\":\"00000000-0000-4000-8000-000000000002\"}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "wayback.import.bulk.start",
+            "actor_ip": "10.0.49.5",
+            "user_agent": "wayback-oracle/1.0",
+            "detail": "apps=2 stream=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "created_at": 1789473600000,
+            "action": "wayback.import.bulk.paused",
+            "actor_ip": "10.0.49.5",
+            "user_agent": "wayback-oracle/1.0",
+            "detail": "cause=rate_limited remaining=2 total=2",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "feature_flag_migration_version",
+            "value": "2"
+          },
+          {
+            "key": "runtime_environment",
+            "value": ""
+          },
+          {
+            "key": "wayback_bulk_state",
+            "value": "{\"version\":2,\"runId\":\"00000000-0000-4000-8000-000000000002\",\"startedAt\":1789473600000,\"initiator\":\"manual\",\"updatedAt\":1789473600000,\"currentAppId\":null,\"status\":\"paused\",\"queue\":[{\"appId\":\"555000111\",\"appName\":\"Fixture One\",\"status\":\"pending\",\"startedAt\":1789473600000,\"error\":\"archive.org refused the connection for CDX index\"},{\"appId\":\"555000222\",\"appName\":\"Fixture Two\",\"status\":\"pending\"}],\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"streamRequested\":false,\"pausedAt\":1789473600000,\"pauseCause\":\"rate_limited\"}"
+          },
+          {
+            "key": "wayback_import_running",
+            "value": "false"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"totals\":{\"appsAttempted\":0,\"appsWithImports\":0,\"targetsAttempted\":0,\"imported\":0,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":0},\"durationMs\":0}",
+        "type": "application/json",
+        "retryAfter": null
+      }
     }
   ]
 }

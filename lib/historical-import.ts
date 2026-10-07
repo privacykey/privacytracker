@@ -9,8 +9,9 @@
  *   2. List every capture of the App Store product page in one CDX index
  *      request and pick the closest capture per target locally; fall back
  *      to per-target archive.org/wayback/available probes if the index is
- *      unreachable. A throttled archive (429 / 5xx) throws
- *      `WaybackUnavailableError` rather than reading as "no capture".
+ *      unusable. A throttled archive (429 / 5xx, or a refused or timed-out
+ *      connection) throws `WaybackUnavailableError` rather than reading as
+ *      "no capture".
  *   3. Fetch archived HTML via the `id_` replay variant (strips toolbar)
  *      and parse either the modern serialized-server-data blob or the
  *      historical shoebox shape.
@@ -56,6 +57,7 @@ import {
   type WaybackCapture,
   type WaybackSnapshot,
   WaybackUnavailableError,
+  waybackTransportFailure,
 } from "./wayback";
 
 /**
@@ -380,11 +382,11 @@ export async function importAppHistory(
   };
 
   // One CDX request lists every capture of the page, so each target's
-  // closest capture is then a local pick. `null` means the index was
-  // unreachable or malformed — fall back to the per-target availability
-  // walk. A throttled archive throws instead: every later probe for this
-  // app would be throttled too, and the bulk runner knows how to back off
-  // from `WaybackUnavailableError`.
+  // closest capture is then a local pick. `null` means the index answered
+  // with something unusable — fall back to the per-target availability
+  // walk. A throttled archive throws instead, refused connections
+  // included: every later probe for this app would be throttled too, and
+  // the bulk runner knows how to back off from `WaybackUnavailableError`.
   throwIfAborted(signal);
   const captures = await listWaybackCaptures(app.url, {
     from: APP_STORE_WEB_LAUNCH,
@@ -1173,19 +1175,26 @@ async function fetchArchivedHtml(
   replayUrl: string,
   signal?: AbortSignal
 ): Promise<string> {
-  const { body, response } = await safeFetch(replayUrl, {
-    allowedHosts: WAYBACK_HOSTS,
-    maxBytes: ARCHIVE_HTML_MAX_BYTES,
-    timeoutMs: ARCHIVE_HTML_TIMEOUT_MS,
-    signal,
-    redirect: "follow",
-    headers: {
-      "User-Agent":
-        "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)",
-      Accept: "text/html,application/xhtml+xml",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-  });
+  let fetched: Awaited<ReturnType<typeof safeFetch>>;
+  try {
+    fetched = await safeFetch(replayUrl, {
+      allowedHosts: WAYBACK_HOSTS,
+      maxBytes: ARCHIVE_HTML_MAX_BYTES,
+      timeoutMs: ARCHIVE_HTML_TIMEOUT_MS,
+      signal,
+      redirect: "follow",
+      headers: {
+        "User-Agent":
+          "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)",
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+  } catch (error) {
+    // A refused connection is archive.org cutting us off, not a bad capture.
+    throw waybackTransportFailure(error, "replay") ?? error;
+  }
+  const { body, response } = fetched;
   // A throttled replay is the same signal as a throttled index; anything
   // else non-200 (a 404 for a capture the index listed, say) is a fetch
   // failure for this target, not a parse failure of an error page.

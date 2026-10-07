@@ -1797,7 +1797,8 @@ manual-redirect, body-skipping mode (Location, then Content-Location,
 on the replay host only) and the request is recorded as a live row
 whose changes carry the attempt note. Throttling from the index, the
 availability API or a replay is the import's error, not a quiet
-quarter, with Retry-After in seconds or as an HTTP date; Save Page Now
+quarter, with Retry-After in seconds or as an HTTP date, and so is a
+request to any of them that fails below HTTP (see below); Save Page Now
 failures are a skipped target.
 
 **JavaScript arithmetic it reproduces.** `Date.UTC` overflow for the
@@ -1808,7 +1809,7 @@ the window and the message, and `URLSearchParams` form encoding for the
 CDX query (`timestamp:8` is `timestamp%3A8`, spaces are `+`).
 
 **The oracle — `core/scripts/extract-history-cases.mjs`.** Runs the REAL
-`importAppHistory` over 26 scenarios with archive.org stubbed by recorded
+`importAppHistory` over 33 scenarios with archive.org stubbed by recorded
 replies routed by endpoint (CDX, availability by probe date, replay by
 timestamp, Save Page Now), a frozen clock and counted ids, and records
 every raw fetch (URL and headers), every write with its BEGIN/COMMIT
@@ -1824,7 +1825,11 @@ row as the diff base; Save Page Now via Location, via Content-Location,
 rate-limited, server error, no snapshot URL, transport failure and a
 Location on another host; the install anchor probed, too fresh, and
 coinciding with a target; the monthly cadence; index parsing quirks;
-index garbage; and the target walk from a month end.
+index garbage; the target walk from a month end; and, appended with the
+transport fix below, the index refused, timed out and not resolving, an
+index redirect loop that still falls back, an availability probe
+refused, and a replay refused after an earlier row committed and
+dropped mid-body.
 
 Rust suite: 202 pass (187 + 15 new). Negative controls: skipping the
 successor re-diff failed only that case (stream and rows), disabling the
@@ -1832,6 +1837,31 @@ product-page sniff failed only the no-labels case, dropping the HTTP-date
 Retry-After branch failed only the availability 503 case, and removing the
 Content-Location fallback failed only that Save Page Now case; nothing
 else moved, and each fault was removed before the final passing run.
+
+**A refused connection is throttling (fixed in Node and the core
+together).** archive.org, once it has throttled a client for long enough,
+stops answering 429 and refuses the TCP connection; a user's 201-app bulk
+run paused on rate limiting, and the resumed run marked every app done
+with no history. Both backends read a fetch error from the index or the
+availability API as "no capture" (the index then fell back to up to seven
+probes per target, each refused too) and a refused replay as a skipped
+target, so every app ended with every target `skipped_no_capture` and
+about 170 refused requests, prolonging the block. Now
+`Unavailable::transport` (`waybackTransportFailure` in Node) turns the
+transport's `fetch failed`, `terminated`, timeout and unresolved-host
+errors into `Unavailable` with status 0 and no Retry-After ("archive.org
+refused the connection for CDX index"), from the index, the probes and
+the replays; every other fetch error is still quiet. The bulk runner's
+wait without a Retry-After rises from 30 s to five minutes (blocks have
+been reported to last about that long) and its cap from 120 s to 15
+minutes. The history oracle's replay case that used `fetch failed` for a
+quiet fetch failure now uses a body over the cap, which behaves as before;
+seven history cases and two runner cases are appended (a refusal backing
+off for the default wait, cancelled during it, and a refusal on the retry
+pausing the queue as rate-limited). Negative controls: the old Rust
+classification failed exactly the six throwing history cases and both
+runner cases; the old 30 s default alone failed only `backoff_is_bounded`
+and the default-wait case.
 
 ## Status — Phase 4 (writers, runners, health)
 
@@ -2230,8 +2260,9 @@ and `runBulkWaybackImport` — each app marked in flight and persisted
 before any work, its row re-read at dequeue time, the archive walk with
 a `target` frame per outcome, the app row and frame on completion; on a
 throttling archive the entry put back to pending and un-counted, one
-backoff (the archive's Retry-After bounded to 1–120 s) and a retry of the
-same app, a second strike parking the queue with `pauseCause:
+backoff (the archive's Retry-After bounded to 1 s–15 min, five minutes
+when it sent none; 1–120 s and 30 s before the transport fix) and a retry
+of the same app, a second strike parking the queue with `pauseCause:
 "rate_limited"`; the pause and the cancel a PATCH wrote, read back from
 disk at every app boundary; the clean completion with its summary frame,
 row and audit; and the outer catch that leaves state and mutex for the
@@ -2288,7 +2319,9 @@ pending pause, a cancelled queue, a stale lock, a finished queue, a
 crashed run (the in-flight app redone) and a queue naming a deleted app;
 and, appended with the fix that records a resumed run's initiator, the
 PATCH resume of a queue a restart had resumed, which is the user's run
-again (`manual`, not `resume`).
+again (`manual`, not `resume`); and, appended with the transport fix, a
+refused connection backing off for the default five minutes (cancelled
+during the wait) and a refusal on the retry pausing the queue.
 `core/src/server/wayback_runner_tests.rs` replays each through a shared
 id counter and a hooked fetcher that issues the same PATCH at the same
 fetch (stalling a cancelled request as an aborted one never returns) and

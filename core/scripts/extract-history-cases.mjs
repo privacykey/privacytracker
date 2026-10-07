@@ -422,14 +422,18 @@ try {
   });
 
   // 7. Replay failures: a page with no privacy section (skipped, and the
-  //    same capture is not fetched again), a transport failure, and Save
-  //    Page Now throttled.
+  //    same capture is not fetched again), a fetch failure that is not
+  //    archive.org refusing us (a body over the cap), and Save Page Now
+  //    throttled. A refused connection is the import's error instead; see
+  //    the transport cases at the end.
   await run("replay outcomes and a reused unusable capture", {
     replies: {
       cdx: cdx([ts(2021, 3, 17), ts(2021, 8, 1)]),
       replay: {
         [ts(2021, 3, 17)]: html(NO_LABELS_PAGE),
-        [ts(2021, 8, 1)]: { error: "fetch failed" },
+        [ts(2021, 8, 1)]: {
+          error: "safeFetch: response exceeded 4194304 bytes",
+        },
       },
       save: status(429, { "retry-after": "60" }),
     },
@@ -574,6 +578,55 @@ try {
   await run("target walk from a month end", {
     at: Date.UTC(2021, 4, 31, 12),
     replies: { cdx: json("[]"), save: status(500) },
+  });
+
+  // 24–30. Transport failures. Once archive.org has throttled a client for
+  //     long enough it refuses the connection instead of answering 429, so
+  //     a request that fails below HTTP is throttling too: the index, a
+  //     probe or a replay that cannot connect, times out or does not
+  //     resolve throws, where it used to read as "no capture" for every
+  //     target. Other fetch errors still fall back or skip.
+  await run("index connection refused throws", {
+    replies: { cdx: { error: "fetch failed" } },
+  });
+  await run("index timeout throws", {
+    replies: { cdx: { error: "The operation was aborted due to timeout" } },
+  });
+  await run("index host not resolving throws", {
+    replies: {
+      cdx: {
+        error:
+          "Blocked URL: host web.archive.org did not resolve to a public address",
+      },
+    },
+  });
+  await run("index redirect loop falls back to probes", {
+    replies: {
+      cdx: { error: "safeFetch: too many redirects (6)" },
+      availability: { default: NONE },
+      save: status(500),
+    },
+  });
+  await run("availability connection refused throws", {
+    replies: {
+      cdx: status(404),
+      availability: { default: { error: "fetch failed" } },
+    },
+  });
+  await run("replay connection refused throws after earlier rows committed", {
+    replies: {
+      cdx: cdx([ts(2021, 2, 15), ts(2021, 5, 1), recent]),
+      replay: {
+        [ts(2021, 2, 15)]: html(modernPage(A)),
+        [ts(2021, 5, 1)]: { error: "fetch failed" },
+      },
+    },
+  });
+  await run("replay connection dropped throws", {
+    replies: {
+      cdx: cdx([ts(2021, 2, 15), recent]),
+      replay: { [ts(2021, 2, 15)]: { error: "terminated" } },
+    },
   });
 
   const text = `${JSON.stringify({ cases }, null, 2)}\n`;

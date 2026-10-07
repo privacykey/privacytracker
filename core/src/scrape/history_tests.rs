@@ -240,3 +240,82 @@ fn historical_import_matches_node_calls_stream_rows_and_result() {
         failures.join("\n\n")
     );
 }
+
+/// The oracle compares only the thrown message. A refused connection must
+/// also come back flagged as throttling, which is what the bulk runner backs
+/// off from and the per-app route answers 503 for; a plain error would mark
+/// the app failed instead.
+#[test]
+fn refused_connections_are_throttling_not_failures() {
+    let app = AppRow {
+        id: "555000111".to_string(),
+        name: "Fixture".to_string(),
+        url: "https://apps.apple.com/us/app/fixture/id555000111".to_string(),
+    };
+    let cdx = json!({
+        "status": 200,
+        "headers": {"content-type": "application/json"},
+        "body": r#"[["timestamp","statuscode"],["20210215120000","200"]]"#,
+    });
+    let cases = [
+        (
+            json!({"cdx": {"error": "fetch failed"}}),
+            "archive.org refused the connection for CDX index",
+            1,
+        ),
+        (
+            json!({"cdx": cdx, "replay": {"20210215120000": {"error": "fetch failed"}}}),
+            "archive.org refused the connection for replay",
+            2,
+        ),
+    ];
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    for (replies, message, fetches) in cases {
+        let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
+        conn.execute(
+            "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, 0, 0)",
+            [&app.id, &app.name, &app.url],
+        )
+        .unwrap();
+        let routed = Routed {
+            replies,
+            calls: Mutex::new(vec![]),
+        };
+        let conn = Mutex::new(conn);
+        let mut db = Locked {
+            conn: &conn,
+            log: None,
+            on_wait: None,
+        };
+        let mut ids = CountingIds {
+            prefix: "00000000-0000-4000-8000-",
+            next: 0,
+        };
+        let error = rt
+            .block_on(import_app_history(
+                &mut db,
+                &routed,
+                &app,
+                &HistoryOptions::default(),
+                1_635_768_000_000,
+                &mut ids,
+                None,
+            ))
+            .expect_err("a refused connection is the import's error");
+        assert_eq!(error.message, message);
+        let unavailable = error.unavailable.expect("flagged as throttling");
+        assert_eq!(
+            (unavailable.status, unavailable.retry_after_ms),
+            (0, None),
+            "no response, so no status and no Retry-After"
+        );
+        assert_eq!(
+            routed.calls.lock().unwrap().len(),
+            fetches,
+            "no availability probes and no Save Page Now after the refusal"
+        );
+    }
+}

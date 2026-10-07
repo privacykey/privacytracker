@@ -976,6 +976,27 @@ try {
     ],
     replies: [...emptyRun(F2), ...archiveRun(F3, [LINKED])],
   });
+  // archive.org refusing the connection is throttling, not an empty
+  // archive: the app goes back to pending and the runner waits the default
+  // five minutes, since a refusal carries no Retry-After. A cancel during
+  // the wait ends the run rather than the test sleeping it out.
+  await run("bulk import connection refused backs off for the default wait", {
+    route,
+    method: "POST",
+    search: "?stream=1",
+    setup: fleet,
+    replies: [{ error: "fetch failed" }],
+    hooks: [{ atCall: 0, action: "cancel", afterMs: 100 }],
+  });
+  // A refusal on the retry is the second strike: the queue pauses as
+  // rate-limited with both apps pending, instead of the app being marked
+  // done with no history.
+  await run("bulk import throttled then refused pauses the queue", {
+    route,
+    method: "POST",
+    setup: fleet,
+    replies: [THROTTLED, { error: "fetch failed" }],
+  });
 } finally {
   db.close();
   rmSync(dir, { recursive: true, force: true });

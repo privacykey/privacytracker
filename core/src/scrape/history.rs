@@ -6,8 +6,9 @@
 //! window or by URL are skipped; a usable page is parsed and inserted as a
 //! back-dated row in one transaction that also re-diffs the wayback row
 //! after it; and when the archive holds nothing recent, Save Page Now is
-//! asked once. Throttling anywhere is the import's error, not a quiet
-//! quarter. Gated by `core/tests/fixtures/history-cases.json`.
+//! asked once. Throttling anywhere, a refused connection included, is the
+//! import's error, not a quiet quarter. Gated by
+//! `core/tests/fixtures/history-cases.json`.
 //!
 //! The connection comes through a [`DbAccess`] and is taken for one
 //! section at a time — the two reads before the index listing, each
@@ -281,7 +282,14 @@ async fn fetch_archived_html(
         ),
         ("Accept-Language".to_string(), "en-US,en;q=0.9".to_string()),
     ];
-    let reply = fetcher.fetch(request).await.map_err(ReplayFailure::Other)?;
+    // A refused connection is archive.org cutting us off, not a bad capture.
+    let reply = fetcher
+        .fetch(request)
+        .await
+        .map_err(|error| match Unavailable::transport(&error, "replay") {
+            Some(unavailable) => ReplayFailure::Unavailable(unavailable),
+            None => ReplayFailure::Other(error),
+        })?;
     if reply.status == 429 || reply.status >= 500 {
         return Err(ReplayFailure::Unavailable(Unavailable::new(
             reply.status,
