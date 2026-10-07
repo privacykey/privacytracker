@@ -128,6 +128,36 @@ test("a refused connection to the CDX index throws instead of falling back to pr
   assert.equal(waybackRowCount(), 0);
 });
 
+// The sequence a real paused run logged: the index timed out (about 20 s),
+// the import fell back to the availability API, and the first probe got a
+// bare 429, so the run backed off for the old 30 s default. A timed-out
+// index now stops the import before any probe.
+test("a timed-out CDX index throws before any availability probe", async () => {
+  resetTestDb();
+  seedTrackedApp({ id: APP_ID, url: APP_URL });
+  const calls = stubArchive({
+    cdx: () => {
+      throw new DOMException(
+        "The operation was aborted due to timeout",
+        "TimeoutError"
+      );
+    },
+    availability: () => new Response("", { status: 429 }),
+  });
+
+  await assert.rejects(
+    importAppHistory(APP, { today: TODAY }),
+    (error: unknown) => {
+      assert.ok(error instanceof WaybackUnavailableError);
+      assert.equal(error.message, "archive.org timed out for CDX index");
+      assert.equal(error.retryAfterMs, null);
+      return true;
+    }
+  );
+  assert.deepEqual(calls, { cdx: 1, availability: 0, replay: 0, save: 0 });
+  assert.equal(waybackRowCount(), 0);
+});
+
 test("a refused availability probe throws on the first probe", async () => {
   resetTestDb();
   seedTrackedApp({ id: APP_ID, url: APP_URL });
