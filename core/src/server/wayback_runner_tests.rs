@@ -1033,6 +1033,41 @@ mod survey_runner {
         assert!(h.clock.now() >= T0 + 300_000);
     }
 
+    /// The paced client's stored cooldown outlasts the Retry-After: the
+    /// wait covers it, rather than retrying into a throttle of its own.
+    #[test]
+    fn a_wait_covers_the_paced_clients_cooldown() {
+        let h = Harness::new(
+            "pacer-cooldown",
+            &[("725000001", "Alpha", timestamps(3, 150))],
+        );
+        h.set_setting("wayback_cooldown_until", &(T0 + 600_000).to_string());
+        h.script("id725000001", Answer::Status(429, Some("60")));
+        let asked_at = Arc::new(Mutex::new(vec![]));
+        {
+            let clock = h.clock.clone();
+            let asked_at = asked_at.clone();
+            h.hook(move |_, _| asked_at.lock().unwrap().push(clock.now()));
+        }
+
+        let (totals, frames) = h.run("manual", None);
+        assert_eq!(totals.unwrap()["appsDone"], 1);
+
+        let waiting = of_type(&frames, "waiting");
+        assert_eq!(waiting.len(), 1);
+        assert_eq!(waiting[0]["until"], T0 + 600_000);
+        assert_eq!(
+            asked_at.lock().unwrap()[1],
+            T0 + 600_000,
+            "the retry waited"
+        );
+        let (_, summary, _) = h.activity().remove(0);
+        assert_eq!(
+            summary,
+            "archive.org is limiting requests; the Wayback import waits 10 min before retrying Alpha"
+        );
+    }
+
     #[test]
     fn six_throttles_in_a_row_pause_the_queue() {
         let h = Harness::new(

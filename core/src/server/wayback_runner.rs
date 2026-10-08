@@ -97,6 +97,8 @@ const CAPTURE_CACHE_PREFIX: &str = "wayback.captures.";
 pub(crate) const CAPTURE_CACHE_MAX_AGE_MS: i64 = 7 * 24 * 60 * 60 * 1000;
 /// The paced client's state; its `perMinute` drives the estimate.
 const PACER_STATE_KEY: &str = "wayback_pacer_state";
+/// The paced client's cooldown (epoch ms): no request leaves before it.
+const PACER_COOLDOWN_KEY: &str = "wayback_cooldown_until";
 const DEFAULT_PER_MINUTE: f64 = 10.0;
 const YEAR_MS: i64 = 365 * 24 * 60 * 60 * 1000;
 /// Bisection stops at captures a week apart, about six halvings of a year.
@@ -450,6 +452,16 @@ fn cache_captures(cx: &mut Cx, app: &AppRow, captures: &[Capture]) -> Result<(),
     let timestamps: Vec<&str> = captures.iter().map(|c| c.timestamp.as_str()).collect();
     let cache = json!({ "fetchedAt": cx.now, "url": app.url, "timestamps": timestamps });
     cx.set(&capture_cache_key(&app.id), &cache.to_string())
+}
+
+/// `wayback_cooldown_until`, the end of the paced client's cooldown, or 0.
+fn pacer_cooldown_until(cx: &Cx) -> i64 {
+    let raw = cx.get(PACER_COOLDOWN_KEY, "");
+    raw.trim()
+        .parse::<f64>()
+        .ok()
+        .filter(|until| until.is_finite())
+        .map_or(0, |until| until as i64)
 }
 
 /// `wayback_pacer_state.perMinute`, the paced client's current rate, or 10.
@@ -1187,8 +1199,12 @@ async fn throttled(
         if throttles >= MAX_CONSECUTIVE_THROTTLES {
             return pause_run(cx, state, ctl, "rate_limited", Some(&message)).map(Err);
         }
-        let delay_ms = wait_ms_for(unavailable.retry_after_ms);
-        let until = cx.now + delay_ms;
+        // Until archive.org said to ask again, and never inside the paced
+        // client's cooldown, which a retry would only meet as one more
+        // throttle.
+        let until = (cx.now + wait_ms_for(unavailable.retry_after_ms))
+            .max(pacer_cooldown_until(cx));
+        let delay_ms = until - cx.now;
         set(state, "waitingUntil", json!(until));
         set(state, "waitReason", json!(js_slice_prefix(&message, 200)));
         persist(cx, state)?;
