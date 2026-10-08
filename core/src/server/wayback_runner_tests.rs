@@ -607,6 +607,8 @@ mod survey_runner {
     /// Now and the availability API are never expected in a bulk run.
     struct Archive {
         listings: HashMap<String, Vec<String>>,
+        /// Listings by the address asked for, taken before the one by id.
+        by_address: Mutex<HashMap<String, Vec<String>>>,
         scripted: Mutex<Vec<(String, Answer)>>,
         calls: Mutex<Vec<String>>,
         hook: Mutex<Option<Hook>>,
@@ -622,6 +624,18 @@ mod survey_runner {
                 .collect(),
             final_url: url.to_string(),
         }
+    }
+
+    /// The address an index request lists.
+    fn listed_address(url: &str) -> String {
+        url::Url::parse(url)
+            .ok()
+            .and_then(|u| {
+                u.query_pairs()
+                    .find(|(k, _)| k == "url")
+                    .map(|(_, v)| v.into_owned())
+            })
+            .unwrap_or_default()
     }
 
     fn app_of(url: &str) -> String {
@@ -661,8 +675,17 @@ mod survey_runner {
                     None => {}
                 }
                 if url.starts_with("https://web.archive.org/cdx/search/cdx?") {
+                    let by_address = self
+                        .by_address
+                        .lock()
+                        .unwrap()
+                        .get(&listed_address(&url))
+                        .cloned();
+                    let listing = by_address
+                        .or_else(|| self.listings.get(&app_of(&url)).cloned())
+                        .unwrap_or_default();
                     let mut rows = vec![json!(["timestamp", "statuscode"])];
-                    for ts in self.listings.get(&app_of(&url)).into_iter().flatten() {
+                    for ts in listing {
                         rows.push(json!([ts, "200"]));
                     }
                     let body = Value::Array(rows).to_string();
@@ -690,6 +713,17 @@ mod survey_runner {
 
     fn url_of(id: &str) -> String {
         format!("https://apps.apple.com/us/app/fixture/id{id}")
+    }
+
+    /// Captures on these days after 1 March 2021, as CDX spells them.
+    fn on_days(days: &[i64]) -> Vec<String> {
+        days.iter()
+            .map(|d| {
+                let ms = 1_614_600_000_000 + d * DAY_MS;
+                let (y, m, d) = crate::jsdate::civil_from_days(ms.div_euclid(DAY_MS));
+                format!("{y:04}{m:02}{d:02}120000")
+            })
+            .collect()
     }
 
     /// `timestamps` days apart from 1 March 2021, as CDX spells them.
@@ -734,6 +768,7 @@ mod survey_runner {
                 ids: TestIds(name, Arc::new(Mutex::new(0))),
                 archive: Arc::new(Archive {
                     listings,
+                    by_address: Mutex::new(HashMap::new()),
                     scripted: Mutex::new(vec![]),
                     calls: Mutex::new(vec![]),
                     hook: Mutex::new(None),
@@ -833,6 +868,41 @@ mod survey_runner {
 
         fn setting(&self, key: &str) -> Option<String> {
             setting(&self.conn, key)
+        }
+
+        /// The app's stored App Store address.
+        fn set_url(&self, id: &str, url: &str) {
+            self.conn
+                .lock()
+                .unwrap()
+                .execute("UPDATE apps SET url = ?1 WHERE id = ?2", [url, id])
+                .unwrap();
+        }
+
+        /// What archive.org lists for one address.
+        fn list_address(&self, address: &str, timestamps: Vec<String>) {
+            self.archive
+                .by_address
+                .lock()
+                .unwrap()
+                .insert(address.to_string(), timestamps);
+        }
+
+        /// The addresses whose indexes were asked for, in order.
+        fn listed(&self) -> Vec<String> {
+            self.calls()
+                .iter()
+                .filter(|u| u.contains("/cdx/search/cdx?"))
+                .map(|u| listed_address(u))
+                .collect()
+        }
+
+        /// The address each page was replayed at, in order.
+        fn replayed_at(&self) -> Vec<String> {
+            self.calls()
+                .iter()
+                .filter_map(|u| u.split_once("id_/").map(|(_, at)| at.to_string()))
+                .collect()
         }
 
         fn set_setting(&self, key: &str, value: &str) {
@@ -1331,6 +1401,221 @@ mod survey_runner {
         assert_eq!(state["queue"][1]["status"], "pending");
     }
 
+    const GB: &str = "https://apps.apple.com/gb/app/fixture/id780000101";
+    const US: &str = "https://apps.apple.com/us/app/fixture/id780000101";
+    const OLD: &str = "https://apps.apple.com/gb/app/old-name/id780000101";
+
+    #[test]
+    fn the_run_counts_apps_whose_history_starts_late() {
+        // Early is archived from March 2021, Late only from 2024, and Empty
+        // not at all: one late start, and an app with no captures is none.
+        let h = Harness::new(
+            "p5-late",
+            &[
+                ("790000001", "Early", timestamps(3, 100)),
+                ("790000002", "Late", on_days(&[1100, 1200])),
+                ("790000003", "Empty", vec![]),
+            ],
+        );
+        let (totals, frames) = h.run("manual", None);
+        let totals = totals.unwrap();
+        assert_eq!(totals["appsHistoryLate"], 1);
+        assert_eq!(totals["appsDone"], 3);
+        assert_eq!(totals["appsNoArchive"], 1);
+        let late: Vec<bool> = of_type(&frames, "app-done")
+            .iter()
+            .map(|f| f["result"]["historyStartsLate"].as_bool().unwrap())
+            .collect();
+        assert_eq!(late.iter().filter(|l| **l).count(), 1, "{late:?}");
+        // The run's activity row carries the totals as they ended.
+        let in_activity: i64 = h
+            .conn
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT json_extract(detail, '$.totals.appsHistoryLate') FROM activity_log \
+                 WHERE type = 'wayback_import' ORDER BY rowid DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(in_activity, 1);
+    }
+
+    #[test]
+    fn a_resumed_queue_counts_its_late_starts_from_finished_entries() {
+        // A v3 blob from before the count: only a finished, read app whose
+        // entry says so counts; a failed one and a pending one do not, and
+        // an entry without the flag reads as not late.
+        let mut state = json!({
+            "version": 3,
+            "queue": [
+                { "appId": "1", "status": "done", "historyStartsLate": true },
+                { "appId": "2", "status": "done", "historyStartsLate": false },
+                { "appId": "3", "status": "done" },
+                { "appId": "4", "status": "failed", "historyStartsLate": true },
+                { "appId": "5", "status": "pending", "historyStartsLate": true },
+            ],
+            "totals": { "appsAttempted": 4 },
+        });
+        wayback_runner::upgrade_totals(&mut state);
+        assert_eq!(state["totals"]["appsHistoryLate"], 1);
+        // A blob that already counts keeps its count.
+        state["totals"]["appsHistoryLate"] = json!(7);
+        wayback_runner::upgrade_totals(&mut state);
+        assert_eq!(state["totals"]["appsHistoryLate"], 7);
+    }
+
+    #[test]
+    fn the_survey_lists_the_us_page_and_older_addresses() {
+        let h = Harness::new("p5-addresses", &[("780000101", "Gamma", vec![])]);
+        h.set_url("780000101", GB);
+        h.set_setting("wayback.alt_urls.780000101", &json!([OLD]).to_string());
+        h.list_address(US, on_days(&[400, 800, 1200]));
+        h.list_address(OLD, on_days(&[0, 200, 400]));
+        let (result, frames) = h.run("manual", None);
+        result.unwrap();
+        // The US index answered, so the stored address was never listed.
+        assert_eq!(h.listed(), vec![US, OLD]);
+        let cache: Value =
+            serde_json::from_str(&h.setting("wayback.captures.780000101").unwrap()).unwrap();
+        assert_eq!(
+            cache,
+            json!({
+                "fetchedAt": T0,
+                "url": US,
+                "timestamps": on_days(&[400, 800, 1200]),
+                "storedUrl": GB,
+                "alternates": [{"url": OLD, "timestamps": on_days(&[0, 200])}],
+            }),
+            "day 400 counts once, as the US page's"
+        );
+        let surveyed = of_type(&frames, "survey-app")[0];
+        assert_eq!(
+            (
+                &surveyed["lookupUrl"],
+                &surveyed["historyStartsLate"],
+                &surveyed["captureCount"]
+            ),
+            (&json!(US), &json!(false), &json!(5))
+        );
+        // The oldest page is the old address's, and it is replayed there.
+        let replayed = h.replayed_at();
+        assert_eq!(replayed.first().map(String::as_str), Some(OLD));
+        assert!(replayed.iter().any(|at| at == US), "{replayed:?}");
+        let done = &of_type(&frames, "app-done")[0]["result"];
+        assert_eq!(done["lookupUrl"], US);
+        assert_eq!(done["alternateUrls"], json!([OLD]));
+        assert_eq!(done["historyStartsAt"], json!(1_614_600_000_000_i64));
+    }
+
+    #[test]
+    fn a_listing_is_taken_again_when_the_addresses_change() {
+        let cached = |stored: Option<&str>, url: &str, alternates: Option<Value>| {
+            let mut cache = json!({
+                "fetchedAt": T0 - DAY_MS,
+                "url": url,
+                "timestamps": on_days(&[400]),
+            });
+            if let Some(stored) = stored {
+                cache["storedUrl"] = json!(stored);
+            }
+            if let Some(alternates) = alternates {
+                cache["alternates"] = alternates;
+            }
+            cache.to_string()
+        };
+        let old_listed = Some(json!([{"url": OLD, "timestamps": []}]));
+        for (name, alternates, cache, listed_again) in [
+            ("p5-moved", vec![], cached(Some(US), US, None), true),
+            ("p5-added", vec![OLD], cached(Some(GB), US, None), true),
+            (
+                "p5-same",
+                vec![OLD],
+                cached(Some(GB), US, old_listed.clone()),
+                false,
+            ),
+            // From before the US lookup: a listing of the stored address,
+            // which for a non-US page is no longer the address that leads.
+            ("p5-pre-us", vec![], cached(None, GB, None), true),
+        ] {
+            let h = Harness::new(name, &[("780000101", "Gamma", vec![])]);
+            h.set_url("780000101", GB);
+            if !alternates.is_empty() {
+                h.set_setting("wayback.alt_urls.780000101", &json!(alternates).to_string());
+            }
+            h.set_setting("wayback.captures.780000101", &cache);
+            h.list_address(US, on_days(&[400]));
+            h.list_address(OLD, vec![]);
+            h.run("manual", None).0.unwrap();
+            assert_eq!(
+                !h.listed().is_empty(),
+                listed_again,
+                "{name}: {:?}",
+                h.listed()
+            );
+        }
+    }
+
+    #[test]
+    fn deleting_an_app_forgets_its_listing_and_older_addresses() {
+        let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
+        for key in [
+            "wayback.captures.1",
+            "wayback.alt_urls.1",
+            "wayback.captures.2",
+        ] {
+            conn.execute(
+                "INSERT INTO app_settings (key, value) VALUES (?1, '[]')",
+                [key],
+            )
+            .unwrap();
+        }
+        let mut log = vec![];
+        {
+            let mut w = Writer::new(&conn, Some(&mut log));
+            wayback_runner::forget_app_settings(&mut w, "1").unwrap();
+            // An app with neither key: nothing is written at all.
+            wayback_runner::forget_app_settings(&mut w, "3").unwrap();
+        }
+        let deleted: Vec<Value> = log.iter().flat_map(|s| s.params.clone()).collect();
+        assert_eq!(
+            deleted,
+            vec![json!("wayback.captures.1"), json!("wayback.alt_urls.1")]
+        );
+        let left: Vec<String> = conn
+            .prepare("SELECT key FROM app_settings WHERE key LIKE 'wayback.%'")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap();
+        assert_eq!(left, vec!["wayback.captures.2"]);
+
+        // Through a delete path: the orphan sweep that removing a device runs.
+        conn.execute(
+            "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES ('2', 'Two', ?1, 0, 0)",
+            [US],
+        )
+        .unwrap();
+        let mut w = Writer::new(&conn, None);
+        let mut ids = TestIds("p5-delete", Arc::new(Mutex::new(0)));
+        let cx = &mut Cx {
+            w: &mut w,
+            ids: &mut ids,
+            now: T0,
+        };
+        assert!(crate::server::library_writes::orphan_sweep_app(cx, "2").unwrap());
+        let still: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM app_settings WHERE key = 'wayback.captures.2'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(still, 0);
+    }
+
     #[test]
     fn the_survey_reuses_a_fresh_listing_and_orders_the_queue() {
         let h = Harness::new(
@@ -1471,12 +1756,18 @@ mod survey_runner {
             "one after every app read"
         );
 
-        // The listings asked for are cached; the fresh one is untouched.
+        // The listings asked for are cached, with the stored address they
+        // were taken for; the fresh one is untouched.
         let cached: Value =
             serde_json::from_str(&h.setting("wayback.captures.780000003").unwrap()).unwrap();
         assert_eq!(
             cached,
-            json!({ "fetchedAt": T0, "url": url_of("780000003"), "timestamps": timestamps(5, 80) })
+            json!({
+                "fetchedAt": T0,
+                "url": url_of("780000003"),
+                "timestamps": timestamps(5, 80),
+                "storedUrl": url_of("780000003"),
+            })
         );
         let alpha: Value =
             serde_json::from_str(&h.setting("wayback.captures.780000001").unwrap()).unwrap();
@@ -1600,6 +1891,10 @@ mod survey_runner {
         assert_eq!(during["initiator"], "resume");
         assert!(during.get("survey").is_none(), "a v2 queue has no survey");
         assert_eq!(during["totals"]["appsDone"], 1, "counted from its queue");
+        assert_eq!(
+            during["totals"]["appsHistoryLate"], 0,
+            "no v2 entry carries historyStartsLate: missing reads as false"
+        );
         assert_eq!(
             during["totals"]["appsAttempted"], 2,
             "the app in flight un-counted, then counted"

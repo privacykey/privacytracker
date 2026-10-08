@@ -259,6 +259,173 @@ pub async fn list_captures(
     Ok(Some(captures))
 }
 
+fn is_storefront(segment: &str) -> bool {
+    segment.len() == 2 && segment.bytes().all(|b| b.is_ascii_alphabetic())
+}
+
+/// `id<digits>`, the track id as App Store paths carry it.
+fn track_id_segment(segment: &str) -> Option<&str> {
+    let digits = segment
+        .strip_prefix("id")
+        .or_else(|| segment.strip_prefix("ID"))?;
+    (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())).then_some(digits)
+}
+
+/// The same App Store page on the US storefront. Privacy labels belong to
+/// the app, not the storefront, and archive.org crawls US pages far more
+/// often than any other, so an import lists this address first. `None` for
+/// anything that is not an apps.apple.com app page; a path with no
+/// storefront is the US one. The query and fragment are dropped: they do
+/// not change the page, and the index matches addresses exactly.
+pub fn us_storefront_url(url: &str) -> Option<String> {
+    let parsed = Url::parse(js_trim(url)).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https")
+        || parsed.host_str()? != "apps.apple.com"
+        || parsed.port().is_some()
+    {
+        return None;
+    }
+    let segments: Vec<&str> = parsed.path_segments()?.filter(|s| !s.is_empty()).collect();
+    let rest = match segments.as_slice() {
+        [storefront, "app", rest @ ..] if is_storefront(storefront) => rest,
+        ["app", rest @ ..] => rest,
+        _ => return None,
+    };
+    let (id, slug) = match rest {
+        [id] => (track_id_segment(id)?, None),
+        [slug, id] => (track_id_segment(id)?, Some(*slug)),
+        _ => return None,
+    };
+    Some(match slug {
+        Some(slug) => format!("https://apps.apple.com/us/app/{slug}/id{id}"),
+        None => format!("https://apps.apple.com/us/app/id{id}"),
+    })
+}
+
+/// An older App Store address a user added for app `app_id`, as it is
+/// stored: `https://apps.apple.com/<cc>/app/<slug>/id<app_id>` with a
+/// lowercase storefront. Surrounding spaces, a trailing slash, a query and
+/// a fragment are forgiven and dropped; anything else is refused, the
+/// address of another app included.
+pub fn canonical_app_store_address(raw: &str, app_id: &str) -> Option<String> {
+    let raw = js_trim(raw);
+    if raw.len() > 2048 {
+        return None;
+    }
+    let parsed = Url::parse(raw).ok()?;
+    if parsed.scheme() != "https"
+        || parsed.host_str()? != "apps.apple.com"
+        || parsed.port().is_some()
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+    {
+        return None;
+    }
+    let mut segments: Vec<&str> = parsed.path_segments()?.collect();
+    if segments.last() == Some(&"") {
+        segments.pop();
+    }
+    let [storefront, "app", slug, id] = segments.as_slice() else {
+        return None;
+    };
+    if !is_storefront(storefront) || slug.is_empty() || track_id_segment(id)? != app_id {
+        return None;
+    }
+    Some(format!(
+        "https://apps.apple.com/{}/app/{slug}/id{app_id}",
+        storefront.to_ascii_lowercase()
+    ))
+}
+
+/// The address inside a `/web/<timestamp>/<address>` capture URL: what a
+/// capture is a capture of, and so what its replay asks for.
+pub fn capture_address(capture_url: &str) -> Option<&str> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(
+            r"(?i)^https?://(?:www\.)?web\.archive\.org/web/[0-9]{4,14}(?:[a-z_]+)?/(https?://.+)$",
+        )
+        .expect("static regex")
+    });
+    re.captures(capture_url)
+        .and_then(|c| c.get(1))
+        .map(|m| m.as_str())
+}
+
+/// Every capture the index holds of an app, across its addresses.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppListing {
+    /// The address whose listing leads: the US page, or the stored address
+    /// when the US index holds nothing.
+    pub lookup_url: String,
+    /// The older addresses asked about, whatever their index held.
+    pub alternate_urls: Vec<String>,
+    /// Oldest first, one per timestamp; each capture's `url` names the
+    /// address it is a capture of.
+    pub captures: Vec<Capture>,
+}
+
+/// [`list_captures`] for an app: the US-storefront address first, then the
+/// stored address when the US index is empty or unusable, then every older
+/// address the user added, merged in with the first listing of a timestamp
+/// kept. A US index that is merely smaller than the stored address's still
+/// wins: comparing would cost every non-US app a second listing, and an
+/// address with more history can be added as an older address. `None` when
+/// no address answered with a usable index; throttling anywhere is the
+/// error, at once.
+pub async fn list_app_captures(
+    fetcher: &dyn Fetcher,
+    stored_url: &str,
+    alternates: &[String],
+    from_ms: Option<i64>,
+    now: i64,
+) -> Result<Option<AppListing>, Unavailable> {
+    let us = us_storefront_url(stored_url).filter(|us| us != stored_url);
+    let mut lookups: Vec<&str> = us.iter().map(String::as_str).collect();
+    lookups.push(stored_url);
+    let mut found: Option<(String, Vec<Capture>)> = None;
+    let mut first_empty: Option<&str> = None;
+    for address in lookups.iter().copied() {
+        match list_captures(fetcher, address, from_ms, now).await? {
+            Some(captures) if !captures.is_empty() => {
+                found = Some((address.to_string(), captures));
+                break;
+            }
+            Some(_) => {
+                first_empty.get_or_insert(address);
+            }
+            None => {}
+        }
+    }
+    let (lookup_url, mut captures) = match (found, first_empty) {
+        (Some(found), _) => found,
+        (None, Some(address)) => (address.to_string(), vec![]),
+        (None, None) => return Ok(None),
+    };
+    let mut seen: HashSet<String> = captures.iter().map(|c| c.timestamp.clone()).collect();
+    let mut alternate_urls = vec![];
+    for address in alternates {
+        if lookups.contains(&address.as_str()) || alternate_urls.contains(address) {
+            continue;
+        }
+        alternate_urls.push(address.clone());
+        let Some(listed) = list_captures(fetcher, address, from_ms, now).await? else {
+            continue;
+        };
+        for capture in listed {
+            if seen.insert(capture.timestamp.clone()) {
+                captures.push(capture);
+            }
+        }
+    }
+    captures.sort_by_key(|c| c.ms);
+    Ok(Some(AppListing {
+        lookup_url,
+        alternate_urls,
+        captures,
+    }))
+}
+
 /// `lookupLatestWaybackSnapshot`: the availability API's newest capture of
 /// a URL, or `None` for anything it cannot answer. Unlike the dated
 /// lookup it never looks at the status: a throttled or failing API reads
@@ -434,7 +601,97 @@ fn snapshot_from_header(raw: Option<&str>, base: &str) -> Option<Snapshot> {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_timestamp, parse_retry_after_ms, parse_timestamp_ms, Unavailable};
+    use super::{
+        canonical_app_store_address, capture_address, format_timestamp, parse_retry_after_ms,
+        parse_timestamp_ms, us_storefront_url, Unavailable,
+    };
+
+    #[test]
+    fn any_storefront_maps_to_the_us_page() {
+        let us = |url: &str| us_storefront_url(url);
+        assert_eq!(
+            us("https://apps.apple.com/gb/app/instagram/id389801252"),
+            Some("https://apps.apple.com/us/app/instagram/id389801252".to_string())
+        );
+        // Query, fragment, trailing slash and an upper-case storefront go;
+        // so does plain http.
+        assert_eq!(
+            us("http://apps.apple.com/DE/app/instagram/id389801252/?platform=iphone#x"),
+            Some("https://apps.apple.com/us/app/instagram/id389801252".to_string())
+        );
+        // A path with no storefront is the US page; so is one with no slug.
+        assert_eq!(
+            us("https://apps.apple.com/app/instagram/id389801252"),
+            Some("https://apps.apple.com/us/app/instagram/id389801252".to_string())
+        );
+        assert_eq!(
+            us("https://apps.apple.com/jp/app/id389801252"),
+            Some("https://apps.apple.com/us/app/id389801252".to_string())
+        );
+        // A percent-encoded slug is kept as it is.
+        assert_eq!(
+            us("https://apps.apple.com/cn/app/%E5%BE%AE%E4%BF%A1/id414478124"),
+            Some("https://apps.apple.com/us/app/%E5%BE%AE%E4%BF%A1/id414478124".to_string())
+        );
+        for other in [
+            "https://itunes.apple.com/us/app/instagram/id389801252",
+            "https://apps.apple.com/us/developer/meta/id389801253",
+            "https://apps.apple.com/us/app/instagram",
+            "https://apps.apple.com:8443/us/app/instagram/id389801252",
+            "https://example.com/us/app/instagram/id389801252",
+            "not a url",
+        ] {
+            assert_eq!(us(other), None, "{other}");
+        }
+    }
+
+    #[test]
+    fn older_addresses_are_this_apps_pages_only() {
+        let canonical = |raw: &str| canonical_app_store_address(raw, "389801252");
+        let gb = Some("https://apps.apple.com/gb/app/instagram/id389801252".to_string());
+        assert_eq!(
+            canonical("https://apps.apple.com/gb/app/instagram/id389801252"),
+            gb
+        );
+        // Spaces, a trailing slash, a query and a fragment are forgiven; an
+        // upper-case storefront is lowered.
+        assert_eq!(
+            canonical("  https://apps.apple.com/GB/app/instagram/id389801252/?l=en#top "),
+            gb
+        );
+        for refused in [
+            "https://apps.apple.com/gb/app/instagram/id389801253",
+            "http://apps.apple.com/gb/app/instagram/id389801252",
+            "https://apps.apple.com/gb/app/id389801252",
+            "https://apps.apple.com/app/instagram/id389801252",
+            "https://apps.apple.com/gbr/app/instagram/id389801252",
+            "https://itunes.apple.com/gb/app/instagram/id389801252",
+            "https://user@apps.apple.com/gb/app/instagram/id389801252",
+            "https://apps.apple.com:444/gb/app/instagram/id389801252",
+            "https://apps.apple.com/gb/app/instagram/id389801252/extra",
+            "",
+        ] {
+            assert_eq!(canonical(refused), None, "{refused}");
+        }
+        assert_eq!(canonical(&"a".repeat(2049)), None);
+    }
+
+    #[test]
+    fn a_capture_names_the_address_it_is_of() {
+        assert_eq!(
+            capture_address(
+                "https://web.archive.org/web/20210215120000/https://apps.apple.com/gb/app/x/id1"
+            ),
+            Some("https://apps.apple.com/gb/app/x/id1")
+        );
+        assert_eq!(
+            capture_address(
+                "http://web.archive.org/web/2021id_/https://apps.apple.com/us/app/x/id1"
+            ),
+            Some("https://apps.apple.com/us/app/x/id1")
+        );
+        assert_eq!(capture_address("https://apps.apple.com/us/app/x/id1"), None);
+    }
 
     #[test]
     fn transport_failures_are_unavailable_and_nothing_else_is() {

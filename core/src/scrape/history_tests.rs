@@ -26,10 +26,22 @@ struct Routed {
 }
 
 impl Routed {
-    /// The oracle's `route()`, unchanged.
+    /// The oracle's `route()`, plus `cdxByUrl`: a case that lists several
+    /// addresses answers each index request by the address it names.
     fn reply_for(&self, url: &str) -> Result<Value, String> {
         let replies = &self.replies;
         if url.starts_with("https://web.archive.org/cdx/search/cdx?") {
+            if let Some(by_url) = replies["cdxByUrl"].as_object() {
+                let listed = Url::parse(url)
+                    .ok()
+                    .and_then(|u| {
+                        u.query_pairs()
+                            .find(|(k, _)| k == "url")
+                            .map(|(_, v)| v.into_owned())
+                    })
+                    .unwrap_or_default();
+                return Ok(by_url.get(&listed).cloned().unwrap_or(Value::Null));
+            }
             return Ok(replies["cdx"].clone());
         }
         if url.starts_with("https://archive.org/wayback/available?") {
@@ -1029,5 +1041,305 @@ mod change_finding {
         assert_eq!(targets[6]["outcome"], "skipped_no_capture");
         assert_eq!(targets[7]["outcome"], "requested_snapshot");
         assert_eq!(result["snapshotsRequested"], 1);
+    }
+}
+
+/// P5: an app is listed on its US page first, on its stored address when
+/// the US index is empty, and with the older addresses its user added
+/// merged in, each capture replayed at its own address.
+mod coverage {
+    use super::Routed;
+    use crate::scrape::{
+        history::{import_app_history, AppRow, HistoryError, HistoryOptions},
+        persist::Locked,
+        persist_tests::CountingIds,
+        wayback::{extract_timestamp, format_timestamp, parse_timestamp_ms},
+    };
+    use rusqlite::Connection;
+    use serde_json::{json, Map, Value};
+    use std::{path::Path, sync::Mutex};
+    use url::Url;
+
+    const DAY: i64 = 24 * 60 * 60 * 1000;
+    /// 2021-03-01T12:00:00Z.
+    const MARCH_2021: i64 = 1_614_600_000_000;
+    /// 2026-03-01T12:00:00Z.
+    const TODAY: i64 = MARCH_2021 + 1826 * DAY;
+    const ID: &str = "389801252";
+    const GB: &str = "https://apps.apple.com/gb/app/insta/id389801252";
+    const US: &str = "https://apps.apple.com/us/app/insta/id389801252";
+    const OLD: &str = "https://apps.apple.com/gb/app/old-name/id389801252";
+
+    fn day(n: i64) -> i64 {
+        MARCH_2021 + n * DAY
+    }
+
+    fn stamp(n: i64) -> String {
+        format!("{}120000", format_timestamp(day(n)))
+    }
+
+    fn cdx(days: &[i64]) -> Value {
+        let mut rows = vec![json!(["timestamp", "statuscode"])];
+        rows.extend(days.iter().map(|&d| json!([stamp(d), "200"])));
+        json!({
+            "status": 200,
+            "headers": {"content-type": "application/json"},
+            "body": Value::Array(rows).to_string(),
+        })
+    }
+
+    /// A product page with label set `v`.
+    fn labelled(v: usize) -> Value {
+        let categories: Vec<Value> = (0..=v)
+            .map(|c| json!({"identifier": format!("C{c}"), "title": format!("C{c}")}))
+            .collect();
+        let data = json!({"data": [{"data": {"shelfMapping": {"privacyTypes": {"items": [{
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "categories": categories,
+        }]}}}}]});
+        json!({
+            "status": 200,
+            "headers": {"content-type": "text/html"},
+            "body": format!(r#"<html><head><script id="serialized-server-data">{data}</script></head><body></body></html>"#),
+        })
+    }
+
+    fn replays(days: &[i64], page: impl Fn(i64) -> Value) -> Value {
+        let mut out = Map::new();
+        for &d in days {
+            out.insert(stamp(d), page(d));
+        }
+        Value::Object(out)
+    }
+
+    struct Run {
+        outcome: Result<Value, HistoryError>,
+        urls: Vec<String>,
+    }
+
+    impl Run {
+        fn result(&self) -> &Value {
+            self.outcome.as_ref().expect("the import succeeds")
+        }
+
+        /// The addresses whose indexes were asked for, in order.
+        fn listed(&self) -> Vec<String> {
+            self.urls
+                .iter()
+                .filter(|u| u.starts_with("https://web.archive.org/cdx/"))
+                .filter_map(|u| {
+                    Url::parse(u)
+                        .ok()?
+                        .query_pairs()
+                        .find(|(k, _)| k == "url")
+                        .map(|(_, v)| v.into_owned())
+                })
+                .collect()
+        }
+
+        /// Each page read: its day and the address it was replayed at.
+        fn read(&self) -> Vec<(i64, String)> {
+            self.urls
+                .iter()
+                .filter(|u| u.contains("id_/"))
+                .map(|u| {
+                    let ts = extract_timestamp(u).unwrap();
+                    let at = parse_timestamp_ms(Some(&ts)).unwrap();
+                    (
+                        (at - MARCH_2021) / DAY,
+                        u.split_once("id_/").unwrap().1.to_string(),
+                    )
+                })
+                .collect()
+        }
+    }
+
+    fn import(stored: &str, alternates: &[&str], replies: Value) -> Run {
+        let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
+        conn.execute(
+            "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, 0, 0)",
+            [ID, "Insta", stored],
+        )
+        .unwrap();
+        if !alternates.is_empty() {
+            conn.execute(
+                "INSERT INTO app_settings (key, value) VALUES (?, ?)",
+                [
+                    format!("wayback.alt_urls.{ID}"),
+                    json!(alternates).to_string(),
+                ],
+            )
+            .unwrap();
+        }
+        let conn: Mutex<Connection> = Mutex::new(conn);
+        let app = AppRow {
+            id: ID.to_string(),
+            name: "Insta".to_string(),
+            url: stored.to_string(),
+        };
+        let routed = Routed {
+            replies,
+            calls: Mutex::new(vec![]),
+        };
+        let mut db = Locked {
+            conn: &conn,
+            log: None,
+            on_wait: None,
+        };
+        let mut ids = CountingIds {
+            prefix: "00000000-0000-4000-8000-",
+            next: 0,
+        };
+        let options = HistoryOptions {
+            skip_save_now: true,
+            ..HistoryOptions::default()
+        };
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let outcome = rt.block_on(import_app_history(
+            &mut db, &routed, &app, &options, TODAY, &mut ids, None,
+        ));
+        let urls = routed
+            .calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|c| c["url"].as_str().unwrap().to_string())
+            .collect();
+        Run { outcome, urls }
+    }
+
+    #[test]
+    fn a_non_us_address_is_listed_on_the_us_page_first() {
+        let run = import(
+            GB,
+            &[],
+            json!({
+                "cdxByUrl": {US: cdx(&[0, 900, 1825]), GB: cdx(&[0, 100, 900, 1825])},
+                "replay": replays(&[0, 900, 1825], |_| labelled(0)),
+            }),
+        );
+        assert_eq!(run.listed(), vec![US], "one listing: the US index answered");
+        assert!(run.read().iter().all(|(_, at)| at == US));
+        let result = run.result();
+        assert_eq!(result["lookupUrl"], US);
+        assert_eq!(result["alternateUrls"], json!([]));
+        assert_eq!(
+            (&result["historyStartsAt"], &result["historyStartsLate"]),
+            (&json!(day(0)), &json!(false))
+        );
+    }
+
+    #[test]
+    fn an_empty_us_index_falls_back_to_the_stored_address() {
+        let run = import(
+            GB,
+            &[],
+            json!({
+                "cdxByUrl": {US: cdx(&[]), GB: cdx(&[0, 1825])},
+                "replay": replays(&[0, 1825], |_| labelled(0)),
+            }),
+        );
+        assert_eq!(run.listed(), vec![US, GB]);
+        assert_eq!(
+            run.read(),
+            vec![(0, GB.to_string()), (1825, GB.to_string())]
+        );
+        assert_eq!(run.result()["lookupUrl"], GB);
+    }
+
+    #[test]
+    fn a_smaller_us_index_still_leads_and_can_start_late() {
+        // The stored address holds more, but asking it too would cost every
+        // non-US app a second listing: the US page leads, and the history
+        // it has starts in 2025, which is late.
+        let run = import(
+            GB,
+            &[],
+            json!({
+                "cdxByUrl": {US: cdx(&[1500]), GB: cdx(&[0, 300, 600, 900, 1200, 1500])},
+                "replay": replays(&[1500], |_| labelled(0)),
+            }),
+        );
+        assert_eq!(run.listed(), vec![US]);
+        let result = run.result();
+        assert_eq!(result["lookupUrl"], US);
+        assert_eq!(
+            (&result["historyStartsAt"], &result["historyStartsLate"]),
+            (&json!(day(1500)), &json!(true))
+        );
+    }
+
+    #[test]
+    fn older_addresses_merge_by_timestamp_and_replay_at_their_own_address() {
+        // The US page was archived from day 1000; the old address before.
+        // Day 1000 is in both and counts once, as the US page's.
+        let run = import(
+            US,
+            &[OLD],
+            json!({
+                "cdxByUrl": {US: cdx(&[1000, 1400, 1825]), OLD: cdx(&[0, 300, 1000])},
+                "replay": replays(&[0, 300, 1000, 1400, 1825], |d| labelled(usize::from(d >= 600))),
+            }),
+        );
+        assert_eq!(run.listed(), vec![US, OLD]);
+        let read = run.read();
+        assert!(read.contains(&(0, OLD.to_string())), "{read:?}");
+        assert!(read.contains(&(300, OLD.to_string())), "{read:?}");
+        assert!(read.contains(&(1000, US.to_string())), "{read:?}");
+        let result = run.result();
+        assert_eq!(result["alternateUrls"], json!([OLD]));
+        assert_eq!(result["firstCaptureMs"], day(0));
+        assert_eq!(result["historyStartsAt"], day(0));
+        assert_eq!(result["historyStartsLate"], false);
+        // Nothing lies between 300 and 1000 in the merged index.
+        assert_eq!(
+            result["windows"],
+            json!([{"fromMs": day(300), "toMs": day(1000)}])
+        );
+    }
+
+    #[test]
+    fn an_older_address_without_a_usable_index_adds_nothing() {
+        // No reply for the old address's index: unusable, so it adds no
+        // captures, though it was asked about.
+        let run = import(
+            US,
+            &[OLD],
+            json!({
+                "cdxByUrl": {US: cdx(&[0, 1825])},
+                "replay": replays(&[0, 1825], |_| labelled(0)),
+            }),
+        );
+        assert_eq!(run.listed(), vec![US, OLD]);
+        assert_eq!(run.read().len(), 2);
+        assert_eq!(run.result()["alternateUrls"], json!([OLD]));
+    }
+
+    #[test]
+    fn throttling_on_an_older_address_is_the_imports_error() {
+        let run = import(
+            US,
+            &[OLD],
+            json!({
+                "cdxByUrl": {
+                    US: cdx(&[0, 1825]),
+                    OLD: {"status": 429, "headers": {"retry-after": "60"}, "body": ""},
+                },
+                "replay": replays(&[0, 1825], |_| labelled(0)),
+            }),
+        );
+        assert!(
+            run.read().is_empty(),
+            "nothing read before the listing is whole"
+        );
+        let error = run.outcome.expect_err("throttled");
+        assert_eq!(
+            error.unavailable.map(|u| u.retry_after_ms),
+            Some(Some(60_000))
+        );
     }
 }

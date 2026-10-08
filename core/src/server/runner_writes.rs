@@ -258,7 +258,8 @@ fn app_delete(cx: &mut Cx, query: &[(String, String)], actor: &Actor) -> Respons
     }
     let deleted = transaction(cx, |cx| {
         mark_import_items_removed_for_app(cx, id)?;
-        cx.w.run(DELETE_APP, vec![json!(id)]).map(drop)
+        cx.w.run(DELETE_APP, vec![json!(id)])?;
+        super::wayback_runner::forget_app_settings(cx.w, id)
     });
     if let Err(message) = deleted {
         record_audit(

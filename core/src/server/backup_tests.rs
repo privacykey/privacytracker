@@ -418,3 +418,59 @@ fn backup_paths_match_node_wire_stream_rows_and_disk() {
         failures.join("\n\n")
     );
 }
+
+/// The Wayback survey's capture listings are a cache archive.org can answer
+/// again, so an export leaves them out; the older App Store addresses a
+/// user typed stay. Node's backup has no such cache, so the recorded cases
+/// above cannot pin this.
+#[test]
+fn an_export_leaves_out_the_capture_cache_and_keeps_older_addresses() {
+    let dir = std::env::temp_dir().join(format!("pt-backup-p5-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    backup::set_test_env(Some((dir.clone(), [7u8; 32])));
+    let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
+    for (key, value) in [
+        (
+            "wayback.captures.1",
+            r#"{"fetchedAt":0,"url":"u","timestamps":[]}"#,
+        ),
+        (
+            "wayback.alt_urls.1",
+            r#"["https://apps.apple.com/gb/app/x/id1"]"#,
+        ),
+        ("sync_schedule", "daily"),
+    ] {
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES (?1, ?2)",
+            [key, value],
+        )
+        .unwrap();
+    }
+    let mut w = Writer::new(&conn, None);
+    let mut ids = CountingIds {
+        prefix: "p5-",
+        next: 0,
+    };
+    let cx = &mut writes::Cx {
+        w: &mut w,
+        ids: &mut ids,
+        now: 1,
+    };
+    let envelope = backup::export_backup(cx, &backup::env()).unwrap();
+    backup::set_test_env(None);
+    let _ = std::fs::remove_dir_all(&dir);
+    let (_, settings) = envelope
+        .tables
+        .iter()
+        .find(|(name, _)| name == "app_settings")
+        .unwrap();
+    let keys: Vec<&str> = settings
+        .rows
+        .iter()
+        .map(|r| r["key"].as_str().unwrap())
+        .collect();
+    assert!(keys.contains(&"wayback.alt_urls.1"), "{keys:?}");
+    assert!(keys.contains(&"sync_schedule"), "{keys:?}");
+    assert!(!keys.contains(&"wayback.captures.1"), "{keys:?}");
+}
