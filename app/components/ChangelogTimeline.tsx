@@ -14,6 +14,7 @@ import {
 } from "../../lib/date-format";
 import { useDateFormat } from "../../lib/date-format-hook";
 import { scrollPulse } from "../../lib/scroll-pulse";
+import { waybackChangeWindow } from "../../lib/wayback-timeline";
 import AppChangeTimeline from "./charts/AppChangeTimeline";
 
 // Local aliases so the existing rendering code that references SnapshotRow
@@ -822,6 +823,9 @@ export default function ChangelogTimeline({
                 candidate.source !== "wayback" &&
                 !!candidate.app_version
             );
+          // A reconstructed change happened somewhere between the last
+          // archived copy with the old labels and this one.
+          const changeWindow = waybackChangeWindow(visibleRows, i);
 
           return (
             <TimelineSnapshotItem
@@ -842,6 +846,7 @@ export default function ChangelogTimeline({
               snapshotPosition={snapshotPosition}
               toggleDiff={toggleDiff}
               togglePreview={togglePreview}
+              waybackChangedFrom={changeWindow?.fromMs ?? null}
             />
           );
         })}
@@ -916,6 +921,7 @@ function TimelineSnapshotItem({
   showMatchesLiveSyncBadge = true,
   showPolicyPreviewToggle = true,
   showPolicyDiffToggle = true,
+  waybackChangedFrom = null,
 }: {
   snapshot: SnapshotRow;
   isFirst: boolean;
@@ -937,6 +943,12 @@ function TimelineSnapshotItem({
   showMatchesLiveSyncBadge?: boolean;
   showPolicyPreviewToggle?: boolean;
   showPolicyDiffToggle?: boolean;
+  /**
+   * Wayback change rows only: when the unchanged archive copy just before
+   * this one was taken, so the card can say the change happened between
+   * the two dates (lib/wayback-timeline.ts).
+   */
+  waybackChangedFrom?: number | null;
 }) {
   // Translation hook scoped to the timeline namespace — needed inside
   // this inner component so the linter's recent string-extraction
@@ -963,6 +975,16 @@ function TimelineSnapshotItem({
   const isTarget = pulsed !== null && pulsed.id === snapshot.id;
   const pulseNonce = isTarget ? pulsed!.nonce : 0;
   const [pulsing, setPulsing] = useState(false);
+  // "Changed between …", dropped when both dates read the same.
+  const changedFrom =
+    isWayback && waybackChangedFrom !== null
+      ? formatShortDate(waybackChangedFrom, dateMode)
+      : null;
+  const changedTo = formatShortDate(snapshot.scraped_at, dateMode);
+  const changedBetween =
+    changedFrom && changedFrom !== changedTo
+      ? { from: changedFrom, to: changedTo }
+      : null;
 
   useEffect(() => {
     if (!isTarget || pulseNonce === 0) {
@@ -1125,6 +1147,19 @@ function TimelineSnapshotItem({
                         count: changes.length,
                       })}
             </div>
+            {changedBetween ? (
+              <div
+                className="timeline-card-caption"
+                style={{
+                  fontSize: 12,
+                  color: "var(--text-3)",
+                  marginBottom: 6,
+                }}
+                title={tCt("wayback_changed_between_title")}
+              >
+                {tCt("wayback_changed_between", changedBetween)}
+              </div>
+            ) : null}
             {/* Derived at read time by getChangelog: the first live scrape
                 compared with the newest imported archive capture before
                 it. Say so, and link the capture, so the row is never
