@@ -62,3 +62,9 @@
 .wayback-run-tally .wayback-run-failed strong {
   color: var(--danger, #b91c1c);
 }
+
+/* The last run's late-start sentence takes a line of its own under the
+   totals rather than sitting among the numbers. */
+.wayback-run-tally .wayback-run-late {
+  flex-basis: 100%;
+}
