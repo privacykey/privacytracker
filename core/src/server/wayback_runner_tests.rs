@@ -526,6 +526,7 @@ mod survey_runner {
         outbound::{FetchFuture, Fetcher, Reply, Request},
         scrape::persist::{Ids, Shared, Writer},
         server::{
+            health_check::run_health_check,
             operations::{self, Job},
             sync_runner::Clock,
             wayback_runner::{self, RunOptions, CAPTURE_CACHE_MAX_AGE_MS},
@@ -1749,6 +1750,106 @@ mod survey_runner {
             "nothing asked inside the wait"
         );
         assert_eq!(h.state(), None);
+    }
+
+    /// A wait outlasting the health check's stale margin still looks alive:
+    /// the state is rewritten every ten minutes of it.
+    #[test]
+    fn a_long_wait_keeps_its_state_fresh() {
+        let h = Harness::new("long-wait", &[("830000001", "Alpha", timestamps(3, 100))]);
+        h.script("id830000001", Answer::Status(429, Some("1500")));
+        let seen = Arc::new(Mutex::new(None));
+        {
+            let conn = h.conn.clone();
+            let clock = h.clock.clone();
+            let seen = seen.clone();
+            wayback_runner::fake_sleep(Some(Arc::new(move |d| {
+                clock.0.fetch_add(d.as_millis() as i64, Ordering::SeqCst);
+                let mut seen = seen.lock().unwrap();
+                if seen.is_none() && clock.now() >= T0 + 21 * 60_000 {
+                    *seen = setting(&conn, "wayback_bulk_state");
+                }
+            })));
+        }
+
+        let (totals, _) = h.run("manual", None);
+        assert_eq!(totals.unwrap()["appsDone"], 1);
+
+        let state: Value = serde_json::from_str(seen.lock().unwrap().as_ref().unwrap()).unwrap();
+        assert_eq!(state["updatedAt"], T0 + 20 * 60_000, "the second heartbeat");
+        assert_eq!(state["waitingUntil"], T0 + 25 * 60_000, "still waiting");
+    }
+
+    /// The health check reads a v3 blob: a waiting run is left alone, and
+    /// one silent past the stale margin is healed as before.
+    #[test]
+    fn the_health_check_reads_a_v3_queue() {
+        let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
+        let put = |key: &str, value: &str| {
+            conn.execute(
+                "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?1, ?2)",
+                [key, value],
+            )
+            .unwrap();
+        };
+        let blob = |updated_at: i64| {
+            json!({
+                "version": 3, "runId": "health-run", "startedAt": T0 - 9 * 3_600_000,
+                "initiator": "manual", "updatedAt": updated_at, "currentAppId": null,
+                "status": "running", "phase": "reading", "consecutiveThrottles": 2,
+                "queue": [{ "appId": "1", "appName": "A", "status": "pending", "captureCount": 4 }],
+                "totals": wayback_runner::zero_totals(),
+                "streamRequested": false,
+                "waitingUntil": T0 + 3_600_000,
+                "waitReason": "archive.org rate-limited for replay",
+            })
+            .to_string()
+        };
+        let check = || {
+            let mut w = Writer::new(&conn, None);
+            let mut ids = TestIds("health", Arc::new(Mutex::new(0)));
+            let cx = &mut Cx {
+                w: &mut w,
+                ids: &mut ids,
+                now: T0,
+            };
+            run_health_check(cx, "manual")
+        };
+        let healed_wayback = |result: &Value| {
+            result["heals"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|h| h["kind"] == "stale_lock_wayback")
+        };
+
+        put("wayback_import_running", "true");
+        put("wayback_bulk_state", &blob(T0 - 3_600_000));
+        let result = check();
+        assert!(!healed_wayback(&result), "{result}");
+        assert_eq!(
+            setting_of(&conn, "wayback_import_running").as_deref(),
+            Some("true")
+        );
+        assert!(setting_of(&conn, "wayback_bulk_state").is_some());
+
+        put("wayback_bulk_state", &blob(T0 - 7 * 3_600_000));
+        let result = check();
+        assert!(healed_wayback(&result), "{result}");
+        assert_eq!(
+            setting_of(&conn, "wayback_import_running").as_deref(),
+            Some("false")
+        );
+        assert_eq!(setting_of(&conn, "wayback_bulk_state"), None);
+    }
+
+    fn setting_of(conn: &Connection, key: &str) -> Option<String> {
+        conn.query_row(
+            "SELECT value FROM app_settings WHERE key = ?1",
+            [key],
+            |r| r.get(0),
+        )
+        .ok()
     }
 
     #[test]
