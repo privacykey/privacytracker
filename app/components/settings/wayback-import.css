@@ -4,6 +4,18 @@
  * styles; these match them (12 px gaps, text-1 numbers on text-2 labels).
  */
 
+/* The run line beside its spinner. The phase lines are long enough to wrap
+   on a phone, so the app name follows them in the same text flow. */
+.wayback-run-lead {
+  min-width: 0;
+}
+
+.wayback-run-lead-app {
+  margin-left: 8px;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+
 /* While the runner waits out archive.org's limit. The glyph and the words
    carry the state; the tint only groups them. */
 .wayback-run-wait {

@@ -380,30 +380,34 @@ export default function WaybackImportSection({
                 ) : (
                   <span aria-hidden="true" className="spinner" />
                 )}
-                <strong style={{ color: "var(--text-1)" }}>
-                  {waybackRunStatus === "pause_requested"
-                    ? tWayback("pause_requested")
-                    : waybackRunStatus === "cancel_requested"
-                      ? tWayback("cancel_requested")
-                      : waybackRunStatus === "paused"
-                        ? tWayback("paused_progress")
-                        : lead
-                          ? tWayback(lead.key, lead.values)
-                          : waybackProgress.total > 0
-                            ? tWayback("progress_lead", {
-                                current: Math.min(
-                                  waybackProgress.index,
-                                  waybackProgress.total
-                                ),
-                                total: waybackProgress.total,
-                              })
-                            : tWayback("starting")}
-                </strong>
-                {waybackProgress.currentAppName ? (
-                  <span style={{ color: "var(--text-2)" }}>
-                    · {waybackProgress.currentAppName}
-                  </span>
-                ) : null}
+                {/* One text flow, so a long phase line wraps with the app
+                    name after it instead of squeezing the name on a phone. */}
+                <span className="wayback-run-lead">
+                  <strong style={{ color: "var(--text-1)" }}>
+                    {waybackRunStatus === "pause_requested"
+                      ? tWayback("pause_requested")
+                      : waybackRunStatus === "cancel_requested"
+                        ? tWayback("cancel_requested")
+                        : waybackRunStatus === "paused"
+                          ? tWayback("paused_progress")
+                          : lead
+                            ? tWayback(lead.key, lead.values)
+                            : waybackProgress.total > 0
+                              ? tWayback("progress_lead", {
+                                  current: Math.min(
+                                    waybackProgress.index,
+                                    waybackProgress.total
+                                  ),
+                                  total: waybackProgress.total,
+                                })
+                              : tWayback("starting")}
+                  </strong>
+                  {waybackProgress.currentAppName ? (
+                    <span className="wayback-run-lead-app">
+                      · {waybackProgress.currentAppName}
+                    </span>
+                  ) : null}
+                </span>
               </div>
               {/* The runner is waiting out archive.org's limit and carries
                   on by itself. Announced, since nothing else on the card
