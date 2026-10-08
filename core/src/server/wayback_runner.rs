@@ -288,6 +288,7 @@ pub(crate) fn zero_totals() -> Value {
         "appsRead": 0,
         "appsWithHistory": 0,
         "appsNoArchive": 0,
+        "appsHistoryLate": 0,
         "reads": 0,
         "changes": 0,
         "labelVersions": 0,
@@ -323,8 +324,14 @@ fn has_history(result: &Value) -> bool {
     int_of(result, "labelVersions") > 0 || int_of(result, "imported") > 0
 }
 
+/// An import result, or a queue entry, whose archived history starts late
+/// (`history_starts_late`). Anything from before the flag reads as not.
+fn starts_late(result: &Value) -> bool {
+    get(result, "historyStartsLate").and_then(Value::as_bool) == Some(true)
+}
+
 /// The v3 totals a blob from before them lacks, counted from its queue.
-fn upgrade_totals(state: &mut Value) {
+pub(crate) fn upgrade_totals(state: &mut Value) {
     if !state["totals"].is_object() {
         set(state, "totals", zero_totals());
     }
@@ -347,6 +354,12 @@ fn upgrade_totals(state: &mut Value) {
         (
             "appsNoArchive",
             queue.iter().filter(no_archive).count() as i64,
+        ),
+        (
+            "appsHistoryLate",
+            finished()
+                .filter(|e| str_of(e, "status") == "done" && starts_late(e))
+                .count() as i64,
         ),
         ("reads", sum("reads")),
         ("changes", sum("changes")),
@@ -738,6 +751,9 @@ fn accumulate_totals(totals: &mut Value, result: &Value) {
     }
     if has_history(result) {
         add(totals, "appsWithHistory", 1);
+    }
+    if starts_late(result) {
+        add(totals, "appsHistoryLate", 1);
     }
 }
 

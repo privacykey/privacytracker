@@ -1406,6 +1406,67 @@ mod survey_runner {
     const OLD: &str = "https://apps.apple.com/gb/app/old-name/id780000101";
 
     #[test]
+    fn the_run_counts_apps_whose_history_starts_late() {
+        // Early is archived from March 2021, Late only from 2024, and Empty
+        // not at all: one late start, and an app with no captures is none.
+        let h = Harness::new(
+            "p5-late",
+            &[
+                ("790000001", "Early", timestamps(3, 100)),
+                ("790000002", "Late", on_days(&[1100, 1200])),
+                ("790000003", "Empty", vec![]),
+            ],
+        );
+        let (totals, frames) = h.run("manual", None);
+        let totals = totals.unwrap();
+        assert_eq!(totals["appsHistoryLate"], 1);
+        assert_eq!(totals["appsDone"], 3);
+        assert_eq!(totals["appsNoArchive"], 1);
+        let late: Vec<bool> = of_type(&frames, "app-done")
+            .iter()
+            .map(|f| f["result"]["historyStartsLate"].as_bool().unwrap())
+            .collect();
+        assert_eq!(late.iter().filter(|l| **l).count(), 1, "{late:?}");
+        // The run's activity row carries the totals as they ended.
+        let in_activity: i64 = h
+            .conn
+            .lock()
+            .unwrap()
+            .query_row(
+                "SELECT json_extract(detail, '$.totals.appsHistoryLate') FROM activity_log \
+                 WHERE type = 'wayback_import' ORDER BY rowid DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(in_activity, 1);
+    }
+
+    #[test]
+    fn a_resumed_queue_counts_its_late_starts_from_finished_entries() {
+        // A v3 blob from before the count: only a finished, read app whose
+        // entry says so counts; a failed one and a pending one do not, and
+        // an entry without the flag reads as not late.
+        let mut state = json!({
+            "version": 3,
+            "queue": [
+                { "appId": "1", "status": "done", "historyStartsLate": true },
+                { "appId": "2", "status": "done", "historyStartsLate": false },
+                { "appId": "3", "status": "done" },
+                { "appId": "4", "status": "failed", "historyStartsLate": true },
+                { "appId": "5", "status": "pending", "historyStartsLate": true },
+            ],
+            "totals": { "appsAttempted": 4 },
+        });
+        wayback_runner::upgrade_totals(&mut state);
+        assert_eq!(state["totals"]["appsHistoryLate"], 1);
+        // A blob that already counts keeps its count.
+        state["totals"]["appsHistoryLate"] = json!(7);
+        wayback_runner::upgrade_totals(&mut state);
+        assert_eq!(state["totals"]["appsHistoryLate"], 7);
+    }
+
+    #[test]
     fn the_survey_lists_the_us_page_and_older_addresses() {
         let h = Harness::new("p5-addresses", &[("780000101", "Gamma", vec![])]);
         h.set_url("780000101", GB);
@@ -1830,6 +1891,10 @@ mod survey_runner {
         assert_eq!(during["initiator"], "resume");
         assert!(during.get("survey").is_none(), "a v2 queue has no survey");
         assert_eq!(during["totals"]["appsDone"], 1, "counted from its queue");
+        assert_eq!(
+            during["totals"]["appsHistoryLate"], 0,
+            "no v2 entry carries historyStartsLate: missing reads as false"
+        );
         assert_eq!(
             during["totals"]["appsAttempted"], 2,
             "the app in flight un-counted, then counted"
