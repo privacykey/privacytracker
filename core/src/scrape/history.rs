@@ -80,7 +80,23 @@ pub struct HistoryOptions {
     pub interval_months: Option<f64>,
     /// `today`; the clock when absent.
     pub today: Option<i64>,
+    /// A capture list the caller already holds (the bulk runner's survey
+    /// keeps one per app), used instead of asking the CDX index again.
+    pub captures: Option<Vec<Capture>>,
+    /// Never ask Save Page Now. Bulk runs set it: a capture request is a
+    /// write to the public archive with its own, stricter limits, and it
+    /// gives the user nothing now.
+    pub skip_save_now: bool,
+    /// When the CDX index cannot be used, fail the import instead of probing
+    /// the availability API at every target. Bulk runs set it: the probes
+    /// cost up to seven requests a target on archive.org's most throttled
+    /// endpoint.
+    pub skip_availability_fallback: bool,
 }
+
+/// The error a bulk import records when the CDX index is unusable and
+/// `skip_availability_fallback` is set.
+pub const INDEX_UNAVAILABLE: &str = "archive.org's capture index could not be read for this app";
 
 /// What `importAppHistory` throws: archive.org throttling, or the rare
 /// malformed stored snapshot that Node's diff would choke on.
@@ -819,8 +835,13 @@ pub(crate) async fn import_app_history(
     let mut snapshots_requested = 0i64;
     let mut target_results: Vec<Value> = vec![];
 
-    let captures =
-        wayback::list_captures(fetcher, &app.url, Some(APP_STORE_HISTORICAL_FLOOR_MS), now).await?;
+    let captures = match &options.captures {
+        Some(held) => Some(held.clone()),
+        None => {
+            wayback::list_captures(fetcher, &app.url, Some(APP_STORE_HISTORICAL_FLOOR_MS), now)
+                .await?
+        }
+    };
     let mut unusable: HashMap<String, &'static str> = HashMap::new();
     let newest_target = targets.last().copied();
     let mut newest_covered = false;
@@ -845,6 +866,9 @@ pub(crate) async fn import_app_history(
         let walk = match &captures {
             Some(captures) => {
                 pick_capture_from_index(captures, target_ms, CAPTURE_DRIFT_TOLERANCE_MS)
+            }
+            None if options.skip_availability_fallback => {
+                return Err(INDEX_UNAVAILABLE.to_string().into());
             }
             None => {
                 find_capture_within_tolerance(
@@ -1000,7 +1024,7 @@ pub(crate) async fn import_app_history(
             .any(|c| (today_ms - c.ms).abs() <= CAPTURE_DRIFT_TOLERANCE_MS),
         None => newest_covered,
     };
-    if !has_recent_capture {
+    if !has_recent_capture && !options.skip_save_now {
         let info = request_fresh_capture(db, ids, fetcher, app, today_ms, now).await;
         if info["outcome"] == "requested_snapshot" {
             snapshots_requested += 1;

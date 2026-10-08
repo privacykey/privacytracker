@@ -162,6 +162,7 @@ fn historical_import_matches_node_calls_stream_rows_and_result() {
             force: case["options"]["force"].as_bool().unwrap_or(false),
             interval_months: case["options"]["intervalMonths"].as_f64(),
             today: case["options"]["today"].as_i64(),
+            ..HistoryOptions::default()
         };
         let now = case["now"].as_i64().unwrap();
         let routed = Routed {
@@ -317,5 +318,99 @@ fn refused_connections_are_throttling_not_failures() {
             fetches,
             "no availability probes and no Save Page Now after the refusal"
         );
+    }
+}
+
+/// The bulk runner's options: a held capture list stands in for the CDX
+/// index, Save Page Now is never asked, and an unusable index fails the
+/// app instead of fanning out into availability probes.
+#[test]
+fn bulk_options_hold_the_index_and_skip_save_now_and_probes() {
+    use super::{history::INDEX_UNAVAILABLE, wayback::Capture};
+    let app = AppRow {
+        id: "555000111".to_string(),
+        name: "Fixture".to_string(),
+        url: "https://apps.apple.com/us/app/fixture/id555000111".to_string(),
+    };
+    let held = vec![Capture {
+        ms: 1_613_390_400_000,
+        timestamp: "20210215120000".to_string(),
+        url: format!("https://web.archive.org/web/20210215120000/{}", app.url),
+    }];
+    let not_found = json!({"status": 404, "headers": {}, "body": ""});
+    let cases = [
+        (
+            // No "cdx" or "save" reply: asking either fails the test.
+            json!({"replay": {"20210215120000": not_found}}),
+            HistoryOptions {
+                captures: Some(held),
+                skip_save_now: true,
+                ..HistoryOptions::default()
+            },
+            Ok(()),
+            vec!["https://web.archive.org/web/20210215120000id_/https://apps.apple.com/us/app/fixture/id555000111"],
+        ),
+        (
+            // A 404 index is unusable but not throttling.
+            json!({"cdx": not_found}),
+            HistoryOptions {
+                skip_availability_fallback: true,
+                ..HistoryOptions::default()
+            },
+            Err(INDEX_UNAVAILABLE),
+            vec!["https://web.archive.org/cdx/search/cdx?"],
+        ),
+    ];
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    for (replies, options, expected, urls) in cases {
+        let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
+        conn.execute(
+            "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, 0, 0)",
+            [&app.id, &app.name, &app.url],
+        )
+        .unwrap();
+        let routed = Routed {
+            replies,
+            calls: Mutex::new(vec![]),
+        };
+        let conn = Mutex::new(conn);
+        let mut db = Locked {
+            conn: &conn,
+            log: None,
+            on_wait: None,
+        };
+        let mut ids = CountingIds {
+            prefix: "00000000-0000-4000-8000-",
+            next: 0,
+        };
+        let outcome = rt.block_on(import_app_history(
+            &mut db,
+            &routed,
+            &app,
+            &options,
+            1_635_768_000_000,
+            &mut ids,
+            None,
+        ));
+        match (expected, outcome) {
+            (Ok(()), Ok(result)) => assert_eq!(result["snapshotsRequested"], 0),
+            (Err(message), Err(error)) => {
+                assert_eq!(error.message, message);
+                assert!(error.unavailable.is_none(), "not throttling");
+            }
+            (expected, outcome) => panic!("expected {expected:?}, got {outcome:?}"),
+        }
+        let calls = routed.calls.lock().unwrap();
+        let sent: Vec<&str> = calls.iter().map(|c| c["url"].as_str().unwrap()).collect();
+        assert_eq!(sent.len(), urls.len(), "requests sent: {sent:?}");
+        for (url, prefix) in sent.iter().zip(&urls) {
+            assert!(
+                url.starts_with(prefix),
+                "{url} does not start with {prefix}"
+            );
+        }
     }
 }
