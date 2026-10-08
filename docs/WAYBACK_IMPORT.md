@@ -48,6 +48,10 @@ Others report about 15 requests a minute before a 5-minute block.
 | P4 UI | agent | Settings card, detail card and timeline for the new states |
 | P5 Coverage | agent, after P2 and P3 | US storefront lookups, renamed-app hint and older addresses |
 
+Status: P0 to P4 are merged on the integration branch, where the full
+core suite and the frontend checks pass, and the runner fixture is
+re-blessed on the merged import. P5 is in progress.
+
 ### File ownership
 
 Two packages never edit the same file. Anything not listed is the
@@ -86,6 +90,7 @@ from "Rules for agents":
 ```bash
 PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib historical_import_matches_node -- --nocapture
 PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib wayback_runner_paths_match_node -- --nocapture
+PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib import_history_route_matches_its_blessed_fixture -- --nocapture
 ```
 
 Each rewrites every case's outputs (`calls`, `stream`, `rows` and
@@ -100,14 +105,15 @@ every recorded case has when a case has no `rows`. Blessing unchanged
 code rewrites nothing. `GET /api/wayback/import-all` moved from READS to
 QUARANTINE in `scripts/parity/manifest.mjs`.
 
-Still recorded from Node, and outside P0: the 15 per-app
-`import-history` cases in `imports-cases.json`, 8 of which reach
-archive.org through `import_app_history` and so move with P2, and the
+The 15 per-app `import-history` route cases moved with P2 to the
+Rust-owned `import-history-route-cases.json`; the imports extractor
+reserves their forwarded addresses, so the remaining 162 cases of
+`imports-cases.json` re-record unchanged. Still recorded from Node: the
 Wayback status reads in `operations-cases.json` (36 of
 `GET /api/wayback/import-all` and 37 of `/api/tasks/active`, over planted
-state blobs), which move with P3 if `operations.rs` changes what a stored
-blob reads as. Both files are the integrator's: report a change that
-moves them rather than re-recording them.
+v1 and v2 state blobs), which P3 keeps byte-identical by adding its v3
+keys only for a v3 blob. Report a change that moves them rather than
+re-recording them.
 
 ### P1: paced client
 
