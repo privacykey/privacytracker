@@ -680,7 +680,11 @@ pub(super) fn persist_page(
     } else if let (true, Some(previous), Some(current)) =
         (version_changed, &previous_version_text, current_version)
     {
-        format!("Version updated from v{previous} to v{current}; no label changes")
+        format!(
+            "Version updated from v{} to v{}; no label changes",
+            notify::bare_version(previous),
+            notify::bare_version(current),
+        )
     } else {
         "No App Store label changes".to_string()
     };

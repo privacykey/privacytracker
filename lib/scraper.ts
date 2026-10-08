@@ -6,6 +6,7 @@ import {
   extractAccessibilityFeatures,
 } from "./accessibility";
 import { recordActivity } from "./activity";
+import { bareVersion } from "./app-version";
 import {
   buildSnapshot,
   type ChangeEntry,
@@ -2489,7 +2490,7 @@ async function commitScrapedAppToDb(
       : input.versionChanged &&
           input.previousVersion &&
           input.versionInfo.currentVersion
-        ? `Version updated from v${input.previousVersion} to v${input.versionInfo.currentVersion}; no label changes`
+        ? `Version updated from v${bareVersion(input.previousVersion)} to v${bareVersion(input.versionInfo.currentVersion)}; no label changes`
         : "No App Store label changes";
   statements.push({
     sql: `

@@ -181,6 +181,61 @@ test("resync reports version updates separately from label diffs", async () => {
   assert.equal(JSON.parse(activity.detail).versionChanged, true);
 });
 
+test("a developer's own v prefix is printed once in the update sentences", async () => {
+  // Obscura VPN ships "v1.181" as its App Store version, and the bell and
+  // activity sentences add their own "v": they printed "vv1.181". The
+  // stored version keeps Apple's string.
+  setSetting("notification_prefs", JSON.stringify({ versionUpdates: true }));
+  const privacyItems = [
+    privacyType("DATA_LINKED_TO_YOU", "Data Linked to You", [
+      ["CONTACT_INFO", "Contact Info"],
+    ]),
+  ];
+  for (const [version, resync] of [
+    ["v1.180", false],
+    ["v1.181", true],
+  ] as const) {
+    installScraperFetchMock({
+      appHtml: appStoreHtml({ id: "2008", name: "Prefixed", privacyItems }),
+      version,
+    });
+    await fetchAndParseApp(
+      "https://apps.apple.com/us/app/prefixed/id2008",
+      resync,
+      false,
+      resync ? "manual" : "import"
+    );
+  }
+
+  const app = db
+    .prepare("SELECT currentVersion FROM apps WHERE id = ?")
+    .get("2008") as { currentVersion: string };
+  assert.equal(app.currentVersion, "v1.181");
+
+  const notification = db
+    .prepare("SELECT change_summary FROM notifications WHERE app_id = ?")
+    .get("2008") as { change_summary: string };
+  const [entry] = JSON.parse(notification.change_summary) as Array<{
+    currentVersion: string;
+    description: string;
+  }>;
+  assert.match(
+    entry.description,
+    /^Prefixed updated from v1\.180 to v1\.181 \(released [^)]+\)\.$/
+  );
+  assert.equal(entry.currentVersion, "v1.181");
+
+  const activity = db
+    .prepare(
+      "SELECT summary FROM activity_log WHERE app_id = ? AND type = 'resync'"
+    )
+    .get("2008") as { summary: string };
+  assert.equal(
+    activity.summary,
+    "Version updated from v1.180 to v1.181; no label changes"
+  );
+});
+
 test("privacyHeader legacy purposes are flattened into privacy categories", async () => {
   installScraperFetchMock({
     appHtml: appStoreHtml({

@@ -12,6 +12,14 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Fixed
+
+- An app whose developer writes its own "v" into the App Store version
+  (Obscura VPN reports "v1.181") no longer reads "vv1.181" on its History
+  timeline, in the bell, the sync toasts, the Activity log or the desktop
+  notification. The version is still stored as Apple reports it. Activity
+  rows written before this fix keep their old wording.
+
 ### Security
 
 - Raise `sharp` to 0.35.5 (GHSA-wq5f-xc86-pv6w, a vulnerability in the

@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type AgeBandKey, compareRatingToBand } from "../../lib/age-rating";
+import { bareVersion } from "../../lib/app-version";
 import {
   appMatchesScope,
   describeScope,
@@ -1016,13 +1017,13 @@ export default function AppGrid({
         showToast(
           tGrid("toast_version_updated", {
             name: appName,
-            version: result.currentVersion,
+            version: bareVersion(result.currentVersion),
           })
         );
         handle.complete(
           "done",
           tGrid("task_done_version_updated", {
-            version: result.currentVersion,
+            version: bareVersion(result.currentVersion),
           })
         );
       } else {
