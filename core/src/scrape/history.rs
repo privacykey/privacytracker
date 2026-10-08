@@ -180,7 +180,7 @@ fn probe_targets(today_ms: i64, interval_months: i64) -> Vec<i64> {
     targets.push(today);
     let mut unique: Vec<i64> = vec![];
     for ts in targets {
-        if unique.last().is_none_or(|last| ts - last > ONE_DAY_MS) {
+        if unique.last().map_or(true, |last| ts - last > ONE_DAY_MS) {
             unique.push(ts);
         }
     }
@@ -1145,7 +1145,7 @@ impl Sampler {
                 None => !matches!(self.slots[i], Slot::Unusable(_)),
             };
             let drift = (self.captures[i].ms - point.target_ms).abs();
-            if eligible && best.is_none_or(|(_, d)| drift < d) {
+            if eligible && best.map_or(true, |(_, d)| drift < d) {
                 best = Some((i, drift));
             }
         }
