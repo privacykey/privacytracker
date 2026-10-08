@@ -12,6 +12,48 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Changed
+
+- The Wayback history import in the desktop app and the Docker image now
+  works within archive.org's limits instead of running into them. A large
+  bulk import used to stop after an app or two, rate-limited.
+  - **One pace for archive.org.** Every request to archive.org, including
+    the privacy policy's archive lookups, shares one pace of about ten a
+    minute, slower after archive.org pushes back and a little faster after
+    a long run of successes. When archive.org rate-limits or refuses
+    connections, archive requests wait out a cooldown (five minutes,
+    doubling while it continues, up to an hour) instead of retrying into
+    the block, and the cooldown survives a restart.
+  - **It waits instead of stopping.** A bulk import waits as long as
+    archive.org asks and carries on by itself, pausing only after six
+    refusals in a row. Pause and cancel work during a wait, and a pause
+    pressed while an app is being read now stops the import after that
+    app.
+  - **It checks the index first.** A bulk import first checks archive.org's
+    index for every app (reusing a check from the past week), finishes apps
+    with no archived pages straight away, then reads apps never imported
+    before first. It no longer asks archive.org to archive pages.
+  - **It reads far fewer pages.** It used to read one archived page per
+    quarter since February 2021, about 22 per app. It now reads the oldest
+    and newest archived pages and one a year between them, then narrows
+    each label change down to about a week by reading pages between two
+    that differ: about six pages for an app whose labels never changed, and
+    about six more per change. History you already imported counts, so
+    importing again reads only what is new, and an import archive.org
+    throttles keeps what it found.
+  - **Progress counts apps and label changes**, not quarterly checkpoints.
+    The Settings card shows whether it is checking the index or reading
+    pages, about how long is left and when a wait ends; an app's card
+    reports the label changes it found and when its archived history
+    starts; and the timeline says between which two dates a label changed.
+  - The Node rollback (`BACKEND=node`) keeps the previous import.
+- Development: the Wayback import's test fixtures now belong to the Rust
+  server. CI no longer re-records `history-cases.json` and
+  `wayback-runner-cases.json` from Node, the per-app import route's cases
+  moved to a Rust-owned `import-history-route-cases.json`, and
+  `PT_BLESS=1` rewrites all three from the Rust replays
+  (docs/WAYBACK_IMPORT.md).
+
 ### Fixed
 
 - The Wayback history import no longer records empty history when
@@ -24,7 +66,8 @@ Going forward, changes are recorded here as they land.
   five minutes (up from 30 seconds, as blocks last about that long),
   retries once, then pauses the queue for you to resume later, and the
   single-app import says the archive is busy. Both the Rust server and the
-  Node rollback.
+  Node rollback; on the Rust server, the redesigned import above then
+  waits as long as archive.org asks instead of retrying once.
 
 ### Security
 
