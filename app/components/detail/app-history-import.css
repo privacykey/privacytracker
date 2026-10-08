@@ -64,11 +64,80 @@
   color: var(--text-3);
 }
 
+/* Older App Store addresses (coverage): a row of its own under the copy
+   and the action, shown once a result reports a late start or a stored
+   address. */
+.app-history-import-alt {
+  flex: 1 1 100%;
+  padding-top: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-2);
+  border-top: 1px solid var(--border);
+}
+
+.app-history-import-alt-help {
+  margin: 0 0 8px;
+}
+
+.app-history-import-alt-heading,
+.app-history-import-alt-label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.app-history-import-alt-list {
+  padding: 0;
+  margin: 0 0 10px;
+  list-style: none;
+}
+
+.app-history-import-alt-list li {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.app-history-import-alt-url {
+  min-width: 0;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  overflow-wrap: anywhere;
+}
+
+.app-history-import-alt-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.app-history-import-alt-row .settings-input {
+  flex: 1 1 260px;
+  width: auto;
+  min-width: 0;
+}
+
+/* The glyph and the words carry the problem; the colour only repeats it. */
+.app-history-import-alt-error {
+  margin-top: 6px;
+  color: var(--danger, #b91c1c);
+}
+
 /* Phone: stack, and let the button and its status read left-aligned
    rather than hugging the right edge of a full-width column. */
 @media (max-width: 560px) {
   .app-history-import {
     flex-direction: column;
+  }
+
+  /* In a column the copy's 260px basis is a height, which left a tall
+     gap above the button. */
+  .app-history-import-copy {
+    flex: none;
   }
 
   .app-history-import-action {
@@ -79,5 +148,10 @@
   .app-history-import-status {
     max-width: none;
     text-align: left;
+  }
+
+  .app-history-import-alt {
+    flex: none;
+    width: 100%;
   }
 }
