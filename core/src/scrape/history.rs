@@ -101,16 +101,16 @@ pub struct HistoryOptions {
     /// `today`; the clock when absent.
     pub today: Option<i64>,
     /// A capture list the caller already holds (the bulk runner's survey
-    /// keeps one per app), used instead of asking the CDX index again.
+    /// keeps one per app), used instead of asking the CDX index again. Each
+    /// capture is replayed at the address in its own URL.
     pub captures: Option<Vec<Capture>>,
     /// Never ask Save Page Now. Bulk runs set it: a capture request is a
     /// write to the public archive with its own, stricter limits, and it
     /// gives the user nothing now.
     pub skip_save_now: bool,
     /// When the CDX index cannot be used, fail the import instead of probing
-    /// the availability API at every target. Bulk runs set it: the probes
-    /// cost up to seven requests a target on archive.org's most throttled
-    /// endpoint.
+    /// the availability API once per skeleton date. Bulk runs set it: the
+    /// probes go to archive.org's most throttled endpoint and cannot bisect.
     pub skip_availability_fallback: bool,
 }
 
@@ -1472,7 +1472,8 @@ impl Walk<'_, '_> {
     }
 
     /// Without a usable index: one availability probe per skeleton date at
-    /// that date, and no bisection. Returns the probed captures' times.
+    /// that date, and no bisection. Each probed capture's time goes into
+    /// `probed`, which decides whether the archive holds anything recent.
     async fn probes(
         &mut self,
         targets: &[i64],
