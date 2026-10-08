@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { AccessibilityProfile } from "../../lib/accessibility-profile";
 import { type AgeBandKey, compareRatingToBand } from "../../lib/age-rating";
+import { bareVersion } from "../../lib/app-version";
 import type {
   ChangelogRow,
   UnacknowledgedChanges,
@@ -820,13 +821,13 @@ export default function AppDetailView({
       } else if (result?.versionChanged && result.currentVersion) {
         showToast(
           tDetail("toasts.sync_version_updated", {
-            version: result.currentVersion,
+            version: bareVersion(result.currentVersion),
           })
         );
         handle.complete(
           "done",
           tDetail("task_titles.completion_version_updated", {
-            version: result.currentVersion,
+            version: bareVersion(result.currentVersion),
           })
         );
       } else {

@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
+import { bareVersion } from "../../lib/app-version";
 import type {
   ChangeEntry,
   ChangelogRow,
@@ -297,7 +298,10 @@ function TriggerPill({
   const baseTitle = t(`${key}_title`);
   const title =
     key === "wayback" && appVersion
-      ? t("wayback_with_version", { title: baseTitle, version: appVersion })
+      ? t("wayback_with_version", {
+          title: baseTitle,
+          version: bareVersion(appVersion),
+        })
       : baseTitle;
 
   return (
@@ -329,7 +333,10 @@ function TriggerPill({
       */}
       {key === "wayback" && appVersion && (
         <span style={{ opacity: 0.85 }}>
-          · {tTimeline("version_prefix", { version: appVersion })}
+          ·{" "}
+          {tTimeline("version_prefix", {
+            version: bareVersion(appVersion),
+          })}
         </span>
       )}
     </span>
@@ -1058,7 +1065,9 @@ function TimelineSnapshotItem({
               title={tCt("version_chip_title")}
             >
               <span aria-hidden="true">📱</span>
-              {tTimeline("version_prefix", { version: snapshot.app_version })}
+              {tTimeline("version_prefix", {
+                version: bareVersion(snapshot.app_version),
+              })}
               {snapshot.app_version_updated_at
                 ? ` · ${tCt("version_released", {
                     date: formatShortDate(
@@ -1104,7 +1113,7 @@ function TimelineSnapshotItem({
           >
             {versionChangedWithoutLabelChanges
               ? tTimeline("version_updated_no_label_changes", {
-                  version: snapshot.app_version ?? "",
+                  version: bareVersion(snapshot.app_version ?? ""),
                 })
               : isWayback
                 ? tCt("card_wayback_no_diff")
