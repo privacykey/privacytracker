@@ -210,6 +210,7 @@ fn wayback_runner_paths_match_node_wire_calls_stream_and_rows() {
     ))
     .unwrap();
     let now = fixture["now"].as_i64().unwrap();
+    let mut bless = crate::bless::Bless::new("wayback-runner-cases.json", &fixture);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -440,13 +441,31 @@ fn wayback_runner_paths_match_node_wire_calls_stream_and_rows() {
                 .collect(),
         );
         let calls = Value::Array(canned.calls.lock().unwrap().clone());
-        let table_names: Vec<&str> = case["rows"]
-            .as_object()
-            .unwrap()
-            .keys()
-            .map(String::as_str)
-            .collect();
+        // A case written by hand for PT_BLESS has no rows yet: it gets the
+        // tables every recorded case has.
+        let table_names: Vec<&str> = case["rows"].as_object().map_or_else(
+            || {
+                vec![
+                    "apps",
+                    "privacy_snapshots",
+                    "notifications",
+                    "activity_log",
+                    "audit_log",
+                    "app_settings",
+                ]
+            },
+            |rows| rows.keys().map(String::as_str).collect(),
+        );
         let rows = dump(&conn, &table_names);
+        bless.record(
+            case,
+            &[
+                ("calls", &calls),
+                ("stream", &stream_json),
+                ("rows", &rows),
+                ("expected", wire.as_ref().unwrap_or(&Value::Null)),
+            ],
+        );
         let mut diffs = vec![];
         if wire != expected_wire {
             diffs.push(format!(
@@ -478,6 +497,9 @@ fn wayback_runner_paths_match_node_wire_calls_stream_and_rows() {
     }
     std::env::remove_var("PRIVACYTRACKER_TRUST_PROXY");
     std::env::remove_var("PRIVACYTRACKER_BIND_HOST");
+    if bless.finish() {
+        return;
+    }
     assert!(
         failures.is_empty(),
         "{} wayback runner parity failures:\n{}",

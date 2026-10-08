@@ -17,6 +17,8 @@
 //! (`host_env`), and hands back a handle that shuts it down within a bound.
 
 pub mod alloc;
+#[cfg(test)]
+mod bless;
 pub mod db;
 pub mod host_env;
 pub mod jsdate;
