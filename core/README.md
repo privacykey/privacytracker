@@ -100,11 +100,15 @@ the Node rollback keeps the importer and bulk runner it had before. So
 `core/tests/fixtures/history-cases.json` and `wayback-runner-cases.json`
 are no longer recorded from Node: their extractors and CI steps are
 gone, and they are regression fixtures the core owns, still replayed by
-the crate tests. After an intended change, bless the one you changed:
+the crate tests. So is `import-history-route-cases.json`, the 15 cases
+of the per-app `import-history` route that moved out of the
+Node-recorded `imports-cases.json`. After an intended change, bless the
+one you changed:
 
 ```bash
 PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib historical_import_matches_node -- --nocapture
 PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib wayback_runner_paths_match_node -- --nocapture
+PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib import_history_route_matches_its_blessed_fixture -- --nocapture
 ```
 
 With `PT_BLESS=1` the replay runs every case, rewrites its outputs
@@ -2171,14 +2175,17 @@ every case, so Node's timer, when it fires, finds the runner busy and
 writes nothing.
 
 **The oracle — `core/scripts/extract-imports-cases.mjs`.** Runs the REAL
-handlers over 167 requests with foreign keys ON, a frozen clock, counted
+handlers over 162 requests with foreign keys ON, a frozen clock, counted
 ids (now including `randomBytes(9)`: twelve base64url characters
 round-trip to nine bytes, so a zero-padded counter decodes and re-encodes
 to itself), the soft pacers reset per case, a distinct forwarded address
 per case, and the network canned — each case lists its replies in the
 order the handler asks for them (an App Store page then its version
-lookup; an iTunes search or lookup; the CDX index, a replay, Save Page
-Now), and a reply left unused fails the run. It records the request, the
+lookup; an iTunes search or lookup), and a reply left unused fails the
+run. The per-app Wayback import's cases left this oracle with the
+redesign: they live in the Rust-owned `import-history-route-cases.json`,
+and the extractor still reserves their forwarded addresses so the cases
+after them re-record unchanged. It records the request, the
 setup rows, every raw fetch, every write with transaction markers, the
 fourteen tables an import write can touch (abbreviated past 100 rows, as
 the Rust dump is), and the wire response. `core/src/server/imports_tests.rs`
@@ -2331,11 +2338,13 @@ included — falls out of the same operations. Progress frames from the
 history import: `import_app_history` takes an optional sink fed from the
 same array its result carries.
 
-**A Node behaviour pinned rather than fixed.** A pause requested while an
-app is in flight is written to disk, then overwritten by the runner's
-own post-app state write before the boundary check reads it back, so the
-run carries on; the pause that takes effect is one that lands during the
-backoff sleep. The oracle records both, and the port reproduces both.
+**A Node behaviour the redesign fixed.** The port first reproduced a
+Node bug: a pause requested while an app was in flight was written to
+disk, then overwritten by the runner's own post-app state write before
+the boundary check read it back, so the run carried on. The Rust-only
+runner keeps a pause or cancel the PATCH stored meanwhile on every state
+write, so that pause now stops the run after the app; the Node rollback
+keeps the old behaviour.
 
 **The fixture — `core/tests/fixtures/wayback-runner-cases.json`,
 Rust-owned since the Wayback redesign.** It was the oracle recorded by
