@@ -9,6 +9,7 @@ import {
   type WaybackLiveProgress,
   waybackEtaMs,
   waybackFailedAppsInFrame,
+  waybackLateStartApps,
   waybackLead,
   waybackRunSummary,
   waybackSurveyLine,
@@ -829,4 +830,100 @@ test("a run's totals summarise in apps only when they carry app counts", () => {
     changes: 0,
     labelVersions: 0,
   });
+});
+
+// ── Coverage (P5): apps whose archived history starts late ──
+
+test("the stream counts apps whose history starts late", () => {
+  const appDone = (appId: string, historyStartsLate?: boolean) => ({
+    type: "app-done",
+    appId,
+    name: appId,
+    index: 0,
+    total: 3,
+    result: {
+      imported: 1,
+      unchanged: 1,
+      reads: 6,
+      changes: 0,
+      historyStartsLate,
+    },
+  });
+  let progress = run([
+    ...surveyFrames,
+    { type: "phase", phase: "reading" },
+    appDone("1", true),
+    appDone("2", false),
+    appDone("3", true),
+  ]);
+  assert.equal(waybackLateStartApps(progress?.appTotals), 2);
+  // Closing totals that do not report it keep the stream's count...
+  progress = reduceWaybackFrame(progress, {
+    type: "summary",
+    totals: { appsDone: 3, appsRead: 3, reads: 18, changes: 0 },
+  });
+  assert.equal(waybackLateStartApps(progress?.appTotals), 2);
+  // ...and the runner's own count wins when it reports one.
+  progress = reduceWaybackFrame(progress, {
+    type: "summary",
+    totals: { appsDone: 3, appsRead: 3, appsHistoryLate: 1 },
+  });
+  assert.equal(waybackLateStartApps(progress?.appTotals), 1);
+});
+
+test("no late-start count without coverage, or at zero", () => {
+  // Results from before coverage never carry historyStartsLate.
+  const progress = run([
+    ...surveyFrames,
+    { type: "phase", phase: "reading" },
+    {
+      type: "app-done",
+      appId: "1",
+      name: "A",
+      index: 0,
+      total: 1,
+      result: { imported: 1, reads: 6, changes: 1 },
+    },
+  ]);
+  assert.equal(progress?.appTotals?.appsHistoryLate, undefined);
+  assert.equal(waybackLateStartApps(progress?.appTotals), null);
+  assert.equal(waybackLateStartApps(null), null);
+  assert.equal(
+    waybackLateStartApps(parseWaybackAppTotals({ appsHistoryLate: 0 })),
+    null
+  );
+  // The legacy tally is untouched by a stray flag on a Node result.
+  const legacy = run([
+    LEGACY_FRAMES[0],
+    {
+      type: "app-done",
+      appId: "1",
+      name: "A",
+      index: 0,
+      total: 3,
+      result: { imported: 2, historyStartsLate: true },
+    },
+  ]);
+  assert.equal(legacy?.appTotals, undefined);
+});
+
+test("the poll and the last run read the runner's late-start count", () => {
+  const extras = parseWaybackRunExtras(
+    {
+      phase: "reading",
+      totals: { appsDone: 40, appsRead: 30, appsHistoryLate: 7 },
+    },
+    { total: 50, done: 40, failed: 0, inProgress: 1 }
+  );
+  assert.equal(waybackLateStartApps(extras.appTotals), 7);
+  assert.equal(
+    waybackLateStartApps(
+      parseWaybackAppTotals({ appsDone: 201, appsHistoryLate: 12 })
+    ),
+    12
+  );
+  assert.equal(
+    parseWaybackAppTotals({ appsDone: 201 })?.appsHistoryLate,
+    undefined
+  );
 });

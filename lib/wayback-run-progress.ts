@@ -53,6 +53,9 @@ export interface WaybackEstimate {
  */
 export interface WaybackAppTotals {
   appsDone: number;
+  /** Apps whose archived history starts late (P5), present only once the
+   *  runner reports it or the stream has seen one. */
+  appsHistoryLate?: number;
   appsNoArchive: number;
   appsRead: number;
   appsWithHistory: number;
@@ -163,6 +166,7 @@ export function parseWaybackEstimate(raw: unknown): WaybackEstimate | null {
 
 const APP_TOTAL_KEYS = [
   "appsDone",
+  "appsHistoryLate",
   "appsRead",
   "appsWithHistory",
   "appsNoArchive",
@@ -176,7 +180,7 @@ export function parseWaybackAppTotals(raw: unknown): WaybackAppTotals | null {
   if (!(isObject(raw) && APP_TOTAL_KEYS.some((k) => finite(raw[k]) !== null))) {
     return null;
   }
-  return {
+  const totals: WaybackAppTotals = {
     appsDone: count(raw.appsDone),
     appsRead: count(raw.appsRead),
     appsWithHistory: count(raw.appsWithHistory),
@@ -185,6 +189,10 @@ export function parseWaybackAppTotals(raw: unknown): WaybackAppTotals | null {
     changes: count(raw.changes),
     labelVersions: count(raw.labelVersions),
   };
+  if (finite(raw.appsHistoryLate) !== null) {
+    totals.appsHistoryLate = count(raw.appsHistoryLate);
+  }
+  return totals;
 }
 
 /**
@@ -358,6 +366,9 @@ export function reduceWaybackFrame(
         totals.changes += count(result.changes);
         totals.labelVersions += count(result.labelVersions);
       }
+      if (result?.historyStartsLate === true) {
+        totals.appsHistoryLate = (totals.appsHistoryLate ?? 0) + 1;
+      }
       next.appTotals = totals;
       next.appsFailed = (prev.appsFailed ?? 0) + waybackFailedAppsInFrame(ev);
       next.readingDone = totals.appsRead;
@@ -451,9 +462,17 @@ export function reduceWaybackFrame(
     case "summary":
     case "paused":
     case "cancelled": {
-      // The server's own totals replace what the stream added up.
+      // The server's own totals replace what the stream added up, except
+      // a late-start count the runner does not report.
       const totals = parseWaybackAppTotals(ev.totals);
-      return prev && totals ? { ...prev, appTotals: totals } : prev;
+      if (!(prev && totals)) {
+        return prev;
+      }
+      const late = totals.appsHistoryLate ?? prev.appTotals?.appsHistoryLate;
+      if (late !== undefined) {
+        totals.appsHistoryLate = late;
+      }
+      return { ...prev, appTotals: totals };
     }
     default:
       return prev;
@@ -597,6 +616,18 @@ export function waybackTally(
     reads: progress.appTotals.reads,
     appsFailed: progress.appsFailed ?? 0,
   };
+}
+
+/**
+ * Apps whose archived history starts late (P5): each can be checked on its
+ * own page, where an older App Store address can be added. Null when the
+ * count is zero or unknown (the runner predates coverage).
+ */
+export function waybackLateStartApps(
+  totals: WaybackAppTotals | null | undefined
+): number | null {
+  const late = totals?.appsHistoryLate;
+  return typeof late === "number" && late > 0 ? late : null;
 }
 
 /** The activity rows the card reads its "Last run" block from. */

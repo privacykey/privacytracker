@@ -29,6 +29,7 @@ import {
   type WaybackAppTotals,
   type WaybackLiveProgress,
   waybackEtaMs,
+  waybackLateStartApps,
   waybackLead,
   waybackSurveyLine,
   waybackTally,
@@ -101,6 +102,10 @@ export default function WaybackImportSection({
     ? describeWaybackDuration(waybackEtaMs(waybackProgress) ?? 0)
     : null;
   const lastRunApps = waybackLastRun?.appTotals ?? null;
+  // Apps whose archived history starts late (coverage): each is checked on
+  // its own page, where an older App Store address can be added.
+  const lateApps = waybackLateStartApps(waybackProgress?.appTotals);
+  const lastRunLateApps = waybackLateStartApps(lastRunApps);
   // Re-render once the wait is over, so its line never claims a time that
   // has passed while the next frame or poll is still on its way.
   const [, setWaitTick] = useState(0);
@@ -439,6 +444,11 @@ export default function WaybackImportSection({
                     : tWayback(eta.key)}
                 </div>
               ) : null}
+              {lateApps ? (
+                <div className="wayback-run-detail">
+                  {tWayback("late_apps", { count: lateApps })}
+                </div>
+              ) : null}
               {/* Nothing has been read while the survey runs, so no tally. */}
               {tally.kind === "none" ? null : tally.kind === "apps" ? (
                 <div className="wayback-run-tally">
@@ -597,6 +607,11 @@ export default function WaybackImportSection({
                       {tWayback("stat_no_archive", {
                         count: lastRunApps.appsNoArchive,
                       })}
+                    </span>
+                  ) : null}
+                  {lastRunLateApps ? (
+                    <span className="wayback-run-late">
+                      {tWayback("late_apps", { count: lastRunLateApps })}
                     </span>
                   ) : null}
                 </div>
