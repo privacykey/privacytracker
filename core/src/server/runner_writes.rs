@@ -25,7 +25,10 @@ use super::{
 use crate::{
     jsstr::js_trim,
     outbound::Fetcher,
-    scrape::persist::{DbAccess, Ids},
+    scrape::{
+        archive_pacer,
+        persist::{DbAccess, Ids},
+    },
 };
 use axum::{
     body::Body,
@@ -74,11 +77,15 @@ pub(super) async fn perform(
         ("/api/apps", &Method::DELETE) => {
             db.with(|w| app_delete(&mut Cx { w, ids, now }, req.query, actor))
         }
+        // The bulk import, and the run a resume spawns, at the server's
+        // archive.org pace (archive_pacer.rs).
         ("/api/wayback/import-all", &Method::POST) => {
-            wayback_import_all(db, ids, now, fetcher, req.query, actor).await
+            let archive = archive_pacer::paced(db, fetcher);
+            wayback_import_all(db, ids, now, &archive, req.query, actor).await
         }
         ("/api/wayback/import-all", &Method::PATCH) => {
-            wayback_control(db, ids, now, fetcher, req.body, actor).await
+            let archive = archive_pacer::paced(db, fetcher);
+            wayback_control(db, ids, now, &archive, req.body, actor).await
         }
         ("/api/wayback/import-all", &Method::DELETE) => {
             db.with(|w| wayback_remove_all(&mut Cx { w, ids, now }, actor))

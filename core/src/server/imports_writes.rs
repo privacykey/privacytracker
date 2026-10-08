@@ -49,7 +49,7 @@ use crate::{
     jsstr::{js_length, js_slice_prefix, js_trim},
     outbound::{self, Fetcher},
     scrape::{
-        complete,
+        archive_pacer, complete,
         fetch::fire_change_webhook,
         import_app_history, lookup_apps_by_bundle_id, notify, perform as perform_fetch,
         persist::{DbAccess, Ids, Outcome, Writer},
@@ -2035,7 +2035,10 @@ async fn import_history(
         interval_months,
         ..Default::default()
     };
-    let run = import_app_history(db, fetcher, &app_row, &options, now, ids, None).await;
+    // archive.org at the server's pace (archive_pacer.rs): a throttled
+    // archive answers this click with a 503 and its Retry-After.
+    let archive = archive_pacer::paced(db, fetcher);
+    let run = import_app_history(db, &archive, &app_row, &options, now, ids, None).await;
     // What the run leaves behind — audit, activity and the response — is
     // one synchronous tail in Node, so one section.
     db.with(|w| {

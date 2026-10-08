@@ -55,6 +55,7 @@ use crate::{
         url::safe_url_label,
     },
     scrape::{
+        archive_pacer,
         js::truthy,
         notify,
         persist::{DbAccess, Ids, Writer},
@@ -895,6 +896,13 @@ async fn fetch_and_store(
         }
     }
 
+    // Every archive.org request from here on, the source's Wayback
+    // fallback, the lookup of an existing capture and Save Page Now, at
+    // the server's archive.org pace (archive_pacer.rs). The policy's own
+    // site passes straight through.
+    let archive = archive_pacer::paced(log.db(), fetcher);
+    let fetcher: &dyn Fetcher = &archive;
+
     log.start_phase(
         "fetching",
         Some(format!("Requesting {}", safe_url_label(policy_url))),
@@ -1538,7 +1546,9 @@ pub(crate) async fn run_follow_ups(
     if let Some((version_id, save_now)) = follow_ups.save_now {
         let result = match save_now {
             SaveNow::Landed(result) => result,
-            SaveNow::Later(target) => wayback::save_now(fetcher, &target).await,
+            SaveNow::Later(target) => {
+                wayback::save_now(&archive_pacer::paced(db, fetcher), &target).await
+            }
         };
         link_capture(db, clock, &version_id, result);
     }

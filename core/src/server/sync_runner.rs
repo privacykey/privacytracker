@@ -34,6 +34,7 @@ use crate::{
     jsstr::js_slice_prefix,
     outbound::{Fetcher, PublicHttp},
     scrape::{
+        archive_pacer::{self, Paced, Pacer},
         complete,
         fetch::fire_change_webhook,
         notify, perform as perform_fetch,
@@ -865,6 +866,21 @@ pub(crate) async fn resume_app_store_sync(
     Ok(())
 }
 
+/// This server's archive.org pace: read from `app_settings` now, filed
+/// against its connection for [`archive_pacer::paced`] to find, and
+/// forgotten when the server stops or its runtime ends, so a later server
+/// whose connection lands at the same address starts with its own.
+fn file_archive_pacer(state: &AppState, stop: &CancellationToken) -> Arc<Pacer> {
+    let pacer = Arc::new(Pacer::for_server(&state.conn));
+    let registration = archive_pacer::register(&state.db(), pacer.clone());
+    let stop = stop.clone();
+    tokio::spawn(async move {
+        let _registration = registration;
+        stop.cancelled().await;
+    });
+    pacer
+}
+
 /// The boot writes now, then the tickers `register()` arms: the Wayback
 /// resume once at 8 s, the sync resume once at 10 s, the policy-sync
 /// resume once at 12 s, the scheduler check
@@ -879,6 +895,10 @@ pub(crate) fn start_background(state: AppState, stop: CancellationToken) {
     let desktop = crate::host_env::var("PRIVACYTRACKER_RUNTIME").is_ok_and(|v| v == "desktop");
     migrate_flags(&mut state.db_access(), &Live);
     boot(&mut state.db_access(), Live.now(), desktop);
+
+    // Before the first request is served, so every route, ticker and
+    // spawned run finds it.
+    let pacer = file_archive_pacer(&state, &stop);
 
     // What the deferred policy fetch's timer runs with, its stop included.
     let conn = state.conn.clone();
@@ -896,6 +916,7 @@ pub(crate) fn start_background(state: AppState, stop: CancellationToken) {
     }));
 
     let (wayback_state, wayback_stop) = (state.clone(), stop.clone());
+    let wayback_pacer = pacer.clone();
     tokio::spawn(async move {
         if sleep_or_stop(&wayback_stop, Duration::from_secs(8)).await {
             return;
@@ -903,8 +924,9 @@ pub(crate) fn start_background(state: AppState, stop: CancellationToken) {
         isolate("WaybackResume", async {
             let mut ids = RandomIds;
             let mut db = wayback_state.db_access();
+            let archive = Paced::new(&PublicHttp, wayback_pacer);
             if let Err(e) =
-                super::wayback_runner::resume_wayback_import(&mut db, &PublicHttp, &mut ids, &Live)
+                super::wayback_runner::resume_wayback_import(&mut db, &archive, &mut ids, &Live)
                     .await
             {
                 super::diag::log_error(format!("[WaybackResume] Startup check failed: {e}"));
@@ -1129,5 +1151,41 @@ mod tests {
             bulk_summary_line(&t),
             "0/0 synced, 0 changes, 3 rate-limited, 2 skipped"
         );
+    }
+
+    /// The server's pacer is the one its routes find, starts from the
+    /// cooldown the last run stored, and goes when the server stops.
+    #[test]
+    fn the_server_files_its_archive_pacer_until_it_stops() {
+        let conn = crate::db::open_and_migrate(std::path::Path::new(":memory:")).unwrap();
+        let until = super::super::now_ms() + 120_000;
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES (?, ?)",
+            [archive_pacer::COOLDOWN_KEY, &until.to_string()],
+        )
+        .unwrap();
+        let state = AppState {
+            conn: Arc::new(std::sync::Mutex::new(conn)),
+            rate_limiter: Arc::new(super::super::ratelimit::RateLimiter::new()),
+            started_at: std::time::Instant::now(),
+            bound_port: 0,
+        };
+        let stop = CancellationToken::new();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            assert!(!archive_pacer::for_connection(&state.db()).is_paced());
+            let pacer = file_archive_pacer(&state, &stop);
+            let found = archive_pacer::for_connection(&state.db());
+            assert!(Arc::ptr_eq(&found, &pacer));
+            assert!(pacer.cooldown_remaining_ms() > 60_000);
+            stop.cancel();
+            for _ in 0..10 {
+                tokio::task::yield_now().await;
+            }
+            assert!(!archive_pacer::for_connection(&state.db()).is_paced());
+        });
     }
 }
