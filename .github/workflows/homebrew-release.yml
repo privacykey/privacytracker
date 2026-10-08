@@ -43,7 +43,21 @@ jobs:
             "repos/${GITHUB_REPOSITORY}/contents/src-tauri/tauri.conf.json?ref=${TAG}" \
             --jq '.bundle.macOS.minimumSystemVersion')
           [[ "$MINIMUM_MACOS" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || { echo "::error::Invalid macOS minimum"; exit 1; }
-          echo "minimum_macos=$MINIMUM_MACOS" >> "$GITHUB_OUTPUT"
+          # Homebrew 7 takes only a release name for `depends_on macos:`
+          # (a version string such as ">= 13.5" fails to load), and a
+          # name means "this major or later". 13.5 becomes :ventura; the
+          # app's own LSMinimumSystemVersion still refuses 13.0-13.4.
+          case "${MINIMUM_MACOS%%.*}" in
+            11) MACOS_SYMBOL=big_sur ;;
+            12) MACOS_SYMBOL=monterey ;;
+            13) MACOS_SYMBOL=ventura ;;
+            14) MACOS_SYMBOL=sonoma ;;
+            15) MACOS_SYMBOL=sequoia ;;
+            26) MACOS_SYMBOL=tahoe ;;
+            27) MACOS_SYMBOL=golden_gate ;;
+            *) echo "::error::No Homebrew macOS name for ${MINIMUM_MACOS}; add it here"; exit 1 ;;
+          esac
+          echo "macos_symbol=$MACOS_SYMBOL" >> "$GITHUB_OUTPUT"
           # Strip the leading 'v' for the cask `version` field. Homebrew
           # versions don't carry a v-prefix; the URL template adds it back.
           VERSION="${TAG#v}"
@@ -80,12 +94,16 @@ jobs:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
 
+      # No `verified:` on the url: Homebrew 7 ignores it and warns on every
+      # install and upgrade, and the url and homepage share a host anyway.
+      # The cask must load under Homebrew 7 as written: a stanza it
+      # rejects breaks `brew install` for everyone once the tap PR merges.
       - name: Regenerate Casks/privacytracker.rb
         env:
           VERSION: ${{ steps.ctx.outputs.version }}
           SHA_ARM: ${{ steps.hashes.outputs.sha_arm }}
           SHA_X64: ${{ steps.hashes.outputs.sha_x64 }}
-          MINIMUM_MACOS: ${{ steps.ctx.outputs.minimum_macos }}
+          MACOS_SYMBOL: ${{ steps.ctx.outputs.macos_symbol }}
         run: |
           mkdir -p tap/Casks
           cat > tap/Casks/privacytracker.rb <<EOF
@@ -99,8 +117,7 @@ jobs:
             sha256 arm:   "${SHA_ARM}",
                    intel: "${SHA_X64}"
 
-            url "https://github.com/privacykey/privacytracker/releases/download/v#{version}/privacytracker_#{version}_#{arch}.dmg",
-                verified: "github.com/privacykey/privacytracker/"
+            url "https://github.com/privacykey/privacytracker/releases/download/v#{version}/privacytracker_#{version}_#{arch}.dmg"
             name "privacytracker"
             desc "Monitor, track, and get alerted when iOS apps change their privacy labels"
             homepage "https://github.com/privacykey/privacytracker"
@@ -111,7 +128,7 @@ jobs:
             end
 
             auto_updates true
-            depends_on macos: ">= ${MINIMUM_MACOS}"
+            depends_on macos: :${MACOS_SYMBOL}
 
             app "privacytracker.app"
 
