@@ -75,16 +75,39 @@ runner sets for bulk runs. Defaults keep today's behaviour.
   reason other than throttling, fail with `INDEX_UNAVAILABLE` instead of
   probing the availability API.
 
-### P0: Rust-owned fixtures
+### P0: Rust-owned fixtures (done)
 
-`history-cases.json` and `wayback-runner-cases.json` stop being re-recorded
-from Node: their CI extractor steps and the two Node extractors go, and the
-Rust replays gain a bless mode. `PT_BLESS=1 cargo test ...` rewrites each
-case's expected output (calls, writes, tables, result, frames) from the
-current Rust behaviour and leaves its inputs (setup, replies) alone.
-Review every blessed diff; a blessed fixture is a regression test, not an
-oracle. Cases whose requests change need new canned replies, written by
-hand or by a generator in the test file.
+`history-cases.json` and `wayback-runner-cases.json` are no longer
+re-recorded from Node: their CI extractor steps and the two Node
+extractors are gone, and the Rust replays have a bless mode
+(`core/src/bless.rs`). From the repository root, with the build variables
+from "Rules for agents":
+
+```bash
+PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib historical_import_matches_node -- --nocapture
+PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib wayback_runner_paths_match_node -- --nocapture
+```
+
+Each rewrites every case's outputs (`calls`, `stream`, `rows` and
+`expected`; the runner's NDJSON frames are in the expected body) from the
+current Rust behaviour, leaves its inputs (setup, replies, options,
+hooks, clock) alone, lists the cases it rewrote and passes. Review every
+blessed diff; a blessed fixture is a regression test, not an oracle.
+Cases whose requests change need new canned replies, written by hand or
+by a generator in the test file. A new case needs only its inputs: the
+bless appends its outputs, and the runner replay dumps the six tables
+every recorded case has when a case has no `rows`. Blessing unchanged
+code rewrites nothing. `GET /api/wayback/import-all` moved from READS to
+QUARANTINE in `scripts/parity/manifest.mjs`.
+
+Still recorded from Node, and outside P0: the 15 per-app
+`import-history` cases in `imports-cases.json`, 8 of which reach
+archive.org through `import_app_history` and so move with P2, and the
+Wayback status reads in `operations-cases.json` (36 of
+`GET /api/wayback/import-all` and 37 of `/api/tasks/active`, over planted
+state blobs), which move with P3 if `operations.rs` changes what a stored
+blob reads as. Both files are the integrator's: report a change that
+moves them rather than re-recording them.
 
 ### P1: paced client
 
@@ -159,8 +182,16 @@ density where it matters.
 
 ### P3: bulk runner
 
-State blob `wayback_bulk_state` moves to `schemaVersion: 3`. A v2 blob
-still resumes, as a reading phase with no survey. Additions:
+State blob `wayback_bulk_state` moves to `version: 3` (the blob's own
+`version` field, `STATE_SCHEMA_VERSION` in the runner). A v2 blob still
+resumes, as a reading phase with no survey. Every reader of the blob must
+accept 3: the runner's `read_bulk_state`, the status projection in
+`operations.rs` (`describe` accepts only 1 and 2 today and rewrites the
+version to 2) and the health check's lock heal. `operations-cases.json` is
+still recorded from Node and plants v1 and v2 blobs, so a v1 or v2 blob
+must read byte-identically through `GET /api/wayback/import-all` and
+`GET /api/tasks/active`; the new keys appear only when a v3 blob carries
+them. Additions:
 
 - `phase`: `"survey"` or `"reading"`.
 - `waitingUntil` (epoch ms) and `waitReason`, present only while waiting.
