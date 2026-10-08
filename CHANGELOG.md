@@ -12,6 +12,20 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
+### Added
+
+- The Wayback history import finds more of an app's history, in the
+  desktop app and the Docker image. It now looks up the US App Store page
+  first whatever storefront the app was added from, because privacy labels
+  belong to the app and archive.org keeps far more copies of US pages, and
+  falls back to the stored address when the US index has nothing. When an
+  app's archived history starts well after February 2021, its page says so
+  and why it might: a renamed app's older pages may be archived under its
+  old address. You can add up to three older App Store addresses for the
+  app, and the import checks those too; each can be removed again.
+  Settings says how many apps' archived history starts late. Rust server
+  only.
+
 ### Changed
 
 - The Wayback history import in the desktop app and the Docker image now

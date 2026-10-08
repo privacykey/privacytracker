@@ -48,9 +48,15 @@ Others report about 15 requests a minute before a 5-minute block.
 | P4 UI | agent | Settings card, detail card and timeline for the new states |
 | P5 Coverage | agent, after P2 and P3 | US storefront lookups, renamed-app hint and older addresses |
 
-Status: P0 to P4 are merged on the integration branch, where the full
-core suite and the frontend checks pass, and the runner fixture is
-re-blessed on the merged import. P5 is in progress.
+Status: every package is merged on the integration branch, where the
+full core suite and the frontend checks pass and the three Rust-owned
+fixtures are blessed on the merged code. Known limits, left for later:
+`historyStartsAt` reads the archive's listing only, never stored rows, so
+an app imported before P5 from a non-US page whose US archive starts
+later can be told its history starts late while its timeline already
+shows older rows; and `apps` stores no release date, so an app first
+published after mid-2021 is also told its history starts late and
+offered the address input.
 
 ### File ownership
 
@@ -209,8 +215,11 @@ them. Additions:
   (10 when absent).
 - Queue entries add `captureCount`, `firstCaptureMs`, `lastCaptureMs`,
   `noArchive`, `reads`, `changes`, `labelVersions`.
-- Totals add `appsDone`, `appsWithHistory`, `appsNoArchive`, `reads`,
-  `changes`, `labelVersions`.
+- Totals add `appsDone`, `appsRead`, `appsWithHistory`, `appsNoArchive`,
+  `reads`, `changes`, `labelVersions`, and (P5) `appsHistoryLate`, which
+  counts finished apps whose import result says `historyStartsLate` (a
+  missing flag counts as false; a queue saved before the count existed
+  starts it at 0).
 
 Behaviour:
 
