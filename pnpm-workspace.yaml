@@ -61,8 +61,8 @@ minimumReleaseAgeExclude:
 # (libvips CVE-2026-33327/-33328/-35590/-35591, fixed in sharp 0.35.0).
 # Floor raised 0.35.0 -> 0.35.5 for GHSA-wq5f-xc86-pv6w (the librsvg
 # bundled with libvips, CVE-2026-96889, fixed in 0.35.5): Next 16.3.6
-# declares ^0.35.4, which the lockfile held at 0.35.4. Drop this once
-# Next's own range moves to >=0.35.5.
+# declares ^0.35.4 (16.3.8 still does), which the lockfile held at 0.35.4.
+# Drop this once Next's own range moves to >=0.35.5.
 #
 # `nanoid` is force-resolved to the patched 3.3.18 line. It arrives via
 # next > postcss > nanoid, and the postcss override above does NOT lift it:
