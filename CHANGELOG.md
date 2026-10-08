@@ -22,6 +22,16 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- Raise `next` to 16.3.8 for six Next.js advisories: GHSA-cjq9-62q9-8jv4
+  (high, server-side request forgery in Image Optimization),
+  GHSA-mcj8-r9mp-w47p and GHSA-4jqv-mc3x-m676 (cache poisoning of SSG and
+  ISR pages), GHSA-f87g-xv8r-7p7x (information disclosure in App Router
+  metadata image routes), GHSA-3w37-wq28-93x7 (a pending `use cache` fill
+  leaking Draft Mode content) and GHSA-39w2-rjm5-chcv (low, information
+  disclosure in the development server's Model Context Protocol endpoint).
+  Next.js's server runs only in the Docker image's Node rollback
+  (`BACKEND=node`) and in development; the default Rust image and the
+  desktop app serve a static build.
 - Raise `sharp` to 0.35.5 (GHSA-wq5f-xc86-pv6w, a vulnerability in the
   librsvg bundled with its libvips, CVE-2026-96889), which reaches the app
   through Next.js. Only the Docker image's Node rollback (`BACKEND=node`)
