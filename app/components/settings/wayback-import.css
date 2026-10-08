@@ -1,0 +1,52 @@
+/*
+ * Settings → Historical Import (WaybackImportSection): the run details the
+ * Rust runner reports. The older parts of the card still carry inline
+ * styles; these match them (12 px gaps, text-1 numbers on text-2 labels).
+ */
+
+/* While the runner waits out archive.org's limit. The glyph and the words
+   carry the state; the tint only groups them. */
+.wayback-run-wait {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--text-2);
+  background: rgba(124, 58, 237, 0.08);
+  border-radius: 6px;
+}
+
+.wayback-run-wait strong {
+  color: var(--text-1);
+}
+
+.wayback-run-wait-body {
+  display: block;
+  margin-top: 2px;
+}
+
+/* What the survey found, and the time left: a muted line each. */
+.wayback-run-detail {
+  margin-bottom: 4px;
+  color: var(--text-2);
+}
+
+/* Totals in apps and label changes. */
+.wayback-run-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: var(--text-2);
+}
+
+.wayback-run-tally strong {
+  color: var(--text-1);
+}
+
+.wayback-run-tally .wayback-run-failed,
+.wayback-run-tally .wayback-run-failed strong {
+  color: var(--danger, #b91c1c);
+}

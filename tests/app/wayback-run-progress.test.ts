@@ -7,11 +7,11 @@ import {
   reduceWaybackFrame,
   startingWaybackProgress,
   type WaybackLiveProgress,
-  waybackAppTally,
   waybackEtaMs,
   waybackLead,
   waybackRunSummary,
   waybackSurveyLine,
+  waybackTally,
   waybackWaitUntil,
 } from "../../lib/wayback-run-progress";
 
@@ -33,7 +33,7 @@ function derived(progress: WaybackLiveProgress | null) {
     survey: waybackSurveyLine(progress),
     eta: waybackEtaMs(progress, NOW),
     wait: waybackWaitUntil(progress, NOW),
-    tally: waybackAppTally(progress),
+    tally: waybackTally(progress),
   };
 }
 
@@ -42,7 +42,7 @@ const NOTHING_NEW = {
   survey: null,
   eta: null,
   wait: null,
-  tally: null,
+  tally: { kind: "legacy" },
 };
 
 // ── The frames a run sends today (and the Node rollback keeps sending) ──
@@ -203,6 +203,7 @@ test("the survey phase counts apps through the archive index", () => {
     values: { current: 3, total: 3 },
   });
   assert.equal(progress?.currentAppName, "Bravo");
+  assert.deepEqual(waybackTally(progress), { kind: "none" });
   // Survey results are not a run line until the survey is over.
   assert.equal(waybackSurveyLine(progress), null);
   assert.equal(waybackEtaMs(progress, NOW), null);
@@ -278,7 +279,7 @@ test("a full redesigned run reads in apps and label changes", () => {
     survey: { key: "survey_result", values: { withPages: 2, withoutPages: 1 } },
     eta: 3 * MINUTE,
     wait: null,
-    tally: null,
+    tally: { kind: "apps", changes: 0, reads: 0, appsFailed: 0 },
   });
 
   progress = run(
@@ -321,7 +322,7 @@ test("a full redesigned run reads in apps and label changes", () => {
     survey: { key: "survey_result", values: { withPages: 2, withoutPages: 1 } },
     eta: 108_000,
     wait: null,
-    tally: { changes: 3, reads: 12, appsFailed: 0 },
+    tally: { kind: "apps", changes: 3, reads: 12, appsFailed: 0 },
   });
 
   // Throttled mid-app: the runner waits and retries the same app.
@@ -381,7 +382,8 @@ test("a full redesigned run reads in apps and label changes", () => {
     progress!
   );
   assert.equal(progress?.readingDone, 2);
-  assert.deepEqual(waybackAppTally(progress), {
+  assert.deepEqual(waybackTally(progress), {
+    kind: "apps",
     changes: 3,
     reads: 12,
     appsFailed: 1,
@@ -581,6 +583,7 @@ test("a v3 payload in the survey phase reports the index check", () => {
   });
   assert.equal(waybackWaitUntil(progress, NOW), NOW + 4 * MINUTE);
   assert.equal(waybackSurveyLine(progress), null);
+  assert.deepEqual(waybackTally(progress), { kind: "none" });
 });
 
 test("a v3 payload while reading counts apps with archived pages", () => {
@@ -628,7 +631,7 @@ test("a v3 payload while reading counts apps with archived pages", () => {
     },
     eta: 6_600_000,
     wait: null,
-    tally: { changes: 9, reads: 120, appsFailed: 0 },
+    tally: { kind: "apps", changes: 9, reads: 120, appsFailed: 0 },
   });
 });
 

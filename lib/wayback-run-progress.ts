@@ -368,7 +368,14 @@ export function reduceWaybackFrame(
       if (!(prev && phase)) {
         return prev;
       }
-      return { ...prev, phase, waitingUntil: null, waitReason: null };
+      // A phase means the redesigned runner: count in apps from here on.
+      return {
+        ...prev,
+        phase,
+        appTotals: prev.appTotals ?? zeroAppTotals(),
+        waitingUntil: null,
+        waitReason: null,
+      };
     }
     case "survey-app": {
       if (!prev) {
@@ -392,6 +399,7 @@ export function reduceWaybackFrame(
           !noArchiveIds.includes(appId)
             ? [...noArchiveIds, appId]
             : noArchiveIds,
+        appTotals: prev.appTotals ?? zeroAppTotals(),
         waitingUntil: null,
         waitReason: null,
       };
@@ -405,6 +413,7 @@ export function reduceWaybackFrame(
         phase: "reading",
         survey: parseWaybackSurvey(ev.survey) ?? prev.survey ?? null,
         estimate: parseWaybackEstimate(ev.estimate) ?? prev.estimate ?? null,
+        appTotals: prev.appTotals ?? zeroAppTotals(),
         currentAppName: null,
         waitingUntil: null,
         waitReason: null,
@@ -556,20 +565,27 @@ export function waybackWaitUntil(
   return typeof until === "number" && until > now ? until : null;
 }
 
-/** The live tally in apps and label changes, or null for the old one. */
-export interface WaybackAppTally {
-  appsFailed: number;
-  changes: number;
-  reads: number;
-}
+/**
+ * The live tally: in apps and label changes on the redesigned runner,
+ * nothing at all while its survey runs (no page has been read yet), and
+ * the old checkpoint counts otherwise.
+ */
+export type WaybackTally =
+  | { kind: "legacy" }
+  | { kind: "none" }
+  | { kind: "apps"; appsFailed: number; changes: number; reads: number };
 
-export function waybackAppTally(
+export function waybackTally(
   progress: WaybackLiveProgress | null
-): WaybackAppTally | null {
+): WaybackTally {
+  if (progress?.phase === "survey") {
+    return { kind: "none" };
+  }
   if (!progress?.appTotals) {
-    return null;
+    return { kind: "legacy" };
   }
   return {
+    kind: "apps",
     changes: progress.appTotals.changes,
     reads: progress.appTotals.reads,
     appsFailed: progress.appsFailed ?? 0,

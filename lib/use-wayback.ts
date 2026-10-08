@@ -15,17 +15,37 @@
  * On mount the hook rehydrates itself: the last-run summary, and — when
  * the persisted mutex says a run is already in flight — the live progress
  * snapshot, after which the poller keeps it fresh until the run ends.
+ *
+ * The Rust runner's redesign (survey phase, estimate, waits, totals in
+ * apps and label changes) rides on the same two values: `waybackProgress`
+ * carries `phase`, `survey`, `estimate`, `waitingUntil` and `appTotals`
+ * beside the old tally, and `waybackLastRun` carries `appTotals`. All of
+ * them are absent on the Node rollback. Parsing and frame handling live
+ * in lib/wayback-run-progress.ts.
  */
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import type {
+  WaybackLastRun,
   WaybackPauseCause,
   WaybackRunStatus,
 } from "@/app/components/settings/types";
 import type { useTaskCenter } from "@/app/components/TaskCenter";
+import { useDateFormat } from "@/lib/date-format-hook";
 import { useModalFocus } from "@/lib/use-modal-focus";
 import { useSettingsAutoSave } from "@/lib/use-settings-auto-save";
+import {
+  parseWaybackAppTotals,
+  parseWaybackRunExtras,
+  pickWaybackLastRunRow,
+  reduceWaybackFrame,
+  startingWaybackProgress,
+  type WaybackAppTotals,
+  type WaybackLiveProgress,
+  waybackRunSummary,
+} from "@/lib/wayback-run-progress";
+import { formatWaybackClockTime } from "@/lib/wayback-time";
 
 export function useWayback({
   showToast,
@@ -37,6 +57,11 @@ export function useWayback({
   const tWayback = useTranslations("settings.wayback");
   const tBulkStream = useTranslations("settings.bulk_stream");
   const tToast = useTranslations("settings.toasts");
+  // Read inside the long-lived stream loop, so through a ref: the task
+  // subtitle's "until 14:32" follows a date-format change mid-run.
+  const dateMode = useDateFormat();
+  const dateModeRef = useRef(dateMode);
+  dateModeRef.current = dateMode;
 
   // Historical import (Wayback Machine). `waybackRunning` tracks whether a
   // streaming bulk import is in flight so we can disable both buttons. The
@@ -79,16 +104,10 @@ export function useWayback({
   // means no run is active (or we're between two app-start events at the
   // start of a run before the first progress tick). Running totals mirror
   // the server-side `BulkTotals` shape so the status card doesn't have to
-  // reach into the final summary row to render.
-  const [waybackProgress, setWaybackProgress] = useState<{
-    index: number;
-    total: number;
-    currentAppName: string | null;
-    imported: number;
-    unchanged: number;
-    skipped: number;
-    failed: number;
-  } | null>(null);
+  // reach into the final summary row to render. On the Rust runner it
+  // also carries the phase, survey, estimate, wait and app-level totals.
+  const [waybackProgress, setWaybackProgress] =
+    useState<WaybackLiveProgress | null>(null);
   // Tracks whether the currently-running bulk import was triggered manually
   // by this user (the normal case) or auto-resumed by instrumentation.ts
   // after a server restart. The status card shows a distinct "↻ Resumed
@@ -103,22 +122,11 @@ export function useWayback({
   // Snapshot of the most recent bulk import's summary row, hydrated from
   // /api/activity on mount so reloading the Settings page still shows
   // "last run: 3 imported, 1 failed". Cleared after a fresh run completes
-  // so the live tally takes over without mixing stale totals.
-  const [waybackLastRun, setWaybackLastRun] = useState<{
-    status: "ok" | "partial" | "error" | "cancelled";
-    startedAt: number;
-    endedAt: number | null;
-    summary: string | null;
-    totals: {
-      appsAttempted: number;
-      appsWithImports: number;
-      targetsAttempted: number;
-      imported: number;
-      unchanged: number;
-      skipped: number;
-      failed: number;
-    } | null;
-  } | null>(null);
+  // so the live tally takes over without mixing stale totals. `appTotals`
+  // is the same run in apps and label changes, when the runner wrote them.
+  const [waybackLastRun, setWaybackLastRun] = useState<
+    (WaybackLastRun & { appTotals: WaybackAppTotals | null }) | null
+  >(null);
 
   /**
    * Probe the Wayback import-all GET endpoint to find out whether a bulk run
@@ -135,15 +143,7 @@ export function useWayback({
     status: WaybackRunStatus;
     initiator: "manual" | "resume" | null;
     pauseCause: WaybackPauseCause;
-    progress: {
-      index: number;
-      total: number;
-      currentAppName: string | null;
-      imported: number;
-      unchanged: number;
-      skipped: number;
-      failed: number;
-    } | null;
+    progress: WaybackLiveProgress | null;
   } | null> => {
     try {
       const res = await fetch("/api/wayback/import-all");
@@ -181,15 +181,7 @@ export function useWayback({
         rawPauseCause === "user" || rawPauseCause === "rate_limited"
           ? rawPauseCause
           : null;
-      let progress: {
-        index: number;
-        total: number;
-        currentAppName: string | null;
-        imported: number;
-        unchanged: number;
-        skipped: number;
-        failed: number;
-      } | null = null;
+      let progress: WaybackLiveProgress | null = null;
       // Map the runner's richer response onto the card's existing shape so
       // we don't have to rewrite every consumer:
       //   index  = summary.done + summary.inProgress  (apps we've reached)
@@ -197,6 +189,8 @@ export function useWayback({
       //   totals = state.totals  (imported/unchanged/skipped/failed)
       // This keeps live-stream updates (coming from `setWaybackProgress` in
       // the POST handler below) and poll-driven updates on the same shape.
+      // The redesign's keys (phase, survey, estimate, wait, app totals)
+      // are parsed beside it and stay absent when the state lacks them.
       if (data?.summary && data?.state) {
         const summary = data.summary as {
           total?: number;
@@ -216,6 +210,7 @@ export function useWayback({
           unchanged: Number(totals.unchanged ?? 0),
           skipped: Number(totals.skipped ?? 0),
           failed: Number(totals.failed ?? 0),
+          ...parseWaybackRunExtras(data.state, data.summary),
         };
       }
       return { running, status, initiator, pauseCause, progress };
@@ -227,11 +222,12 @@ export function useWayback({
 
   /**
    * Hydrate the Wayback "last run" status block from the activity log. We
-   * fetch the most recent N wayback_import rows and pick the newest one
-   * whose detail blob has `mode: 'bulk'` — that's the batch-summary row
-   * inserted by `/api/wayback/import-all`. The per-app rows (mode: 'app'
-   * or 'bulk-app') are intentionally skipped here because the status card
-   * is describing the whole batch, not individual scrapes.
+   * fetch the most recent N wayback_import rows and pick the newest
+   * batch-summary row — `mode: 'bulk'`, or `'bulk-resumed'` for a run the
+   * server finished after a restart — inserted by `/api/wayback/import-all`.
+   * The per-app rows (mode: 'app' or 'bulk-app') are intentionally skipped
+   * here because the status card is describing the whole batch, not
+   * individual scrapes.
    */
   const loadWaybackLastRun = async () => {
     try {
@@ -241,10 +237,7 @@ export function useWayback({
       }
       const data = await res.json();
       const rows = Array.isArray(data?.rows) ? data.rows : [];
-      const summaryRow = rows.find(
-        (row: { detail?: { mode?: string; removed?: boolean } | null }) =>
-          row.detail?.mode === "bulk" && !row.detail?.removed
-      );
+      const summaryRow = pickWaybackLastRunRow<any>(rows);
       if (!summaryRow) {
         return;
       }
@@ -276,6 +269,7 @@ export function useWayback({
         summary:
           typeof summaryRow.summary === "string" ? summaryRow.summary : null,
         totals: normalisedTotals,
+        appTotals: parseWaybackAppTotals(detailTotals),
       });
     } catch (error) {
       console.warn("[settings] loadWaybackLastRun failed:", error);
@@ -362,15 +356,7 @@ export function useWayback({
     // don't clear `waybackLastRun` here — keeping the previous summary
     // visible alongside "in progress…" helps users confirm a new run is
     // actually replacing the right one.
-    setWaybackProgress({
-      index: 0,
-      total: 0,
-      currentAppName: null,
-      imported: 0,
-      unchanged: 0,
-      skipped: 0,
-      failed: 0,
-    });
+    setWaybackProgress(startingWaybackProgress());
 
     const controller = new AbortController();
     const handle = taskCenter.startTask({
@@ -439,6 +425,11 @@ export function useWayback({
             continue;
           }
 
+          // Every frame goes through the reducer, which keeps the old
+          // checkpoint tally exactly and adds the redesign's fields beside
+          // it. Frames that change nothing hand back the same object.
+          setWaybackProgress((prev) => reduceWaybackFrame(prev, event));
+
           if (event.type === "batch-start") {
             setWaybackRunStatus("running");
             handle.update({
@@ -446,21 +437,23 @@ export function useWayback({
                 total: Number(event.total ?? 0),
               }),
             });
-            setWaybackProgress((prev) => ({
-              ...(prev ?? {
-                imported: 0,
-                unchanged: 0,
-                skipped: 0,
-                failed: 0,
+          } else if (event.type === "survey-app") {
+            handle.update({
+              subtitle: tWayback("task_survey_subtitle", {
+                current: Number(event.index ?? 0) + 1,
+                total: event.total ?? "?",
+                name: String(event.name ?? ""),
               }),
-              index: 0,
-              total: Number(event.total ?? 0),
-              currentAppName: null,
-              imported: 0,
-              unchanged: 0,
-              skipped: 0,
-              failed: 0,
-            }));
+            });
+          } else if (event.type === "waiting") {
+            const until = Number(event.until);
+            if (Number.isFinite(until) && until > 0) {
+              handle.update({
+                subtitle: tWayback("task_waiting_subtitle", {
+                  time: formatWaybackClockTime(until, dateModeRef.current),
+                }),
+              });
+            }
           } else if (event.type === "app-start") {
             const n = (event.index ?? 0) + 1;
             const total = event.total ?? "?";
@@ -471,21 +464,9 @@ export function useWayback({
                 name: event.name,
               }),
             });
-            setWaybackProgress((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    index: n,
-                    total: Number(event.total ?? prev.total),
-                    currentAppName: String(event.name ?? ""),
-                  }
-                : prev
-            );
-          } else if (event.type === "target") {
-            // `target` events are high-volume (one per quarter per app); we
-            // don't push them into the task subtitle to avoid flickering,
-            // but they drive the overall progress on the in-memory totals.
           } else if (event.type === "app-done") {
+            // `target` events are high-volume (one per checkpoint per app)
+            // and stay out of the task subtitle to avoid flicker.
             const n = (event.index ?? 0) + 1;
             const total = event.total ?? "?";
             const imported = event.result?.imported ?? 0;
@@ -500,28 +481,6 @@ export function useWayback({
                 name: event.name,
               }),
             });
-            setWaybackProgress((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    index: n,
-                    imported:
-                      prev.imported + Number(event.result?.imported ?? 0),
-                    unchanged:
-                      prev.unchanged + Number(event.result?.unchanged ?? 0),
-                    skipped: prev.skipped + Number(event.result?.skipped ?? 0),
-                    // A top-level `event.error` means the entire app call
-                    // threw — count it as a single failed app alongside the
-                    // per-target failed counts so "Failed: N" on the status
-                    // card always adds up to the number of apps the user
-                    // should investigate.
-                    failed:
-                      prev.failed +
-                      Number(event.result?.failed ?? 0) +
-                      (event.error ? 1 : 0),
-                  }
-                : prev
-            );
           } else if (event.type === "summary") {
             totals = event.totals;
           } else if (event.type === "paused") {
@@ -551,21 +510,37 @@ export function useWayback({
       }
 
       if (totals) {
-        const parts: string[] = [];
-        parts.push(tWayback("bulk_part_imported", { count: totals.imported }));
-        if (totals.unchanged) {
-          parts.push(tWayback("bulk_part_no_op", { count: totals.unchanged }));
+        let line: string;
+        const summary = waybackRunSummary(totals);
+        if (summary.kind === "apps") {
+          line = tWayback("bulk_summary_apps", {
+            apps: summary.appsDone,
+            changes: summary.changes,
+            noArchive: summary.appsNoArchive,
+          });
+        } else {
+          const parts: string[] = [];
+          parts.push(
+            tWayback("bulk_part_imported", { count: totals.imported })
+          );
+          if (totals.unchanged) {
+            parts.push(
+              tWayback("bulk_part_no_op", { count: totals.unchanged })
+            );
+          }
+          if (totals.skipped) {
+            parts.push(
+              tWayback("bulk_part_skipped", { count: totals.skipped })
+            );
+          }
+          if (totals.failed) {
+            parts.push(tWayback("bulk_part_failed", { count: totals.failed }));
+          }
+          line = tWayback("bulk_summary", {
+            count: totals.appsAttempted,
+            parts: parts.join(", "),
+          });
         }
-        if (totals.skipped) {
-          parts.push(tWayback("bulk_part_skipped", { count: totals.skipped }));
-        }
-        if (totals.failed) {
-          parts.push(tWayback("bulk_part_failed", { count: totals.failed }));
-        }
-        const line = tWayback("bulk_summary", {
-          count: totals.appsAttempted,
-          parts: parts.join(", "),
-        });
         setWaybackSummary(line);
         terminalStatus = "idle";
         handle.complete(totals.failed > 0 ? "error" : "done", line);
