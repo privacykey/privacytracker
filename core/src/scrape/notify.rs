@@ -99,6 +99,20 @@ pub(super) fn parser_fallthrough(
     Ok(true)
 }
 
+/// `bareVersion` (lib/app-version.ts): drops a leading "v" or "V" when a
+/// digit follows, so a developer's own prefix ("v1.181", as Obscura VPN
+/// ships it) is not printed after the sentence's "v" as "vv1.181".
+/// Display only: the stored version and the change comparison keep
+/// Apple's string.
+pub(crate) fn bare_version(version: &str) -> &str {
+    let bytes = version.as_bytes();
+    if bytes.len() > 1 && matches!(bytes[0], b'v' | b'V') && bytes[1].is_ascii_digit() {
+        &version[1..]
+    } else {
+        version
+    }
+}
+
 /// `createVersionUpdateNotification`.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn version_update(
@@ -134,7 +148,9 @@ pub(super) fn version_update(
         _ => String::new(),
     };
     let description = format!(
-        "{app_name} updated from v{previous_version} to v{current_version}{released_suffix}."
+        "{app_name} updated from v{} to v{}{released_suffix}.",
+        bare_version(previous_version),
+        bare_version(current_version),
     );
     let summary = json!([{
         "type": "version_update",
@@ -248,4 +264,22 @@ pub(crate) fn compute_not_before(conn: &rusqlite::Connection, now: i64) -> Optio
     }
     let days_ahead = i64::from(minutes_start > minutes_end && minutes_now >= minutes_start);
     at_local_time(now, end.0, end.1, days_ahead)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::bare_version;
+
+    #[test]
+    fn bare_version_drops_only_a_prefix_before_a_digit() {
+        // The cases of tests/app/app-version.test.ts.
+        assert_eq!(bare_version("v1.181"), "1.181");
+        assert_eq!(bare_version("V2.0"), "2.0");
+        assert_eq!(bare_version("1.181"), "1.181");
+        assert_eq!(bare_version(""), "");
+        assert_eq!(bare_version("v"), "v");
+        assert_eq!(bare_version("vNext"), "vNext");
+        assert_eq!(bare_version("version 3"), "version 3");
+        assert_eq!(bare_version(" v1.0"), " v1.0");
+    }
 }

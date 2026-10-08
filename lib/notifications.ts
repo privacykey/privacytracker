@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { AiTimeoutPhase } from "./ai-config";
+import { bareVersion } from "./app-version";
 import type { ChangeEntry } from "./changelog";
 import { DIFF_CHANGE_TYPES, isWholeNewPrivacyType } from "./changelog-types";
 import db from "./db";
@@ -540,8 +541,8 @@ export function createVersionUpdateNotification(
     : "";
 
   const description =
-    `${input.appName} updated from v${input.previousVersion} ` +
-    `to v${input.currentVersion}${releasedSuffix}.`;
+    `${input.appName} updated from v${bareVersion(input.previousVersion)} ` +
+    `to v${bareVersion(input.currentVersion)}${releasedSuffix}.`;
 
   db.prepare(`
     INSERT INTO notifications (id, app_id, app_name, change_summary, created_at, read)

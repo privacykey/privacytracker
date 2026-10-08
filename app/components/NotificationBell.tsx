@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { bareVersion } from "../../lib/app-version";
 import { setDockBadge } from "../../lib/desktop";
 import {
   DEFAULT_NOTIFICATION_PREFS,
@@ -923,8 +924,8 @@ export default function NotificationBell({
                               const evt = n.change_summary[0];
                               if (evt?.previousVersion && evt?.currentVersion) {
                                 return tSublines("version_update", {
-                                  previous: evt.previousVersion,
-                                  current: evt.currentVersion,
+                                  previous: bareVersion(evt.previousVersion),
+                                  current: bareVersion(evt.currentVersion),
                                 });
                               }
                               return (
