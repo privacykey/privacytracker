@@ -3,8 +3,10 @@
 //! can detach, a shared id counter, and a fetcher that carries the case's
 //! mid-run hooks — a PATCH issued at a given fetch, either inline (a
 //! cancel then stalls the request, as an aborted one never returns) or a
-//! moment later, during the runner's backoff sleep. Each fetch yields once
-//! before answering, as Node's stub resolves on the next turn.
+//! moment later, during one of the runner's waits. Each fetch yields once
+//! before answering, as Node's stub resolves on the next turn. The waits
+//! take no time (`wayback_runner::fake_sleep`) except in a case with a
+//! delayed hook, which has to land during one.
 use super::{
     body::{read_json, BodyOutcome},
     guard::Actor,
@@ -269,6 +271,10 @@ fn wayback_runner_paths_match_node_wire_calls_stream_and_rows() {
                     .collect()
             })
             .unwrap_or_default();
+        // The runner's waits take no time, unless a hook has to land during
+        // one: those cases wait for real, as the hook's own delay does.
+        let timed = hooks.iter().any(|h| h.after_ms.is_some());
+        wayback_runner::fake_sleep((!timed).then(|| Arc::new(|_| {}) as wayback_runner::FakeSleep));
         let canned = Arc::new(Canned::new(
             case["replies"].as_array().unwrap().clone(),
             |_| {},
@@ -497,6 +503,7 @@ fn wayback_runner_paths_match_node_wire_calls_stream_and_rows() {
     }
     std::env::remove_var("PRIVACYTRACKER_TRUST_PROXY");
     std::env::remove_var("PRIVACYTRACKER_BIND_HOST");
+    wayback_runner::fake_sleep(None);
     if bless.finish() {
         return;
     }
