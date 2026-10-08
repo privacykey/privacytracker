@@ -8,6 +8,7 @@ import {
   startingWaybackProgress,
   type WaybackLiveProgress,
   waybackEtaMs,
+  waybackFailedAppsInFrame,
   waybackLead,
   waybackRunSummary,
   waybackSurveyLine,
@@ -31,7 +32,7 @@ function derived(progress: WaybackLiveProgress | null) {
   return {
     lead: waybackLead(progress),
     survey: waybackSurveyLine(progress),
-    eta: waybackEtaMs(progress, NOW),
+    eta: waybackEtaMs(progress),
     wait: waybackWaitUntil(progress, NOW),
     tally: waybackTally(progress),
   };
@@ -145,10 +146,29 @@ test("batch-start starts every count from zero", () => {
   );
 });
 
+test("an app failed outright is one frame: a failed listing or a thrown read", () => {
+  assert.equal(
+    waybackFailedAppsInFrame({
+      type: "survey-app",
+      captureCount: null,
+      error: "archive.org's capture index could not be read for this app",
+    }),
+    1
+  );
+  assert.equal(
+    waybackFailedAppsInFrame({ type: "survey-app", captureCount: 0 }),
+    0
+  );
+  assert.equal(waybackFailedAppsInFrame({ type: "app-done", error: "x" }), 1);
+  assert.equal(waybackFailedAppsInFrame({ type: "app-done", result: {} }), 0);
+  assert.equal(waybackFailedAppsInFrame({ type: "waiting", error: "x" }), 0);
+  assert.equal(waybackFailedAppsInFrame(null), 0);
+});
+
 // ── The redesigned runner (docs/WAYBACK_IMPORT.md, P3) ──
 
 const SURVEY = {
-  appsSurveyed: 3,
+  appsSurveyed: 4,
   appsWithCaptures: 2,
   appsWithoutCaptures: 1,
   capturesTotal: 1800,
@@ -159,7 +179,7 @@ const SURVEY = {
 const surveyFrames = [
   {
     type: "batch-start",
-    total: 3,
+    total: 4,
     startedAt: 1,
     initiator: "manual",
     runId: "r",
@@ -171,7 +191,7 @@ test("the survey phase counts apps through the archive index", () => {
   let progress = run(surveyFrames);
   assert.deepEqual(waybackLead(progress), {
     key: "phase_survey",
-    values: { current: 1, total: 3 },
+    values: { current: 1, total: 4 },
   });
   progress = run(
     [
@@ -180,7 +200,7 @@ test("the survey phase counts apps through the archive index", () => {
         appId: "1",
         name: "Alpha",
         index: 0,
-        total: 3,
+        total: 4,
         captureCount: 1744,
         firstCaptureMs: 1,
         lastCaptureMs: 2,
@@ -191,7 +211,7 @@ test("the survey phase counts apps through the archive index", () => {
         appId: "2",
         name: "Bravo",
         index: 1,
-        total: 3,
+        total: 4,
         captureCount: 56,
         cached: true,
       },
@@ -200,13 +220,14 @@ test("the survey phase counts apps through the archive index", () => {
   );
   assert.deepEqual(waybackLead(progress), {
     key: "phase_survey",
-    values: { current: 3, total: 3 },
+    values: { current: 3, total: 4 },
   });
   assert.equal(progress?.currentAppName, "Bravo");
+  // Nothing has been read during the survey, so no tally at all.
   assert.deepEqual(waybackTally(progress), { kind: "none" });
   // Survey results are not a run line until the survey is over.
   assert.equal(waybackSurveyLine(progress), null);
-  assert.equal(waybackEtaMs(progress, NOW), null);
+  assert.equal(waybackEtaMs(progress), null);
 });
 
 test("a wait shows until the next frame, and only while it lies ahead", () => {
@@ -229,13 +250,15 @@ test("a wait shows until the next frame, and only while it lies ahead", () => {
     appId: "2",
     name: "Bravo",
     index: 1,
-    total: 3,
+    total: 4,
     captureCount: 56,
   });
   assert.equal(waybackWaitUntil(resumed, NOW), null);
 });
 
 test("a full redesigned run reads in apps and label changes", () => {
+  // As the runner sends it: apps with no captures, and apps whose listing
+  // failed, finish in the survey and never get an app-start or app-done.
   let progress = run([
     ...surveyFrames,
     {
@@ -243,7 +266,7 @@ test("a full redesigned run reads in apps and label changes", () => {
       appId: "1",
       name: "Alpha",
       index: 0,
-      total: 3,
+      total: 4,
       captureCount: 1744,
     },
     {
@@ -251,7 +274,7 @@ test("a full redesigned run reads in apps and label changes", () => {
       appId: "2",
       name: "Bravo",
       index: 1,
-      total: 3,
+      total: 4,
       captureCount: 56,
     },
     {
@@ -259,8 +282,19 @@ test("a full redesigned run reads in apps and label changes", () => {
       appId: "3",
       name: "Charlie",
       index: 2,
-      total: 3,
+      total: 4,
       captureCount: 0,
+    },
+    {
+      type: "survey-app",
+      appId: "4",
+      name: "Delta",
+      index: 3,
+      total: 4,
+      captureCount: null,
+      firstCaptureMs: null,
+      lastCaptureMs: null,
+      error: "archive.org's capture index could not be read for this app",
     },
     {
       type: "survey-done",
@@ -276,21 +310,33 @@ test("a full redesigned run reads in apps and label changes", () => {
   ]);
   assert.deepEqual(derived(progress), {
     lead: { key: "phase_reading", values: { current: 0, total: 2 } },
-    survey: { key: "survey_result", values: { withPages: 2, withoutPages: 1 } },
+    survey: {
+      key: "survey_result",
+      values: { withPages: 2, withoutPages: 1, failed: 1 },
+    },
     eta: 3 * MINUTE,
     wait: null,
-    tally: { kind: "apps", changes: 0, reads: 0, appsFailed: 0 },
+    tally: { kind: "apps", changes: 0, reads: 0, appsFailed: 1 },
+  });
+  assert.deepEqual(progress?.appTotals, {
+    appsDone: 2,
+    appsRead: 0,
+    appsWithHistory: 0,
+    appsNoArchive: 1,
+    reads: 0,
+    changes: 0,
+    labelVersions: 0,
   });
 
   progress = run(
     [
-      { type: "app-start", appId: "1", name: "Alpha", index: 0, total: 3 },
+      { type: "app-start", appId: "1", name: "Alpha", index: 0, total: 4 },
       {
         type: "app-done",
         appId: "1",
         name: "Alpha",
         index: 0,
-        total: 3,
+        total: 4,
         result: {
           imported: 2,
           unchanged: 2,
@@ -313,16 +359,19 @@ test("a full redesigned run reads in apps and label changes", () => {
           etaMs: 108_000,
         },
       },
-      { type: "app-start", appId: "2", name: "Bravo", index: 1, total: 3 },
+      { type: "app-start", appId: "2", name: "Bravo", index: 1, total: 4 },
     ],
     progress!
   );
   assert.deepEqual(derived(progress), {
     lead: { key: "phase_reading", values: { current: 2, total: 2 } },
-    survey: { key: "survey_result", values: { withPages: 2, withoutPages: 1 } },
+    survey: {
+      key: "survey_result",
+      values: { withPages: 2, withoutPages: 1, failed: 1 },
+    },
     eta: 108_000,
     wait: null,
-    tally: { kind: "apps", changes: 3, reads: 12, appsFailed: 0 },
+    tally: { kind: "apps", changes: 3, reads: 12, appsFailed: 1 },
   });
 
   // Throttled mid-app: the runner waits and retries the same app.
@@ -341,64 +390,45 @@ test("a full redesigned run reads in apps and label changes", () => {
   assert.equal(waybackWaitUntil(progress, NOW), NOW + 10 * MINUTE);
   progress = run(
     [
-      { type: "app-start", appId: "2", name: "Bravo", index: 1, total: 3 },
+      { type: "app-start", appId: "2", name: "Bravo", index: 1, total: 4 },
       {
         type: "app-done",
         appId: "2",
         name: "Bravo",
         index: 1,
-        total: 3,
+        total: 4,
         error: "parse",
       },
-      // The app with no archived pages finishes without a read.
-      { type: "app-start", appId: "3", name: "Charlie", index: 2, total: 3 },
     ],
     progress!
   );
   assert.equal(waybackWaitUntil(progress, NOW), null);
+  assert.equal(progress?.readingDone, 2);
   assert.deepEqual(waybackLead(progress), {
     key: "phase_reading",
     values: { current: 2, total: 2 },
   });
-  progress = run(
-    [
-      {
-        type: "app-done",
-        appId: "3",
-        name: "Charlie",
-        index: 2,
-        total: 3,
-        result: {
-          imported: 0,
-          unchanged: 0,
-          skipped: 0,
-          failed: 0,
-          reads: 0,
-          changes: 0,
-          labelVersions: 0,
-        },
-      },
-    ],
-    progress!
-  );
-  assert.equal(progress?.readingDone, 2);
   assert.deepEqual(waybackTally(progress), {
     kind: "apps",
     changes: 3,
     reads: 12,
-    appsFailed: 1,
+    appsFailed: 2,
   });
+  // What the stream counted matches what the runner reports.
+  assert.equal(progress?.appTotals?.appsDone, 4);
+  assert.equal(progress?.appTotals?.appsRead, 2);
 
   // The closing frame's totals are the server's word.
   progress = reduceWaybackFrame(progress, {
     type: "summary",
     totals: {
-      appsAttempted: 3,
+      appsAttempted: 2,
       imported: 2,
       unchanged: 2,
       skipped: 0,
-      failed: 1,
-      appsDone: 2,
+      failed: 2,
+      appsDone: 4,
+      appsRead: 2,
       appsWithHistory: 1,
       appsNoArchive: 1,
       reads: 12,
@@ -408,7 +438,8 @@ test("a full redesigned run reads in apps and label changes", () => {
     durationMs: 10,
   });
   assert.deepEqual(progress?.appTotals, {
-    appsDone: 2,
+    appsDone: 4,
+    appsRead: 2,
     appsWithHistory: 1,
     appsNoArchive: 1,
     reads: 12,
@@ -418,6 +449,50 @@ test("a full redesigned run reads in apps and label changes", () => {
   // The checkpoint tally kept counting underneath, as before.
   assert.equal(progress?.imported, 2);
   assert.equal(progress?.failed, 1);
+});
+
+test("an app the survey finished is never counted again", () => {
+  const surveyed = run([
+    ...surveyFrames,
+    {
+      type: "survey-app",
+      appId: "3",
+      name: "Charlie",
+      index: 0,
+      total: 4,
+      captureCount: 0,
+    },
+    // The same listing reported twice counts once.
+    {
+      type: "survey-app",
+      appId: "3",
+      name: "Charlie",
+      index: 0,
+      total: 4,
+      captureCount: 0,
+    },
+    { type: "phase", phase: "reading" },
+  ]);
+  assert.equal(surveyed?.appTotals?.appsDone, 1);
+  assert.equal(surveyed?.appTotals?.appsNoArchive, 1);
+  // Should the runner ever send app frames for it, it is still not read.
+  const after = run(
+    [
+      { type: "app-start", appId: "3", name: "Charlie", index: 2, total: 4 },
+      {
+        type: "app-done",
+        appId: "3",
+        name: "Charlie",
+        index: 2,
+        total: 4,
+        result: { imported: 0, unchanged: 0, reads: 0, changes: 0 },
+      },
+    ],
+    surveyed!
+  );
+  assert.equal(after?.readingInFlight, false);
+  assert.equal(after?.readingDone, 0);
+  assert.equal(after?.appTotals?.appsDone, 1);
 });
 
 test("without a survey, reading progress counts the whole queue", () => {
@@ -435,21 +510,58 @@ test("without a survey, reading progress counts the whole queue", () => {
   });
 });
 
-test("the survey line covers no archived pages at all", () => {
+test("the survey line covers no archived pages and failed listings", () => {
   const base = { ...startingWaybackProgress(), phase: "reading" as const };
   assert.deepEqual(
     waybackSurveyLine({
       ...base,
-      survey: { ...SURVEY, appsWithCaptures: 0, appsWithoutCaptures: 3 },
+      survey: {
+        ...SURVEY,
+        appsSurveyed: 3,
+        appsWithCaptures: 0,
+        appsWithoutCaptures: 3,
+      },
     }),
-    { key: "survey_result_none", values: { count: 3 } }
+    { key: "survey_result_none", values: { count: 3, failed: 0 } }
   );
   assert.deepEqual(
     waybackSurveyLine({
       ...base,
-      survey: { ...SURVEY, appsWithCaptures: 3, appsWithoutCaptures: 0 },
+      survey: {
+        ...SURVEY,
+        appsSurveyed: 3,
+        appsWithCaptures: 0,
+        appsWithoutCaptures: 0,
+      },
     }),
-    { key: "survey_result", values: { withPages: 3, withoutPages: 0 } }
+    { key: "survey_result_none", values: { count: 0, failed: 3 } }
+  );
+  assert.deepEqual(
+    waybackSurveyLine({
+      ...base,
+      survey: {
+        ...SURVEY,
+        appsSurveyed: 3,
+        appsWithCaptures: 3,
+        appsWithoutCaptures: 0,
+      },
+    }),
+    {
+      key: "survey_result",
+      values: { withPages: 3, withoutPages: 0, failed: 0 },
+    }
+  );
+  assert.equal(
+    waybackSurveyLine({
+      ...base,
+      survey: {
+        ...SURVEY,
+        appsSurveyed: 0,
+        appsWithCaptures: 0,
+        appsWithoutCaptures: 0,
+      },
+    }),
+    null
   );
   // A finished survey shows even before the phase flips.
   assert.notEqual(
@@ -470,27 +582,21 @@ test("the survey line covers no archived pages at all", () => {
   );
 });
 
-test("the estimate reads a time left, a finish time, or the pace", () => {
+test("the estimate reads the time left, else the pace", () => {
   const reading = { ...startingWaybackProgress(), phase: "reading" as const };
   const at = (estimate: WaybackLiveProgress["estimate"]) =>
-    waybackEtaMs({ ...reading, estimate }, NOW);
+    waybackEtaMs({ ...reading, estimate });
   assert.equal(
     at({ readsDone: 0, readsRemaining: 30, perMinute: 10, etaMs: 180_000 }),
     180_000
   );
-  // An etaMs the size of an epoch timestamp is the finish time.
-  assert.equal(
-    at({
-      readsDone: 0,
-      readsRemaining: 30,
-      perMinute: 10,
-      etaMs: NOW + 90_000,
-    }),
-    90_000
-  );
   assert.equal(
     at({ readsDone: 0, readsRemaining: 30, perMinute: 10, etaMs: null }),
     180_000
+  );
+  assert.equal(
+    at({ readsDone: 30, readsRemaining: 0, perMinute: 10, etaMs: 0 }),
+    null
   );
   assert.equal(
     at({ readsDone: 30, readsRemaining: 0, perMinute: 10, etaMs: null }),
@@ -501,6 +607,20 @@ test("the estimate reads a time left, a finish time, or the pace", () => {
     null
   );
   assert.equal(at(null), null);
+  // Only while reading.
+  assert.equal(
+    waybackEtaMs({
+      ...startingWaybackProgress(),
+      phase: "survey",
+      estimate: {
+        readsDone: 0,
+        readsRemaining: 30,
+        perMinute: 10,
+        etaMs: 180_000,
+      },
+    }),
+    null
+  );
 });
 
 // ── GET /api/wayback/import-all ──
@@ -569,12 +689,16 @@ test("a v3 payload in the survey phase reports the index check", () => {
         appsSurveyed: 36,
         appsWithCaptures: 30,
         appsWithoutCaptures: 6,
+        capturesTotal: 900,
+        estimatedReads: 0,
+        completedAt: null,
       },
       waitingUntil: NOW + 4 * MINUTE,
       waitReason: "archive.org rate-limited for CDX index",
-      totals: { appsDone: 0, appsNoArchive: 0, reads: 0, changes: 0 },
+      consecutiveThrottles: 1,
+      totals: { appsDone: 6, appsRead: 0, appsNoArchive: 6, reads: 0 },
     },
-    { total: 201, pending: 201, inProgress: 0, done: 0, failed: 0 }
+    { total: 201, pending: 195, inProgress: 0, done: 6, failed: 0 }
   );
   const progress = { ...startingWaybackProgress(), total: 201, ...extras };
   assert.deepEqual(waybackLead(progress), {
@@ -586,14 +710,14 @@ test("a v3 payload in the survey phase reports the index check", () => {
   assert.deepEqual(waybackTally(progress), { kind: "none" });
 });
 
-test("a v3 payload while reading counts apps with archived pages", () => {
+test("a v3 payload while reading counts apps read, not apps finished", () => {
   const extras = parseWaybackRunExtras(
     {
       phase: "reading",
       survey: {
         ...SURVEY,
         appsSurveyed: 201,
-        appsWithCaptures: 143,
+        appsWithCaptures: 141,
         appsWithoutCaptures: 58,
       },
       estimate: {
@@ -602,57 +726,50 @@ test("a v3 payload while reading counts apps with archived pages", () => {
         perMinute: 10,
         etaMs: 6_600_000,
       },
+      consecutiveThrottles: 0,
       totals: {
-        appsDone: 70,
+        appsDone: 72,
+        appsRead: 12,
         appsWithHistory: 11,
         appsNoArchive: 58,
         reads: 120,
         changes: 9,
         labelVersions: 20,
-        failed: 0,
+        failed: 2,
       },
     },
-    // The 58 apps with no pages finished as done, with no reads.
+    // The 58 apps with no pages finished as done and the 2 failed
+    // listings as failed, all in the survey: done + failed - 58 would
+    // claim 14 apps read.
     {
       total: 201,
-      pending: 130,
+      pending: 128,
       inProgress: 1,
       done: 70,
-      failed: 0,
-      remaining: 131,
+      failed: 2,
+      remaining: 129,
     }
   );
   const progress = { ...startingWaybackProgress(), total: 201, ...extras };
   assert.deepEqual(derived(progress), {
-    lead: { key: "phase_reading", values: { current: 13, total: 143 } },
+    lead: { key: "phase_reading", values: { current: 13, total: 141 } },
     survey: {
       key: "survey_result",
-      values: { withPages: 143, withoutPages: 58 },
+      values: { withPages: 141, withoutPages: 58, failed: 2 },
     },
     eta: 6_600_000,
     wait: null,
-    tally: { kind: "apps", changes: 9, reads: 120, appsFailed: 0 },
+    tally: { kind: "apps", changes: 9, reads: 120, appsFailed: 2 },
   });
 });
 
-test("a payload that carries the queue counts it exactly", () => {
+test("totals without appsRead fall back to the queue counts", () => {
   const extras = parseWaybackRunExtras(
-    {
-      phase: "reading",
-      queue: [
-        { appId: "1", status: "done" },
-        { appId: "2", status: "failed" },
-        { appId: "3", status: "in_progress" },
-        { appId: "4", status: "pending" },
-        { appId: "5", status: "done", noArchive: true },
-        null,
-      ],
-    },
-    { total: 5, done: 2, failed: 1, inProgress: 1 }
+    { phase: "reading", totals: { appsDone: 60, appsNoArchive: 58 } },
+    { total: 201, done: 60, failed: 0, inProgress: 0 }
   );
   assert.equal(extras.readingDone, 2);
-  assert.equal(extras.readingTotal, 4);
-  assert.equal(extras.readingInFlight, true);
+  assert.equal(extras.readingInFlight, false);
 });
 
 test("payload fields of the wrong type are ignored", () => {
@@ -683,12 +800,13 @@ test("the last run is the newest batch summary, resumed runs included", () => {
   const rows = [
     { id: "a", detail: { mode: "bulk-app" } },
     { id: "b", detail: { mode: "bulk-paused" } },
+    { id: "w", detail: { mode: "bulk-wait" } },
     { id: "c", detail: { mode: "bulk", removed: true } },
     { id: "d", detail: { mode: "bulk-resumed" } },
     { id: "e", detail: { mode: "bulk" } },
   ];
   assert.equal(pickWaybackLastRunRow(rows)?.id, "d");
-  assert.equal(pickWaybackLastRunRow(rows.slice(4))?.id, "e");
+  assert.equal(pickWaybackLastRunRow(rows.slice(5))?.id, "e");
   assert.equal(pickWaybackLastRunRow([{ detail: null }, {}]), null);
 });
 
@@ -702,12 +820,13 @@ test("a run's totals summarise in apps only when they carry app counts", () => {
     waybackRunSummary({ appsDone: 201, appsNoArchive: 58, changes: 37 }),
     { kind: "apps", appsDone: 201, appsNoArchive: 58, changes: 37 }
   );
-  assert.deepEqual(parseWaybackAppTotals({ changes: 4 }), {
+  assert.deepEqual(parseWaybackAppTotals({ appsRead: 4 }), {
     appsDone: 0,
+    appsRead: 4,
     appsWithHistory: 0,
     appsNoArchive: 0,
     reads: 0,
-    changes: 4,
+    changes: 0,
     labelVersions: 0,
   });
 });

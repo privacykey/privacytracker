@@ -43,6 +43,7 @@ import {
   startingWaybackProgress,
   type WaybackAppTotals,
   type WaybackLiveProgress,
+  waybackFailedAppsInFrame,
   waybackRunSummary,
 } from "@/lib/wayback-run-progress";
 import { formatWaybackClockTime } from "@/lib/wayback-time";
@@ -379,6 +380,9 @@ export function useWayback({
       failed: number;
     } | null = null;
     let terminalStatus: WaybackRunStatus | null = null;
+    // Apps that failed outright (a listing the survey could not read, or
+    // an app whose reading threw), for the closing line in apps.
+    let appsFailed = 0;
 
     try {
       const params = new URLSearchParams({ stream: "1" });
@@ -429,6 +433,7 @@ export function useWayback({
           // checkpoint tally exactly and adds the redesign's fields beside
           // it. Frames that change nothing hand back the same object.
           setWaybackProgress((prev) => reduceWaybackFrame(prev, event));
+          appsFailed += waybackFailedAppsInFrame(event);
 
           if (event.type === "batch-start") {
             setWaybackRunStatus("running");
@@ -517,6 +522,7 @@ export function useWayback({
             apps: summary.appsDone,
             changes: summary.changes,
             noArchive: summary.appsNoArchive,
+            failed: appsFailed,
           });
         } else {
           const parts: string[] = [];
@@ -543,8 +549,9 @@ export function useWayback({
         }
         setWaybackSummary(line);
         terminalStatus = "idle";
-        handle.complete(totals.failed > 0 ? "error" : "done", line);
-        showToast(totals.failed > 0 ? `⚠ ${line}` : `✓ ${line}`);
+        const anyFailed = totals.failed > 0 || appsFailed > 0;
+        handle.complete(anyFailed ? "error" : "done", line);
+        showToast(anyFailed ? `⚠ ${line}` : `✓ ${line}`);
       } else if (!terminalStatus) {
         terminalStatus = "idle";
         handle.complete("done", tWayback("task_finished"));

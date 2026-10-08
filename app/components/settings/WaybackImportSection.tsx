@@ -98,7 +98,7 @@ export default function WaybackImportSection({
     waybackRunStatus === "running" || waybackRunStatus === "pause_requested";
   const waitUntil = running ? waybackWaitUntil(waybackProgress, now) : null;
   const eta = running
-    ? describeWaybackDuration(waybackEtaMs(waybackProgress, now) ?? 0)
+    ? describeWaybackDuration(waybackEtaMs(waybackProgress) ?? 0)
     : null;
   const lastRunApps = waybackLastRun?.appTotals ?? null;
   // Re-render once the wait is over, so its line never claims a time that

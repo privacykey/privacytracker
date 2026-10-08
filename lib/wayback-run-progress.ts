@@ -21,8 +21,12 @@
  *  reads archived pages for the apps that have any. */
 export type WaybackPhase = "survey" | "reading";
 
-/** What the survey found, as `state.survey` and the `survey-done` frame
- *  carry it. `completedAt` is null while the survey is still running. */
+/**
+ * What the survey found, as `state.survey` and the `survey-done` frame
+ * carry it. `completedAt` is null while the survey is still running.
+ * `appsSurveyed` includes apps whose listing failed, which are neither
+ * with nor without captures.
+ */
 export interface WaybackSurvey {
   appsSurveyed: number;
   appsWithCaptures: number;
@@ -32,20 +36,25 @@ export interface WaybackSurvey {
   estimatedReads: number;
 }
 
-/** The runner's estimate, recomputed at every app boundary. */
+/** The runner's estimate, recomputed at every reading-phase app boundary. */
 export interface WaybackEstimate {
-  /** Time left in ms. A value that reads as an epoch timestamp (anything
-   *  past 2001) is taken as the finish time instead; see `waybackEtaMs`. */
+  /** Time left, in ms. */
   etaMs: number | null;
   perMinute: number | null;
   readsDone: number;
   readsRemaining: number;
 }
 
-/** The run's totals in apps and label changes (v3 keys on `totals`). */
+/**
+ * The run's totals in apps and label changes (v3 keys on `totals`).
+ * `appsDone` counts every app finished (no archived pages and failed
+ * listings included), `appsRead` only those finished in the reading
+ * phase, which ends at the survey's `appsWithCaptures`.
+ */
 export interface WaybackAppTotals {
   appsDone: number;
   appsNoArchive: number;
+  appsRead: number;
   appsWithHistory: number;
   changes: number;
   labelVersions: number;
@@ -66,25 +75,23 @@ export interface WaybackLegacyTally {
 
 /** The redesign's additions. Absent on the Node rollback. */
 export interface WaybackRunExtras {
-  /** Apps whose import failed outright (not throttled). */
+  /** Apps that failed outright: a listing the survey could not read, or
+   *  an app whose reading threw. Throttling is never a failure. */
   appsFailed?: number;
   appTotals?: WaybackAppTotals | null;
   estimate?: WaybackEstimate | null;
-  /** Stream bookkeeping: the app between its `app-start` and `app-done`. */
-  inFlightAppId?: string | null;
-  /** Stream bookkeeping: apps the survey found no captures for. */
-  noArchiveIds?: string[];
   phase?: WaybackPhase | null;
-  /** Apps with archived pages that have finished reading. */
+  /** Apps finished in the reading phase (`totals.appsRead`). */
   readingDone?: number;
-  /** Whether an app with archived pages is being read right now. */
+  /** Whether an app is being read right now. */
   readingInFlight?: boolean;
-  /** Apps with archived pages, when known exactly. */
-  readingTotal?: number | null;
   survey?: WaybackSurvey | null;
-  /** Apps the survey has listed so far, and how many it will list. */
+  /** Apps the survey has passed so far, and how many it will pass. */
   surveyDone?: number;
   surveyTotal?: number;
+  /** Stream bookkeeping: apps the survey says will not be read (no
+   *  captures, or a listing that failed). */
+  unreadIds?: string[];
   /** Epoch ms the runner resumes at; present only while it waits. */
   waitingUntil?: number | null;
   waitReason?: string | null;
@@ -154,25 +161,24 @@ export function parseWaybackEstimate(raw: unknown): WaybackEstimate | null {
   };
 }
 
-/** The v3 totals keys, or null when `totals` predates them (Node, or a
- *  v2 run before its first app finishes on the new runner). */
+const APP_TOTAL_KEYS = [
+  "appsDone",
+  "appsRead",
+  "appsWithHistory",
+  "appsNoArchive",
+  "reads",
+  "changes",
+  "labelVersions",
+] as const;
+
+/** The v3 totals keys, or null when `totals` predates them (Node). */
 export function parseWaybackAppTotals(raw: unknown): WaybackAppTotals | null {
-  if (!isObject(raw)) {
-    return null;
-  }
-  const keys = [
-    "appsDone",
-    "appsWithHistory",
-    "appsNoArchive",
-    "reads",
-    "changes",
-    "labelVersions",
-  ] as const;
-  if (!keys.some((key) => finite(raw[key]) !== null)) {
+  if (!(isObject(raw) && APP_TOTAL_KEYS.some((k) => finite(raw[k]) !== null))) {
     return null;
   }
   return {
     appsDone: count(raw.appsDone),
+    appsRead: count(raw.appsRead),
     appsWithHistory: count(raw.appsWithHistory),
     appsNoArchive: count(raw.appsNoArchive),
     reads: count(raw.reads),
@@ -183,10 +189,10 @@ export function parseWaybackAppTotals(raw: unknown): WaybackAppTotals | null {
 
 /**
  * The redesign's fields from a `GET /api/wayback/import-all` payload:
- * `state` is the persisted blob (v3 keys optional), `summary` the
- * server's queue counts. Reading progress comes from the queue when the
- * payload carries it, else from the queue counts less the apps that
- * finished with no archived pages.
+ * `state` is the persisted blob's projection (v3 keys optional, never the
+ * queue), `summary` the server's queue counts. Reading progress is
+ * `totals.appsRead`; the queue counts less the apps with no archived
+ * pages stand in only for totals without it.
  */
 export function parseWaybackRunExtras(
   state: unknown,
@@ -196,8 +202,9 @@ export function parseWaybackRunExtras(
   const sum = isObject(summary) ? summary : {};
   const survey = parseWaybackSurvey(s.survey);
   const appTotals = parseWaybackAppTotals(s.totals);
+  const appsRead = isObject(s.totals) ? finite(s.totals.appsRead) : null;
   const waitingUntil = finite(s.waitingUntil);
-  const extras: WaybackRunExtras = {
+  return {
     phase: parsePhase(s.phase),
     survey,
     estimate: parseWaybackEstimate(s.estimate),
@@ -208,40 +215,23 @@ export function parseWaybackRunExtras(
     appsFailed: count(sum.failed),
     surveyDone: survey?.appsSurveyed ?? 0,
     surveyTotal: count(sum.total),
+    readingDone:
+      appsRead === null
+        ? Math.max(
+            0,
+            count(sum.done) +
+              count(sum.failed) -
+              (appTotals?.appsNoArchive ?? 0)
+          )
+        : Math.max(0, appsRead),
+    readingInFlight: count(sum.inProgress) > 0,
   };
-  if (Array.isArray(s.queue)) {
-    let done = 0;
-    let total = 0;
-    let inFlight = false;
-    for (const entry of s.queue) {
-      if (!isObject(entry) || entry.noArchive === true) {
-        continue;
-      }
-      total += 1;
-      if (entry.status === "done" || entry.status === "failed") {
-        done += 1;
-      } else if (entry.status === "in_progress") {
-        inFlight = true;
-      }
-    }
-    extras.readingDone = done;
-    extras.readingTotal = total;
-    extras.readingInFlight = inFlight;
-  } else {
-    const finished = count(sum.done) + count(sum.failed);
-    extras.readingDone = Math.max(
-      0,
-      finished - (appTotals?.appsNoArchive ?? 0)
-    );
-    extras.readingTotal = survey ? survey.appsWithCaptures : null;
-    extras.readingInFlight = count(sum.inProgress) > 0;
-  }
-  return extras;
 }
 
 function zeroAppTotals(): WaybackAppTotals {
   return {
     appsDone: 0,
+    appsRead: 0,
     appsWithHistory: 0,
     appsNoArchive: 0,
     reads: 0,
@@ -256,6 +246,21 @@ function isChangeFindingResult(result: unknown): result is Json {
     isObject(result) &&
     (finite(result.changes) !== null || finite(result.reads) !== null)
   );
+}
+
+/**
+ * 1 when a frame reports an app that failed outright, else 0: a
+ * `survey-app` whose listing could not be read (it carries an `error`
+ * and is never read), or an `app-done` whose reading threw.
+ */
+export function waybackFailedAppsInFrame(event: unknown): number {
+  if (!isObject(event)) {
+    return 0;
+  }
+  if (event.type === "survey-app") {
+    return text(event.error) === null ? 0 : 1;
+  }
+  return event.type === "app-done" && event.error ? 1 : 0;
 }
 
 /** The tally a fresh run starts from, before its `batch-start`. */
@@ -277,6 +282,12 @@ export function startingWaybackProgress(): WaybackLiveProgress {
  * exactly as they always have; the redesign's frames and fields only
  * ever add keys beside it. Frames that change nothing (`target`,
  * `backoff`, the terminal ones the hook handles) return `prev` itself.
+ *
+ * Apps with no captures and apps whose listing failed finish during the
+ * survey, with no `app-start` or `app-done`; their `survey-app` frame is
+ * where they are counted. The stream counts `appsDone`, `appsNoArchive`,
+ * `appsRead`, `reads`, `changes` and `labelVersions`; the closing frame's
+ * totals replace them all.
  */
 export function reduceWaybackFrame(
   prev: WaybackLiveProgress | null,
@@ -312,8 +323,7 @@ export function reduceWaybackFrame(
         next.phase = "reading";
         next.waitingUntil = null;
         next.waitReason = null;
-        next.inFlightAppId = text(ev.appId);
-        next.readingInFlight = !(prev.noArchiveIds ?? []).includes(
+        next.readingInFlight = !(prev.unreadIds ?? []).includes(
           String(ev.appId ?? "")
         );
       }
@@ -337,28 +347,21 @@ export function reduceWaybackFrame(
       if (!(prev.phase || isChangeFindingResult(result))) {
         return next;
       }
-      const noArchive =
-        result?.noArchive === true ||
-        ev.noArchive === true ||
-        (prev.noArchiveIds ?? []).includes(String(ev.appId ?? ""));
       const totals = { ...(prev.appTotals ?? zeroAppTotals()) };
-      totals.appsDone += 1;
-      if (noArchive) {
-        totals.appsNoArchive += 1;
+      // An app the survey already finished is not counted twice.
+      if (!(prev.unreadIds ?? []).includes(String(ev.appId ?? ""))) {
+        totals.appsDone += 1;
+        totals.appsRead += 1;
       }
       if (isChangeFindingResult(result)) {
         totals.reads += count(result.reads);
         totals.changes += count(result.changes);
         totals.labelVersions += count(result.labelVersions);
-        if (count(result.labelVersions) > 0) {
-          totals.appsWithHistory += 1;
-        }
       }
       next.appTotals = totals;
-      next.appsFailed = (prev.appsFailed ?? 0) + (ev.error ? 1 : 0);
-      next.readingDone = (prev.readingDone ?? 0) + (noArchive ? 0 : 1);
+      next.appsFailed = (prev.appsFailed ?? 0) + waybackFailedAppsInFrame(ev);
+      next.readingDone = totals.appsRead;
       next.readingInFlight = false;
-      next.inFlightAppId = null;
       next.waitingUntil = null;
       next.waitReason = null;
       return next;
@@ -384,8 +387,23 @@ export function reduceWaybackFrame(
       const index = finite(ev.index);
       const total = finite(ev.total);
       const appId = text(ev.appId);
-      const noArchiveIds = prev.noArchiveIds ?? [];
+      const unreadIds = prev.unreadIds ?? [];
       const surveyed = prev.surveyDone ?? 0;
+      const failedListing = waybackFailedAppsInFrame(ev) === 1;
+      const noCaptures = finite(ev.captureCount) === 0;
+      const totals = { ...(prev.appTotals ?? zeroAppTotals()) };
+      let appsFailed = prev.appsFailed ?? 0;
+      let nextUnread = unreadIds;
+      if (
+        (failedListing || noCaptures) &&
+        !(appId && unreadIds.includes(appId))
+      ) {
+        // Finished here: never read.
+        totals.appsDone += 1;
+        totals.appsNoArchive += noCaptures ? 1 : 0;
+        appsFailed += failedListing ? 1 : 0;
+        nextUnread = appId ? [...unreadIds, appId] : unreadIds;
+      }
       return {
         ...prev,
         phase: "survey",
@@ -393,13 +411,9 @@ export function reduceWaybackFrame(
           index === null ? surveyed + 1 : Math.max(surveyed, index + 1),
         surveyTotal: total !== null && total > 0 ? total : prev.surveyTotal,
         currentAppName: text(ev.name) ?? prev.currentAppName,
-        noArchiveIds:
-          appId &&
-          finite(ev.captureCount) === 0 &&
-          !noArchiveIds.includes(appId)
-            ? [...noArchiveIds, appId]
-            : noArchiveIds,
-        appTotals: prev.appTotals ?? zeroAppTotals(),
+        unreadIds: nextUnread,
+        appTotals: totals,
+        appsFailed,
         waitingUntil: null,
         waitReason: null,
       };
@@ -473,14 +487,11 @@ export function waybackLead(
       values: { current: done < total ? done + 1 : total, total },
     };
   }
-  // Exact from the queue when the payload carried it, else what the survey
-  // found, else the queue less the apps known to have no archived pages.
-  const noArchive =
-    progress.appTotals?.appsNoArchive ?? progress.noArchiveIds?.length ?? 0;
+  // The apps the survey found pages for; a run resumed from before the
+  // survey existed reads its whole queue.
   const total =
-    progress.readingTotal ??
     progress.survey?.appsWithCaptures ??
-    Math.max(0, progress.total - noArchive);
+    Math.max(0, progress.total - (progress.appTotals?.appsNoArchive ?? 0));
   if (!(total > 0)) {
     return null;
   }
@@ -492,13 +503,14 @@ export function waybackLead(
   };
 }
 
-/** "143 apps have archived pages, 58 have none", once the survey is done. */
+/** "143 apps have archived pages, 58 have none", once the survey is done.
+ *  `failed` counts listings archive.org could not give. */
 export type WaybackSurveyLine =
   | {
       key: "survey_result";
-      values: { withPages: number; withoutPages: number };
+      values: { failed: number; withPages: number; withoutPages: number };
     }
-  | { key: "survey_result_none"; values: { count: number } };
+  | { key: "survey_result_none"; values: { count: number; failed: number } };
 
 export function waybackSurveyLine(
   progress: WaybackLiveProgress | null
@@ -510,10 +522,16 @@ export function waybackSurveyLine(
   ) {
     return null;
   }
+  const failed = Math.max(
+    0,
+    survey.appsSurveyed - survey.appsWithCaptures - survey.appsWithoutCaptures
+  );
   if (survey.appsWithCaptures === 0) {
-    const apps = survey.appsWithoutCaptures || survey.appsSurveyed;
-    return apps > 0
-      ? { key: "survey_result_none", values: { count: apps } }
+    return survey.appsWithoutCaptures > 0 || failed > 0
+      ? {
+          key: "survey_result_none",
+          values: { count: survey.appsWithoutCaptures, failed },
+        }
       : null;
   }
   return {
@@ -521,35 +539,24 @@ export function waybackSurveyLine(
     values: {
       withPages: survey.appsWithCaptures,
       withoutPages: survey.appsWithoutCaptures,
+      failed,
     },
   };
 }
 
-/** Epoch timestamps are larger than any duration the runner can report. */
-const EPOCH_FLOOR_MS = 1_000_000_000_000;
-
 /**
- * The time left, in ms, while the run reads pages. `etaMs` is the time
- * left; should it arrive as a finish time instead, it is told apart by
- * size (no duration reaches 2001 in epoch terms). With no `etaMs`, the
- * reads left at the runner's pace stand in. Null when there is nothing
- * to estimate.
+ * The time left, in ms, while the run reads pages: the runner's `etaMs`,
+ * or the reads left at its pace when that is missing. Null when there is
+ * nothing to estimate.
  */
 export function waybackEtaMs(
-  progress: WaybackLiveProgress | null,
-  now: number = Date.now()
+  progress: WaybackLiveProgress | null
 ): number | null {
   const estimate = progress?.estimate;
   if (!estimate || progress?.phase !== "reading") {
     return null;
   }
-  if (estimate.readsRemaining <= 0 && estimate.etaMs === null) {
-    return null;
-  }
   let ms = estimate.etaMs;
-  if (ms !== null && ms >= EPOCH_FLOOR_MS) {
-    ms -= now;
-  }
   if (ms === null && estimate.perMinute) {
     ms = (estimate.readsRemaining / estimate.perMinute) * 60_000;
   }
