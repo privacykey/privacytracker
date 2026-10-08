@@ -4000,6 +4000,7 @@
       "result_changes": "{count, plural, =0 {未发现标签变化} other {发现 # 处标签变化}}",
       "result_changes_on_file": "{count, plural, other {发现 # 处标签变化，均已在时间线上}}",
       "result_no_archive": "archive.org 没有这个应用的存档页面。",
+      "result_no_labels": "所读取的存档页面都没有可读取的隐私标签。",
       "note_failed": "{count, plural, other {有 # 条存档无法读取}}。详见 设置 → 开发者选项 → 活动日志。",
       "note_snapshot_requested": "已请求档案馆抓取当前页面，以便下次检查时有一份较新的基线。",
       "note_reads": "{count, plural, other {已读取 # 个存档页面。}}",

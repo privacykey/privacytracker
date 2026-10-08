@@ -4000,6 +4000,7 @@
       "result_changes": "{count, plural, =0 {No label changes found} one {Found # label change} other {Found # label changes}}",
       "result_changes_on_file": "{count, plural, one {Found # label change, already on the timeline} other {Found # label changes, all already on the timeline}}",
       "result_no_archive": "archive.org has no archived pages for this app.",
+      "result_no_labels": "None of the archived pages had privacy labels to read.",
       "note_failed": "{count, plural, one {# capture could not be read} other {# captures could not be read}}. See Settings → Developer Options → Activity log.",
       "note_snapshot_requested": "Asked the archive to capture the page as it is today, so a later check has a recent baseline.",
       "note_reads": "{count, plural, one {Read # archived page.} other {Read # archived pages.}}",

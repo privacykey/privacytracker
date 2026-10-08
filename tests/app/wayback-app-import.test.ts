@@ -112,6 +112,23 @@ test("an app with no archived pages says so", () => {
   });
 });
 
+test("pages that carried no labels are not reported as unchanged labels", () => {
+  // Every capture read was unusable, e.g. the first weeks of February 2021.
+  const outcome = describeWaybackAppImport(
+    v3({ changes: 0, labelVersions: 0, reads: 4, imported: 0, unchanged: 0 })
+  );
+  assert.deepEqual(outcome, {
+    headline: { key: "result_no_labels" },
+    notes: [{ key: "note_reads", values: { count: 4 } }],
+    rowsAdded: 0,
+  });
+  // Without a labelVersions count there is nothing to tell them apart by.
+  assert.deepEqual(
+    describeWaybackAppImport(v3({ changes: 0, labelVersions: null })).headline,
+    { key: "result_changes", values: { count: 0 } }
+  );
+});
+
 test("archived history that starts well after February 2021 is noted first", () => {
   const first = Date.UTC(2023, 7, 12);
   assert.deepEqual(

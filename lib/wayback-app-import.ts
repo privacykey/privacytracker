@@ -91,6 +91,7 @@ export type WaybackImportMessage =
   | { key: "result_changes"; values: { count: number } }
   | { key: "result_changes_on_file"; values: { count: number } }
   | { key: "result_no_archive" }
+  | { key: "result_no_labels" }
   | { key: "note_failed"; values: { count: number } }
   | { key: "note_snapshot_requested" }
   | { key: "note_reads"; values: { count: number } }
@@ -149,14 +150,21 @@ export function describeWaybackAppImport(
   } else if (result.reads) {
     notes.push({ key: "note_reads", values: { count: result.reads } });
   }
-  return {
-    headline:
-      result.changes > 0 && rowsAdded === 0
-        ? { key: "result_changes_on_file", values: { count: result.changes } }
-        : { key: "result_changes", values: { count: result.changes } },
-    notes,
-    rowsAdded,
-  };
+  let headline: WaybackImportMessage;
+  if (result.labelVersions === 0 && result.reads) {
+    // Pages were read but none carried labels (the first weeks of 2021,
+    // or pages that were not product pages): "no changes" would imply
+    // the labels stayed the same.
+    headline = { key: "result_no_labels" };
+  } else if (result.changes > 0 && rowsAdded === 0) {
+    headline = {
+      key: "result_changes_on_file",
+      values: { count: result.changes },
+    };
+  } else {
+    headline = { key: "result_changes", values: { count: result.changes } };
+  }
+  return { headline, notes, rowsAdded };
 }
 
 /** Why an import did not finish, for the card's alert line. */
