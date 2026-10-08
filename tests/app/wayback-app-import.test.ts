@@ -129,6 +129,26 @@ test("pages that carried no labels are not reported as unchanged labels", () => 
   );
 });
 
+test("stored history never reads as no archived pages", () => {
+  // The index answered empty and nothing was read, but rows on file carry
+  // labels: changes and labelVersions count them.
+  const outcome = describeWaybackAppImport(
+    v3({
+      changes: 2,
+      reads: 0,
+      labelVersions: 3,
+      imported: 0,
+      unchanged: 0,
+      firstCaptureMs: null,
+      lastCaptureMs: null,
+    })
+  );
+  assert.deepEqual(outcome.headline, {
+    key: "result_changes_on_file",
+    values: { count: 2 },
+  });
+});
+
 test("archived history that starts well after February 2021 is noted first", () => {
   const first = Date.UTC(2023, 7, 12);
   assert.deepEqual(

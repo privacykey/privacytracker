@@ -134,7 +134,15 @@ export function describeWaybackAppImport(
     };
   }
 
-  if (result.firstCaptureMs === null && !result.reads) {
+  // No index range, nothing read, and nothing on file with labels: the
+  // archive has no copy of this app. (`changes` and `labelVersions` count
+  // the rows already stored, so an app with imported history never
+  // reads as having none.)
+  if (
+    result.firstCaptureMs === null &&
+    !result.reads &&
+    !result.labelVersions
+  ) {
     return { headline: { key: "result_no_archive" }, notes: [], rowsAdded };
   }
 
