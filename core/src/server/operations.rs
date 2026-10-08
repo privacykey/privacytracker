@@ -34,7 +34,7 @@ fn describe(conn: &Connection, job: Job) -> Result<Run> {
     let wayback = matches!(job, Job::Wayback);
     let mut state = parse(&get_setting_with(conn, key, "")?).ok().filter(|v| {
         v.is_object()
-            && (v["version"] == 1 || (wayback && v["version"] == 2))
+            && (v["version"] == 1 || (wayback && (v["version"] == 2 || v["version"] == 3)))
             && v["runId"].is_string()
             && v["queue"].is_array()
     });
@@ -45,7 +45,11 @@ fn describe(conn: &Connection, job: Job) -> Result<Run> {
                 _ => "running",
             }
             .to_owned();
-            v["version"] = json!(2);
+            // A v1 blob reads as v2, as Node reads it; v3 is the survey
+            // runner's own, which Node does not read.
+            if v["version"] != 3 {
+                v["version"] = json!(2);
+            }
             v["status"] = json!(status);
         }
     }
@@ -171,6 +175,23 @@ pub(super) fn job_status(conn: &Connection, job: Job) -> Result<Value> {
                 copy_fields(&mut m, &s, &["phase", "force"]);
             }
             copy_fields(&mut m, &s, &["currentAppId", "totals"]);
+            // The survey runner's progress, each key only while it is
+            // set. Older blobs project as they always have: some carry an
+            // unrelated `phase`.
+            if wayback && s["version"] == 3 {
+                copy_fields(
+                    &mut m,
+                    &s,
+                    &[
+                        "phase",
+                        "waitingUntil",
+                        "waitReason",
+                        "consecutiveThrottles",
+                        "survey",
+                        "estimate",
+                    ],
+                );
+            }
             Value::Object(m)
         })
         .unwrap_or(Value::Null);

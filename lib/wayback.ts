@@ -27,18 +27,25 @@ const CDX_TIMEOUT_MS = 20_000;
 const CDX_ROW_LIMIT = 5000;
 
 /**
- * archive.org answered but refused to serve — rate-limited (429) or a 5xx.
- * Distinct from "no capture" so callers can back off instead of treating a
+ * archive.org is refusing to serve: it answered 429 or a 5xx, or it would
+ * not talk to us at all (see {@link waybackTransportFailure}). Distinct
+ * from "no capture" so callers can back off instead of treating a
  * throttled probe as an empty quarter. `retryAfterMs` mirrors the
- * `Retry-After` header when present.
+ * `Retry-After` header when present; `status` is 0 when no response came.
  */
 export class WaybackUnavailableError extends Error {
   readonly retryAfterMs: number | null;
   readonly status: number;
 
-  constructor(status: number, retryAfterMs: number | null, endpoint: string) {
+  constructor(
+    status: number,
+    retryAfterMs: number | null,
+    endpoint: string,
+    reason?: string
+  ) {
     const label =
-      status === 429 ? "rate-limited" : `unavailable (HTTP ${status})`;
+      reason ??
+      (status === 429 ? "rate-limited" : `unavailable (HTTP ${status})`);
     const retry =
       retryAfterMs == null
         ? ""
@@ -54,6 +61,46 @@ export function isWaybackUnavailableError(
   error: unknown
 ): error is WaybackUnavailableError {
   return error instanceof WaybackUnavailableError;
+}
+
+/** What a fired `AbortSignal.timeout` rejects with. */
+const TIMEOUT_MESSAGE = "The operation was aborted due to timeout";
+const DNS_FAILURE =
+  /^Blocked URL: host \S+ did not resolve to a public address$/;
+
+/**
+ * A request to archive.org that failed below HTTP — the connection refused
+ * or reset (undici's `fetch failed`), dropped mid-body (`terminated`),
+ * timed out, or the host not resolving — as the error the import throws.
+ * When archive.org has throttled a client for long enough it stops
+ * answering 429 and refuses the connection outright, so reading this as
+ * "no capture" would record an empty quarter for every target and let a
+ * bulk run race through the queue. Matched on the message, as the Rust
+ * core's transport reports it, so both backends sort the same failures the
+ * same way. Anything else (a blocked URL, a body over the cap, a redirect
+ * loop) is not archive.org refusing us and returns null.
+ */
+export function waybackTransportFailure(
+  error: unknown,
+  endpoint: string
+): WaybackUnavailableError | null {
+  if (!(error instanceof Error) || isAbortError(error)) {
+    return null;
+  }
+  let reason: string | null = null;
+  if (error.message === "fetch failed") {
+    reason = "refused the connection";
+  } else if (error.message === "terminated") {
+    reason = "dropped the connection";
+  } else if (
+    error.name === "TimeoutError" ||
+    error.message === TIMEOUT_MESSAGE
+  ) {
+    reason = "timed out";
+  } else if (DNS_FAILURE.test(error.message)) {
+    reason = "could not be resolved";
+  }
+  return reason ? new WaybackUnavailableError(0, null, endpoint, reason) : null;
 }
 
 /** Parse a `Retry-After` header (delta-seconds or HTTP-date) into ms. */
@@ -308,6 +355,8 @@ function snapshotFromWaybackHeader(
  * Variant of lookupLatestWaybackSnapshot that asks for the snapshot closest
  * to a specific target timestamp. Used by the historical-import flow.
  * No tolerance window — callers compare the returned timestamp themselves.
+ * Unlike the latest lookup, a 429 / 5xx or a transport failure throws
+ * {@link WaybackUnavailableError} instead of reading as "no capture".
  */
 export async function lookupWaybackSnapshotNear(
   targetUrl: string,
@@ -371,6 +420,11 @@ export async function lookupWaybackSnapshotNear(
     if (isAbortError(error) || isWaybackUnavailableError(error)) {
       throw error;
     }
+    // A refused connection is the archive throttling us, not "no capture".
+    const unavailable = waybackTransportFailure(error, "availability API");
+    if (unavailable) {
+      throw unavailable;
+    }
     return null;
   }
 }
@@ -391,10 +445,12 @@ export interface WaybackCapture {
  * availability probes per target the importer used to issue, and lets the
  * caller pick the genuinely closest capture for each target locally.
  *
- * Returns `null` when the index is unreachable or its payload is not the
- * expected array-of-arrays — callers fall back to per-target availability
- * probes. Throws {@link WaybackUnavailableError} on 429 / 5xx so a
- * throttled archive is never mistaken for an unarchived page.
+ * Returns `null` when the index answers with something unusable (another
+ * non-200 status, or a payload that is not the expected array-of-arrays) —
+ * callers fall back to per-target availability probes. Throws
+ * {@link WaybackUnavailableError} on 429 / 5xx and when the request fails
+ * below HTTP ({@link waybackTransportFailure}), so a throttled archive is
+ * never mistaken for an unarchived page.
  */
 export async function listWaybackCaptures(
   targetUrl: string,
@@ -474,6 +530,12 @@ export async function listWaybackCaptures(
   } catch (error) {
     if (isAbortError(error) || isWaybackUnavailableError(error)) {
       throw error;
+    }
+    // Falling back to availability probes here would turn one refused
+    // connection into up to seven more per target.
+    const unavailable = waybackTransportFailure(error, "CDX index");
+    if (unavailable) {
+      throw unavailable;
     }
     return null;
   }

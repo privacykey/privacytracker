@@ -357,7 +357,10 @@ fn get_columns(conn: &Connection, name: &str) -> Result<Vec<String>, String> {
 }
 
 /// `exportBackup`: every table that exists, read in one transaction, the
-/// sensitive settings blanked, the envelope signed.
+/// sensitive settings blanked, the envelope signed. The Wayback survey's
+/// capture listings stay behind: they are a cache archive.org can answer
+/// again, and a restore elsewhere would only carry stale ones. The older
+/// addresses a user added are kept.
 pub(super) fn export_backup(cx: &mut Cx, env: &Env) -> Result<Envelope, String> {
     let tables = transaction(cx, |cx| {
         let mut tables = Vec::new();
@@ -369,6 +372,11 @@ pub(super) fn export_backup(cx: &mut Cx, env: &Env) -> Result<Envelope, String> 
             let mut rows = super::stats::query(cx.w.conn, &format!("SELECT * FROM {name}"), &[])
                 .map_err(|e| e.to_string())?;
             if name == "app_settings" {
+                rows.retain(|row| {
+                    !row["key"]
+                        .as_str()
+                        .is_some_and(|k| k.starts_with(super::wayback_runner::CAPTURE_CACHE_PREFIX))
+                });
                 for row in &mut rows {
                     let sensitive = row["key"]
                         .as_str()

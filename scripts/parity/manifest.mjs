@@ -46,6 +46,9 @@
  *             routing, auth-gate and method-allow drift — just not body
  *             parity. Quarantining is a claim that needs justifying in
  *             review, which is why the reason is a required field.
+ *             A GET whose body the two backends deliberately no longer
+ *             share (the Wayback import's status, Rust-only since its
+ *             redesign) is quarantined the same way.
  */
 
 import {
@@ -869,11 +872,8 @@ export const READS = [
     name: "active tasks",
     path: "/api/tasks/active",
   },
-  {
-    route: "/api/wayback/import-all",
-    name: "wayback bulk status",
-    path: "/api/wayback/import-all",
-  },
+  // The Wayback bulk status is quarantined: its body is Rust-only since
+  // the Wayback redesign (see QUARANTINE).
   {
     route: "/api/policy/sync-all",
     name: "policy bulk status",
@@ -1834,6 +1834,11 @@ export const QUARANTINE = [
     route: "/api/wayback/import-all",
     method: "POST",
     why: "bulk archive.org crawl; long-running and rate-limited upstream",
+  },
+  {
+    route: "/api/wayback/import-all",
+    method: "GET",
+    why: "its payload is Rust-only since the Wayback redesign (docs/WAYBACK_IMPORT.md): the core's state carries the redesigned runner's blob, while the Node rollback keeps the old runner and its v2 blob; the HEAD probe still holds routing and the gate on both",
   },
 
   // -- outbound to an AI provider

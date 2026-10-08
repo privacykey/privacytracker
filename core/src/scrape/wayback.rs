@@ -1,8 +1,9 @@
 //! lib/wayback.ts: the archive.org client the historical import drives —
 //! the CDX index listing, the availability API, Save Page Now, and the
 //! timestamp arithmetic between them. A 429 or 5xx from the index, the
-//! availability API or a replay is `Unavailable`, which the import
-//! surfaces to its caller; every other failure is a quiet `None`.
+//! availability API or a replay is `Unavailable`, and so is a request that
+//! fails below HTTP ([`Unavailable::transport`]); the import surfaces it to
+//! its caller. Every other failure is a quiet `None`.
 use super::js::truthy;
 use crate::{
     jsdate::{self, civil_from_days, days_from_civil},
@@ -24,7 +25,8 @@ const CDX_MAX_BYTES: usize = 1024 * 1024;
 const CDX_TIMEOUT_MS: u64 = 20_000;
 const CDX_ROW_LIMIT: usize = 5000;
 
-/// `WaybackUnavailableError`: archive.org throttling or failing.
+/// `WaybackUnavailableError`: archive.org throttling or failing. `status`
+/// is 0 when no response came.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Unavailable {
     pub status: u16,
@@ -39,6 +41,10 @@ impl Unavailable {
         } else {
             format!("unavailable (HTTP {status})")
         };
+        Self::labelled(status, retry_after_ms, endpoint, &label)
+    }
+
+    fn labelled(status: u16, retry_after_ms: Option<i64>, endpoint: &str, label: &str) -> Self {
         let retry = retry_after_ms.map_or(String::new(), |ms| {
             format!(" — retry after {}s", (ms as f64 / 1000.0).ceil() as i64)
         });
@@ -47,6 +53,30 @@ impl Unavailable {
             retry_after_ms,
             message: format!("archive.org {label} for {endpoint}{retry}"),
         }
+    }
+
+    /// `waybackTransportFailure`: a fetch error that means archive.org
+    /// would not talk to us — the connection refused or reset (`fetch
+    /// failed`), dropped mid-body (`terminated`), timed out, or the host
+    /// not resolving. After throttling a client for long enough it stops
+    /// answering 429 and refuses the connection, so reading this as "no
+    /// capture" would record an empty quarter for every target. Any other
+    /// error (a blocked URL, a body over the cap, a redirect loop) is not
+    /// archive.org refusing us and is `None`.
+    pub fn transport(error: &str, endpoint: &str) -> Option<Self> {
+        static DNS: OnceLock<Regex> = OnceLock::new();
+        let dns = DNS.get_or_init(|| {
+            Regex::new(r"^Blocked URL: host \S+ did not resolve to a public address$")
+                .expect("static regex")
+        });
+        let label = match error {
+            "fetch failed" => "refused the connection",
+            "terminated" => "dropped the connection",
+            outbound::TIMEOUT_MESSAGE => "timed out",
+            _ if dns.is_match(error) => "could not be resolved",
+            _ => return None,
+        };
+        Some(Self::labelled(0, None, endpoint, label))
     }
 }
 
@@ -146,9 +176,10 @@ fn request(
     request
 }
 
-/// `listWaybackCaptures(url, { from })`: `None` when the index cannot be
-/// used and the import must probe instead, `Some(vec![])` for an empty
-/// index. Rows are the CDX JSON form, header row included, filtered to
+/// `listWaybackCaptures(url, { from })`: `None` when the index answers
+/// with something unusable and the import must probe instead,
+/// `Some(vec![])` for an empty index, `Unavailable` for throttling or a
+/// transport failure. Rows are the CDX JSON form, header row included, filtered to
 /// unique fourteen-digit timestamps and sorted.
 pub async fn list_captures(
     fetcher: &dyn Fetcher,
@@ -183,8 +214,11 @@ pub async fn list_captures(
         CDX_TIMEOUT_MS,
         &[("Accept", "application/json"), ("User-Agent", USER_AGENT)],
     );
-    let Ok(reply) = fetcher.fetch(req).await else {
-        return Ok(None);
+    // Falling back to availability probes on a refused connection would
+    // turn it into up to seven more per target.
+    let reply = match fetcher.fetch(req).await {
+        Ok(reply) => reply,
+        Err(error) => return Unavailable::transport(&error, "CDX index").map_or(Ok(None), Err),
     };
     unavailable_if(&reply, "CDX index", now)?;
     if reply.status != 200 {
@@ -223,6 +257,173 @@ pub async fn list_captures(
     }
     captures.sort_by_key(|c| c.ms);
     Ok(Some(captures))
+}
+
+fn is_storefront(segment: &str) -> bool {
+    segment.len() == 2 && segment.bytes().all(|b| b.is_ascii_alphabetic())
+}
+
+/// `id<digits>`, the track id as App Store paths carry it.
+fn track_id_segment(segment: &str) -> Option<&str> {
+    let digits = segment
+        .strip_prefix("id")
+        .or_else(|| segment.strip_prefix("ID"))?;
+    (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())).then_some(digits)
+}
+
+/// The same App Store page on the US storefront. Privacy labels belong to
+/// the app, not the storefront, and archive.org crawls US pages far more
+/// often than any other, so an import lists this address first. `None` for
+/// anything that is not an apps.apple.com app page; a path with no
+/// storefront is the US one. The query and fragment are dropped: they do
+/// not change the page, and the index matches addresses exactly.
+pub fn us_storefront_url(url: &str) -> Option<String> {
+    let parsed = Url::parse(js_trim(url)).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https")
+        || parsed.host_str()? != "apps.apple.com"
+        || parsed.port().is_some()
+    {
+        return None;
+    }
+    let segments: Vec<&str> = parsed.path_segments()?.filter(|s| !s.is_empty()).collect();
+    let rest = match segments.as_slice() {
+        [storefront, "app", rest @ ..] if is_storefront(storefront) => rest,
+        ["app", rest @ ..] => rest,
+        _ => return None,
+    };
+    let (id, slug) = match rest {
+        [id] => (track_id_segment(id)?, None),
+        [slug, id] => (track_id_segment(id)?, Some(*slug)),
+        _ => return None,
+    };
+    Some(match slug {
+        Some(slug) => format!("https://apps.apple.com/us/app/{slug}/id{id}"),
+        None => format!("https://apps.apple.com/us/app/id{id}"),
+    })
+}
+
+/// An older App Store address a user added for app `app_id`, as it is
+/// stored: `https://apps.apple.com/<cc>/app/<slug>/id<app_id>` with a
+/// lowercase storefront. Surrounding spaces, a trailing slash, a query and
+/// a fragment are forgiven and dropped; anything else is refused, the
+/// address of another app included.
+pub fn canonical_app_store_address(raw: &str, app_id: &str) -> Option<String> {
+    let raw = js_trim(raw);
+    if raw.len() > 2048 {
+        return None;
+    }
+    let parsed = Url::parse(raw).ok()?;
+    if parsed.scheme() != "https"
+        || parsed.host_str()? != "apps.apple.com"
+        || parsed.port().is_some()
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+    {
+        return None;
+    }
+    let mut segments: Vec<&str> = parsed.path_segments()?.collect();
+    if segments.last() == Some(&"") {
+        segments.pop();
+    }
+    let [storefront, "app", slug, id] = segments.as_slice() else {
+        return None;
+    };
+    if !is_storefront(storefront) || slug.is_empty() || track_id_segment(id)? != app_id {
+        return None;
+    }
+    Some(format!(
+        "https://apps.apple.com/{}/app/{slug}/id{app_id}",
+        storefront.to_ascii_lowercase()
+    ))
+}
+
+/// The address inside a `/web/<timestamp>/<address>` capture URL: what a
+/// capture is a capture of, and so what its replay asks for.
+pub fn capture_address(capture_url: &str) -> Option<&str> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(
+            r"(?i)^https?://(?:www\.)?web\.archive\.org/web/[0-9]{4,14}(?:[a-z_]+)?/(https?://.+)$",
+        )
+        .expect("static regex")
+    });
+    re.captures(capture_url)
+        .and_then(|c| c.get(1))
+        .map(|m| m.as_str())
+}
+
+/// Every capture the index holds of an app, across its addresses.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppListing {
+    /// The address whose listing leads: the US page, or the stored address
+    /// when the US index holds nothing.
+    pub lookup_url: String,
+    /// The older addresses asked about, whatever their index held.
+    pub alternate_urls: Vec<String>,
+    /// Oldest first, one per timestamp; each capture's `url` names the
+    /// address it is a capture of.
+    pub captures: Vec<Capture>,
+}
+
+/// [`list_captures`] for an app: the US-storefront address first, then the
+/// stored address when the US index is empty or unusable, then every older
+/// address the user added, merged in with the first listing of a timestamp
+/// kept. A US index that is merely smaller than the stored address's still
+/// wins: comparing would cost every non-US app a second listing, and an
+/// address with more history can be added as an older address. `None` when
+/// no address answered with a usable index; throttling anywhere is the
+/// error, at once.
+pub async fn list_app_captures(
+    fetcher: &dyn Fetcher,
+    stored_url: &str,
+    alternates: &[String],
+    from_ms: Option<i64>,
+    now: i64,
+) -> Result<Option<AppListing>, Unavailable> {
+    let us = us_storefront_url(stored_url).filter(|us| us != stored_url);
+    let mut lookups: Vec<&str> = us.iter().map(String::as_str).collect();
+    lookups.push(stored_url);
+    let mut found: Option<(String, Vec<Capture>)> = None;
+    let mut first_empty: Option<&str> = None;
+    for address in lookups.iter().copied() {
+        match list_captures(fetcher, address, from_ms, now).await? {
+            Some(captures) if !captures.is_empty() => {
+                found = Some((address.to_string(), captures));
+                break;
+            }
+            Some(_) => {
+                first_empty.get_or_insert(address);
+            }
+            None => {}
+        }
+    }
+    let (lookup_url, mut captures) = match (found, first_empty) {
+        (Some(found), _) => found,
+        (None, Some(address)) => (address.to_string(), vec![]),
+        (None, None) => return Ok(None),
+    };
+    let mut seen: HashSet<String> = captures.iter().map(|c| c.timestamp.clone()).collect();
+    let mut alternate_urls = vec![];
+    for address in alternates {
+        if lookups.contains(&address.as_str()) || alternate_urls.contains(address) {
+            continue;
+        }
+        alternate_urls.push(address.clone());
+        let Some(listed) = list_captures(fetcher, address, from_ms, now).await? else {
+            continue;
+        };
+        for capture in listed {
+            if seen.insert(capture.timestamp.clone()) {
+                captures.push(capture);
+            }
+        }
+    }
+    captures.sort_by_key(|c| c.ms);
+    Ok(Some(AppListing {
+        lookup_url,
+        alternate_urls,
+        captures,
+    }))
 }
 
 /// `lookupLatestWaybackSnapshot`: the availability API's newest capture of
@@ -265,7 +466,8 @@ pub async fn lookup_latest(fetcher: &dyn Fetcher, target_url: &str) -> Option<Sn
 }
 
 /// `lookupWaybackSnapshotNear`: the availability API's closest capture to
-/// a date, or `None` for anything it cannot answer.
+/// a date, `None` for an answer without one, or `Unavailable` for
+/// throttling or a transport failure.
 pub async fn lookup_near(
     fetcher: &dyn Fetcher,
     target_url: &str,
@@ -287,8 +489,11 @@ pub async fn lookup_near(
         AVAILABILITY_TIMEOUT_MS,
         &[("Accept", "application/json"), ("User-Agent", USER_AGENT)],
     );
-    let Ok(reply) = fetcher.fetch(req).await else {
-        return Ok(None);
+    let reply = match fetcher.fetch(req).await {
+        Ok(reply) => reply,
+        Err(error) => {
+            return Unavailable::transport(&error, "availability API").map_or(Ok(None), Err)
+        }
     };
     unavailable_if(&reply, "availability API", now)?;
     let Ok(parsed) = serde_json::from_str::<Value>(&String::from_utf8_lossy(&reply.body)) else {
@@ -396,7 +601,130 @@ fn snapshot_from_header(raw: Option<&str>, base: &str) -> Option<Snapshot> {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_timestamp, parse_retry_after_ms, parse_timestamp_ms};
+    use super::{
+        canonical_app_store_address, capture_address, format_timestamp, parse_retry_after_ms,
+        parse_timestamp_ms, us_storefront_url, Unavailable,
+    };
+
+    #[test]
+    fn any_storefront_maps_to_the_us_page() {
+        let us = |url: &str| us_storefront_url(url);
+        assert_eq!(
+            us("https://apps.apple.com/gb/app/instagram/id389801252"),
+            Some("https://apps.apple.com/us/app/instagram/id389801252".to_string())
+        );
+        // Query, fragment, trailing slash and an upper-case storefront go;
+        // so does plain http.
+        assert_eq!(
+            us("http://apps.apple.com/DE/app/instagram/id389801252/?platform=iphone#x"),
+            Some("https://apps.apple.com/us/app/instagram/id389801252".to_string())
+        );
+        // A path with no storefront is the US page; so is one with no slug.
+        assert_eq!(
+            us("https://apps.apple.com/app/instagram/id389801252"),
+            Some("https://apps.apple.com/us/app/instagram/id389801252".to_string())
+        );
+        assert_eq!(
+            us("https://apps.apple.com/jp/app/id389801252"),
+            Some("https://apps.apple.com/us/app/id389801252".to_string())
+        );
+        // A percent-encoded slug is kept as it is.
+        assert_eq!(
+            us("https://apps.apple.com/cn/app/%E5%BE%AE%E4%BF%A1/id414478124"),
+            Some("https://apps.apple.com/us/app/%E5%BE%AE%E4%BF%A1/id414478124".to_string())
+        );
+        for other in [
+            "https://itunes.apple.com/us/app/instagram/id389801252",
+            "https://apps.apple.com/us/developer/meta/id389801253",
+            "https://apps.apple.com/us/app/instagram",
+            "https://apps.apple.com:8443/us/app/instagram/id389801252",
+            "https://example.com/us/app/instagram/id389801252",
+            "not a url",
+        ] {
+            assert_eq!(us(other), None, "{other}");
+        }
+    }
+
+    #[test]
+    fn older_addresses_are_this_apps_pages_only() {
+        let canonical = |raw: &str| canonical_app_store_address(raw, "389801252");
+        let gb = Some("https://apps.apple.com/gb/app/instagram/id389801252".to_string());
+        assert_eq!(
+            canonical("https://apps.apple.com/gb/app/instagram/id389801252"),
+            gb
+        );
+        // Spaces, a trailing slash, a query and a fragment are forgiven; an
+        // upper-case storefront is lowered.
+        assert_eq!(
+            canonical("  https://apps.apple.com/GB/app/instagram/id389801252/?l=en#top "),
+            gb
+        );
+        for refused in [
+            "https://apps.apple.com/gb/app/instagram/id389801253",
+            "http://apps.apple.com/gb/app/instagram/id389801252",
+            "https://apps.apple.com/gb/app/id389801252",
+            "https://apps.apple.com/app/instagram/id389801252",
+            "https://apps.apple.com/gbr/app/instagram/id389801252",
+            "https://itunes.apple.com/gb/app/instagram/id389801252",
+            "https://user@apps.apple.com/gb/app/instagram/id389801252",
+            "https://apps.apple.com:444/gb/app/instagram/id389801252",
+            "https://apps.apple.com/gb/app/instagram/id389801252/extra",
+            "",
+        ] {
+            assert_eq!(canonical(refused), None, "{refused}");
+        }
+        assert_eq!(canonical(&"a".repeat(2049)), None);
+    }
+
+    #[test]
+    fn a_capture_names_the_address_it_is_of() {
+        assert_eq!(
+            capture_address(
+                "https://web.archive.org/web/20210215120000/https://apps.apple.com/gb/app/x/id1"
+            ),
+            Some("https://apps.apple.com/gb/app/x/id1")
+        );
+        assert_eq!(
+            capture_address(
+                "http://web.archive.org/web/2021id_/https://apps.apple.com/us/app/x/id1"
+            ),
+            Some("https://apps.apple.com/us/app/x/id1")
+        );
+        assert_eq!(capture_address("https://apps.apple.com/us/app/x/id1"), None);
+    }
+
+    #[test]
+    fn transport_failures_are_unavailable_and_nothing_else_is() {
+        // What the transport reports for each, as Node's undici does.
+        for (error, message) in [
+            ("fetch failed", "archive.org refused the connection for CDX index"),
+            ("terminated", "archive.org dropped the connection for CDX index"),
+            (
+                "The operation was aborted due to timeout",
+                "archive.org timed out for CDX index",
+            ),
+            (
+                "Blocked URL: host web.archive.org did not resolve to a public address",
+                "archive.org could not be resolved for CDX index",
+            ),
+        ] {
+            let unavailable = Unavailable::transport(error, "CDX index").expect(error);
+            assert_eq!(unavailable.message, message);
+            assert_eq!((unavailable.status, unavailable.retry_after_ms), (0, None));
+        }
+        // Not archive.org refusing us: a policy block, a body over the cap,
+        // a redirect loop, a cancelled run.
+        for error in [
+            "Blocked URL: invalid_url — https://example.com",
+            "safeFetch: response exceeded 1048576 bytes",
+            "safeFetch: declared content-length 2000000 exceeds cap 1048576",
+            "safeFetch: too many redirects (6)",
+            "This operation was aborted",
+            "",
+        ] {
+            assert_eq!(Unavailable::transport(error, "CDX index"), None, "{error}");
+        }
+    }
 
     #[test]
     fn timestamps_and_retry_after_follow_node() {

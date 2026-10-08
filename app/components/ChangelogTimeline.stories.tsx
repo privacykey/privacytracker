@@ -81,3 +81,49 @@ export const ChineseLocale: Story = {
   globals: { locale: "zh" },
   args: { rows: SAMPLE_ROWS },
 };
+
+// The change-finding import stores the last archived copy with the old
+// labels and the first with the new ones; the change row says the change
+// happened between the two.
+const WAYBACK_CHANGE_ROWS: ChangelogRow[] = [
+  {
+    kind: "snapshot",
+    id: "wb-change",
+    scraped_at: NOW - 400 * DAY,
+    app_version: "6.4.0",
+    changes_detected: 1,
+    changes_summary: [
+      {
+        type: "added",
+        category: "privacy-label",
+        description: "Added Location under Data Linked to You",
+      },
+    ],
+    source: "wayback",
+    triggered_by: "wayback",
+  },
+  {
+    kind: "snapshot",
+    id: "wb-unchanged",
+    scraped_at: NOW - 430 * DAY,
+    app_version: "6.3.2",
+    changes_detected: 0,
+    changes_summary: [],
+    source: "wayback",
+    triggered_by: "wayback",
+  },
+  {
+    kind: "snapshot",
+    id: "wb-baseline",
+    scraped_at: NOW - 900 * DAY,
+    app_version: "5.0.0",
+    changes_detected: 0,
+    changes_summary: [],
+    source: "wayback",
+    triggered_by: "wayback",
+  },
+];
+
+export const WaybackChangeWindow: Story = {
+  args: { rows: WAYBACK_CHANGE_ROWS, defaultShowImported: true },
+};

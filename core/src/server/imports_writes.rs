@@ -49,13 +49,15 @@ use crate::{
     jsstr::{js_length, js_slice_prefix, js_trim},
     outbound::{self, Fetcher},
     scrape::{
-        complete,
+        archive_pacer, complete,
         fetch::fire_change_webhook,
+        history::{alternate_urls_key, MAX_ALTERNATE_URLS},
         import_app_history, lookup_apps_by_bundle_id, notify, perform as perform_fetch,
         persist::{DbAccess, Ids, Outcome, Writer},
         prepare,
         region::normalize_country,
-        scrape_initial_urls, search_apps_by_name, AppRow, Fetched, HistoryOptions, ScrapeError,
+        scrape_initial_urls, search_apps_by_name, wayback, AppRow, Fetched, HistoryOptions,
+        ScrapeError,
     },
     server::webhook_writes::Immediate,
 };
@@ -883,6 +885,7 @@ fn replace_import_item_match(
             )?;
             if still_referenced.is_none() {
                 cx.w.run(DELETE_APP, vec![previous.clone()])?;
+                super::wayback_runner::forget_app_settings(cx.w, previous.as_str().unwrap_or(""))?;
                 removed = previous.clone();
             }
         }
@@ -918,6 +921,7 @@ fn delete_import(cx: &mut Cx, import_id: &str, remove_apps: bool) -> Result<usiz
     transaction(cx, |cx| {
         for app_id in &app_ids {
             cx.w.run(DELETE_APP, vec![json!(app_id)])?;
+            super::wayback_runner::forget_app_settings(cx.w, app_id)?;
         }
         cx.w.run(DELETE_IMPORT, vec![json!(import_id)])?;
         Ok(())
@@ -2012,6 +2016,27 @@ async fn import_history(
     let force = prop(&body, "force") == Some(&json!(true));
     let force_flag = u8::from(force);
     let started_at = now;
+    // `alternateUrls`, when sent, replaces the app's older addresses before
+    // the import lists them; a bad entry refuses the request with nothing
+    // written.
+    let alternates = match prop(&body, "alternateUrls") {
+        None | Some(Value::Null) => None,
+        Some(value) => match parse_alternate_urls(value, id, &url) {
+            Ok(urls) => Some(urls),
+            Err(message) => {
+                return json_response(
+                    StatusCode::BAD_REQUEST,
+                    &json!({ "error": message, "code": "invalid_alternate_url" }),
+                )
+            }
+        },
+    };
+    if let Some(urls) = &alternates {
+        let stored = db.with(|w| store_alternate_urls(&mut section(w, ids, now), id, urls));
+        if stored.is_err() {
+            return internal_error();
+        }
+    }
 
     db.with(|w| {
         record_audit(
@@ -2035,13 +2060,67 @@ async fn import_history(
         interval_months,
         ..Default::default()
     };
-    let run = import_app_history(db, fetcher, &app_row, &options, now, ids, None).await;
+    // archive.org at the server's pace (archive_pacer.rs): a throttled
+    // archive answers this click with a 503 and its Retry-After.
+    let archive = archive_pacer::paced(db, fetcher);
+    let run = import_app_history(db, &archive, &app_row, &options, now, ids, None).await;
     // What the run leaves behind — audit, activity and the response — is
     // one synchronous tail in Node, so one section.
     db.with(|w| {
         let cx = &mut section(w, ids, now);
         finish_import_history(cx, id, &name, actor, force, started_at, run)
     })
+}
+
+/// `alternateUrls` from the request body: at most three of this app's App
+/// Store addresses, each `https://apps.apple.com/<cc>/app/<slug>/id<id>`
+/// once canonical (`wayback::canonical_app_store_address`), kept in order
+/// without duplicates or the app's own address.
+fn parse_alternate_urls(
+    value: &Value,
+    app_id: &str,
+    stored_url: &str,
+) -> Result<Vec<String>, String> {
+    let Value::Array(entries) = value else {
+        return Err("alternateUrls must be an array of App Store addresses".to_string());
+    };
+    if entries.len() > MAX_ALTERNATE_URLS {
+        return Err(format!(
+            "alternateUrls holds at most {MAX_ALTERNATE_URLS} App Store addresses"
+        ));
+    }
+    let own = [
+        Some(stored_url.to_string()),
+        wayback::canonical_app_store_address(stored_url, app_id),
+        wayback::us_storefront_url(stored_url),
+    ];
+    let mut urls: Vec<String> = vec![];
+    for (index, entry) in entries.iter().enumerate() {
+        let Some(url) = entry
+            .as_str()
+            .and_then(|raw| wayback::canonical_app_store_address(raw, app_id))
+        else {
+            return Err(format!(
+                "alternateUrls[{index}] must be an App Store address of this app, like https://apps.apple.com/us/app/name/id{app_id}"
+            ));
+        };
+        if !urls.contains(&url) && !own.contains(&Some(url.clone())) {
+            urls.push(url);
+        }
+    }
+    Ok(urls)
+}
+
+/// Replaces an app's older addresses; an empty list removes them.
+fn store_alternate_urls(cx: &mut Cx, app_id: &str, urls: &[String]) -> Result<(), String> {
+    let key = alternate_urls_key(app_id);
+    if !urls.is_empty() {
+        return cx.set(&key, &Value::from(urls.to_vec()).to_string());
+    }
+    if !cx.get(&key, "").is_empty() {
+        cx.w.run("DELETE FROM app_settings WHERE key = ?", vec![json!(key)])?;
+    }
+    Ok(())
 }
 
 /// The route after `importAppHistory` returns or throws.

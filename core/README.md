@@ -94,6 +94,39 @@ Playwright suite and the local visual net run against either backend
 unchanged, because they only speak HTTP: CI runs the suite on Node in
 the `quality` job and on the core in `e2e-rust`, on every PR.
 
+**Rust-owned fixtures** — the exception to "Node is the oracle". The
+Wayback import is Rust-only from its redesign (`docs/WAYBACK_IMPORT.md`);
+the Node rollback keeps the importer and bulk runner it had before. So
+`core/tests/fixtures/history-cases.json` and `wayback-runner-cases.json`
+are no longer recorded from Node: their extractors and CI steps are
+gone, and they are regression fixtures the core owns, still replayed by
+the crate tests. So is `import-history-route-cases.json`, the 15 cases
+of the per-app `import-history` route that moved out of the
+Node-recorded `imports-cases.json`. After an intended change, bless the
+one you changed:
+
+```bash
+PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib historical_import_matches_node -- --nocapture
+PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib wayback_runner_paths_match_node -- --nocapture
+PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib import_history_route_matches_its_blessed_fixture -- --nocapture
+```
+
+With `PT_BLESS=1` the replay runs every case, rewrites its outputs
+(`calls`, `stream`, `rows` and `expected`, where the runner's NDJSON
+frames ride in the expected body) from what the core produced, leaves
+every other key alone (the inputs: setup rows, canned replies, request
+or options, hooks, clock), prints the names of the cases it rewrote and
+passes; set to anything else, or unset, it compares as before
+(`core/src/bless.rs`). Then review: read every rewritten case in
+`git diff` and accept only the changes the work intended, because a
+blessed fixture pins what the code does, right or wrong, and is no
+longer checked against anything else. Run the test again without the
+variable before committing. A new case needs only its inputs, written
+by hand or by a generator in the test file; the bless appends its
+outputs. Blessing unchanged code rewrites nothing:
+`bless::tests::rust_owned_fixtures_are_in_blessed_form` pins both files
+to the form a bless writes, which is the form the extractors wrote.
+
 **Benchmarks** — `scripts/bench/bench.mjs` (on `main`), same flags for
 both backends:
 
@@ -1797,7 +1830,8 @@ manual-redirect, body-skipping mode (Location, then Content-Location,
 on the replay host only) and the request is recorded as a live row
 whose changes carry the attempt note. Throttling from the index, the
 availability API or a replay is the import's error, not a quiet
-quarter, with Retry-After in seconds or as an HTTP date; Save Page Now
+quarter, with Retry-After in seconds or as an HTTP date, and so is a
+request to any of them that fails below HTTP (see below); Save Page Now
 failures are a skipped target.
 
 **JavaScript arithmetic it reproduces.** `Date.UTC` overflow for the
@@ -1807,12 +1841,18 @@ Retry-After parsing so `"0"` is zero, `Math.round` and `Math.ceil` in
 the window and the message, and `URLSearchParams` form encoding for the
 CDX query (`timestamp:8` is `timestamp%3A8`, spaces are `+`).
 
-**The oracle — `core/scripts/extract-history-cases.mjs`.** Runs the REAL
-`importAppHistory` over 26 scenarios with archive.org stubbed by recorded
+**The fixture — `core/tests/fixtures/history-cases.json`, Rust-owned
+since the Wayback redesign.** It was the oracle recorded by
+`core/scripts/extract-history-cases.mjs`, which ran the REAL
+`importAppHistory` over 33 scenarios with archive.org stubbed by recorded
 replies routed by endpoint (CDX, availability by probe date, replay by
-timestamp, Save Page Now), a frozen clock and counted ids, and records
+timestamp, Save Page Now), a frozen clock and counted ids, and recorded
 every raw fetch (URL and headers), every write with its BEGIN/COMMIT
 markers, the snapshot and app rows, and the result or the thrown error.
+The redesign made the import Rust-only, so the extractor and its CI step
+are gone and the fixture is a regression test the core owns: change its
+outputs with `PT_BLESS=1` and review the diff (see "Rust-owned fixtures"
+under the gates above); add a case by writing its inputs.
 `core/src/scrape/history_tests.rs` replays each through the same
 transport loop with the request limits asserted per endpoint. Scenarios:
 index captures imported, unchanged and baseline; window and URL dedupe;
@@ -1824,7 +1864,11 @@ row as the diff base; Save Page Now via Location, via Content-Location,
 rate-limited, server error, no snapshot URL, transport failure and a
 Location on another host; the install anchor probed, too fresh, and
 coinciding with a target; the monthly cadence; index parsing quirks;
-index garbage; and the target walk from a month end.
+index garbage; the target walk from a month end; and, appended with the
+transport fix below, the index refused, timed out and not resolving, an
+index redirect loop that still falls back, an availability probe
+refused, and a replay refused after an earlier row committed and
+dropped mid-body.
 
 Rust suite: 202 pass (187 + 15 new). Negative controls: skipping the
 successor re-diff failed only that case (stream and rows), disabling the
@@ -1832,6 +1876,31 @@ product-page sniff failed only the no-labels case, dropping the HTTP-date
 Retry-After branch failed only the availability 503 case, and removing the
 Content-Location fallback failed only that Save Page Now case; nothing
 else moved, and each fault was removed before the final passing run.
+
+**A refused connection is throttling (fixed in Node and the core
+together).** archive.org, once it has throttled a client for long enough,
+stops answering 429 and refuses the TCP connection; a user's 201-app bulk
+run paused on rate limiting, and the resumed run marked every app done
+with no history. Both backends read a fetch error from the index or the
+availability API as "no capture" (the index then fell back to up to seven
+probes per target, each refused too) and a refused replay as a skipped
+target, so every app ended with every target `skipped_no_capture` and
+about 170 refused requests, prolonging the block. Now
+`Unavailable::transport` (`waybackTransportFailure` in Node) turns the
+transport's `fetch failed`, `terminated`, timeout and unresolved-host
+errors into `Unavailable` with status 0 and no Retry-After ("archive.org
+refused the connection for CDX index"), from the index, the probes and
+the replays; every other fetch error is still quiet. The bulk runner's
+wait without a Retry-After rises from 30 s to five minutes (blocks have
+been reported to last about that long) and its cap from 120 s to 15
+minutes. The history oracle's replay case that used `fetch failed` for a
+quiet fetch failure now uses a body over the cap, which behaves as before;
+seven history cases and two runner cases are appended (a refusal backing
+off for the default wait, cancelled during it, and a refusal on the retry
+pausing the queue as rate-limited). Negative controls: the old Rust
+classification failed exactly the six throwing history cases and both
+runner cases; the old 30 s default alone failed only `backoff_is_bounded`
+and the default-wait case.
 
 ## Status — Phase 4 (writers, runners, health)
 
@@ -2106,14 +2175,17 @@ every case, so Node's timer, when it fires, finds the runner busy and
 writes nothing.
 
 **The oracle — `core/scripts/extract-imports-cases.mjs`.** Runs the REAL
-handlers over 167 requests with foreign keys ON, a frozen clock, counted
+handlers over 162 requests with foreign keys ON, a frozen clock, counted
 ids (now including `randomBytes(9)`: twelve base64url characters
 round-trip to nine bytes, so a zero-padded counter decodes and re-encodes
 to itself), the soft pacers reset per case, a distinct forwarded address
 per case, and the network canned — each case lists its replies in the
 order the handler asks for them (an App Store page then its version
-lookup; an iTunes search or lookup; the CDX index, a replay, Save Page
-Now), and a reply left unused fails the run. It records the request, the
+lookup; an iTunes search or lookup), and a reply left unused fails the
+run. The per-app Wayback import's cases left this oracle with the
+redesign: they live in the Rust-owned `import-history-route-cases.json`,
+and the extractor still reserves their forwarded addresses so the cases
+after them re-record unchanged. It records the request, the
 setup rows, every raw fetch, every write with transaction markers, the
 fourteen tables an import write can touch (abbreviated past 100 rows, as
 the Rust dump is), and the wire response. `core/src/server/imports_tests.rs`
@@ -2230,8 +2302,9 @@ and `runBulkWaybackImport` — each app marked in flight and persisted
 before any work, its row re-read at dequeue time, the archive walk with
 a `target` frame per outcome, the app row and frame on completion; on a
 throttling archive the entry put back to pending and un-counted, one
-backoff (the archive's Retry-After bounded to 1–120 s) and a retry of the
-same app, a second strike parking the queue with `pauseCause:
+backoff (the archive's Retry-After bounded to 1 s–15 min, five minutes
+when it sent none; 1–120 s and 30 s before the transport fix) and a retry
+of the same app, a second strike parking the queue with `pauseCause:
 "rate_limited"`; the pause and the cancel a PATCH wrote, read back from
 disk at every app boundary; the clean completion with its summary frame,
 row and audit; and the outer catch that leaves state and mutex for the
@@ -2265,20 +2338,30 @@ included — falls out of the same operations. Progress frames from the
 history import: `import_app_history` takes an optional sink fed from the
 same array its result carries.
 
-**A Node behaviour pinned rather than fixed.** A pause requested while an
-app is in flight is written to disk, then overwritten by the runner's
-own post-app state write before the boundary check reads it back, so the
-run carries on; the pause that takes effect is one that lands during the
-backoff sleep. The oracle records both, and the port reproduces both.
+**A Node behaviour the redesign fixed.** The port first reproduced a
+Node bug: a pause requested while an app was in flight was written to
+disk, then overwritten by the runner's own post-app state write before
+the boundary check read it back, so the run carried on. The Rust-only
+runner keeps a pause or cancel the PATCH stored meanwhile on every state
+write, so that pause now stops the run after the app; the Node rollback
+keeps the old behaviour.
 
-**The oracle — `core/scripts/extract-wayback-runner-cases.mjs`.** Runs
-the REAL handlers and, as batch 4a did, the startup hook's own 8 s
-closure. Cooperative control mid-run is exercised through the network
-stub: a case's `hooks` name a fetch at which the stub first calls the
-PATCH route — a cancel then aborts that request, reported the way `fetch`
-reports an aborted one — or, with `afterMs`, a moment after the reply is
-served, during the backoff sleep. 46 cases: the POST busy on the mutex
-and on a leftover blob, over no apps, over two apps, throttled once
+**The fixture — `core/tests/fixtures/wayback-runner-cases.json`,
+Rust-owned since the Wayback redesign.** It was the oracle recorded by
+`core/scripts/extract-wayback-runner-cases.mjs`, which ran the REAL
+handlers and, as batch 4a did, the startup hook's own 8 s closure. The
+redesign made the bulk runner Rust-only, so the extractor and its CI
+step are gone and the fixture is a regression test the core owns: change
+its outputs, the NDJSON frames in each expected body included, with
+`PT_BLESS=1` and review the diff (see "Rust-owned fixtures" under the
+gates above); a case written with inputs only gets the six tables the
+recorded cases dump. Cooperative control mid-run is exercised through
+the network stub: a case's `hooks` name a fetch at which the stub first
+calls the PATCH route — a cancel then aborts that request, reported the
+way `fetch` reports an aborted one — or, with `afterMs`, a moment after
+the reply is served, during the backoff sleep. 46 cases: the POST busy
+on the mutex and on a leftover blob, over no apps, over two apps,
+throttled once
 (backoff, retry) and twice (paused), with one app failing, forced over a
 paused queue, a stale lock and a running one, cancelled mid-run, the
 overwritten pause and the backoff-window pause, and the burst; the same
@@ -2288,7 +2371,9 @@ pending pause, a cancelled queue, a stale lock, a finished queue, a
 crashed run (the in-flight app redone) and a queue naming a deleted app;
 and, appended with the fix that records a resumed run's initiator, the
 PATCH resume of a queue a restart had resumed, which is the user's run
-again (`manual`, not `resume`).
+again (`manual`, not `resume`); and, appended with the transport fix, a
+refused connection backing off for the default five minutes (cancelled
+during the wait) and a refusal on the retry pausing the queue.
 `core/src/server/wayback_runner_tests.rs` replays each through a shared
 id counter and a hooked fetcher that issues the same PATCH at the same
 fetch (stalling a cancelled request as an aborted one never returns) and
@@ -2296,8 +2381,10 @@ yields once per fetch, as Node's stub resolves on the next turn.
 
 Live: the POST is quarantined in the manifest (it crawls archive.org),
 and the PATCH and DELETE have no manifest entries; all three are gated
-by the oracle alone. The gate itself changed shape for this batch: the
-core now boots the same healers Node does, and its first run against
+by the fixture alone. Since the Wayback redesign the GET is quarantined
+too, as its body is Rust-only: the differ holds its status with a HEAD
+probe. The gate itself changed shape for this batch: the core now boots
+the same healers Node does, and its first run against
 the harness healed a "broken blob, held mutex" fixture the operations
 probes plant — a row Node never writes, because its healer ran at its
 own boot, before the fixture existed. `read-parity.mjs` therefore waits

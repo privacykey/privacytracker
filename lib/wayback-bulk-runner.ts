@@ -97,16 +97,21 @@ const activeRunAbortControllers = new Map<string, AbortController>();
 
 /**
  * archive.org throttling (429 / 5xx from the index, availability, or replay
- * endpoints). The first strike waits out `Retry-After` (bounded) and retries
- * the same app; a second consecutive strike pauses the queue — the state
- * blob keeps every unprocessed app as `pending`, so "Resume queue" later
- * picks up exactly where the archive cut us off. Without this a throttled
- * bulk run used to march through the whole fleet recording silent misses.
+ * endpoints, or a connection it refuses outright). The first strike waits
+ * out `Retry-After` (bounded) and retries the same app; a second
+ * consecutive strike pauses the queue — the state blob keeps every
+ * unprocessed app as `pending`, so "Resume queue" later picks up exactly
+ * where the archive cut us off. Without this a throttled bulk run used to
+ * march through the whole fleet recording silent misses.
+ *
+ * With no `Retry-After` (always the case for a refused connection) the wait
+ * is five minutes: archive.org's blocks have been reported to last about
+ * that long, so a shorter retry lands inside the block and only extends it.
  */
 const MAX_RATE_LIMIT_RETRIES = 1;
 const RATE_LIMIT_MIN_BACKOFF_MS = 1_000;
-const RATE_LIMIT_DEFAULT_BACKOFF_MS = 30_000;
-const RATE_LIMIT_MAX_BACKOFF_MS = 120_000;
+const RATE_LIMIT_DEFAULT_BACKOFF_MS = 300_000;
+const RATE_LIMIT_MAX_BACKOFF_MS = 900_000;
 
 export function rateLimitBackoffMs(retryAfterMs: number | null): number {
   const requested = retryAfterMs ?? RATE_LIMIT_DEFAULT_BACKOFF_MS;

@@ -10,19 +10,42 @@
  * server picked an interrupted run back up on boot), and the previous
  * run's summary otherwise.
  *
+ * On the Rust runner the run line names its phase (checking the archive
+ * index, then reading archived pages), and the card adds what the survey
+ * found, the time left, the wait while archive.org has asked it to slow
+ * down, and totals in apps and label changes. Each comes from an
+ * optional field (lib/wayback-run-progress.ts); without them, as on the
+ * Node rollback, the card is the checkpoint tally it always was.
+ *
  * Anchor id `wayback-import` matches the SettingsSidebar entry — see
  * ./README.md.
  */
 
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
+import { useDateFormat } from "@/lib/date-format-hook";
 import type { useSettingsAutoSave } from "@/lib/use-settings-auto-save";
+import {
+  type WaybackAppTotals,
+  type WaybackLiveProgress,
+  waybackEtaMs,
+  waybackLateStartApps,
+  waybackLead,
+  waybackSurveyLine,
+  waybackTally,
+  waybackWaitUntil,
+} from "@/lib/wayback-run-progress";
+import {
+  describeWaybackDuration,
+  formatWaybackClockTime,
+} from "@/lib/wayback-time";
 import { fmtRelativeTime } from "./format";
 import type {
   WaybackLastRun,
   WaybackPauseCause,
-  WaybackProgress,
   WaybackRunStatus,
 } from "./types";
+import "./wayback-import.css";
 
 export default function WaybackImportSection({
   waybackRunning,
@@ -42,7 +65,7 @@ export default function WaybackImportSection({
   setWaybackRemoveOpen,
 }: {
   waybackRunning: boolean;
-  waybackProgress: WaybackProgress | null;
+  waybackProgress: WaybackLiveProgress | null;
   waybackSummary: string | null;
   waybackRunStatus: WaybackRunStatus;
   /** 'resume' means the server restarted an interrupted run by itself. */
@@ -50,7 +73,9 @@ export default function WaybackImportSection({
   /** 'rate_limited' means the runner parked the queue itself because
    *  archive.org was throttling; the card says so and suggests waiting. */
   waybackPauseCause: WaybackPauseCause;
-  waybackLastRun: WaybackLastRun | null;
+  waybackLastRun:
+    | (WaybackLastRun & { appTotals?: WaybackAppTotals | null })
+    | null;
   waybackControlBusy: null | "pause" | "resume" | "cancel" | "force";
   controlWaybackImport: (action: "pause" | "resume" | "cancel") => void;
   runBulkWaybackImport: (options?: { force?: boolean }) => void;
@@ -63,6 +88,37 @@ export default function WaybackImportSection({
   const tSettings = useTranslations("settings");
   const tTime = useTranslations("settings.time");
   const tWayback = useTranslations("settings.wayback");
+  const dateMode = useDateFormat();
+
+  // The redesign's run details. Each is null when its field is absent.
+  const now = Date.now();
+  const lead = waybackLead(waybackProgress);
+  const surveyLine = waybackSurveyLine(waybackProgress);
+  const tally = waybackTally(waybackProgress);
+  const running =
+    waybackRunStatus === "running" || waybackRunStatus === "pause_requested";
+  const waitUntil = running ? waybackWaitUntil(waybackProgress, now) : null;
+  const eta = running
+    ? describeWaybackDuration(waybackEtaMs(waybackProgress) ?? 0)
+    : null;
+  const lastRunApps = waybackLastRun?.appTotals ?? null;
+  // Apps whose archived history starts late (coverage): each is checked on
+  // its own page, where an older App Store address can be added.
+  const lateApps = waybackLateStartApps(waybackProgress?.appTotals);
+  const lastRunLateApps = waybackLateStartApps(lastRunApps);
+  // Re-render once the wait is over, so its line never claims a time that
+  // has passed while the next frame or poll is still on its way.
+  const [, setWaitTick] = useState(0);
+  useEffect(() => {
+    if (waitUntil === null) {
+      return;
+    }
+    const id = window.setTimeout(
+      () => setWaitTick((n) => n + 1),
+      Math.max(0, waitUntil - Date.now()) + 250
+    );
+    return () => window.clearTimeout(id);
+  }, [waitUntil]);
 
   return (
     <div className="settings-section" id="wayback-import">
@@ -329,80 +385,145 @@ export default function WaybackImportSection({
                 ) : (
                   <span aria-hidden="true" className="spinner" />
                 )}
-                <strong style={{ color: "var(--text-1)" }}>
-                  {waybackRunStatus === "pause_requested"
-                    ? tWayback("pause_requested")
-                    : waybackRunStatus === "cancel_requested"
-                      ? tWayback("cancel_requested")
-                      : waybackRunStatus === "paused"
-                        ? tWayback("paused_progress")
-                        : waybackProgress.total > 0
-                          ? tWayback("progress_lead", {
-                              current: Math.min(
-                                waybackProgress.index,
-                                waybackProgress.total
-                              ),
-                              total: waybackProgress.total,
-                            })
-                          : tWayback("starting")}
-                </strong>
-                {waybackProgress.currentAppName ? (
-                  <span style={{ color: "var(--text-2)" }}>
-                    · {waybackProgress.currentAppName}
-                  </span>
-                ) : null}
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 12,
-                  color: "var(--text-2)",
-                }}
-              >
-                <span>
+                {/* One text flow, so a long phase line wraps with the app
+                    name after it instead of squeezing the name on a phone. */}
+                <span className="wayback-run-lead">
                   <strong style={{ color: "var(--text-1)" }}>
-                    {waybackProgress.imported}
-                  </strong>{" "}
-                  {tWayback("stat_imported")}
+                    {waybackRunStatus === "pause_requested"
+                      ? tWayback("pause_requested")
+                      : waybackRunStatus === "cancel_requested"
+                        ? tWayback("cancel_requested")
+                        : waybackRunStatus === "paused"
+                          ? tWayback("paused_progress")
+                          : lead
+                            ? tWayback(lead.key, lead.values)
+                            : waybackProgress.total > 0
+                              ? tWayback("progress_lead", {
+                                  current: Math.min(
+                                    waybackProgress.index,
+                                    waybackProgress.total
+                                  ),
+                                  total: waybackProgress.total,
+                                })
+                              : tWayback("starting")}
+                  </strong>
+                  {waybackProgress.currentAppName ? (
+                    <span className="wayback-run-lead-app">
+                      · {waybackProgress.currentAppName}
+                    </span>
+                  ) : null}
                 </span>
-                {waybackProgress.unchanged > 0 ? (
+              </div>
+              {/* The runner is waiting out archive.org's limit and carries
+                  on by itself. Announced, since nothing else on the card
+                  moves while it waits. */}
+              {waitUntil === null ? null : (
+                <div className="wayback-run-wait" role="status">
+                  <span aria-hidden="true">⏳</span>
                   <span>
-                    <strong style={{ color: "var(--text-1)" }}>
-                      {waybackProgress.unchanged}
-                    </strong>{" "}
-                    {tWayback("stat_no_op")}
+                    <strong>
+                      {tWayback("waiting", {
+                        time: formatWaybackClockTime(waitUntil, dateMode, now),
+                      })}
+                    </strong>
+                    <span className="wayback-run-wait-body">
+                      {tWayback("waiting_body")}
+                    </span>
                   </span>
-                ) : null}
-                {waybackProgress.skipped > 0 ? (
+                </div>
+              )}
+              {surveyLine ? (
+                <div className="wayback-run-detail">
+                  {tWayback(surveyLine.key, surveyLine.values)}
+                </div>
+              ) : null}
+              {eta ? (
+                <div className="wayback-run-detail">
+                  {"values" in eta
+                    ? tWayback(eta.key, eta.values)
+                    : tWayback(eta.key)}
+                </div>
+              ) : null}
+              {lateApps ? (
+                <div className="wayback-run-detail">
+                  {tWayback("late_apps", { count: lateApps })}
+                </div>
+              ) : null}
+              {/* Nothing has been read while the survey runs, so no tally. */}
+              {tally.kind === "none" ? null : tally.kind === "apps" ? (
+                <div className="wayback-run-tally">
                   <span>
-                    <strong style={{ color: "var(--text-1)" }}>
-                      {waybackProgress.skipped}
-                    </strong>{" "}
-                    {tWayback("stat_skipped")}
+                    <strong>{tally.changes}</strong>{" "}
+                    {tWayback("stat_changes", { count: tally.changes })}
                   </span>
-                ) : null}
-                <span
+                  {tally.reads > 0 ? (
+                    <span>
+                      <strong>{tally.reads}</strong>{" "}
+                      {tWayback("stat_reads", { count: tally.reads })}
+                    </span>
+                  ) : null}
+                  {tally.appsFailed > 0 ? (
+                    <span className="wayback-run-failed">
+                      <strong>{tally.appsFailed}</strong>{" "}
+                      {tWayback("stat_apps_failed", {
+                        count: tally.appsFailed,
+                      })}
+                    </span>
+                  ) : null}
+                </div>
+              ) : (
+                <div
                   style={{
-                    color:
-                      waybackProgress.failed > 0
-                        ? "var(--danger, #b91c1c)"
-                        : undefined,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 12,
+                    color: "var(--text-2)",
                   }}
                 >
-                  <strong
+                  <span>
+                    <strong style={{ color: "var(--text-1)" }}>
+                      {waybackProgress.imported}
+                    </strong>{" "}
+                    {tWayback("stat_imported")}
+                  </span>
+                  {waybackProgress.unchanged > 0 ? (
+                    <span>
+                      <strong style={{ color: "var(--text-1)" }}>
+                        {waybackProgress.unchanged}
+                      </strong>{" "}
+                      {tWayback("stat_no_op")}
+                    </span>
+                  ) : null}
+                  {waybackProgress.skipped > 0 ? (
+                    <span>
+                      <strong style={{ color: "var(--text-1)" }}>
+                        {waybackProgress.skipped}
+                      </strong>{" "}
+                      {tWayback("stat_skipped")}
+                    </span>
+                  ) : null}
+                  <span
                     style={{
                       color:
                         waybackProgress.failed > 0
                           ? "var(--danger, #b91c1c)"
-                          : "var(--text-1)",
+                          : undefined,
                     }}
                   >
-                    {waybackProgress.failed}
-                  </strong>{" "}
-                  {tWayback("stat_failed")}
-                </span>
-              </div>
+                    <strong
+                      style={{
+                        color:
+                          waybackProgress.failed > 0
+                            ? "var(--danger, #b91c1c)"
+                            : "var(--text-1)",
+                      }}
+                    >
+                      {waybackProgress.failed}
+                    </strong>{" "}
+                    {tWayback("stat_failed")}
+                  </span>
+                </div>
+              )}
             </div>
           ) : waybackLastRun ? (
             <div>
@@ -465,7 +586,36 @@ export default function WaybackImportSection({
                   </span>
                 ) : null}
               </div>
-              {waybackLastRun.totals ? (
+              {lastRunApps ? (
+                // The run in apps and label changes. A run that hit
+                // failures still reads "Partial" in the pill above; the
+                // activity log has the per-app detail.
+                <div className="wayback-run-tally">
+                  <span>
+                    <strong>{lastRunApps.appsDone}</strong>{" "}
+                    {tWayback("stat_apps_checked", {
+                      count: lastRunApps.appsDone,
+                    })}
+                  </span>
+                  <span>
+                    <strong>{lastRunApps.changes}</strong>{" "}
+                    {tWayback("stat_changes", { count: lastRunApps.changes })}
+                  </span>
+                  {lastRunApps.appsNoArchive > 0 ? (
+                    <span>
+                      <strong>{lastRunApps.appsNoArchive}</strong>{" "}
+                      {tWayback("stat_no_archive", {
+                        count: lastRunApps.appsNoArchive,
+                      })}
+                    </span>
+                  ) : null}
+                  {lastRunLateApps ? (
+                    <span className="wayback-run-late">
+                      {tWayback("late_apps", { count: lastRunLateApps })}
+                    </span>
+                  ) : null}
+                </div>
+              ) : waybackLastRun.totals ? (
                 <div
                   style={{
                     display: "flex",

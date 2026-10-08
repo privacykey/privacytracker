@@ -1,14 +1,21 @@
 /**
  * Import-pipeline oracle for the Rust server (Phase 4, batch 3).
  *
- * Runs the REAL Next handlers of the twelve import-pipeline writes — the
- * `POST`/`DELETE` exports of ten route files: the import session and its
+ * Runs the REAL Next handlers of the ten import-pipeline writes — the
+ * `POST`/`DELETE` exports of nine route files: the import session and its
  * items, the item update, the queue drain, the completion, the per-item
- * retry and match change, the iTunes search, the App Store scrape and the
- * per-app Wayback import — against a scratch database and records, per
- * case, the request, the setup rows, every raw fetch (URL and headers),
- * every write in order with its transaction markers, the fourteen tables
- * an import write can touch, and the wire response.
+ * retry and match change, the iTunes search and the App Store scrape —
+ * against a scratch database and records, per case, the request, the setup
+ * rows, every raw fetch (URL and headers), every write in order with its
+ * transaction markers, the fourteen tables an import write can touch, and
+ * the wire response.
+ *
+ * The per-app Wayback import route, `/api/apps/[id]/import-history`, was
+ * recorded here too until its import became Rust-only (the change-finding
+ * redesign, docs/WAYBACK_IMPORT.md): Node no longer does what the route
+ * does, so its fifteen cases moved to
+ * `core/tests/fixtures/import-history-route-cases.json`, which the Rust
+ * replay owns and blesses (`PT_BLESS=1`, core/src/bless.rs).
  *
  * The network is a stub: each case lists its replies in the order the
  * handler will ask for them, exactly as the Phase 3 fetch, search and
@@ -128,7 +135,6 @@ const ROUTES = [
   "imports/items/change-match",
   "search",
   "scrape",
-  "apps/[id]/import-history",
 ];
 const handlers = {};
 for (const route of ROUTES) {
@@ -251,17 +257,6 @@ const notification = (id, appId) =>
     "[]",
     1_700_000_000_000
   );
-const snapshot = (id, appId, scrapedAt, source, triggeredBy) =>
-  stmt(
-    "INSERT INTO privacy_snapshots (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary, source, triggered_by) VALUES (?, ?, ?, ?, 0, ?, ?, ?)",
-    id,
-    appId,
-    scrapedAt,
-    "[]",
-    "[]",
-    source,
-    triggeredBy
-  );
 const privacyType = (id, appId) =>
   stmt(
     "INSERT INTO privacy_types (id, app_id, identifier, title) VALUES (?, ?, ?, ?)",
@@ -296,8 +291,6 @@ const page = (name, types = [LINKED]) => {
   });
   return `<!doctype html><html><head><meta property="og:title" content="${name} on the App Store"><meta property="og:image" content="https://example.com/icon.png"><script type="application/ld+json">{"author":{"@type":"Organization","name":"Fixture Dev"}}</script></head><body><a aria-label="Developer's Privacy Policy" href="https://example.com/privacy">Privacy Policy</a><script id="serialized-server-data" type="application/json">${blob}</script></body></html>`;
 };
-const archivedPage = (types) =>
-  `<html><head><script id="serialized-server-data">${JSON.stringify({ data: [{ data: { shelfMapping: { privacyTypes: { items: types } } } }] })}</script></head><body></body></html>`;
 const html = (body, headers = {}) => ({
   status: 200,
   headers: { "content-type": "text/html; charset=utf-8", ...headers },
@@ -339,21 +332,6 @@ const candidate = (n, over = {}) => ({
   contentAdvisoryRating: "4+",
   ...over,
 });
-const ts = (y, mo, d, h = 12) =>
-  `${y}${String(mo).padStart(2, "0")}${String(d).padStart(2, "0")}${String(h).padStart(2, "0")}0000`;
-const cdx = (timestamps) =>
-  json([["timestamp", "statuscode"], ...timestamps.map((t) => [t, "200"])]);
-// Targets walk back from today in interval steps, so the newest quarterly
-// target is mid-June: one capture within 45 days of it, but more than 45
-// days before today, is one index read, one replay, then Save Page Now.
-const SAVE_OK = status(302, {
-  location: `https://web.archive.org/web/${ts(2026, 9, 15)}/${url(F1)}`,
-});
-const ARCHIVE_RUN = [
-  cdx([ts(2026, 7, 20)]),
-  html(archivedPage([LINKED, TRACKING])),
-  SAVE_OK,
-];
 
 // ── The runner ───────────────────────────────────────────────────────
 const quiet = ["error", "warn", "info", "log"];
@@ -1582,115 +1560,10 @@ try {
   }
 
   // ── /api/apps/[id]/import-history ────────────────────────────────
-  {
-    const route = "/api/apps/[id]/import-history";
-    const base = [app(F1, "Fixture One")];
-    await run("history import manifest body", {
-      route,
-      method: "POST",
-      param: F1,
-      setup: base,
-      json: {},
-      replies: ARCHIVE_RUN,
-    });
-    await run("history import forced with interval", {
-      route,
-      method: "POST",
-      param: F1,
-      setup: base,
-      json: { intervalMonths: 6.9, force: true },
-      replies: ARCHIVE_RUN,
-    });
-    await run("history import six-month cadence", {
-      route,
-      method: "POST",
-      param: F1,
-      setup: base,
-      json: { intervalMonths: 6 },
-      replies: [cdx([ts(2026, 7, 20)]), SAVE_OK],
-    });
-    await run("history import interval out of range", {
-      route,
-      method: "POST",
-      param: F1,
-      setup: base,
-      json: { intervalMonths: 7, force: "yes" },
-      replies: ARCHIVE_RUN,
-    });
-    await run("history import archive rate limited", {
-      route,
-      method: "POST",
-      param: F1,
-      setup: base,
-      json: { force: true },
-      replies: [status(429, { "retry-after": "30" })],
-    });
-    await run("history import archive unavailable", {
-      route,
-      method: "POST",
-      param: F1,
-      setup: base,
-      replies: [status(503)],
-    });
-    await run("history import app not found", {
-      route,
-      method: "POST",
-      param: "999",
-      setup: base,
-    });
-    await run("history import app without url", {
-      route,
-      method: "POST",
-      param: A1,
-      setup: [app(A1, "No URL", { url: "" })],
-    });
-    await run("history import invalid body falls back", {
-      route,
-      method: "POST",
-      param: F1,
-      setup: base,
-      raw: "{bad",
-      replies: ARCHIVE_RUN,
-    });
-    await run("history import declared too large", {
-      route,
-      method: "POST",
-      param: F1,
-      setup: base,
-      json: {},
-      contentLength: 4097,
-    });
-    await run("history import throttled", {
-      route,
-      method: "POST",
-      param: "999",
-      repeat: 4,
-    });
-    await run("history remove", {
-      route,
-      method: "DELETE",
-      param: F1,
-      setup: [
-        ...base,
-        app(F2, "Fixture Two"),
-        snapshot("s1", F1, now - 3 * DAY, "wayback", "wayback"),
-        snapshot("s2", F1, now - 2 * DAY, "live", "wayback"),
-        snapshot("s3", F1, now - DAY, "live", "manual"),
-        snapshot("s4", F2, now - DAY, "wayback", "wayback"),
-      ],
-    });
-    await run("history remove nothing", {
-      route,
-      method: "DELETE",
-      param: F1,
-      setup: base,
-    });
-    await run("history remove app not found", {
-      route,
-      method: "DELETE",
-      param: "999",
-    });
-  }
+  // Moved to core/tests/fixtures/import-history-route-cases.json (see the
+  // header). Its fourteen cases still take their forwarded addresses, so
+  // every later case keeps its own.
+  ipCounter += 14;
 
   // ── The immediate webhook on every path that scrapes ─────────────
   // A scrape that records label changes posts the immediate webhook once
@@ -1768,21 +1641,10 @@ try {
       replies: [...changed("Fixture One"), HOOK_OK],
       settle: true,
     });
-    // The Wayback importer writes changed snapshots but raises no bell, so
-    // it posts nothing either.
-    await run("history import with label changes posts no webhook", {
-      route: "/api/apps/[id]/import-history",
-      method: "POST",
-      param: F1,
-      setup: [
-        ...webhook,
-        app(F1, "Fixture One"),
-        snapshot("s-live", F1, Date.UTC(2026, 0, 10), "live", "import"),
-      ],
-      json: {},
-      replies: ARCHIVE_RUN,
-      settle: true,
-    });
+    // "history import with label changes posts no webhook" moved to
+    // import-history-route-cases.json with the rest of its route; its
+    // forwarded address stays taken.
+    ipCounter += 1;
   }
 
   // ── Appended last (each case's forwarded address comes from a counter,

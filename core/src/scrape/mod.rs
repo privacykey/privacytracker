@@ -18,6 +18,9 @@
 
 pub mod accessibility;
 mod activity;
+pub(crate) mod archive_pacer;
+#[cfg(test)]
+mod archive_pacer_tests;
 pub mod fetch;
 #[cfg(test)]
 pub(crate) mod fetch_tests;

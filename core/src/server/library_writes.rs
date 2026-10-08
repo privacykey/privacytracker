@@ -1970,6 +1970,7 @@ pub(super) fn orphan_sweep_app(cx: &mut Cx, app_id: &str) -> Result<bool, String
         return Ok(false);
     }
     cx.w.run(DELETE_APP, vec![json!(app_id)])?;
+    super::wayback_runner::forget_app_settings(cx.w, app_id)?;
     Ok(true)
 }
 
