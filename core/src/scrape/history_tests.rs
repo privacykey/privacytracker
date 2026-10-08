@@ -427,3 +427,607 @@ fn bulk_options_hold_the_index_and_skip_save_now_and_probes() {
         }
     }
 }
+
+/// The change-finding walk end to end, through the stub archive and the
+/// real transport: what it reads, the rows it stores, and the result.
+mod change_finding {
+    use super::Routed;
+    use crate::scrape::{
+        history::{import_app_history, AppRow, HistoryError, HistoryOptions},
+        persist::Locked,
+        persist_tests::CountingIds,
+        wayback::{extract_timestamp, format_timestamp, parse_timestamp_ms},
+    };
+    use rusqlite::Connection;
+    use serde_json::{json, Value};
+    use std::{path::Path, sync::Mutex};
+
+    const DAY: i64 = 24 * 60 * 60 * 1000;
+    /// 2021-03-01T12:00:00Z.
+    const MARCH_2021: i64 = 1_614_600_000_000;
+    /// 2026-03-01T12:00:00Z: five years of noon captures end the day
+    /// before, so the yearly skeleton is days 0, 365, 730, 1096, 1461, 1825.
+    const TODAY: i64 = MARCH_2021 + 1826 * DAY;
+    const APP_URL: &str = "https://apps.apple.com/us/app/fixture/id555000111";
+
+    fn day(n: i64) -> i64 {
+        MARCH_2021 + n * DAY
+    }
+
+    fn day_of(ms: i64) -> i64 {
+        (ms - MARCH_2021) / DAY
+    }
+
+    fn stamp(n: i64) -> String {
+        format!("{}120000", format_timestamp(day(n)))
+    }
+
+    fn html(status: u16, body: String) -> Value {
+        json!({"status": status, "headers": {"content-type": "text/html"}, "body": body})
+    }
+
+    /// A product page with label set `v`: one type collecting `v + 1`
+    /// categories, so every `v` is a version of its own.
+    fn labelled(v: usize) -> Value {
+        let categories: Vec<Value> = (0..=v)
+            .map(|c| json!({"identifier": format!("C{c}"), "title": format!("C{c}")}))
+            .collect();
+        let data = json!({"data": [{"data": {"shelfMapping": {"privacyTypes": {"items": [{
+            "identifier": "DATA_LINKED_TO_YOU",
+            "title": "Data Linked to You",
+            "categories": categories,
+        }]}}}}]});
+        html(
+            200,
+            format!(
+                r#"<html><head><script id="serialized-server-data">{data}</script></head><body></body></html>"#
+            ),
+        )
+    }
+
+    /// The label set in force on day `d`, given the days labels changed.
+    fn version(changes: &[i64], d: i64) -> usize {
+        changes.iter().filter(|&&c| c <= d).count()
+    }
+
+    /// A CDX index of these days and, for each, the replay `page` gives.
+    fn archive(days: impl IntoIterator<Item = i64>, page: impl Fn(i64) -> Value) -> Value {
+        let mut rows = vec![json!(["timestamp", "statuscode"])];
+        let mut replay = serde_json::Map::new();
+        for d in days {
+            rows.push(json!([stamp(d), "200"]));
+            replay.insert(stamp(d), page(d));
+        }
+        json!({
+            "cdx": {
+                "status": 200,
+                "headers": {"content-type": "application/json"},
+                "body": Value::Array(rows).to_string(),
+            },
+            "replay": replay,
+        })
+    }
+
+    fn database() -> Mutex<Connection> {
+        let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
+        conn.execute(
+            "INSERT INTO apps (id, name, url, firstSeen, lastSynced) VALUES (?, ?, ?, 0, 0)",
+            ["555000111", "Fixture", APP_URL],
+        )
+        .unwrap();
+        Mutex::new(conn)
+    }
+
+    struct Run {
+        outcome: Result<Value, HistoryError>,
+        urls: Vec<String>,
+    }
+
+    impl Run {
+        fn result(&self) -> &Value {
+            self.outcome.as_ref().expect("the import succeeds")
+        }
+
+        /// The days of the archived pages read, in order.
+        fn read_days(&self) -> Vec<i64> {
+            self.urls
+                .iter()
+                .filter_map(|url| extract_timestamp(url))
+                .filter_map(|ts| parse_timestamp_ms(Some(&ts)))
+                .map(day_of)
+                .collect()
+        }
+    }
+
+    fn import(
+        conn: &Mutex<Connection>,
+        replies: &Value,
+        options: &HistoryOptions,
+        now: i64,
+        ids: &mut CountingIds,
+    ) -> Run {
+        let app = AppRow {
+            id: "555000111".to_string(),
+            name: "Fixture".to_string(),
+            url: APP_URL.to_string(),
+        };
+        let routed = Routed {
+            replies: replies.clone(),
+            calls: Mutex::new(vec![]),
+        };
+        let mut db = Locked {
+            conn,
+            log: None,
+            on_wait: None,
+        };
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let outcome = rt.block_on(import_app_history(
+            &mut db, &routed, &app, options, now, ids, None,
+        ));
+        let urls = routed
+            .calls
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|c| c["url"].as_str().unwrap().to_string())
+            .collect();
+        Run { outcome, urls }
+    }
+
+    fn ids() -> CountingIds {
+        CountingIds {
+            prefix: "00000000-0000-4000-8000-",
+            next: 0,
+        }
+    }
+
+    /// The wayback rows as (day, changes_detected), oldest first.
+    fn rows(conn: &Mutex<Connection>) -> Vec<(i64, i64)> {
+        conn.lock()
+            .unwrap()
+            .prepare(
+                "SELECT scraped_at, changes_detected FROM privacy_snapshots
+                  WHERE source = 'wayback' ORDER BY scraped_at",
+            )
+            .unwrap()
+            .query_map([], |r| Ok((day_of(r.get(0)?), r.get(1)?)))
+            .unwrap()
+            .collect::<Result<_, _>>()
+            .unwrap()
+    }
+
+    fn windows(result: &Value) -> Vec<(i64, i64)> {
+        result["windows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|w| {
+                (
+                    day_of(w["fromMs"].as_i64().unwrap()),
+                    day_of(w["toMs"].as_i64().unwrap()),
+                )
+            })
+            .collect()
+    }
+
+    fn counts(result: &Value) -> [i64; 6] {
+        [
+            "attempted",
+            "imported",
+            "unchanged",
+            "skipped",
+            "failed",
+            "snapshotsRequested",
+        ]
+        .map(|k| result[k].as_i64().unwrap())
+    }
+
+    const CHANGES: [i64; 2] = [400, 1300];
+
+    fn five_years() -> Value {
+        archive(0..=1825, |d| labelled(version(&CHANGES, d)))
+    }
+
+    #[test]
+    fn change_rows_land_on_the_captures_that_bracket_each_change() {
+        let conn = database();
+        let run = import(
+            &conn,
+            &five_years(),
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids(),
+        );
+        let result = run.result();
+        // The index, the six skeleton pages, then six reads per change.
+        assert_eq!(run.urls.len(), 19);
+        assert!(run.urls[0].starts_with("https://web.archive.org/cdx/search/cdx?"));
+        assert_eq!(
+            run.read_days(),
+            [0, 365, 730, 1096, 1461, 1825, 547, 456, 410, 387, 398, 404]
+                .into_iter()
+                .chain([1278, 1369, 1323, 1300, 1289, 1294])
+                .collect::<Vec<_>>()
+        );
+        // The baseline, both sides of each change, the newest.
+        assert_eq!(
+            rows(&conn),
+            vec![(0, 0), (398, 0), (404, 1), (1294, 0), (1300, 1), (1825, 0)]
+        );
+        assert_eq!(windows(result), vec![(398, 404), (1294, 1300)]);
+        assert_eq!(
+            (
+                &result["reads"],
+                &result["changes"],
+                &result["labelVersions"]
+            ),
+            (&json!(18), &json!(2), &json!(3))
+        );
+        assert_eq!(
+            (&result["firstCaptureMs"], &result["lastCaptureMs"]),
+            (&json!(day(0)), &json!(day(1825)))
+        );
+        // Every read is a target; the six stored are imported or unchanged.
+        assert_eq!(counts(result), [18, 3, 3, 0, 0, 0]);
+        let targets = result["targets"].as_array().unwrap();
+        let phases: Vec<&str> = targets
+            .iter()
+            .map(|t| t["phase"].as_str().unwrap())
+            .collect();
+        assert_eq!(phases[..6], ["skeleton"; 6]);
+        assert_eq!(phases[6..], ["bisect"; 12]);
+        let change = targets
+            .iter()
+            .find(|t| t["captureDate"] == json!(day(404)))
+            .unwrap();
+        assert_eq!(
+            change,
+            &json!({
+                "targetDate": day(404),
+                "outcome": "imported",
+                "captureDate": day(404),
+                "waybackUrl": format!("https://web.archive.org/web/{}/{APP_URL}", stamp(404)),
+                "changeCount": 1,
+                "phase": "bisect",
+            })
+        );
+        assert_eq!(
+            targets.iter().filter(|t| t["outcome"] == "sampled").count(),
+            12
+        );
+    }
+
+    #[test]
+    fn a_stable_app_costs_the_skeleton() {
+        let conn = database();
+        let replies = archive(0..=1825, |_| labelled(0));
+        let run = import(
+            &conn,
+            &replies,
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids(),
+        );
+        assert_eq!(run.read_days(), vec![0, 365, 730, 1096, 1461, 1825]);
+        assert_eq!(rows(&conn), vec![(0, 0), (1825, 0)]);
+        let result = run.result();
+        assert_eq!(counts(result), [6, 1, 1, 0, 0, 0]);
+        assert_eq!(
+            (
+                &result["reads"],
+                &result["changes"],
+                &result["labelVersions"]
+            ),
+            (&json!(6), &json!(0), &json!(1))
+        );
+        assert_eq!(result["windows"], json!([]));
+    }
+
+    #[test]
+    fn a_change_that_reverts_between_skeleton_reads_is_missed() {
+        // Days 500 to 600 carry other labels. Days 365 and 730 agree, so the
+        // yearly skeleton never looks between them: the contract accepts
+        // this, as the quarterly sweep missed one inside a quarter.
+        let replies = archive(0..=1825, |d| {
+            labelled(usize::from((500..=600).contains(&d)))
+        });
+        let conn = database();
+        let yearly = import(
+            &conn,
+            &replies,
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids(),
+        );
+        assert_eq!(yearly.result()["changes"], 0);
+        assert_eq!(rows(&conn), vec![(0, 0), (1825, 0)]);
+
+        // A denser cadence buys the density: a quarterly date lands inside.
+        let conn = database();
+        let quarterly = HistoryOptions {
+            interval_months: Some(3.0),
+            ..HistoryOptions::default()
+        };
+        let dense = import(&conn, &replies, &quarterly, TODAY, &mut ids());
+        let found = windows(dense.result());
+        assert_eq!(found.len(), 2, "{found:?}");
+        assert!(found[0].0 < 500 && 500 <= found[0].1 && found[0].1 - found[0].0 <= 7);
+        assert!(found[1].0 <= 600 && 600 < found[1].1 && found[1].1 - found[1].0 <= 7);
+    }
+
+    #[test]
+    fn unusable_captures_hand_over_to_the_next_nearest() {
+        // Day 0's replay is a 404, so the baseline is day 1. The first
+        // midpoint is no product page and the next nearest has no labels,
+        // which after day 0 makes it unusable too: that change stays as
+        // wide as the skeleton left it.
+        let replies = archive(0..=1825, |d| {
+            match d {
+            0 => html(404, String::new()),
+            547 => html(200, "<html><body>Not archived.</body></html>".to_string()),
+            548 => html(
+                200,
+                r#"<html><head><script id="serialized-server-data">{"data":[]}</script></head></html>"#
+                    .to_string(),
+            ),
+            _ => labelled(version(&[400], d)),
+        }
+        });
+        let conn = database();
+        let run = import(
+            &conn,
+            &replies,
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids(),
+        );
+        assert_eq!(
+            run.read_days(),
+            vec![0, 1, 365, 730, 1096, 1461, 1825, 547, 548]
+        );
+        assert_eq!(rows(&conn), vec![(1, 0), (365, 0), (730, 1), (1825, 0)]);
+        let result = run.result();
+        assert_eq!(windows(result), vec![(365, 730)]);
+        // The 404 and the stray page failed; the page without labels is
+        // skipped, as it always was.
+        assert_eq!(counts(result), [9, 2, 2, 1, 2, 0]);
+        let outcomes: Vec<(&str, Option<&str>)> = result["targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|t| {
+                !matches!(
+                    t["outcome"].as_str(),
+                    Some("imported" | "unchanged" | "sampled")
+                )
+            })
+            .map(|t| (t["outcome"].as_str().unwrap(), t["errorMessage"].as_str()))
+            .collect();
+        assert_eq!(
+            outcomes,
+            vec![
+                (
+                    "skipped_fetch_failure",
+                    Some("archive replay returned HTTP 404")
+                ),
+                ("skipped_parse_failure", None),
+                ("skipped_no_labels", None),
+            ]
+        );
+    }
+
+    #[test]
+    fn stored_rows_are_the_next_runs_samples() {
+        let conn = database();
+        let mut ids = ids();
+        let first = import(
+            &conn,
+            &five_years(),
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids,
+        );
+        assert_eq!(first.read_days().len(), 18);
+        let stored = rows(&conn);
+
+        // Every skeleton date is near a stored row or between two that
+        // agree, and both changes are settled: only the index is asked.
+        let again = import(
+            &conn,
+            &five_years(),
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids,
+        );
+        assert_eq!(again.urls.len(), 1);
+        let result = again.result();
+        assert_eq!(counts(result), [6, 0, 0, 6, 0, 0]);
+        assert_eq!(windows(result), vec![(398, 404), (1294, 1300)]);
+        assert_eq!(
+            (&result["reads"], &result["changes"]),
+            (&json!(0), &json!(2))
+        );
+        assert_eq!(rows(&conn), stored);
+
+        // Two and a half months on, with newer captures: the newest is the
+        // one page read, and it is stored.
+        let later = archive(0..=1900, |d| labelled(version(&CHANGES, d)));
+        let run = import(
+            &conn,
+            &later,
+            &HistoryOptions::default(),
+            day(1901),
+            &mut ids,
+        );
+        assert_eq!(run.read_days(), vec![1900]);
+        assert_eq!(rows(&conn).last(), Some(&(1900, 0)));
+        assert_eq!(run.result()["changes"], 2);
+    }
+
+    #[test]
+    fn force_reads_again_but_never_stores_a_capture_twice() {
+        let conn = database();
+        let mut ids = ids();
+        import(
+            &conn,
+            &five_years(),
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids,
+        );
+        let stored = rows(&conn);
+        let forced = HistoryOptions {
+            force: true,
+            ..HistoryOptions::default()
+        };
+        let run = import(&conn, &five_years(), &forced, TODAY, &mut ids);
+        assert_eq!(run.read_days().len(), 18);
+        assert_eq!(rows(&conn), stored);
+        let result = run.result();
+        // The six reads that would be rows are already rows.
+        assert_eq!(counts(result), [18, 0, 0, 6, 0, 0]);
+        assert_eq!(windows(result), vec![(398, 404), (1294, 1300)]);
+    }
+
+    #[test]
+    fn a_throttle_mid_bisection_keeps_what_it_learned() {
+        let throttled = archive(0..=1825, |d| match d {
+            410 => json!({"status": 429, "headers": {"retry-after": "120"}, "body": ""}),
+            _ => labelled(version(&CHANGES, d)),
+        });
+        let conn = database();
+        let mut ids = ids();
+        let run = import(
+            &conn,
+            &throttled,
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids,
+        );
+        assert_eq!(
+            run.read_days(),
+            vec![0, 365, 730, 1096, 1461, 1825, 547, 456, 410]
+        );
+        let error = run.outcome.expect_err("throttling is the import's error");
+        assert_eq!(
+            error.message,
+            "archive.org rate-limited for replay — retry after 120s"
+        );
+        assert_eq!(
+            error.unavailable.map(|u| u.retry_after_ms),
+            Some(Some(120_000))
+        );
+        // Both sides of each change as narrowed so far, and the ends.
+        assert_eq!(
+            rows(&conn),
+            vec![(0, 0), (365, 0), (456, 1), (1096, 0), (1461, 1), (1825, 0)]
+        );
+
+        // The next run starts from those rows: no skeleton page again, only
+        // the rest of each bisection.
+        let run = import(
+            &conn,
+            &five_years(),
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids,
+        );
+        assert_eq!(
+            run.read_days(),
+            vec![410, 387, 398, 404, 1278, 1369, 1323, 1300, 1289, 1294]
+        );
+        let result = run.result();
+        assert_eq!(windows(result), vec![(398, 404), (1294, 1300)]);
+        // The successor repair re-diffs 456 and 1461 against the new rows
+        // before them, so each change shows once.
+        assert_eq!(
+            rows(&conn),
+            vec![
+                (0, 0),
+                (365, 0),
+                (398, 0),
+                (404, 1),
+                (456, 0),
+                (1096, 0),
+                (1294, 0),
+                (1300, 1),
+                (1461, 0),
+                (1825, 0)
+            ]
+        );
+    }
+
+    #[test]
+    fn without_an_index_one_probe_per_skeleton_date() {
+        let capture = |ts: &str| {
+            json!({"status": 200, "headers": {"content-type": "application/json"}, "body": json!({
+                "archived_snapshots": {"closest": {
+                    "available": true,
+                    "url": format!("http://web.archive.org/web/{ts}/{APP_URL}"),
+                    "timestamp": ts,
+                    "status": "200",
+                }}
+            }).to_string()})
+        };
+        // Each probe date and the capture it answers with; today has none.
+        let answers = [
+            ("20210201", "20210210120000"),
+            ("20210301", "20210305120000"),
+            ("20220301", "20220302120000"),
+            ("20230301", "20230301120000"),
+            ("20240301", "20240301120000"),
+            ("20250301", "20250228120000"),
+        ];
+        let mut availability = serde_json::Map::new();
+        let mut replay = serde_json::Map::new();
+        for (date, ts) in answers {
+            availability.insert(date.to_string(), capture(ts));
+            replay.insert(ts.to_string(), labelled(usize::from(ts >= "2023")));
+        }
+        availability.insert(
+            "default".to_string(),
+            json!({"status": 200, "headers": {}, "body": r#"{"archived_snapshots":{}}"#}),
+        );
+        let replies = json!({
+            "cdx": {"status": 404, "headers": {}, "body": ""},
+            "availability": availability,
+            "replay": replay,
+            "save": {"status": 302, "headers": {"location": format!("https://web.archive.org/web/20260301120000/{APP_URL}")}, "body": ""},
+        });
+        let conn = database();
+        let run = import(
+            &conn,
+            &replies,
+            &HistoryOptions::default(),
+            TODAY,
+            &mut ids(),
+        );
+        // One probe per date, at that date, never the old ±14/28/42 days.
+        let probes: Vec<&str> = run
+            .urls
+            .iter()
+            .filter_map(|u| u.split("&timestamp=").nth(1))
+            .collect();
+        assert_eq!(
+            probes,
+            ["20210201", "20210301", "20220301", "20230301", "20240301", "20250301", "20260301"]
+        );
+        // No bisection between the two that differ.
+        assert_eq!(run.urls.len(), 1 + 7 + 6 + 1);
+        let result = run.result();
+        assert_eq!(windows(result), vec![(day_of(day(366)), day_of(day(730)))]);
+        assert_eq!(rows(&conn).len(), 4);
+        assert_eq!(
+            (&result["firstCaptureMs"], &result["lastCaptureMs"]),
+            (&Value::Null, &Value::Null)
+        );
+        let targets = result["targets"].as_array().unwrap();
+        assert!(targets[..7].iter().all(|t| t["phase"] == "skeleton"));
+        assert_eq!(targets[6]["outcome"], "skipped_no_capture");
+        assert_eq!(targets[7]["outcome"], "requested_snapshot");
+        assert_eq!(result["snapshotsRequested"], 1);
+    }
+}

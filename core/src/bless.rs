@@ -2,11 +2,12 @@
 //! does now.
 //!
 //! Since the Wayback redesign (docs/WAYBACK_IMPORT.md) the historical
-//! import and the bulk Wayback runner are Rust-only, so two fixtures are no
-//! longer recorded from Node: `history-cases.json` (replayed by
-//! `scrape::history_tests`) and `wayback-runner-cases.json`
-//! (`server::wayback_runner_tests`). They are regression fixtures the core
-//! owns. With `PT_BLESS=1` a replay still runs every case, then sets the
+//! import and the bulk Wayback runner are Rust-only, so three fixtures are
+//! no longer recorded from Node: `history-cases.json` (replayed by
+//! `scrape::history_tests`), `wayback-runner-cases.json`
+//! (`server::wayback_runner_tests`) and `import-history-route-cases.json`,
+//! the per-app import route (`server::imports_tests`). They are regression
+//! fixtures the core owns. With `PT_BLESS=1` a replay still runs every case, then sets the
 //! case's output keys (`calls`, `stream`, `rows`, `expected`) to what it
 //! actually produced, leaves its inputs alone, writes the file back in the
 //! format the Node extractors wrote (two-space JSON, keys in their existing
@@ -128,6 +129,10 @@ mod tests {
             (
                 "wayback-runner-cases.json",
                 include_str!("../tests/fixtures/wayback-runner-cases.json"),
+            ),
+            (
+                "import-history-route-cases.json",
+                include_str!("../tests/fixtures/import-history-route-cases.json"),
             ),
         ] {
             let fixture: Value = serde_json::from_str(text).unwrap();
