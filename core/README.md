@@ -94,6 +94,35 @@ Playwright suite and the local visual net run against either backend
 unchanged, because they only speak HTTP: CI runs the suite on Node in
 the `quality` job and on the core in `e2e-rust`, on every PR.
 
+**Rust-owned fixtures** — the exception to "Node is the oracle". The
+Wayback import is Rust-only from its redesign (`docs/WAYBACK_IMPORT.md`);
+the Node rollback keeps the importer and bulk runner it had before. So
+`core/tests/fixtures/history-cases.json` and `wayback-runner-cases.json`
+are no longer recorded from Node: their extractors and CI steps are
+gone, and they are regression fixtures the core owns, still replayed by
+the crate tests. After an intended change, bless the one you changed:
+
+```bash
+PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib historical_import_matches_node -- --nocapture
+PT_BLESS=1 cargo test --locked --manifest-path core/Cargo.toml --lib wayback_runner_paths_match_node -- --nocapture
+```
+
+With `PT_BLESS=1` the replay runs every case, rewrites its outputs
+(`calls`, `stream`, `rows` and `expected`, where the runner's NDJSON
+frames ride in the expected body) from what the core produced, leaves
+every other key alone (the inputs: setup rows, canned replies, request
+or options, hooks, clock), prints the names of the cases it rewrote and
+passes; set to anything else, or unset, it compares as before
+(`core/src/bless.rs`). Then review: read every rewritten case in
+`git diff` and accept only the changes the work intended, because a
+blessed fixture pins what the code does, right or wrong, and is no
+longer checked against anything else. Run the test again without the
+variable before committing. A new case needs only its inputs, written
+by hand or by a generator in the test file; the bless appends its
+outputs. Blessing unchanged code rewrites nothing:
+`bless::tests::rust_owned_fixtures_are_in_blessed_form` pins both files
+to the form a bless writes, which is the form the extractors wrote.
+
 **Benchmarks** — `scripts/bench/bench.mjs` (on `main`), same flags for
 both backends:
 
@@ -1808,12 +1837,18 @@ Retry-After parsing so `"0"` is zero, `Math.round` and `Math.ceil` in
 the window and the message, and `URLSearchParams` form encoding for the
 CDX query (`timestamp:8` is `timestamp%3A8`, spaces are `+`).
 
-**The oracle — `core/scripts/extract-history-cases.mjs`.** Runs the REAL
+**The fixture — `core/tests/fixtures/history-cases.json`, Rust-owned
+since the Wayback redesign.** It was the oracle recorded by
+`core/scripts/extract-history-cases.mjs`, which ran the REAL
 `importAppHistory` over 33 scenarios with archive.org stubbed by recorded
 replies routed by endpoint (CDX, availability by probe date, replay by
-timestamp, Save Page Now), a frozen clock and counted ids, and records
+timestamp, Save Page Now), a frozen clock and counted ids, and recorded
 every raw fetch (URL and headers), every write with its BEGIN/COMMIT
 markers, the snapshot and app rows, and the result or the thrown error.
+The redesign made the import Rust-only, so the extractor and its CI step
+are gone and the fixture is a regression test the core owns: change its
+outputs with `PT_BLESS=1` and review the diff (see "Rust-owned fixtures"
+under the gates above); add a case by writing its inputs.
 `core/src/scrape/history_tests.rs` replays each through the same
 transport loop with the request limits asserted per endpoint. Scenarios:
 index captures imported, unchanged and baseline; window and URL dedupe;
@@ -2302,14 +2337,22 @@ own post-app state write before the boundary check reads it back, so the
 run carries on; the pause that takes effect is one that lands during the
 backoff sleep. The oracle records both, and the port reproduces both.
 
-**The oracle — `core/scripts/extract-wayback-runner-cases.mjs`.** Runs
-the REAL handlers and, as batch 4a did, the startup hook's own 8 s
-closure. Cooperative control mid-run is exercised through the network
-stub: a case's `hooks` name a fetch at which the stub first calls the
-PATCH route — a cancel then aborts that request, reported the way `fetch`
-reports an aborted one — or, with `afterMs`, a moment after the reply is
-served, during the backoff sleep. 46 cases: the POST busy on the mutex
-and on a leftover blob, over no apps, over two apps, throttled once
+**The fixture — `core/tests/fixtures/wayback-runner-cases.json`,
+Rust-owned since the Wayback redesign.** It was the oracle recorded by
+`core/scripts/extract-wayback-runner-cases.mjs`, which ran the REAL
+handlers and, as batch 4a did, the startup hook's own 8 s closure. The
+redesign made the bulk runner Rust-only, so the extractor and its CI
+step are gone and the fixture is a regression test the core owns: change
+its outputs, the NDJSON frames in each expected body included, with
+`PT_BLESS=1` and review the diff (see "Rust-owned fixtures" under the
+gates above); a case written with inputs only gets the six tables the
+recorded cases dump. Cooperative control mid-run is exercised through
+the network stub: a case's `hooks` name a fetch at which the stub first
+calls the PATCH route — a cancel then aborts that request, reported the
+way `fetch` reports an aborted one — or, with `afterMs`, a moment after
+the reply is served, during the backoff sleep. 46 cases: the POST busy
+on the mutex and on a leftover blob, over no apps, over two apps,
+throttled once
 (backoff, retry) and twice (paused), with one app failing, forced over a
 paused queue, a stale lock and a running one, cancelled mid-run, the
 overwritten pause and the backoff-window pause, and the burst; the same
@@ -2329,8 +2372,10 @@ yields once per fetch, as Node's stub resolves on the next turn.
 
 Live: the POST is quarantined in the manifest (it crawls archive.org),
 and the PATCH and DELETE have no manifest entries; all three are gated
-by the oracle alone. The gate itself changed shape for this batch: the
-core now boots the same healers Node does, and its first run against
+by the fixture alone. Since the Wayback redesign the GET is quarantined
+too, as its body is Rust-only: the differ holds its status with a HEAD
+probe. The gate itself changed shape for this batch: the core now boots
+the same healers Node does, and its first run against
 the harness healed a "broken blob, held mutex" fixture the operations
 probes plant — a row Node never writes, because its healer ran at its
 own boot, before the fixture existed. `read-parity.mjs` therefore waits
