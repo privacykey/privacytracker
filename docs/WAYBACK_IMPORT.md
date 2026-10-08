@@ -182,8 +182,16 @@ density where it matters.
 
 ### P3: bulk runner
 
-State blob `wayback_bulk_state` moves to `schemaVersion: 3`. A v2 blob
-still resumes, as a reading phase with no survey. Additions:
+State blob `wayback_bulk_state` moves to `version: 3` (the blob's own
+`version` field, `STATE_SCHEMA_VERSION` in the runner). A v2 blob still
+resumes, as a reading phase with no survey. Every reader of the blob must
+accept 3: the runner's `read_bulk_state`, the status projection in
+`operations.rs` (`describe` accepts only 1 and 2 today and rewrites the
+version to 2) and the health check's lock heal. `operations-cases.json` is
+still recorded from Node and plants v1 and v2 blobs, so a v1 or v2 blob
+must read byte-identically through `GET /api/wayback/import-all` and
+`GET /api/tasks/active`; the new keys appear only when a v3 blob carries
+them. Additions:
 
 - `phase`: `"survey"` or `"reading"`.
 - `waitingUntil` (epoch ms) and `waitReason`, present only while waiting.
