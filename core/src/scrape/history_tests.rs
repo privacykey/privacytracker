@@ -123,6 +123,7 @@ fn historical_import_matches_node_calls_stream_rows_and_result() {
     let fixture: Value =
         serde_json::from_str(include_str!("../../tests/fixtures/history-cases.json")).unwrap();
     let cases = fixture["cases"].as_array().unwrap();
+    let mut bless = crate::bless::Bless::new("history-cases.json", &fixture);
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -198,6 +199,15 @@ fn historical_import_matches_node_calls_stream_rows_and_result() {
         );
         let rows = dump(&conn, &["privacy_snapshots", "apps"]);
         let calls = routed.calls.lock().unwrap();
+        bless.record(
+            case,
+            &[
+                ("calls", &json!(*calls)),
+                ("stream", &stream_json),
+                ("rows", &rows),
+                ("expected", &actual),
+            ],
+        );
         let mut diffs = vec![];
         if json!(*calls) != case["calls"] {
             diffs.push(format!(
@@ -234,6 +244,9 @@ fn historical_import_matches_node_calls_stream_rows_and_result() {
     }
     // SAFETY: as above.
     unsafe { tzset() };
+    if bless.finish() {
+        return;
+    }
     assert!(
         failures.is_empty(),
         "{} historical-import parity failures:\n{}",

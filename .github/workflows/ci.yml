@@ -421,15 +421,11 @@ jobs:
           node --conditions=react-server --import tsx core/scripts/extract-search-cases.mjs
           git diff --exit-code -- core/tests/fixtures/search-cases.json
 
-      - name: Scrape history oracle is current
-        # Runs the real importAppHistory with archive.org stubbed by recorded
-        # CDX, availability, replay and Save Page Now replies and records
-        # every raw fetch, every write with its transaction markers, the
-        # snapshot rows and the result. A diff means the Node historical
-        # import changed and core/src/scrape/history.rs has not been ported.
-        run: |
-          node --conditions=react-server --import tsx core/scripts/extract-history-cases.mjs
-          git diff --exit-code -- core/tests/fixtures/history-cases.json
+      # No oracle step for history-cases.json or wayback-runner-cases.json:
+      # the Wayback import is Rust-only since its redesign
+      # (docs/WAYBACK_IMPORT.md), so both are Rust-owned regression fixtures,
+      # rewritten with PT_BLESS=1 (core/README.md) and checked by the core
+      # crate tests below.
 
       - name: Settings write-route oracle is current
         # Runs the real POST/PUT/DELETE handlers of the twenty settings-style
@@ -479,19 +475,6 @@ jobs:
         run: |
           node --conditions=react-server --import tsx core/scripts/extract-runners-cases.mjs
           git diff --exit-code -- core/tests/fixtures/runners-cases.json
-
-      - name: Wayback runner oracle is current
-        # Runs the real bulk Wayback import through POST (buffered and
-        # streamed), PATCH (pause, cancel, resume) and DELETE, and the
-        # startup hook's own 8 s resume, with mid-run controls issued from
-        # the network stub — network canned per case, foreign keys on,
-        # frozen clock — and records every request, fetch, write, touched
-        # table and wire response (the NDJSON frames included). A diff means
-        # a Node runner or route changed and core/src/server/wayback_runner.rs
-        # has not been ported.
-        run: |
-          node --conditions=react-server --import tsx core/scripts/extract-wayback-runner-cases.mjs
-          git diff --exit-code -- core/tests/fixtures/wayback-runner-cases.json
 
       - name: Maintenance oracle is current
         # Runs the real health check and self-heal (the route and the
