@@ -4016,7 +4016,7 @@
       "alt_remove": "移除",
       "alt_remove_aria": "移除 {url} 并重新检查存档",
       "alt_limit": "最多可以检查 {max} 个较早的地址。",
-      "alt_error_not_app_store": "请粘贴以 https://apps.apple.com/ 开头的 App Store 地址。",
+      "alt_error_not_app_store": "请粘贴这个应用完整的 App Store 地址，例如 https://apps.apple.com/us/app/name/id{appId}。",
       "alt_error_other_app": "这个地址属于另一个应用。地址应以 id{appId} 结尾。",
       "alt_error_duplicate": "这个地址已经在检查范围内。",
       "alt_error_rejected": "无法使用这个地址。它必须是同一应用的 apps.apple.com 地址。",

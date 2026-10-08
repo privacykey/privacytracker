@@ -119,7 +119,7 @@ export default function AppHistoryImportCard({
   const sayProblem = (problem: AlternateUrlProblem): string => {
     switch (problem) {
       case "not_app_store":
-        return t("alt_error_not_app_store");
+        return t("alt_error_not_app_store", { appId });
       case "other_app":
         return t("alt_error_other_app", { appId });
       case "duplicate":

@@ -4016,7 +4016,7 @@
       "alt_remove": "Remove",
       "alt_remove_aria": "Remove {url} and check the archive again",
       "alt_limit": "Up to {max} older addresses can be checked.",
-      "alt_error_not_app_store": "Paste an App Store address that starts with https://apps.apple.com/.",
+      "alt_error_not_app_store": "Paste the app's full App Store address, like https://apps.apple.com/us/app/name/id{appId}.",
       "alt_error_other_app": "That address is for a different app. It should end in id{appId}.",
       "alt_error_duplicate": "That address is already being checked.",
       "alt_error_rejected": "That address can't be used. It needs to be an apps.apple.com address for this same app.",

@@ -24,9 +24,10 @@ test("App Store product addresses are spelled one way", () => {
     canonicalAppStoreUrl("http://APPS.apple.com/us/app/old-name/id389801252"),
     OLD
   );
+  // The route's own spelling: a lowercase storefront, `id` before the id.
   assert.equal(
-    canonicalAppStoreUrl("https://apps.apple.com/app/id389801252"),
-    "https://apps.apple.com/app/id389801252"
+    canonicalAppStoreUrl("https://apps.apple.com/US/app/old-name/ID389801252"),
+    OLD
   );
 });
 
@@ -43,6 +44,13 @@ test("anything that is not an App Store product page is refused", () => {
     "ftp://apps.apple.com/us/app/x/id389801252",
     "https://apps.apple.com/us/app/old-name",
     "https://apps.apple.com/us/app/old-name/id389801252/reviews",
+    // The route stores only /<storefront>/app/<slug>/id<n>.
+    "https://apps.apple.com/app/id389801252",
+    "https://apps.apple.com/us/app/id389801252",
+    "https://apps.apple.com/usa/app/old-name/id389801252",
+    "https://apps.apple.com/us/apps/old-name/id389801252",
+    "https://apps.apple.com/us/app/old-name/389801252",
+    `https://apps.apple.com/us/app/${"x".repeat(2100)}/id389801252`,
     "javascript:alert(1)",
   ]) {
     assert.equal(canonicalAppStoreUrl(raw), null, raw);
