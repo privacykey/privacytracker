@@ -9,9 +9,16 @@
  * says what it always has. A throttled archive answers 503
  * `archive_unavailable` with `retryAfterMs`, which becomes a clock time.
  *
+ * Coverage (P5) adds `lookupUrl`, `historyStartsAt`, `historyStartsLate`
+ * and `alternateUrls`: the server judges a late start (it also knows the
+ * app's release date), and the card offers to add an older App Store
+ * address when it does. Absent, the card judges a late start from the
+ * first capture alone and offers nothing to add.
+ *
  * Pure and client-safe; the component translates the keys returned here.
  */
 
+import { MAX_ALTERNATE_URLS } from "./wayback-alternate-urls";
 import { parseRetryAfterMs } from "./wayback-time";
 
 /** The earliest date the importer reads: Apple began publishing privacy
@@ -23,12 +30,21 @@ export const WAYBACK_HISTORY_FLOOR_MS = Date.UTC(2021, 1, 1);
 export const WAYBACK_LATE_START_MS = 180 * 24 * 60 * 60 * 1000;
 
 export interface WaybackAppImportResult {
+  /** The older addresses stored for the app; null when the route does
+   *  not report them (it predates coverage). */
+  alternateUrls: string[] | null;
   changes: number | null;
   failed: number;
   firstCaptureMs: number | null;
+  /** When the app's archived history starts, every address included. */
+  historyStartsAt: number | null;
+  /** The server's verdict on a late start; null when not reported. */
+  historyStartsLate: boolean | null;
   imported: number;
   labelVersions: number | null;
   lastCaptureMs: number | null;
+  /** The address the import looked up (the US storefront's, usually). */
+  lookupUrl: string | null;
   reads: number | null;
   skipped: number;
   snapshotsRequested: number;
@@ -59,6 +75,7 @@ export function parseWaybackAppImportResult(
   const r = raw as Record<string, unknown>;
   const first = finite(r.firstCaptureMs);
   const last = finite(r.lastCaptureMs);
+  const startsAt = finite(r.historyStartsAt);
   return {
     imported: count(r.imported),
     unchanged: count(r.unchanged),
@@ -70,6 +87,16 @@ export function parseWaybackAppImportResult(
     labelVersions: optionalCount(r.labelVersions),
     firstCaptureMs: first !== null && first > 0 ? first : null,
     lastCaptureMs: last !== null && last > 0 ? last : null,
+    lookupUrl:
+      typeof r.lookupUrl === "string" && r.lookupUrl ? r.lookupUrl : null,
+    historyStartsAt: startsAt !== null && startsAt > 0 ? startsAt : null,
+    historyStartsLate:
+      typeof r.historyStartsLate === "boolean" ? r.historyStartsLate : null,
+    alternateUrls: Array.isArray(r.alternateUrls)
+      ? r.alternateUrls.filter(
+          (url): url is string => typeof url === "string" && url.length > 0
+        )
+      : null,
   };
 }
 
@@ -97,11 +124,35 @@ export type WaybackImportMessage =
   | { key: "note_reads"; values: { count: number } }
   | { key: "note_starts_on"; values: { dateMs: number } };
 
+/** The card's older-addresses block, from a result that reports them. */
+export interface WaybackAlternateState {
+  /** Room for another address while history still starts late. */
+  canAdd: boolean;
+  /** History starts late: say why, and offer to add an address. */
+  late: boolean;
+  /** The stored older addresses, as the route returned them. */
+  urls: string[];
+}
+
 export interface WaybackImportOutcome {
+  /** Null when the route predates coverage, or there is nothing to show
+   *  (history does not start late and no address is stored). */
+  alternates: WaybackAlternateState | null;
   headline: WaybackImportMessage;
   notes: WaybackImportMessage[];
   /** Rows written to the timeline; above zero, the timeline refetches. */
   rowsAdded: number;
+}
+
+function alternateState(
+  result: WaybackAppImportResult
+): WaybackAlternateState | null {
+  const urls = result.alternateUrls ?? [];
+  const late = result.historyStartsLate === true;
+  if (!late && urls.length === 0) {
+    return null;
+  }
+  return { late, urls, canAdd: late && urls.length < MAX_ALTERNATE_URLS };
 }
 
 /**
@@ -125,6 +176,7 @@ export function describeWaybackAppImport(
   if (result.changes === null) {
     // Pre-redesign result: rows, and one note at most, as before.
     return {
+      alternates: null,
       headline:
         rowsAdded > 0
           ? { key: "result_imported", values: { count: rowsAdded } }
@@ -143,15 +195,23 @@ export function describeWaybackAppImport(
     !result.reads &&
     !result.labelVersions
   ) {
-    return { headline: { key: "result_no_archive" }, notes: [], rowsAdded };
+    return {
+      alternates: alternateState(result),
+      headline: { key: "result_no_archive" },
+      notes: [],
+      rowsAdded,
+    };
   }
 
   const notes: WaybackImportMessage[] = [];
-  if (archivedHistoryStartsLate(result.firstCaptureMs)) {
-    notes.push({
-      key: "note_starts_on",
-      values: { dateMs: result.firstCaptureMs as number },
-    });
+  // The server's verdict when it gives one: it also weighs the app's
+  // release date, so an app first published in 2023 does not start late.
+  const startsAt = result.historyStartsAt ?? result.firstCaptureMs;
+  const late =
+    result.historyStartsLate ??
+    archivedHistoryStartsLate(result.firstCaptureMs);
+  if (late && startsAt !== null) {
+    notes.push({ key: "note_starts_on", values: { dateMs: startsAt } });
   }
   if (fixNote) {
     notes.push(fixNote);
@@ -172,7 +232,7 @@ export function describeWaybackAppImport(
   } else {
     headline = { key: "result_changes", values: { count: result.changes } };
   }
-  return { headline, notes, rowsAdded };
+  return { alternates: alternateState(result), headline, notes, rowsAdded };
 }
 
 /** Why an import did not finish, for the card's alert line. */

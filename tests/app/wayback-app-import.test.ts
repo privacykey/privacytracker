@@ -46,12 +46,14 @@ test("a result without the new fields reads as it always has", () => {
   assert.deepEqual(
     describeWaybackAppImport(legacy({ imported: 1, unchanged: 20 })),
     {
+      alternates: null,
       headline: { key: "result_imported", values: { count: 21 } },
       notes: [],
       rowsAdded: 21,
     }
   );
   assert.deepEqual(describeWaybackAppImport(legacy({})), {
+    alternates: null,
     headline: { key: "result_nothing_new" },
     notes: [],
     rowsAdded: 0,
@@ -71,6 +73,7 @@ test("a result without the new fields reads as it always has", () => {
 
 test("a change-finding result answers in label changes", () => {
   assert.deepEqual(describeWaybackAppImport(v3({ changes: 3 })), {
+    alternates: null,
     headline: { key: "result_changes", values: { count: 3 } },
     notes: [{ key: "note_reads", values: { count: 14 } }],
     rowsAdded: 4,
@@ -106,6 +109,7 @@ test("an app with no archived pages says so", () => {
     })
   );
   assert.deepEqual(outcome, {
+    alternates: null,
     headline: { key: "result_no_archive" },
     notes: [],
     rowsAdded: 0,
@@ -118,6 +122,7 @@ test("pages that carried no labels are not reported as unchanged labels", () => 
     v3({ changes: 0, labelVersions: 0, reads: 4, imported: 0, unchanged: 0 })
   );
   assert.deepEqual(outcome, {
+    alternates: null,
     headline: { key: "result_no_labels" },
     notes: [{ key: "note_reads", values: { count: 4 } }],
     rowsAdded: 0,
@@ -227,5 +232,125 @@ test("other failures keep the route's message, else the status", () => {
   assert.deepEqual(
     describeWaybackAppImportFailure(429, { error: "" }, "60", NOW),
     { key: "failed_status", values: { status: 429 } }
+  );
+});
+
+// ── Coverage (P5): the server's late-start verdict and older addresses ──
+
+/** A result from the coverage-aware route. */
+const p5 = (fields: Record<string, unknown>) =>
+  parseWaybackAppImportResult({
+    imported: 2,
+    unchanged: 2,
+    skipped: 0,
+    failed: 0,
+    snapshotsRequested: 0,
+    reads: 14,
+    changes: 1,
+    labelVersions: 2,
+    firstCaptureMs: Date.UTC(2023, 7, 12),
+    lastCaptureMs: NOW - DAY,
+    lookupUrl: "https://apps.apple.com/us/app/new-name/id42",
+    historyStartsAt: Date.UTC(2023, 7, 12),
+    historyStartsLate: true,
+    alternateUrls: [],
+    ...fields,
+  })!;
+
+test("the coverage fields parse, and odd entries are dropped", () => {
+  const result = parseWaybackAppImportResult({
+    imported: 1,
+    lookupUrl: "https://apps.apple.com/us/app/x/id42",
+    historyStartsAt: 1_700_000_000_000,
+    historyStartsLate: true,
+    alternateUrls: ["https://apps.apple.com/us/app/old/id42", 7, "", null],
+  })!;
+  assert.equal(result.lookupUrl, "https://apps.apple.com/us/app/x/id42");
+  assert.equal(result.historyStartsAt, 1_700_000_000_000);
+  assert.equal(result.historyStartsLate, true);
+  assert.deepEqual(result.alternateUrls, [
+    "https://apps.apple.com/us/app/old/id42",
+  ]);
+  // Absent (Node, or a route from before coverage): all unknown.
+  const before = parseWaybackAppImportResult({ imported: 1 })!;
+  assert.equal(before.lookupUrl, null);
+  assert.equal(before.historyStartsAt, null);
+  assert.equal(before.historyStartsLate, null);
+  assert.equal(before.alternateUrls, null);
+  const odd = parseWaybackAppImportResult({
+    historyStartsLate: "yes",
+    alternateUrls: "https://apps.apple.com/us/app/old/id42",
+    lookupUrl: 5,
+  })!;
+  assert.equal(odd.historyStartsLate, null);
+  assert.equal(odd.alternateUrls, null);
+  assert.equal(odd.lookupUrl, null);
+});
+
+test("a late start offers an older address, dated by the server", () => {
+  const startsAt = Date.UTC(2023, 9, 1);
+  const outcome = describeWaybackAppImport(p5({ historyStartsAt: startsAt }));
+  assert.deepEqual(outcome.notes[0], {
+    key: "note_starts_on",
+    values: { dateMs: startsAt },
+  });
+  assert.deepEqual(outcome.alternates, { late: true, urls: [], canAdd: true });
+});
+
+test("the server's verdict wins over the first capture", () => {
+  // Released in 2023: history starting then is not late.
+  const onTime = describeWaybackAppImport(p5({ historyStartsLate: false }));
+  assert.equal(
+    onTime.notes.some((n) => n.key === "note_starts_on"),
+    false
+  );
+  assert.equal(onTime.alternates, null);
+  // A late start the first capture alone would not show.
+  const late = describeWaybackAppImport(
+    p5({
+      firstCaptureMs: WAYBACK_HISTORY_FLOOR_MS + DAY,
+      historyStartsAt: WAYBACK_HISTORY_FLOOR_MS + DAY,
+      historyStartsLate: true,
+    })
+  );
+  assert.equal(late.notes[0]?.key, "note_starts_on");
+});
+
+test("stored addresses stay listed, and three is the most", () => {
+  const old = "https://apps.apple.com/us/app/old-name/id42";
+  // An older address fixed the late start: list it, offer nothing more.
+  assert.deepEqual(
+    describeWaybackAppImport(
+      p5({ historyStartsLate: false, alternateUrls: [old] })
+    ).alternates,
+    { late: false, urls: [old], canAdd: false }
+  );
+  const three = [old, `${old}?x=1`, "https://apps.apple.com/gb/app/a/id42"];
+  assert.deepEqual(
+    describeWaybackAppImport(p5({ alternateUrls: three })).alternates,
+    { late: true, urls: three, canAdd: false }
+  );
+  // Nothing archived under any address: the list stays removable.
+  assert.deepEqual(
+    describeWaybackAppImport(
+      p5({
+        changes: 0,
+        reads: 0,
+        labelVersions: 0,
+        imported: 0,
+        unchanged: 0,
+        firstCaptureMs: null,
+        lastCaptureMs: null,
+        historyStartsAt: null,
+        historyStartsLate: false,
+        alternateUrls: [old],
+      })
+    ),
+    {
+      alternates: { late: false, urls: [old], canAdd: false },
+      headline: { key: "result_no_archive" },
+      notes: [],
+      rowsAdded: 0,
+    }
   );
 });
