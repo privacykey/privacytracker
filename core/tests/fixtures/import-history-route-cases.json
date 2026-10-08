@@ -3055,6 +3055,993 @@
         "type": "application/json",
         "retryAfter": null
       }
+    },
+    {
+      "name": "history import stores older addresses and merges them",
+      "route": "/api/apps/[id]/import-history",
+      "method": "POST",
+      "param": "555000111",
+      "pathname": "/api/apps/555000111/import-history",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.201.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"force\":true,\"alternateUrls\":[\"https://apps.apple.com/gb/app/old-fixture/id555000111/?l=en\",\"https://apps.apple.com/gb/app/old-fixture/id555000111\"]}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20260720120000\",\"200\"]]"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20210301120000\",\"200\"],[\"20220301120000\",\"200\"]]"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}]}</script></head><body></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}]}</script></head><body></body></html>"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}]}</script></head><body></body></html>"
+        },
+        {
+          "status": 302,
+          "headers": {
+            "location": "https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fgb%2Fapp%2Fold-fixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20210301120000id_/https://apps.apple.com/gb/app/old-fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20220301120000id_/https://apps.apple.com/gb/app/old-fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20260720120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback.alt_urls.555000111",
+            "[\"https://apps.apple.com/gb/app/old-fixture/id555000111\"]"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "wayback.import.app.start",
+            "10.0.201.3",
+            "imports-oracle/1.0",
+            "app=555000111 force=1",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1614600000000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20210301120000/https://apps.apple.com/gb/app/old-fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "555000111",
+            1784548800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, triggered_by)\n    VALUES (?, ?, ?, ?, 0, ?, 'live', 'wayback')\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "555000111",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1789473600000}]"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000005",
+            "wayback_import",
+            "ok",
+            "555000111",
+            "Fixture One",
+            "Forced Wayback import for Fixture One: 1 imported, 1 no-op, 1 snapshot requested",
+            "{\"mode\":\"app\",\"result\":{\"appId\":\"555000111\",\"attempted\":3,\"imported\":1,\"unchanged\":1,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1614600000000,\"outcome\":\"imported\",\"captureDate\":1614600000000,\"waybackUrl\":\"https://web.archive.org/web/20210301120000/https://apps.apple.com/gb/app/old-fixture/id555000111\",\"changeCount\":0,\"phase\":\"skeleton\"},{\"targetDate\":1631707200000,\"outcome\":\"sampled\",\"captureDate\":1646136000000,\"waybackUrl\":\"https://web.archive.org/web/20220301120000/https://apps.apple.com/gb/app/old-fixture/id555000111\",\"phase\":\"skeleton\"},{\"targetDate\":1726401600000,\"outcome\":\"unchanged\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\",\"changeCount\":0,\"phase\":\"skeleton\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}],\"reads\":3,\"changes\":0,\"labelVersions\":1,\"firstCaptureMs\":1614600000000,\"lastCaptureMs\":1784548800000,\"lookupUrl\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"alternateUrls\":[\"https://apps.apple.com/gb/app/old-fixture/id555000111\"],\"historyStartsAt\":1614600000000,\"historyStartsLate\":false,\"windows\":[]},\"force\":true}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000006",
+            1789473600000,
+            "wayback.import.app.success",
+            "10.0.201.3",
+            "imports-oracle/1.0",
+            "app=555000111 force=1 imported=1 unchanged=1 skipped=0 failed=0",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1614600000000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20210301120000/https://apps.apple.com/gb/app/old-fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "555000111",
+            "scraped_at": 1784548800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "app_id": "555000111",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1789473600000}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "imports": [],
+        "import_items": [],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "type": "wayback_import",
+            "status": "ok",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "summary": "Forced Wayback import for Fixture One: 1 imported, 1 no-op, 1 snapshot requested",
+            "detail": "{\"mode\":\"app\",\"result\":{\"appId\":\"555000111\",\"attempted\":3,\"imported\":1,\"unchanged\":1,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1614600000000,\"outcome\":\"imported\",\"captureDate\":1614600000000,\"waybackUrl\":\"https://web.archive.org/web/20210301120000/https://apps.apple.com/gb/app/old-fixture/id555000111\",\"changeCount\":0,\"phase\":\"skeleton\"},{\"targetDate\":1631707200000,\"outcome\":\"sampled\",\"captureDate\":1646136000000,\"waybackUrl\":\"https://web.archive.org/web/20220301120000/https://apps.apple.com/gb/app/old-fixture/id555000111\",\"phase\":\"skeleton\"},{\"targetDate\":1726401600000,\"outcome\":\"unchanged\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\",\"changeCount\":0,\"phase\":\"skeleton\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}],\"reads\":3,\"changes\":0,\"labelVersions\":1,\"firstCaptureMs\":1614600000000,\"lastCaptureMs\":1784548800000,\"lookupUrl\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"alternateUrls\":[\"https://apps.apple.com/gb/app/old-fixture/id555000111\"],\"historyStartsAt\":1614600000000,\"historyStartsLate\":false,\"windows\":[]},\"force\":true}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "wayback.import.app.start",
+            "actor_ip": "10.0.201.3",
+            "user_agent": "imports-oracle/1.0",
+            "detail": "app=555000111 force=1",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000006",
+            "created_at": 1789473600000,
+            "action": "wayback.import.app.success",
+            "actor_ip": "10.0.201.3",
+            "user_agent": "imports-oracle/1.0",
+            "detail": "app=555000111 force=1 imported=1 unchanged=1 skipped=0 failed=0",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          },
+          {
+            "key": "wayback.alt_urls.555000111",
+            "value": "[\"https://apps.apple.com/gb/app/old-fixture/id555000111\"]"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"result\":{\"appId\":\"555000111\",\"attempted\":3,\"imported\":1,\"unchanged\":1,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1614600000000,\"outcome\":\"imported\",\"captureDate\":1614600000000,\"waybackUrl\":\"https://web.archive.org/web/20210301120000/https://apps.apple.com/gb/app/old-fixture/id555000111\",\"changeCount\":0,\"phase\":\"skeleton\"},{\"targetDate\":1631707200000,\"outcome\":\"sampled\",\"captureDate\":1646136000000,\"waybackUrl\":\"https://web.archive.org/web/20220301120000/https://apps.apple.com/gb/app/old-fixture/id555000111\",\"phase\":\"skeleton\"},{\"targetDate\":1726401600000,\"outcome\":\"unchanged\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\",\"changeCount\":0,\"phase\":\"skeleton\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}],\"reads\":3,\"changes\":0,\"labelVersions\":1,\"firstCaptureMs\":1614600000000,\"lastCaptureMs\":1784548800000,\"lookupUrl\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"alternateUrls\":[\"https://apps.apple.com/gb/app/old-fixture/id555000111\"],\"historyStartsAt\":1614600000000,\"historyStartsLate\":false,\"windows\":[]}}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "history import refuses another app's address",
+      "route": "/api/apps/[id]/import-history",
+      "method": "POST",
+      "param": "555000111",
+      "pathname": "/api/apps/555000111/import-history",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.202.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"alternateUrls\":[\"https://apps.apple.com/gb/app/other/id999000111\"]}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [],
+        "imports": [],
+        "import_items": [],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          }
+        ]
+      },
+      "expected": {
+        "status": 400,
+        "body": "{\"error\":\"alternateUrls[0] must be an App Store address of this app, like https://apps.apple.com/us/app/name/id555000111\",\"code\":\"invalid_alternate_url\"}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "history import refuses more than three older addresses",
+      "route": "/api/apps/[id]/import-history",
+      "method": "POST",
+      "param": "555000111",
+      "pathname": "/api/apps/555000111/import-history",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.203.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"alternateUrls\":[\"https://apps.apple.com/gb/app/old-fixture/id555000111\",\"https://apps.apple.com/de/app/old-fixture/id555000111\",\"https://apps.apple.com/fr/app/old-fixture/id555000111\",\"https://apps.apple.com/it/app/old-fixture/id555000111\"]}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [],
+        "imports": [],
+        "import_items": [],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          }
+        ]
+      },
+      "expected": {
+        "status": 400,
+        "body": "{\"error\":\"alternateUrls holds at most 3 App Store addresses\",\"code\":\"invalid_alternate_url\"}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "history import refuses older addresses that are not a list",
+      "route": "/api/apps/[id]/import-history",
+      "method": "POST",
+      "param": "555000111",
+      "pathname": "/api/apps/555000111/import-history",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.204.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"alternateUrls\":\"https://apps.apple.com/gb/app/old-fixture/id555000111\"}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        }
+      ],
+      "replies": [],
+      "calls": [],
+      "stream": [],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [],
+        "imports": [],
+        "import_items": [],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [],
+        "audit_log": [],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          }
+        ]
+      },
+      "expected": {
+        "status": 400,
+        "body": "{\"error\":\"alternateUrls must be an array of App Store addresses\",\"code\":\"invalid_alternate_url\"}",
+        "type": "application/json",
+        "retryAfter": null
+      }
+    },
+    {
+      "name": "history import with an empty list clears older addresses",
+      "route": "/api/apps/[id]/import-history",
+      "method": "POST",
+      "param": "555000111",
+      "pathname": "/api/apps/555000111/import-history",
+      "search": "",
+      "query": [],
+      "headers": {
+        "x-forwarded-for": "10.0.205.3",
+        "user-agent": "imports-oracle/1.0"
+      },
+      "body": "{\"alternateUrls\":[]}",
+      "adminToken": null,
+      "repeat": 1,
+      "setup": [
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "policy_sync_running",
+            "true"
+          ]
+        },
+        {
+          "sql": "INSERT INTO apps (id, name, url, firstSeen, lastSynced, changeCount, changes_acknowledged_at, changes_snoozed_until) VALUES (?, ?, ?, ?, ?, 0, 0, 0)",
+          "params": [
+            "555000111",
+            "Fixture One",
+            "https://apps.apple.com/us/app/fixture/id555000111",
+            1789041600000,
+            1789041600000
+          ]
+        },
+        {
+          "sql": "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
+          "params": [
+            "wayback.alt_urls.555000111",
+            "[\"https://apps.apple.com/gb/app/old-fixture/id555000111\"]"
+          ]
+        }
+      ],
+      "replies": [
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "application/json"
+          },
+          "body": "[[\"timestamp\",\"statuscode\"],[\"20260720120000\",\"200\"]]"
+        },
+        {
+          "status": 200,
+          "headers": {
+            "content-type": "text/html; charset=utf-8"
+          },
+          "body": "<html><head><script id=\"serialized-server-data\">{\"data\":[{\"data\":{\"shelfMapping\":{\"privacyTypes\":{\"items\":[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"detail\":\"Data Linked to You detail\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"detail\":\"Data Used to Track You detail\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]}}}}]}</script></head><body></body></html>"
+        },
+        {
+          "status": 302,
+          "headers": {
+            "location": "https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111"
+          },
+          "body": ""
+        }
+      ],
+      "calls": [
+        {
+          "url": "https://web.archive.org/cdx/search/cdx?url=https%3A%2F%2Fapps.apple.com%2Fus%2Fapp%2Ffixture%2Fid555000111&output=json&fl=timestamp%2Cstatuscode&filter=statuscode%3A200&collapse=timestamp%3A8&limit=5000&from=20210201",
+          "headers": [
+            [
+              "accept",
+              "application/json"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/web/20260720120000id_/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "accept-language",
+              "en-US,en;q=0.9"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver) Mozilla/5.0 (compatible)"
+            ]
+          ]
+        },
+        {
+          "url": "https://web.archive.org/save/https://apps.apple.com/us/app/fixture/id555000111",
+          "headers": [
+            [
+              "accept",
+              "text/html,application/xhtml+xml"
+            ],
+            [
+              "user-agent",
+              "privacytracker/1.0 (+privacy-history archiver)"
+            ]
+          ]
+        }
+      ],
+      "stream": [
+        {
+          "sql": "DELETE FROM app_settings WHERE key = ?",
+          "params": [
+            "wayback.alt_urls.555000111"
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000001",
+            1789473600000,
+            "wayback.import.app.start",
+            "10.0.205.3",
+            "imports-oracle/1.0",
+            "app=555000111 force=0",
+            1
+          ]
+        },
+        {
+          "sql": "BEGIN",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, wayback_snapshot_url, triggered_by,\n       app_version, app_version_updated_at)\n    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000002",
+            "555000111",
+            1784548800000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            0,
+            "[]",
+            "wayback",
+            "https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "wayback",
+            null,
+            null
+          ]
+        },
+        {
+          "sql": "COMMIT",
+          "params": []
+        },
+        {
+          "sql": "\n    INSERT INTO privacy_snapshots\n      (id, app_id, scraped_at, snapshot_json, changes_detected, changes_summary,\n       source, triggered_by)\n    VALUES (?, ?, ?, ?, 0, ?, 'live', 'wayback')\n  ",
+          "params": [
+            "00000000-0000-4000-8000-000000000003",
+            "555000111",
+            1789473600000,
+            "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1789473600000}]"
+          ]
+        },
+        {
+          "sql": "INSERT INTO activity_log\n         (id, type, status, app_id, app_name, summary, detail,\n          started_at, ended_at, duration_ms)\n       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "params": [
+            "00000000-0000-4000-8000-000000000004",
+            "wayback_import",
+            "ok",
+            "555000111",
+            "Fixture One",
+            "Wayback import for Fixture One: 1 imported, 1 snapshot requested",
+            "{\"mode\":\"app\",\"result\":{\"appId\":\"555000111\",\"attempted\":1,\"imported\":1,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1784548800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\",\"changeCount\":0,\"phase\":\"skeleton\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}],\"reads\":1,\"changes\":0,\"labelVersions\":1,\"firstCaptureMs\":1784548800000,\"lastCaptureMs\":1784548800000,\"lookupUrl\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"alternateUrls\":[],\"historyStartsAt\":1784548800000,\"historyStartsLate\":true,\"windows\":[]},\"force\":false}",
+            1789473600000,
+            1789473600000,
+            0
+          ]
+        },
+        {
+          "sql": "\n      INSERT INTO audit_log (id, created_at, action, actor_ip, user_agent, detail, success)\n      VALUES (?, ?, ?, ?, ?, ?, ?)\n    ",
+          "params": [
+            "00000000-0000-4000-8000-000000000005",
+            1789473600000,
+            "wayback.import.app.success",
+            "10.0.205.3",
+            "imports-oracle/1.0",
+            "app=555000111 force=0 imported=1 unchanged=0 skipped=0 failed=0",
+            1
+          ]
+        }
+      ],
+      "rows": {
+        "apps": [
+          {
+            "id": "555000111",
+            "name": "Fixture One",
+            "url": "https://apps.apple.com/us/app/fixture/id555000111",
+            "iconUrl": null,
+            "bundleId": null,
+            "developer": null,
+            "firstSeen": 1789041600000,
+            "lastSynced": 1789041600000,
+            "changeCount": 0,
+            "changes_acknowledged_at": 0,
+            "changes_snoozed_until": 0,
+            "currentVersion": null,
+            "versionUpdatedAt": null,
+            "whatsNew": null,
+            "hasPrivacyDetails": null,
+            "hasAccessibilityLabels": null,
+            "priceAmount": null,
+            "priceCurrency": null,
+            "priceFormatted": null,
+            "hasIap": null,
+            "genreId": null,
+            "genreName": null,
+            "ageRating": null,
+            "privacyPolicyUrl": null
+          }
+        ],
+        "privacy_types": [],
+        "privacy_categories": [],
+        "accessibility_features": [],
+        "related_apps_observed": [],
+        "privacy_snapshots": [
+          {
+            "id": "00000000-0000-4000-8000-000000000002",
+            "app_id": "555000111",
+            "scraped_at": 1784548800000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[]",
+            "source": "wayback",
+            "wayback_snapshot_url": "https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111",
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000003",
+            "app_id": "555000111",
+            "scraped_at": 1789473600000,
+            "snapshot_json": "[{\"identifier\":\"DATA_LINKED_TO_YOU\",\"title\":\"Data Linked to You\",\"categories\":[{\"identifier\":\"CONTACT_INFO\",\"title\":\"Contact Info\"}]},{\"identifier\":\"DATA_USED_TO_TRACK_YOU\",\"title\":\"Data Used to Track You\",\"categories\":[{\"identifier\":\"LOCATION\",\"title\":\"Location\"}]}]",
+            "changes_detected": 0,
+            "changes_summary": "[{\"type\":\"wayback\",\"description\":\"Requested a fresh Wayback capture of the live App Store page so the next import has a recent baseline.\",\"category\":\"wayback-attempt\",\"wayback_event\":\"requested_snapshot\",\"save_now_url\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"target_date\":1789473600000}]",
+            "source": "live",
+            "wayback_snapshot_url": null,
+            "triggered_by": "wayback",
+            "app_version": null,
+            "app_version_updated_at": null
+          }
+        ],
+        "imports": [],
+        "import_items": [],
+        "devices": [],
+        "app_devices": [],
+        "notifications": [],
+        "activity_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000004",
+            "type": "wayback_import",
+            "status": "ok",
+            "app_id": "555000111",
+            "app_name": "Fixture One",
+            "summary": "Wayback import for Fixture One: 1 imported, 1 snapshot requested",
+            "detail": "{\"mode\":\"app\",\"result\":{\"appId\":\"555000111\",\"attempted\":1,\"imported\":1,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1784548800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\",\"changeCount\":0,\"phase\":\"skeleton\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}],\"reads\":1,\"changes\":0,\"labelVersions\":1,\"firstCaptureMs\":1784548800000,\"lastCaptureMs\":1784548800000,\"lookupUrl\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"alternateUrls\":[],\"historyStartsAt\":1784548800000,\"historyStartsLate\":true,\"windows\":[]},\"force\":false}",
+            "started_at": 1789473600000,
+            "ended_at": 1789473600000,
+            "duration_ms": 0
+          }
+        ],
+        "audit_log": [
+          {
+            "id": "00000000-0000-4000-8000-000000000001",
+            "created_at": 1789473600000,
+            "action": "wayback.import.app.start",
+            "actor_ip": "10.0.205.3",
+            "user_agent": "imports-oracle/1.0",
+            "detail": "app=555000111 force=0",
+            "success": 1
+          },
+          {
+            "id": "00000000-0000-4000-8000-000000000005",
+            "created_at": 1789473600000,
+            "action": "wayback.import.app.success",
+            "actor_ip": "10.0.205.3",
+            "user_agent": "imports-oracle/1.0",
+            "detail": "app=555000111 force=0 imported=1 unchanged=0 skipped=0 failed=0",
+            "success": 1
+          }
+        ],
+        "app_settings": [
+          {
+            "key": "policy_sync_running",
+            "value": "true"
+          }
+        ]
+      },
+      "expected": {
+        "status": 200,
+        "body": "{\"result\":{\"appId\":\"555000111\",\"attempted\":1,\"imported\":1,\"unchanged\":0,\"skipped\":0,\"failed\":0,\"snapshotsRequested\":1,\"targets\":[{\"targetDate\":1784548800000,\"outcome\":\"imported\",\"captureDate\":1784548800000,\"waybackUrl\":\"https://web.archive.org/web/20260720120000/https://apps.apple.com/us/app/fixture/id555000111\",\"changeCount\":0,\"phase\":\"skeleton\"},{\"targetDate\":1789473600000,\"outcome\":\"requested_snapshot\",\"saveNowUrl\":\"https://web.archive.org/web/20260915120000/https://apps.apple.com/us/app/fixture/id555000111\",\"captureDate\":1789473600000}],\"reads\":1,\"changes\":0,\"labelVersions\":1,\"firstCaptureMs\":1784548800000,\"lastCaptureMs\":1784548800000,\"lookupUrl\":\"https://apps.apple.com/us/app/fixture/id555000111\",\"alternateUrls\":[],\"historyStartsAt\":1784548800000,\"historyStartsLate\":true,\"windows\":[]}}",
+        "type": "application/json",
+        "retryAfter": null
+      }
     }
   ]
 }
