@@ -939,6 +939,7 @@ fn apply(
             cx.w.run(COPY_LINKS, vec![json!(incoming), json!(previous)])?;
             cx.w.run(DELETE_APP_LINKS, vec![json!(previous)])?;
             cx.w.run(DELETE_APP, vec![json!(previous)])?;
+            super::wayback_runner::forget_app_settings(cx.w, previous)?;
             applied.merged += 1;
         }
         for &app_id in adds {

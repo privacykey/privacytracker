@@ -1471,12 +1471,18 @@ mod survey_runner {
             "one after every app read"
         );
 
-        // The listings asked for are cached; the fresh one is untouched.
+        // The listings asked for are cached, with the stored address they
+        // were taken for; the fresh one is untouched.
         let cached: Value =
             serde_json::from_str(&h.setting("wayback.captures.780000003").unwrap()).unwrap();
         assert_eq!(
             cached,
-            json!({ "fetchedAt": T0, "url": url_of("780000003"), "timestamps": timestamps(5, 80) })
+            json!({
+                "fetchedAt": T0,
+                "url": url_of("780000003"),
+                "timestamps": timestamps(5, 80),
+                "storedUrl": url_of("780000003"),
+            })
         );
         let alpha: Value =
             serde_json::from_str(&h.setting("wayback.captures.780000001").unwrap()).unwrap();

@@ -46,13 +46,16 @@ use crate::{
     jsstr::js_slice_prefix,
     outbound::Fetcher,
     scrape::{
-        history::INDEX_UNAVAILABLE,
+        history::{
+            alternate_urls_key, history_starts_late, read_alternate_urls, INDEX_UNAVAILABLE,
+        },
         import_app_history, notify,
-        persist::{DbAccess, Ids},
-        wayback::{self, Capture, Unavailable},
+        persist::{DbAccess, Ids, Writer as DbWriter},
+        wayback::{self, AppListing, Capture, Unavailable},
         AppRow, HistoryOptions, APP_STORE_HISTORICAL_FLOOR_MS,
     },
 };
+use rusqlite::OptionalExtension;
 use serde_json::{json, Map, Value};
 use std::{
     cmp::Reverse,
@@ -91,8 +94,9 @@ const WAIT_SLICE_MS: i64 = 1_000;
 /// run as an abandoned one.
 const WAIT_HEARTBEAT_MS: i64 = 10 * 60 * 1000;
 
-/// `wayback.captures.<appId>`: the survey's listing of one app.
-const CAPTURE_CACHE_PREFIX: &str = "wayback.captures.";
+/// `wayback.captures.<appId>`: the survey's listing of one app. A cache,
+/// so backups leave it out.
+pub(crate) const CAPTURE_CACHE_PREFIX: &str = "wayback.captures.";
 /// A listing younger than this is reused without asking the index again.
 pub(crate) const CAPTURE_CACHE_MAX_AGE_MS: i64 = 7 * 24 * 60 * 60 * 1000;
 /// The paced client's state; its `perMinute` drives the estimate.
@@ -424,34 +428,115 @@ fn capture_cache_key(app_id: &str) -> String {
 }
 
 /// The survey's listing of `app`, while it is younger than a week and was
-/// taken of the address the app has now. Anything malformed reads as no
-/// listing, and the index is asked again.
-pub(crate) fn cached_captures(cx: &Cx, app: &AppRow) -> Option<Vec<Capture>> {
+/// taken of the addresses the app has now: the same stored address and the
+/// same older ones. A listing from before the US lookup has no
+/// `storedUrl`; it was of the stored address, which is still the lookup
+/// address only for a US page. Anything malformed reads as no listing, and
+/// the index is asked again.
+pub(crate) fn cached_listing(cx: &Cx, app: &AppRow, alternates: &[String]) -> Option<AppListing> {
     let raw = cx.get(&capture_cache_key(&app.id), "");
     let cache: Value = serde_json::from_str(&raw).ok()?;
     let fetched_at = cache.get("fetchedAt")?.as_f64()?;
-    if (cx.now as f64) - fetched_at >= CAPTURE_CACHE_MAX_AGE_MS as f64
-        || cache.get("url")?.as_str()? != app.url
-    {
+    if (cx.now as f64) - fetched_at >= CAPTURE_CACHE_MAX_AGE_MS as f64 {
+        return None;
+    }
+    let lookup_url = cache.get("url")?.as_str()?;
+    let taken_for_this_address = match cache.get("storedUrl") {
+        Some(stored) => stored.as_str()? == app.url,
+        None => {
+            lookup_url == app.url
+                && wayback::us_storefront_url(&app.url).map_or(true, |us| us == app.url)
+        }
+    };
+    if !taken_for_this_address {
+        return None;
+    }
+    let mut listed: Vec<(&str, &Vec<Value>)> =
+        vec![(lookup_url, cache.get("timestamps")?.as_array()?)];
+    let mut alternate_urls = vec![];
+    if let Some(cached) = cache.get("alternates") {
+        for alternate in cached.as_array()? {
+            let url = alternate.get("url")?.as_str()?;
+            listed.push((url, alternate.get("timestamps")?.as_array()?));
+            alternate_urls.push(url.to_string());
+        }
+    }
+    let (mut asked, mut wanted) = (alternate_urls.clone(), alternates.to_vec());
+    asked.sort();
+    wanted.sort();
+    if asked != wanted {
         return None;
     }
     let mut captures = vec![];
-    for timestamp in cache.get("timestamps")?.as_array()? {
-        let timestamp = timestamp.as_str()?;
-        captures.push(Capture {
-            ms: wayback::parse_timestamp_ms(Some(timestamp))?,
-            timestamp: timestamp.to_string(),
-            url: format!("https://web.archive.org/web/{timestamp}/{}", app.url),
-        });
+    let mut seen = HashSet::new();
+    for (address, timestamps) in listed {
+        for timestamp in timestamps {
+            let timestamp = timestamp.as_str()?;
+            if !seen.insert(timestamp) {
+                continue;
+            }
+            captures.push(Capture {
+                ms: wayback::parse_timestamp_ms(Some(timestamp))?,
+                timestamp: timestamp.to_string(),
+                url: format!("https://web.archive.org/web/{timestamp}/{address}"),
+            });
+        }
     }
     captures.sort_by_key(|c| c.ms);
-    Some(captures)
+    Some(AppListing {
+        lookup_url: lookup_url.to_string(),
+        alternate_urls,
+        captures,
+    })
 }
 
-fn cache_captures(cx: &mut Cx, app: &AppRow, captures: &[Capture]) -> Result<(), String> {
-    let timestamps: Vec<&str> = captures.iter().map(|c| c.timestamp.as_str()).collect();
-    let cache = json!({ "fetchedAt": cx.now, "url": app.url, "timestamps": timestamps });
+/// `{fetchedAt, url, timestamps}` as before, `url` now the address whose
+/// listing led, plus the stored address it was taken for and each older
+/// address's own timestamps.
+fn cache_listing(cx: &mut Cx, app: &AppRow, listing: &AppListing) -> Result<(), String> {
+    let of = |address: &str| -> Vec<&str> {
+        listing
+            .captures
+            .iter()
+            .filter(|c| wayback::capture_address(&c.url) == Some(address))
+            .map(|c| c.timestamp.as_str())
+            .collect()
+    };
+    let mut cache = json!({
+        "fetchedAt": cx.now,
+        "url": listing.lookup_url,
+        "timestamps": of(&listing.lookup_url),
+        "storedUrl": app.url,
+    });
+    if !listing.alternate_urls.is_empty() {
+        cache["alternates"] = listing
+            .alternate_urls
+            .iter()
+            .map(|url| json!({ "url": url, "timestamps": of(url) }))
+            .collect();
+    }
     cx.set(&capture_cache_key(&app.id), &cache.to_string())
+}
+
+/// The settings that belong to one app and go when it does: the survey's
+/// listing and the older addresses the user added. Each is read first and
+/// deleted only when present, so deleting an app with neither runs exactly
+/// the statements it always did.
+pub(crate) fn forget_app_settings(w: &mut DbWriter<'_>, app_id: &str) -> Result<(), String> {
+    for key in [capture_cache_key(app_id), alternate_urls_key(app_id)] {
+        let present = w
+            .conn
+            .query_row("SELECT 1 FROM app_settings WHERE key = ?", [&key], |_| {
+                Ok(())
+            })
+            .optional()
+            .map_err(|e| e.to_string())?
+            .is_some();
+        if present {
+            w.run(CLEAR_STATE, vec![json!(key)])?;
+        }
+    }
+    Ok(())
 }
 
 /// `wayback_cooldown_until`, the end of the paced client's cooldown, or 0.
@@ -1259,8 +1344,8 @@ async fn throttled(
 enum SurveyStep {
     Finished(RunResult),
     Missing { app_id: String, app_name: String },
-    Cached(AppRow, Vec<Capture>),
-    List(AppRow),
+    Cached(AppRow, AppListing),
+    List(AppRow, Vec<String>),
 }
 
 /// One listing per app not surveyed yet, then the queue ordered for
@@ -1288,9 +1373,10 @@ async fn survey(
             let Some(app) = lookup_app_row(cx, &app_id)?.filter(|a| !a.url.is_empty()) else {
                 return Ok(SurveyStep::Missing { app_id, app_name });
             };
-            Ok(match cached_captures(cx, &app) {
-                Some(captures) => SurveyStep::Cached(app, captures),
-                None => SurveyStep::List(app),
+            let alternates = read_alternate_urls(cx.w.conn, &app.id)?;
+            Ok(match cached_listing(cx, &app, &alternates) {
+                Some(listing) => SurveyStep::Cached(app, listing),
+                None => SurveyStep::List(app, alternates),
             })
         })?;
         let (app, listed, cached) = match step {
@@ -1302,11 +1388,12 @@ async fn survey(
                 index += 1;
                 continue;
             }
-            SurveyStep::Cached(app, captures) => (app, Ok(Some(captures)), true),
-            SurveyStep::List(app) => {
-                let listing = wayback::list_captures(
+            SurveyStep::Cached(app, listing) => (app, Ok(Some(listing)), true),
+            SurveyStep::List(app, alternates) => {
+                let listing = wayback::list_app_captures(
                     ctl.fetcher,
                     &app.url,
+                    &alternates,
                     Some(APP_STORE_HISTORICAL_FLOOR_MS),
                     io.clock.now(),
                 );
@@ -1332,8 +1419,8 @@ async fn survey(
             Ok(None) => io.section(|cx| {
                 survey_failed(cx, state, ctl, index, &app.id, &app.name, INDEX_UNAVAILABLE)
             })?,
-            Ok(Some(captures)) => {
-                io.section(|cx| surveyed_app(cx, state, ctl, index, &app, &captures, cached))?;
+            Ok(Some(listing)) => {
+                io.section(|cx| surveyed_app(cx, state, ctl, index, &app, &listing, cached))?;
             }
         }
         index += 1;
@@ -1363,20 +1450,24 @@ fn surveyed_app(
     ctl: &Ctl<'_>,
     index: usize,
     app: &AppRow,
-    captures: &[Capture],
+    listing: &AppListing,
     cached: bool,
 ) -> Result<(), String> {
     if !cached {
-        cache_captures(cx, app, captures)?;
+        cache_listing(cx, app, listing)?;
     }
+    let captures = &listing.captures;
     let count = captures.len() as i64;
     let first = captures.first().map(|c| c.ms);
     let last = captures.last().map(|c| c.ms);
+    let starts_late = history_starts_late(first, None);
     let entry = &mut state["queue"][index];
     set(entry, "captureCount", json!(count));
     set(entry, "firstCaptureMs", json!(first));
     set(entry, "lastCaptureMs", json!(last));
     set(entry, "noArchive", json!(count == 0));
+    set(entry, "lookupUrl", json!(listing.lookup_url));
+    set(entry, "historyStartsLate", json!(starts_late));
     if count == 0 {
         set(entry, "status", json!("done"));
         set(entry, "finishedAt", json!(cx.now));
@@ -1418,6 +1509,8 @@ fn surveyed_app(
                 "firstCaptureMs": first,
                 "lastCaptureMs": last,
                 "cached": cached,
+                "lookupUrl": listing.lookup_url,
+                "historyStartsLate": starts_late,
             }),
         ),
     );
@@ -1487,7 +1580,7 @@ fn survey_failed(
 enum ReadStep {
     Finished(RunResult),
     Skipped,
-    Read(AppRow, Option<Vec<Capture>>),
+    Read(AppRow, Option<AppListing>),
 }
 
 /// Every app still to read, in queue order, each retried after a wait.
@@ -1550,24 +1643,36 @@ async fn read_all(
                 emit(ctl.writer, frame("estimate", json!({ "estimate": estimate })));
                 return Ok(ReadStep::Skipped);
             };
-            let captures = cached_captures(cx, &app);
-            Ok(ReadStep::Read(app, captures))
+            let alternates = read_alternate_urls(cx.w.conn, &app.id)?;
+            let listing = cached_listing(cx, &app, &alternates);
+            Ok(ReadStep::Read(app, listing))
         })?;
-        let (app, captures) = match step {
+        let (app, listing) = match step {
             ReadStep::Finished(finished) => return Ok(Some(finished)),
             ReadStep::Skipped => continue,
-            ReadStep::Read(app, captures) => (app, captures),
+            ReadStep::Read(app, listing) => (app, listing),
         };
 
         // The archive walk, with the lock taken per section inside and the
         // cancellation token watched throughout.
         let walked = {
             let mut sink = |event: Value| emit(ctl.writer, frame("target", event));
-            let options_for_app = HistoryOptions {
-                captures,
-                skip_save_now: true,
-                skip_availability_fallback: true,
-                ..HistoryOptions::default()
+            // A listing gone stale since the survey is taken again by the
+            // import itself, which lists the same addresses.
+            let options_for_app = match listing {
+                Some(listing) => HistoryOptions {
+                    captures: Some(listing.captures),
+                    lookup_url: Some(listing.lookup_url),
+                    alternate_urls: listing.alternate_urls,
+                    skip_save_now: true,
+                    skip_availability_fallback: true,
+                    ..HistoryOptions::default()
+                },
+                None => HistoryOptions {
+                    skip_save_now: true,
+                    skip_availability_fallback: true,
+                    ..HistoryOptions::default()
+                },
             };
             let import = import_app_history(
                 &mut *io.db,
@@ -1624,6 +1729,11 @@ async fn read_all(
                 );
                 for key in ["reads", "changes", "labelVersions"] {
                     set(entry, key, json!(int_of(&result, key)));
+                }
+                for key in ["lookupUrl", "historyStartsLate"] {
+                    if let Some(value) = result.get(key) {
+                        set(entry, key, value.clone());
+                    }
                 }
                 let started_at = get(entry, "startedAt")
                     .and_then(Value::as_i64)

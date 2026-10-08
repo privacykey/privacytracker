@@ -112,6 +112,11 @@ pub struct HistoryOptions {
     /// the availability API once per skeleton date. Bulk runs set it: the
     /// probes go to archive.org's most throttled endpoint and cannot bisect.
     pub skip_availability_fallback: bool,
+    /// With held `captures`: the address their listing was led by, which
+    /// the result reports as `lookupUrl` (the app's own address when absent).
+    pub lookup_url: Option<String>,
+    /// With held `captures`: the older addresses merged into them.
+    pub alternate_urls: Vec<String>,
 }
 
 /// The error a bulk import records when the CDX index is unusable and
@@ -207,23 +212,6 @@ fn build_replay_url(wayback_url: &str, timestamp: Option<&str>, original_url: &s
         Some(ts) => format!("https://web.archive.org/web/{ts}id_/{original_url}"),
         None => wayback_url.to_string(),
     }
-}
-
-/// The address inside a `/web/<timestamp>/<address>` capture URL. The CDX
-/// listing builds its captures from the app's own URL, but a held capture
-/// list may carry captures of another address (an older App Store URL,
-/// another storefront), and the replay must ask for the one captured.
-fn archived_address(capture_url: &str) -> Option<&str> {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    let re = RE.get_or_init(|| {
-        Regex::new(
-            r"(?i)^https?://(?:www\.)?web\.archive\.org/web/[0-9]{4,14}(?:[a-z_]+)?/(https?://.+)$",
-        )
-        .expect("static regex")
-    });
-    re.captures(capture_url)
-        .and_then(|c| c.get(1))
-        .map(|m| m.as_str())
 }
 
 enum ReplayFailure {
@@ -1461,7 +1449,8 @@ impl Walk<'_, '_> {
             };
             let replay_url = {
                 let capture = self.sampler.capture(ask.capture);
-                let address = archived_address(&capture.url).unwrap_or(self.app.url.as_str());
+                let address =
+                    wayback::capture_address(&capture.url).unwrap_or(self.app.url.as_str());
                 let timestamp = Some(capture.timestamp.as_str()).filter(|t| !t.is_empty());
                 build_replay_url(&capture.url, timestamp, address)
             };
@@ -1555,7 +1544,10 @@ fn commit_rows(
 /// date that needed none, with its `phase` — and adds `reads` (pages
 /// fetched), `changes`, `labelVersions` (distinct label sets),
 /// `firstCaptureMs` / `lastCaptureMs` (the index's range, null without
-/// one) and `windows` (each change's `fromMs` / `toMs`).
+/// one), `windows` (each change's `fromMs` / `toMs`), `lookupUrl` (the
+/// address whose listing led), `alternateUrls` (the older addresses merged
+/// in), `historyStartsAt` (the first capture, null without one) and
+/// `historyStartsLate` ([`history_starts_late`]).
 pub(crate) async fn import_app_history(
     db: &mut dyn DbAccess,
     fetcher: &dyn Fetcher,
@@ -1575,15 +1567,41 @@ pub(crate) async fn import_app_history(
         .dedupe_window_ms
         .unwrap_or(dedupe_window_for_interval(interval_months as f64) as f64);
 
-    // The rows already held are where the walk starts. One section, before
-    // the first archive request.
-    let stored = db.with(|w| stored_wayback_rows(w.conn, &app.id))?;
-    let captures = match &options.captures {
-        Some(held) => Some(held.clone()),
-        None => {
-            wayback::list_captures(fetcher, &app.url, Some(APP_STORE_HISTORICAL_FLOOR_MS), now)
-                .await?
-        }
+    // The rows already held are where the walk starts, and the older
+    // addresses the user added are listed with the app's own. One section,
+    // before the first archive request.
+    let (stored, alternates) = db.with(|w| -> Result<_, String> {
+        Ok((
+            stored_wayback_rows(w.conn, &app.id)?,
+            read_alternate_urls(w.conn, &app.id)?,
+        ))
+    })?;
+    let (captures, lookup_url, alternate_urls) = match &options.captures {
+        Some(held) => (
+            Some(held.clone()),
+            options
+                .lookup_url
+                .clone()
+                .unwrap_or_else(|| app.url.clone()),
+            options.alternate_urls.clone(),
+        ),
+        None => match wayback::list_app_captures(
+            fetcher,
+            &app.url,
+            &alternates,
+            Some(APP_STORE_HISTORICAL_FLOOR_MS),
+            now,
+        )
+        .await?
+        {
+            Some(listing) => (
+                Some(listing.captures),
+                listing.lookup_url,
+                listing.alternate_urls,
+            ),
+            // The probes ask about the app's own address.
+            None => (None, app.url.clone(), vec![]),
+        },
     };
     let in_range = |list: &[Capture]| {
         list.iter()
@@ -1681,11 +1699,71 @@ pub(crate) async fn import_app_history(
         "labelVersions": walk.sampler.label_versions(),
         "firstCaptureMs": first_capture_ms,
         "lastCaptureMs": last_capture_ms,
+        "lookupUrl": lookup_url,
+        "alternateUrls": alternate_urls,
+        "historyStartsAt": first_capture_ms,
+        "historyStartsLate": history_starts_late(first_capture_ms, None),
         "windows": windows
             .iter()
             .map(|(from, to)| json!({"fromMs": from, "toMs": to}))
             .collect::<Vec<_>>(),
     }))
+}
+
+/// `wayback.alt_urls.<appId>`: the older App Store addresses a user added
+/// for an app, at most [`MAX_ALTERNATE_URLS`], as a JSON array.
+pub(crate) fn alternate_urls_key(app_id: &str) -> String {
+    format!("wayback.alt_urls.{app_id}")
+}
+
+/// How many older addresses an app may carry.
+pub(crate) const MAX_ALTERNATE_URLS: usize = 3;
+
+/// The older addresses stored for an app, each checked again: a malformed
+/// value or an entry that is not this app's address is ignored.
+pub(crate) fn read_alternate_urls(conn: &Connection, app_id: &str) -> Result<Vec<String>, String> {
+    let raw: Option<String> = conn
+        .query_row(
+            "SELECT value FROM app_settings WHERE key = ?",
+            [alternate_urls_key(app_id)],
+            |r| r.get(0),
+        )
+        .optional()
+        .map_err(message)?;
+    let Some(Value::Array(entries)) = raw.and_then(|r| serde_json::from_str(&r).ok()) else {
+        return Ok(vec![]);
+    };
+    let mut urls: Vec<String> = vec![];
+    for entry in &entries {
+        let Some(url) = entry
+            .as_str()
+            .and_then(|raw| wayback::canonical_app_store_address(raw, app_id))
+        else {
+            continue;
+        };
+        if !urls.contains(&url) && urls.len() < MAX_ALTERNATE_URLS {
+            urls.push(url);
+        }
+    }
+    Ok(urls)
+}
+
+/// How far past the floor (and the app's release, when known) the first
+/// capture may come before the archive reads as starting late.
+const LATE_START_MS: i64 = 180 * ONE_DAY_MS;
+
+/// Whether an app's archived history starts late enough that an older
+/// address may hold more: its first capture is more than 180 days after
+/// both the February 2021 floor and the app's release. `apps` stores no
+/// release date (only the current version's), so callers pass `None` and
+/// the floor alone decides; an app first released after mid-2021 reads as
+/// late even when its archive starts at its release. No capture is not a
+/// late start: there is no start.
+pub(crate) fn history_starts_late(first_capture_ms: Option<i64>, released_ms: Option<i64>) -> bool {
+    let earliest_possible = released_ms.map_or(APP_STORE_HISTORICAL_FLOOR_MS, |released| {
+        released.max(APP_STORE_HISTORICAL_FLOOR_MS)
+    });
+    first_capture_ms.is_some_and(|first| first - earliest_possible > LATE_START_MS)
 }
 
 /// The wayback rows already held, oldest first.

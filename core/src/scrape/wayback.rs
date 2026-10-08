@@ -259,6 +259,173 @@ pub async fn list_captures(
     Ok(Some(captures))
 }
 
+fn is_storefront(segment: &str) -> bool {
+    segment.len() == 2 && segment.bytes().all(|b| b.is_ascii_alphabetic())
+}
+
+/// `id<digits>`, the track id as App Store paths carry it.
+fn track_id_segment(segment: &str) -> Option<&str> {
+    let digits = segment
+        .strip_prefix("id")
+        .or_else(|| segment.strip_prefix("ID"))?;
+    (!digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit())).then_some(digits)
+}
+
+/// The same App Store page on the US storefront. Privacy labels belong to
+/// the app, not the storefront, and archive.org crawls US pages far more
+/// often than any other, so an import lists this address first. `None` for
+/// anything that is not an apps.apple.com app page; a path with no
+/// storefront is the US one. The query and fragment are dropped: they do
+/// not change the page, and the index matches addresses exactly.
+pub fn us_storefront_url(url: &str) -> Option<String> {
+    let parsed = Url::parse(js_trim(url)).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https")
+        || parsed.host_str()? != "apps.apple.com"
+        || parsed.port().is_some()
+    {
+        return None;
+    }
+    let segments: Vec<&str> = parsed.path_segments()?.filter(|s| !s.is_empty()).collect();
+    let rest = match segments.as_slice() {
+        [storefront, "app", rest @ ..] if is_storefront(storefront) => rest,
+        ["app", rest @ ..] => rest,
+        _ => return None,
+    };
+    let (id, slug) = match rest {
+        [id] => (track_id_segment(id)?, None),
+        [slug, id] => (track_id_segment(id)?, Some(*slug)),
+        _ => return None,
+    };
+    Some(match slug {
+        Some(slug) => format!("https://apps.apple.com/us/app/{slug}/id{id}"),
+        None => format!("https://apps.apple.com/us/app/id{id}"),
+    })
+}
+
+/// An older App Store address a user added for app `app_id`, as it is
+/// stored: `https://apps.apple.com/<cc>/app/<slug>/id<app_id>` with a
+/// lowercase storefront. Surrounding spaces, a trailing slash, a query and
+/// a fragment are forgiven and dropped; anything else is refused, the
+/// address of another app included.
+pub fn canonical_app_store_address(raw: &str, app_id: &str) -> Option<String> {
+    let raw = js_trim(raw);
+    if raw.len() > 2048 {
+        return None;
+    }
+    let parsed = Url::parse(raw).ok()?;
+    if parsed.scheme() != "https"
+        || parsed.host_str()? != "apps.apple.com"
+        || parsed.port().is_some()
+        || !parsed.username().is_empty()
+        || parsed.password().is_some()
+    {
+        return None;
+    }
+    let mut segments: Vec<&str> = parsed.path_segments()?.collect();
+    if segments.last() == Some(&"") {
+        segments.pop();
+    }
+    let [storefront, "app", slug, id] = segments.as_slice() else {
+        return None;
+    };
+    if !is_storefront(storefront) || slug.is_empty() || track_id_segment(id)? != app_id {
+        return None;
+    }
+    Some(format!(
+        "https://apps.apple.com/{}/app/{slug}/id{app_id}",
+        storefront.to_ascii_lowercase()
+    ))
+}
+
+/// The address inside a `/web/<timestamp>/<address>` capture URL: what a
+/// capture is a capture of, and so what its replay asks for.
+pub fn capture_address(capture_url: &str) -> Option<&str> {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    let re = RE.get_or_init(|| {
+        Regex::new(
+            r"(?i)^https?://(?:www\.)?web\.archive\.org/web/[0-9]{4,14}(?:[a-z_]+)?/(https?://.+)$",
+        )
+        .expect("static regex")
+    });
+    re.captures(capture_url)
+        .and_then(|c| c.get(1))
+        .map(|m| m.as_str())
+}
+
+/// Every capture the index holds of an app, across its addresses.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppListing {
+    /// The address whose listing leads: the US page, or the stored address
+    /// when the US index holds nothing.
+    pub lookup_url: String,
+    /// The older addresses asked about, whatever their index held.
+    pub alternate_urls: Vec<String>,
+    /// Oldest first, one per timestamp; each capture's `url` names the
+    /// address it is a capture of.
+    pub captures: Vec<Capture>,
+}
+
+/// [`list_captures`] for an app: the US-storefront address first, then the
+/// stored address when the US index is empty or unusable, then every older
+/// address the user added, merged in with the first listing of a timestamp
+/// kept. A US index that is merely smaller than the stored address's still
+/// wins: comparing would cost every non-US app a second listing, and an
+/// address with more history can be added as an older address. `None` when
+/// no address answered with a usable index; throttling anywhere is the
+/// error, at once.
+pub async fn list_app_captures(
+    fetcher: &dyn Fetcher,
+    stored_url: &str,
+    alternates: &[String],
+    from_ms: Option<i64>,
+    now: i64,
+) -> Result<Option<AppListing>, Unavailable> {
+    let us = us_storefront_url(stored_url).filter(|us| us != stored_url);
+    let mut lookups: Vec<&str> = us.iter().map(String::as_str).collect();
+    lookups.push(stored_url);
+    let mut found: Option<(String, Vec<Capture>)> = None;
+    let mut first_empty: Option<&str> = None;
+    for address in lookups.iter().copied() {
+        match list_captures(fetcher, address, from_ms, now).await? {
+            Some(captures) if !captures.is_empty() => {
+                found = Some((address.to_string(), captures));
+                break;
+            }
+            Some(_) => {
+                first_empty.get_or_insert(address);
+            }
+            None => {}
+        }
+    }
+    let (lookup_url, mut captures) = match (found, first_empty) {
+        (Some(found), _) => found,
+        (None, Some(address)) => (address.to_string(), vec![]),
+        (None, None) => return Ok(None),
+    };
+    let mut seen: HashSet<String> = captures.iter().map(|c| c.timestamp.clone()).collect();
+    let mut alternate_urls = vec![];
+    for address in alternates {
+        if lookups.contains(&address.as_str()) || alternate_urls.contains(address) {
+            continue;
+        }
+        alternate_urls.push(address.clone());
+        let Some(listed) = list_captures(fetcher, address, from_ms, now).await? else {
+            continue;
+        };
+        for capture in listed {
+            if seen.insert(capture.timestamp.clone()) {
+                captures.push(capture);
+            }
+        }
+    }
+    captures.sort_by_key(|c| c.ms);
+    Ok(Some(AppListing {
+        lookup_url,
+        alternate_urls,
+        captures,
+    }))
+}
+
 /// `lookupLatestWaybackSnapshot`: the availability API's newest capture of
 /// a URL, or `None` for anything it cannot answer. Unlike the dated
 /// lookup it never looks at the status: a throttled or failing API reads
