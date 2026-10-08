@@ -601,7 +601,97 @@ fn snapshot_from_header(raw: Option<&str>, base: &str) -> Option<Snapshot> {
 
 #[cfg(test)]
 mod tests {
-    use super::{format_timestamp, parse_retry_after_ms, parse_timestamp_ms, Unavailable};
+    use super::{
+        canonical_app_store_address, capture_address, format_timestamp, parse_retry_after_ms,
+        parse_timestamp_ms, us_storefront_url, Unavailable,
+    };
+
+    #[test]
+    fn any_storefront_maps_to_the_us_page() {
+        let us = |url: &str| us_storefront_url(url);
+        assert_eq!(
+            us("https://apps.apple.com/gb/app/instagram/id389801252"),
+            Some("https://apps.apple.com/us/app/instagram/id389801252".to_string())
+        );
+        // Query, fragment, trailing slash and an upper-case storefront go;
+        // so does plain http.
+        assert_eq!(
+            us("http://apps.apple.com/DE/app/instagram/id389801252/?platform=iphone#x"),
+            Some("https://apps.apple.com/us/app/instagram/id389801252".to_string())
+        );
+        // A path with no storefront is the US page; so is one with no slug.
+        assert_eq!(
+            us("https://apps.apple.com/app/instagram/id389801252"),
+            Some("https://apps.apple.com/us/app/instagram/id389801252".to_string())
+        );
+        assert_eq!(
+            us("https://apps.apple.com/jp/app/id389801252"),
+            Some("https://apps.apple.com/us/app/id389801252".to_string())
+        );
+        // A percent-encoded slug is kept as it is.
+        assert_eq!(
+            us("https://apps.apple.com/cn/app/%E5%BE%AE%E4%BF%A1/id414478124"),
+            Some("https://apps.apple.com/us/app/%E5%BE%AE%E4%BF%A1/id414478124".to_string())
+        );
+        for other in [
+            "https://itunes.apple.com/us/app/instagram/id389801252",
+            "https://apps.apple.com/us/developer/meta/id389801253",
+            "https://apps.apple.com/us/app/instagram",
+            "https://apps.apple.com:8443/us/app/instagram/id389801252",
+            "https://example.com/us/app/instagram/id389801252",
+            "not a url",
+        ] {
+            assert_eq!(us(other), None, "{other}");
+        }
+    }
+
+    #[test]
+    fn older_addresses_are_this_apps_pages_only() {
+        let canonical = |raw: &str| canonical_app_store_address(raw, "389801252");
+        let gb = Some("https://apps.apple.com/gb/app/instagram/id389801252".to_string());
+        assert_eq!(
+            canonical("https://apps.apple.com/gb/app/instagram/id389801252"),
+            gb
+        );
+        // Spaces, a trailing slash, a query and a fragment are forgiven; an
+        // upper-case storefront is lowered.
+        assert_eq!(
+            canonical("  https://apps.apple.com/GB/app/instagram/id389801252/?l=en#top "),
+            gb
+        );
+        for refused in [
+            "https://apps.apple.com/gb/app/instagram/id389801253",
+            "http://apps.apple.com/gb/app/instagram/id389801252",
+            "https://apps.apple.com/gb/app/id389801252",
+            "https://apps.apple.com/app/instagram/id389801252",
+            "https://apps.apple.com/gbr/app/instagram/id389801252",
+            "https://itunes.apple.com/gb/app/instagram/id389801252",
+            "https://user@apps.apple.com/gb/app/instagram/id389801252",
+            "https://apps.apple.com:444/gb/app/instagram/id389801252",
+            "https://apps.apple.com/gb/app/instagram/id389801252/extra",
+            "",
+        ] {
+            assert_eq!(canonical(refused), None, "{refused}");
+        }
+        assert_eq!(canonical(&"a".repeat(2049)), None);
+    }
+
+    #[test]
+    fn a_capture_names_the_address_it_is_of() {
+        assert_eq!(
+            capture_address(
+                "https://web.archive.org/web/20210215120000/https://apps.apple.com/gb/app/x/id1"
+            ),
+            Some("https://apps.apple.com/gb/app/x/id1")
+        );
+        assert_eq!(
+            capture_address(
+                "http://web.archive.org/web/2021id_/https://apps.apple.com/us/app/x/id1"
+            ),
+            Some("https://apps.apple.com/us/app/x/id1")
+        );
+        assert_eq!(capture_address("https://apps.apple.com/us/app/x/id1"), None);
+    }
 
     #[test]
     fn transport_failures_are_unavailable_and_nothing_else_is() {

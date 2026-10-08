@@ -2192,6 +2192,30 @@ mod tests {
     }
 
     #[test]
+    fn a_late_start_counts_from_the_floor_or_a_later_release() {
+        use super::history_starts_late;
+        let floor = APP_STORE_HISTORICAL_FLOOR_MS;
+        assert!(!history_starts_late(None, None), "no capture is no start");
+        assert!(!history_starts_late(Some(floor + 180 * DAY), None));
+        assert!(history_starts_late(Some(floor + 181 * DAY), None));
+        // Released in 2024 and archived within its first month: not late.
+        let released = floor + 1100 * DAY;
+        assert!(!history_starts_late(
+            Some(released + 30 * DAY),
+            Some(released)
+        ));
+        assert!(history_starts_late(
+            Some(released + 181 * DAY),
+            Some(released)
+        ));
+        // A release before the floor counts from the floor.
+        assert!(history_starts_late(
+            Some(floor + 181 * DAY),
+            Some(floor - 400 * DAY)
+        ));
+    }
+
+    #[test]
     fn anchors_walk_like_node() {
         // Every value is computeHistoricalTargets from node -e. Node's list
         // thinned 1 February 12:00 against the floor, twelve hours before
