@@ -3609,7 +3609,13 @@
     "wayback_import_count": "{count, plural, one {# Wayback import} other {# Wayback imports}} in this timeline",
     "show_older": "Show older entries",
     "show_older_busy": "Loading older entries…",
-    "show_older_failed": "Couldn't load older entries: {message}"
+    "show_older_failed": "Couldn't load older entries: {message}",
+    "fold_no_change_span": "Checked {count, plural, =1 {once} =2 {twice} other {# times}}, {first} to {last}, no change",
+    "fold_no_change_same_day": "Checked {count, plural, =1 {once} =2 {twice} other {# times}} on {date}, no change",
+    "fold_some_failed_span": "Checked {count, plural, =1 {once} =2 {twice} other {# times}}, {first} to {last}, no change, {failed, plural, one {# check failed} other {# checks failed}}",
+    "fold_some_failed_same_day": "Checked {count, plural, =1 {once} =2 {twice} other {# times}} on {date}, no change, {failed, plural, one {# check failed} other {# checks failed}}",
+    "fold_all_failed_span": "Checked {count, plural, =1 {once} =2 {twice} other {# times}}, {first} to {last}, {count, plural, =1 {failed} other {every check failed}}",
+    "fold_all_failed_same_day": "Checked {count, plural, =1 {once} =2 {twice} other {# times}} on {date}, {count, plural, =1 {failed} other {every check failed}}"
   },
   "onboard_status": {
     "fetch_ready": "Already up to date",

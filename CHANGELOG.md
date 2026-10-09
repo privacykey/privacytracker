@@ -28,6 +28,15 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- An app's History timeline folds runs of quiet checks into one row, so
+  the last real change is what you see first. Two or more syncs in a row
+  that found the labels as they were, or privacy policy fetches that came
+  back the same text or failed, become one line such as "Checked 14 times,
+  3 Jun to 9 Oct 2026, no change", in red when a check failed and saying
+  how many. Click the line to see each check. Label changes, policy
+  changes, archive imports, review actions and the first scan always keep
+  their own row, and a single quiet check stays as it was. The iOS
+  companion folds its timeline by the same rule.
 - The Wayback history import in the desktop app and the Docker image now
   works within archive.org's limits instead of running into them. A large
   bulk import used to stop after an app or two, rate-limited.

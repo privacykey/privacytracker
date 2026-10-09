@@ -1,0 +1,81 @@
+/* Folded run of quiet checks on the per-app History timeline
+   (ChangelogTimeline.tsx over lib/timeline-fold.ts). One compact row stands
+   in for two or more consecutive syncs that found the label as it was and
+   policy fetches that came back the same text or failed, so the last real
+   change is what the eye lands on. The row is a real <button> carrying
+   aria-expanded; opening it renders the run's rows with their usual markup.
+
+   Own class names on purpose: `.timeline-item` and the `.timeline-dot*`
+   states are load-bearing for e2e selectors and the data-a11y-shapes
+   clip-paths in globals.css, and the rows inside an opened fold keep them
+   untouched. The dot sits on the rail exactly where `.timeline-dot` does;
+   its shape-mode square lives with the other timeline shapes in globals.css. */
+
+.timeline-fold {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.timeline-fold-dot {
+  position: absolute;
+  top: 4px;
+  left: -24px;
+  width: 14px;
+  height: 14px;
+  background: var(--text-3);
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+}
+
+/* Red when any check in the run failed; the summary says how many, so the
+   colour is never the only signal. */
+.timeline-fold-failed .timeline-fold-dot {
+  background: var(--red);
+}
+
+.timeline-fold-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 1px 0;
+  margin: 0;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+}
+
+.timeline-fold-toggle:hover .timeline-fold-summary {
+  text-decoration: underline dotted;
+}
+
+.timeline-fold-failed .timeline-fold-toggle {
+  color: var(--red);
+}
+
+.timeline-fold-summary {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Follows the text rather than sitting at the far edge of a wide card, so it
+   stays next to what it opens. */
+.timeline-fold-chevron {
+  flex-shrink: 0;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.timeline-fold-rows {
+  margin-top: 16px;
+}
+
+.timeline-fold-rows .timeline-item:last-child {
+  margin-bottom: 0;
+}
