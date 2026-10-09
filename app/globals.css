@@ -25988,6 +25988,12 @@ html[data-a11y-shapes="on"] .timeline-dot.has-changes {
 html[data-a11y-shapes="on"] .timeline-dot.no-changes {
   clip-path: polygon(15% 15%, 85% 15%, 85% 85%, 15% 85%);
 }
+/* A folded run of quiet checks (app/components/changelog-timeline.css) is
+   the same meaning as `no-changes`, so it wears the same square. */
+html[data-a11y-shapes="on"] .timeline-fold-dot {
+  border-radius: 0;
+  clip-path: polygon(15% 15%, 85% 15%, 85% 85%, 15% 85%);
+}
 html[data-a11y-shapes="on"] .timeline-dot.first-sync {
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
 }

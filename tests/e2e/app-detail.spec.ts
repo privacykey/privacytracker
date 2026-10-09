@@ -1,4 +1,6 @@
+import path from "node:path";
 import { expect, test } from "@playwright/test";
+import Database from "better-sqlite3";
 
 /**
  * E2E coverage for the app detail page (`/apps/[id]`). Verifies that a
@@ -26,6 +28,14 @@ const sameOriginHeaders = {
 };
 
 const browserFlow = process.env.CODEX_SANDBOX ? test.skip : test;
+
+// Only the disposable DB owned by playwright.config.ts. No route writes a
+// sync that found nothing without reaching the App Store, so the quiet
+// rows the fold case needs are seeded straight into the table, on both
+// backends (same approach as dashboard-review-continuity.spec.ts).
+function fixtureDb() {
+  return new Database(path.join(process.cwd(), ".playwright-data/privacy.db"));
+}
 
 interface SeedResult {
   id: string;
@@ -269,5 +279,143 @@ browserFlow(
     // degrades to the "imported on <firstSeen>" line with a link into
     // Import History.
     await expect(page.locator(".app-detail-footer")).toBeVisible();
+  }
+);
+
+browserFlow(
+  "app detail: a run of quiet checks folds into one row that opens on click",
+  async ({ page, request }) => {
+    const seedRes = await request.post(
+      "/api/dev/seed-sample-data?source=canned",
+      { headers: sameOriginHeaders }
+    );
+    await expect(seedRes).toBeOK();
+    const seedBody = (await seedRes.json()) as {
+      apps?: SeedResult[];
+      results?: SeedResult[];
+    };
+    const instagram = (seedBody.apps ?? seedBody.results ?? []).find(
+      (s) => s.name === "Instagram"
+    );
+    expect(
+      instagram?.id,
+      "expected Instagram among the seeded apps"
+    ).toBeTruthy();
+    const appId = instagram!.id;
+
+    // Newer than everything the seed wrote: a label change, then four quiet
+    // checks above it (three scheduled syncs that found the labels as they
+    // were and one failed policy fetch), written the way lib/scraper.ts and
+    // appendPolicyChangeEntry write them. The change row fences the run off
+    // from the seed's own newest row, which is itself a quiet sync, so the
+    // fold holds exactly these four whatever the canned fixture does. All
+    // carry the newest snapshot so the rest of the page (since-install,
+    // label trust) reads as before.
+    const base = Date.now();
+    const db = fixtureDb();
+    try {
+      const latest = db
+        .prepare(
+          "SELECT snapshot_json FROM privacy_snapshots WHERE app_id = ? ORDER BY scraped_at DESC LIMIT 1"
+        )
+        .get(appId) as { snapshot_json: string } | undefined;
+      const snapshotJson = latest?.snapshot_json ?? "[]";
+      const insert = db.prepare(
+        "INSERT INTO privacy_snapshots(id,app_id,scraped_at,snapshot_json,changes_detected,changes_summary,source,triggered_by) VALUES (?,?,?,?,?,?,'live',?)"
+      );
+      insert.run(
+        "fold-boundary-change",
+        appId,
+        base + 500,
+        snapshotJson,
+        1,
+        JSON.stringify([
+          {
+            type: "added",
+            category: "privacy-label",
+            description: "Added Location under Data Used to Track You",
+          },
+        ]),
+        "scheduled"
+      );
+      for (let i = 1; i <= 3; i += 1) {
+        insert.run(
+          `quiet-sync-${i}`,
+          appId,
+          base + i * 1000,
+          snapshotJson,
+          0,
+          "[]",
+          "scheduled"
+        );
+      }
+      insert.run(
+        "quiet-policy-error",
+        appId,
+        base + 4000,
+        snapshotJson,
+        0,
+        JSON.stringify([
+          {
+            type: "policy",
+            category: "privacy-policy",
+            description: "Privacy policy rescrape failed",
+            policy_event: "error",
+          },
+        ]),
+        null
+      );
+    } finally {
+      db.close();
+    }
+
+    await page.goto(`/apps/${appId}`);
+    await expect(page.locator("h1.detail-hero-name")).toHaveText("Instagram");
+    await expect(async () => {
+      await page.locator("#tab-changelog").click();
+      await expect(page.locator(".timeline-fold")).toBeVisible({
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+
+    // One fold for the four rows, red because a check failed. The label
+    // change directly below it keeps its own card, as do the seed's rows.
+    const fold = page.locator(".timeline-fold");
+    await expect(fold).toHaveCount(1);
+    await expect(fold).toHaveClass(/timeline-fold-failed/);
+    await expect(fold).toHaveAttribute("data-fold-count", "4");
+    await expect(
+      page.locator(".timeline > .timeline-fold + .timeline-item")
+    ).toHaveCount(1);
+    await expect(
+      page.locator(".timeline > .timeline-item").first()
+    ).toBeVisible();
+
+    // The control is a real button named by the summary (the chevron is
+    // hidden from assistive tech), closed on arrival.
+    const toggle = fold.getByRole("button", {
+      name: /^Checked 4 times on .+, no change, 1 check failed$/,
+    });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(fold.locator(".timeline-item")).toHaveCount(0);
+
+    // Opening it renders the four rows with their usual markup: the plain
+    // dots the shape toggle restyles, and the failed policy fetch's card.
+    await expect(async () => {
+      await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-expanded", "true", {
+        timeout: 500,
+      });
+    }).toPass({ timeout: 10_000 });
+    await expect(fold.locator(".timeline-item")).toHaveCount(4);
+    await expect(fold.locator(".timeline-dot.no-changes")).toHaveCount(4);
+    await expect(
+      fold.locator(".timeline-change-icon.policy-error")
+    ).toHaveCount(1);
+
+    // And closes again.
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(fold.locator(".timeline-item")).toHaveCount(0);
   }
 );

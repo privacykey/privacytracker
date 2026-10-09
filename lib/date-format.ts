@@ -36,6 +36,13 @@ export function normaliseDateFormat(
 }
 
 interface FormatOpts {
+  /**
+   * Drop the year, for the first date of a span whose second date shows
+   * the same year ("3 Jun to 9 Oct 2026"). Honoured in `auto` mode only:
+   * a numeric date without its year ("03/06") is ambiguous, and an ISO
+   * date is always written whole.
+   */
+  omitYear?: boolean;
   /** When `withTime` is true, include seconds. Default false. */
   withSeconds?: boolean;
   /** Include time-of-day after the date. Default false (date only). */
@@ -80,7 +87,8 @@ export function formatDate(
     mode === "dmy" ? "en-GB" : mode === "mdy" ? "en-US" : undefined;
 
   const dtfOpts: Intl.DateTimeFormatOptions = {
-    year: "numeric",
+    // `omitYear` applies to the month-name format only (see FormatOpts).
+    ...(mode === "auto" && opts.omitYear ? {} : { year: "numeric" }),
     month: "short",
     day: "numeric",
   };

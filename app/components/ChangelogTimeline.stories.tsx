@@ -77,6 +77,83 @@ export const Empty: Story = {
   args: { rows: [] },
 };
 
+/**
+ * Fourteen daily checks that found nothing, one of them a failed policy
+ * fetch, between two label changes. The run folds into one red row
+ * (lib/timeline-fold.ts) that opens on click, while the changes, the
+ * lone quiet check and the first scan below keep their own cards.
+ */
+const QUIET_RUN_ROWS: ChangelogRow[] = [
+  SAMPLE_ROWS[0],
+  ...Array.from({ length: 14 }, (_, i): ChangelogRow => {
+    const common = {
+      kind: "snapshot" as const,
+      id: `quiet-${i}`,
+      scraped_at: NOW - (3 + i) * DAY,
+      changes_detected: 0,
+      source: "live" as const,
+    };
+    if (i === 5) {
+      return {
+        ...common,
+        changes_summary: [
+          {
+            type: "policy",
+            category: "privacy-policy",
+            description: "Privacy policy rescrape failed",
+            policy_event: "error",
+          },
+        ],
+        triggered_by: null,
+      };
+    }
+    return {
+      ...common,
+      app_version: "7.22.0",
+      changes_summary: [],
+      triggered_by: "scheduled",
+    };
+  }),
+  {
+    kind: "snapshot",
+    id: "snap-older-change",
+    scraped_at: NOW - 20 * DAY,
+    changes_detected: 1,
+    changes_summary: [
+      {
+        type: "added",
+        category: "privacy-label",
+        description: "Added Location under Data Used to Track You",
+      },
+    ],
+    source: "live",
+    triggered_by: "scheduled",
+  },
+  {
+    kind: "snapshot",
+    id: "snap-lone-quiet",
+    scraped_at: NOW - 24 * DAY,
+    changes_detected: 0,
+    changes_summary: [],
+    source: "live",
+    triggered_by: "scheduled",
+  },
+  {
+    kind: "snapshot",
+    id: "snap-first-scan",
+    scraped_at: NOW - 30 * DAY,
+    app_version: "7.0.0",
+    changes_detected: 0,
+    changes_summary: [],
+    source: "live",
+    triggered_by: "import",
+  },
+];
+
+export const QuietRuns: Story = {
+  args: { rows: QUIET_RUN_ROWS, defaultShowImported: true },
+};
+
 export const ChineseLocale: Story = {
   globals: { locale: "zh" },
   args: { rows: SAMPLE_ROWS },

@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { bareVersion } from "../../lib/app-version";
 import type {
   ChangeEntry,
@@ -15,8 +15,16 @@ import {
 } from "../../lib/date-format";
 import { useDateFormat } from "../../lib/date-format-hook";
 import { scrollPulse } from "../../lib/scroll-pulse";
+import {
+  type FoldedRun,
+  foldSummaryMessage,
+  foldTimeline,
+  sameLocalDay,
+  sameLocalYear,
+} from "../../lib/timeline-fold";
 import { waybackChangeWindow } from "../../lib/wayback-timeline";
 import AppChangeTimeline from "./charts/AppChangeTimeline";
+import "./changelog-timeline.css";
 
 // Local aliases so the existing rendering code that references SnapshotRow
 // keeps working without renaming every call-site. The client is now fed a
@@ -521,15 +529,22 @@ export default function ChangelogTimeline({
   const [pulsed, setPulsed] = useState<{ id: string; nonce: number } | null>(
     null
   );
-  const pulseSnapshot = (snapshotId: string) => {
-    // Nonce jumps each call so repeated clicks on the same row restart the
-    // animation instead of being swallowed by React's identity check.
-    setPulsed((prev) => ({
-      id: snapshotId,
-      nonce: (prev && prev.id === snapshotId ? prev.nonce : 0) + 1,
-    }));
-    // Scroll is done inside TimelineSnapshotItem's effect so it happens
-    // after the element has the pulse class applied.
+  // Which folded runs of quiet checks are open, by fold id (the id of the
+  // run's first row, so an open fold stays open while older pages extend
+  // it). Every fold starts closed on every visit, as on iOS.
+  const [expandedFolds, setExpandedFolds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const toggleFold = (foldId: string) => {
+    setExpandedFolds((prev) => {
+      const next = new Set(prev);
+      if (next.has(foldId)) {
+        next.delete(foldId);
+      } else {
+        next.add(foldId);
+      }
+      return next;
+    });
   };
   // Local override for the wayback-imports toggle. Initialises from the
   // server-provided `defaultShowImported`; any flip on this page is
@@ -626,6 +641,79 @@ export default function ChangelogTimeline({
         );
   }, [allRows, showImported, tf.liveRows, tf.waybackRows, tf.reviewRows]);
 
+  // Index of the earliest (last-rendered) *snapshot* row — used to pick out the
+  // "first scan recorded" marker. We compute it against the snapshot subset so
+  // an interleaved review row never accidentally takes the "first-sync" slot.
+  // Computed from `visibleRows` so a filtered-out wayback row at the tail
+  // never claims the marker, and a live row newly-exposed by filtering can
+  // legitimately take it.
+  let lastSnapshotIndex = -1;
+  for (let i = visibleRows.length - 1; i >= 0; i -= 1) {
+    if (visibleRows[i].kind === "snapshot") {
+      lastSnapshotIndex = i;
+      break;
+    }
+  }
+  // Same idea for the newest snapshot, so `dotClass` treats only the newest
+  // snapshot as the "latest sync" visual anchor regardless of review rows
+  // above it in the merged feed.
+  let firstSnapshotIndex = -1;
+  for (let i = 0; i < visibleRows.length; i += 1) {
+    if (visibleRows[i].kind === "snapshot") {
+      firstSnapshotIndex = i;
+      break;
+    }
+  }
+  // The row that will render as "First scan recorded" (or the archive
+  // baseline): the oldest loaded snapshot with nothing to diff, once nothing
+  // older is left to fetch. Named to the fold below so a legacy first scan
+  // with no stored trigger is never counted as one more quiet check.
+  const firstScanRow =
+    !olderHasMore && lastSnapshotIndex >= 0
+      ? visibleRows[lastSnapshotIndex]
+      : null;
+  const firstScanId =
+    firstScanRow?.kind === "snapshot" &&
+    (firstScanRow.changes_summary?.length ?? 0) === 0
+      ? firstScanRow.id
+      : null;
+  // Runs of two or more quiet checks fold into one row (lib/timeline-fold.ts,
+  // the rule the iOS companion uses). Folded over the first page and every
+  // older page together, so a run grows as older pages arrive; each fold is
+  // keyed on its first row, which stays put while the run grows.
+  const items = useMemo(
+    () =>
+      foldTimeline(
+        visibleRows,
+        firstScanId ? { keep: new Set([firstScanId]) } : undefined
+      ),
+    [visibleRows, firstScanId]
+  );
+  const indexById = useMemo(
+    () => new Map(visibleRows.map((row, index) => [row.id, index] as const)),
+    [visibleRows]
+  );
+  const pulseSnapshot = (snapshotId: string) => {
+    // A review row only links to rows that were flagged for review, which
+    // never fold; should that change, open the fold holding the target so
+    // the anchor exists to scroll to.
+    const holder = items.find(
+      (item) =>
+        item.kind === "folded" && item.rows.some((row) => row.id === snapshotId)
+    );
+    if (holder && !expandedFolds.has(holder.id)) {
+      setExpandedFolds((prev) => new Set(prev).add(holder.id));
+    }
+    // Nonce jumps each call so repeated clicks on the same row restart the
+    // animation instead of being swallowed by React's identity check.
+    setPulsed((prev) => ({
+      id: snapshotId,
+      nonce: (prev && prev.id === snapshotId ? prev.nonce : 0) + 1,
+    }));
+    // Scroll is done inside TimelineSnapshotItem's effect so it happens
+    // after the element has the pulse class applied.
+  };
+
   const togglePreview = (key: string, versionId: string) => {
     setExpandedPreview((prev) => (prev === key ? null : key));
 
@@ -721,29 +809,62 @@ export default function ChangelogTimeline({
     );
   }
 
-  // Index of the earliest (last-rendered) *snapshot* row — used to pick out the
-  // "first scan recorded" marker. We compute it against the snapshot subset so
-  // an interleaved review row never accidentally takes the "first-sync" slot.
-  // Computed from `visibleRows` so a filtered-out wayback row at the tail
-  // never claims the marker, and a live row newly-exposed by filtering can
-  // legitimately take it.
-  let lastSnapshotIndex = -1;
-  for (let i = visibleRows.length - 1; i >= 0; i -= 1) {
-    if (visibleRows[i].kind === "snapshot") {
-      lastSnapshotIndex = i;
-      break;
+  // One timeline row, rendered as it always was. `i` is the row's place in
+  // `visibleRows`, which the first-scan marker, the latest-sync dot, the
+  // previous-version lookup and the wayback change window all read: a fold
+  // changes where a row paints, never where it sits in the history.
+  const renderRow = (row: ChangelogRow) => {
+    const i = indexById.get(row.id) ?? -1;
+    if (row.kind === "review") {
+      return (
+        <ReviewTimelineItem
+          key={row.id}
+          onSnapshotClick={pulseSnapshot}
+          row={row}
+          showSnapshotChips={tf.reviewSnapshotChips}
+        />
+      );
     }
-  }
-  // Same idea for the newest snapshot, so `dotClass` treats only the newest
-  // snapshot as the "latest sync" visual anchor regardless of review rows
-  // above it in the merged feed.
-  let firstSnapshotIndex = -1;
-  for (let i = 0; i < visibleRows.length; i += 1) {
-    if (visibleRows[i].kind === "snapshot") {
-      firstSnapshotIndex = i;
-      break;
-    }
-  }
+
+    // The oldest *loaded* row is only the first scan when nothing
+    // older is left to fetch.
+    const isFirst = i === lastSnapshotIndex && !olderHasMore;
+    const snapshotPosition = i === firstSnapshotIndex ? 0 : 1;
+    const previousLiveSnapshot = visibleRows
+      .slice(i + 1)
+      .find(
+        (candidate): candidate is SnapshotRow =>
+          candidate.kind === "snapshot" &&
+          candidate.source !== "wayback" &&
+          !!candidate.app_version
+      );
+    // A reconstructed change happened somewhere between the last
+    // archived copy with the old labels and this one.
+    const changeWindow = waybackChangeWindow(visibleRows, i);
+
+    return (
+      <TimelineSnapshotItem
+        diffs={diffs}
+        expandedDiff={expandedDiff}
+        expandedPreview={expandedPreview}
+        isFirst={isFirst}
+        key={row.id}
+        previews={previews}
+        previousAppVersion={previousLiveSnapshot?.app_version ?? null}
+        pulsed={pulsed}
+        showMatchesLiveSyncBadge={tf.matchesLiveSyncBadge}
+        showPolicyDiffToggle={tf.policyDiffToggle}
+        showPolicyPreviewToggle={tf.policyPreviewToggle}
+        showTriggerPills={tf.triggerPills}
+        showVersionChip={tf.versionChip}
+        snapshot={row}
+        snapshotPosition={snapshotPosition}
+        toggleDiff={toggleDiff}
+        togglePreview={togglePreview}
+        waybackChangedFrom={changeWindow?.fromMs ?? null}
+      />
+    );
+  };
 
   return (
     <>
@@ -806,57 +927,20 @@ export default function ChangelogTimeline({
       )}
 
       <div className="timeline">
-        {visibleRows.map((row, i) => {
-          if (row.kind === "review") {
-            return (
-              <ReviewTimelineItem
-                key={row.id}
-                onSnapshotClick={pulseSnapshot}
-                row={row}
-                showSnapshotChips={tf.reviewSnapshotChips}
-              />
-            );
-          }
-
-          // The oldest *loaded* row is only the first scan when nothing
-          // older is left to fetch.
-          const isFirst = i === lastSnapshotIndex && !olderHasMore;
-          const snapshotPosition = i === firstSnapshotIndex ? 0 : 1;
-          const previousLiveSnapshot = visibleRows
-            .slice(i + 1)
-            .find(
-              (candidate): candidate is SnapshotRow =>
-                candidate.kind === "snapshot" &&
-                candidate.source !== "wayback" &&
-                !!candidate.app_version
-            );
-          // A reconstructed change happened somewhere between the last
-          // archived copy with the old labels and this one.
-          const changeWindow = waybackChangeWindow(visibleRows, i);
-
-          return (
-            <TimelineSnapshotItem
-              diffs={diffs}
-              expandedDiff={expandedDiff}
-              expandedPreview={expandedPreview}
-              isFirst={isFirst}
-              key={row.id}
-              previews={previews}
-              previousAppVersion={previousLiveSnapshot?.app_version ?? null}
-              pulsed={pulsed}
-              showMatchesLiveSyncBadge={tf.matchesLiveSyncBadge}
-              showPolicyDiffToggle={tf.policyDiffToggle}
-              showPolicyPreviewToggle={tf.policyPreviewToggle}
-              showTriggerPills={tf.triggerPills}
-              showVersionChip={tf.versionChip}
-              snapshot={row}
-              snapshotPosition={snapshotPosition}
-              toggleDiff={toggleDiff}
-              togglePreview={togglePreview}
-              waybackChangedFrom={changeWindow?.fromMs ?? null}
-            />
-          );
-        })}
+        {items.map((item) =>
+          item.kind === "folded" ? (
+            <FoldedTimelineRun
+              expanded={expandedFolds.has(item.id)}
+              key={item.id}
+              onToggle={() => toggleFold(item.id)}
+              run={item}
+            >
+              {item.rows.map((row) => renderRow(row))}
+            </FoldedTimelineRun>
+          ) : (
+            renderRow(item.row)
+          )
+        )}
       </div>
       {appId && (olderHasMore || olderError) ? (
         <div
@@ -894,6 +978,65 @@ export default function ChangelogTimeline({
         </div>
       ) : null}
     </>
+  );
+}
+
+/**
+ * Two or more consecutive quiet checks folded into one compact row:
+ * "Checked 14 times, 3 Jun to 9 Oct 2026, no change". The row is a real
+ * button carrying `aria-expanded`, and its accessible name is the summary
+ * (the chevron is hidden from assistive tech). Opening it renders the
+ * run's rows beneath with their usual markup, so nothing is lost. Red
+ * when any check in the run failed, and the summary says how many.
+ * Mirrors `FoldedTimelineRunView` in the iOS companion.
+ */
+function FoldedTimelineRun({
+  run,
+  expanded,
+  onToggle,
+  children,
+}: {
+  run: FoldedRun;
+  expanded: boolean;
+  onToggle: () => void;
+  /** The run's rows, rendered by the parent so they read as before. */
+  children: ReactNode;
+}) {
+  const tTimeline = useTranslations("timeline");
+  const dateMode = useDateFormat();
+  const message = foldSummaryMessage(run, {
+    sameDay: sameLocalDay(run.oldest, run.newest),
+    // The first date drops a year the last one already shows ("3 Jun to
+    // 9 Oct 2026"); the numeric and ISO preferences keep it.
+    first: formatDateWithMode(run.oldest, dateMode, {
+      omitYear: sameLocalYear(run.oldest, run.newest),
+    }),
+    last: formatShortDate(run.newest, dateMode),
+  });
+  const summary = tTimeline(message.key, message.values);
+
+  return (
+    <div
+      className={`timeline-fold${run.includesErrors ? " timeline-fold-failed" : ""}${
+        expanded ? " timeline-fold-expanded" : ""
+      }`}
+      data-fold-count={run.count}
+      data-fold-failed={run.errorCount}
+    >
+      <span aria-hidden="true" className="timeline-fold-dot" />
+      <button
+        aria-expanded={expanded}
+        className="timeline-fold-toggle"
+        onClick={onToggle}
+        type="button"
+      >
+        <span className="timeline-fold-summary">{summary}</span>
+        <span aria-hidden="true" className="timeline-fold-chevron">
+          {expanded ? "▴" : "▾"}
+        </span>
+      </button>
+      {expanded ? <div className="timeline-fold-rows">{children}</div> : null}
+    </div>
   );
 }
 

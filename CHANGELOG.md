@@ -12,7 +12,113 @@ Going forward, changes are recorded here as they land.
 
 ## [Unreleased]
 
-## [0.3.0] — 2026-10-09
+### Added
+
+- The Wayback history import finds more of an app's history, in the
+  desktop app and the Docker image. It now looks up the US App Store page
+  first whatever storefront the app was added from, because privacy labels
+  belong to the app and archive.org keeps far more copies of US pages, and
+  falls back to the stored address when the US index has nothing. When an
+  app's archived history starts well after February 2021, its page says so
+  and why it might: a renamed app's older pages may be archived under its
+  old address. You can add up to three older App Store addresses for the
+  app, and the import checks those too; each can be removed again.
+  Settings says how many apps' archived history starts late. Rust server
+  only.
+
+### Changed
+
+- An app's History timeline folds runs of quiet checks into one row, so
+  the last real change is what you see first. Two or more syncs in a row
+  that found the labels as they were, or privacy policy fetches that came
+  back the same text or failed, become one line such as "Checked 14 times,
+  3 Jun to 9 Oct 2026, no change", in red when a check failed and saying
+  how many. Click the line to see each check. Label changes, policy
+  changes, archive imports, review actions and the first scan always keep
+  their own row, and a single quiet check stays as it was. The iOS
+  companion folds its timeline by the same rule.
+- The Wayback history import in the desktop app and the Docker image now
+  works within archive.org's limits instead of running into them. A large
+  bulk import used to stop after an app or two, rate-limited.
+  - **One pace for archive.org.** Every request to archive.org, including
+    the privacy policy's archive lookups, shares one pace of about ten a
+    minute, slower after archive.org pushes back and a little faster after
+    a long run of successes. When archive.org rate-limits or refuses
+    connections, archive requests wait out a cooldown (five minutes,
+    doubling while it continues, up to an hour) instead of retrying into
+    the block, and the cooldown survives a restart.
+  - **It waits instead of stopping.** A bulk import waits as long as
+    archive.org asks and carries on by itself, pausing only after six
+    refusals in a row. Pause and cancel work during a wait, and a pause
+    pressed while an app is being read now stops the import after that
+    app.
+  - **It checks the index first.** A bulk import first checks archive.org's
+    index for every app (reusing a check from the past week), finishes apps
+    with no archived pages straight away, then reads apps never imported
+    before first. It no longer asks archive.org to archive pages.
+  - **It reads far fewer pages.** It used to read one archived page per
+    quarter since February 2021, about 22 per app. It now reads the oldest
+    and newest archived pages and one a year between them, then narrows
+    each label change down to about a week by reading pages between two
+    that differ: about six pages for an app whose labels never changed, and
+    about six more per change. History you already imported counts, so
+    importing again reads only what is new, and an import archive.org
+    throttles keeps what it found.
+  - **Progress counts apps and label changes**, not quarterly checkpoints.
+    The Settings card shows whether it is checking the index or reading
+    pages, about how long is left and when a wait ends; an app's card
+    reports the label changes it found and when its archived history
+    starts; and the timeline says between which two dates a label changed.
+  - The Node rollback (`BACKEND=node`) keeps the previous import.
+- Development: the Wayback import's test fixtures now belong to the Rust
+  server. CI no longer re-records `history-cases.json` and
+  `wayback-runner-cases.json` from Node, the per-app import route's cases
+  moved to a Rust-owned `import-history-route-cases.json`, and
+  `PT_BLESS=1` rewrites all three from the Rust replays
+  (docs/WAYBACK_IMPORT.md).
+
+### Fixed
+
+- The Wayback history import no longer records empty history when
+  archive.org refuses the connection. After throttling a client for a
+  while, archive.org stops answering "too many requests" and refuses
+  connections instead; the import read that as "no capture", so a resumed
+  bulk import marked every app done with nothing imported and kept
+  retrying the archive while it was blocked. A refused, dropped or
+  timed-out connection now counts as throttling: the bulk import waits
+  five minutes (up from 30 seconds, as blocks last about that long),
+  retries once, then pauses the queue for you to resume later, and the
+  single-app import says the archive is busy. Both the Rust server and the
+  Node rollback; on the Rust server, the redesigned import above then
+  waits as long as archive.org asks instead of retrying once.
+- An app whose developer writes its own "v" into the App Store version
+  (Obscura VPN reports "v1.181") no longer reads "vv1.181" on its History
+  timeline, in the bell, the sync toasts, the Activity log or the desktop
+  notification. The version is still stored as Apple reports it. Activity
+  rows written before this fix keep their old wording.
+
+### Security
+
+- Raise `next` to 16.3.8 for six Next.js advisories: GHSA-cjq9-62q9-8jv4
+  (high, server-side request forgery in Image Optimization),
+  GHSA-mcj8-r9mp-w47p and GHSA-4jqv-mc3x-m676 (cache poisoning of SSG and
+  ISR pages), GHSA-f87g-xv8r-7p7x (information disclosure in App Router
+  metadata image routes), GHSA-3w37-wq28-93x7 (a pending `use cache` fill
+  leaking Draft Mode content) and GHSA-39w2-rjm5-chcv (low, information
+  disclosure in the development server's Model Context Protocol endpoint).
+  Next.js's server runs only in the Docker image's Node rollback
+  (`BACKEND=node`) and in development; the default Rust image and the
+  desktop app serve a static build.
+- Raise `sharp` to 0.35.5 (GHSA-wq5f-xc86-pv6w, a vulnerability in the
+  librsvg bundled with its libvips, CVE-2026-96889), which reaches the app
+  through Next.js. Only the Docker image's Node rollback (`BACKEND=node`)
+  carries it at runtime; the default Rust image and the desktop app ship no
+  Node.
+- Raise `postcss-selector-parser` to 7.1.6 (GHSA-rj75-hqrm-r3gf, CPU
+  exhaustion through quadratic selector parsing) in Storybook's CSS
+  tooling. Development only.
+
+## [0.3.0] — 2026-10-06
 
 The first release since v0.1.2, and the first on the Rust server: neither
 the desktop app nor the Docker image runs Node any more. It also brings

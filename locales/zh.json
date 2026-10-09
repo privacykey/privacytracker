@@ -3609,7 +3609,13 @@
     "wayback_import_count": "此时间线中有 {count, plural, one {# 条 Wayback 导入} other {# 条 Wayback 导入}}",
     "show_older": "显示更早的记录",
     "show_older_busy": "正在加载更早的记录…",
-    "show_older_failed": "无法加载更早的记录：{message}"
+    "show_older_failed": "无法加载更早的记录：{message}",
+    "fold_no_change_span": "检查了 {count, plural, =1 {一次} =2 {两次} other {# 次}}，{first} 至 {last}，无变化",
+    "fold_no_change_same_day": "{date} 检查了 {count, plural, =1 {一次} =2 {两次} other {# 次}}，无变化",
+    "fold_some_failed_span": "检查了 {count, plural, =1 {一次} =2 {两次} other {# 次}}，{first} 至 {last}，无变化，{failed, plural, one {# 次检查失败} other {# 次检查失败}}",
+    "fold_some_failed_same_day": "{date} 检查了 {count, plural, =1 {一次} =2 {两次} other {# 次}}，无变化，{failed, plural, one {# 次检查失败} other {# 次检查失败}}",
+    "fold_all_failed_span": "检查了 {count, plural, =1 {一次} =2 {两次} other {# 次}}，{first} 至 {last}，{count, plural, =1 {失败} other {每次检查均失败}}",
+    "fold_all_failed_same_day": "{date} 检查了 {count, plural, =1 {一次} =2 {两次} other {# 次}}，{count, plural, =1 {失败} other {每次检查均失败}}"
   },
   "onboard_status": {
     "fetch_ready": "已是最新",
