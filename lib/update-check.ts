@@ -8,6 +8,7 @@
  */
 
 import pkg from "../package.json";
+import { withDatabaseWork } from "./database-work";
 import { getSetting, setSetting } from "./scheduler";
 
 // ─── Constants ──────────────────────────────────────────────────────────
@@ -214,6 +215,12 @@ let inflight: Promise<CheckResult> | null = null;
 export async function checkForUpdate(
   options: { force?: boolean } = {}
 ): Promise<CheckResult> {
+  return withDatabaseWork(() => checkForUpdateWhileActive(options));
+}
+
+async function checkForUpdateWhileActive(options: {
+  force?: boolean;
+}): Promise<CheckResult> {
   const status0 = getCachedUpdateStatus();
 
   if (!status0.enabled) {

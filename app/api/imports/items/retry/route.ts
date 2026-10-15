@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { withDatabaseWork } from "@/lib/database-work";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import {
   completeImportIfSettled,
@@ -45,6 +46,10 @@ import {
  *   { item: ImportItemRow, status: 'queued', rateLimited: { retryAfterMs } }
  */
 export async function POST(request: Request) {
+  return withDatabaseWork(() => run(request));
+}
+
+async function run(request: Request) {
   const rate = checkRateLimit({
     key: rateLimitKeyForRequest(request, "imports-retry-item"),
     limit: 30,

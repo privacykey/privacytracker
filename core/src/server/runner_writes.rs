@@ -440,7 +440,9 @@ pub(super) async fn policy_sync_all(
         {
             let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<Value>();
             let options = options(Some(tx));
+            let work = db.with(|w| super::live_runs::enter_work(w.conn));
             tokio::spawn(async move {
+                let _work = work;
                 let ran = policy_runner::run_bulk_policy_sync(
                     &mut *db, &*fetcher, &mut *ids, &*clock, options,
                 )
@@ -525,7 +527,9 @@ async fn spawn_run(detached: Detached, options: RunOptions) {
         mut ids,
         clock,
     } = detached;
+    let work = db.with(|w| super::live_runs::enter_work(w.conn));
     tokio::spawn(async move {
+        let _work = work;
         let _ = run_bulk_wayback_import(&mut *db, &*fetcher, &mut *ids, &*clock, options).await;
     });
     tokio::task::yield_now().await;

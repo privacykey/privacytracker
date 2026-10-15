@@ -11,6 +11,8 @@
  *   next few ticks no-op until Apple's rolling-minute window clears.
  */
 
+import { withDatabaseWork } from "./database-work";
+
 import db from "./db";
 import {
   claimQueuedBatch,
@@ -54,6 +56,10 @@ export interface ImportQueueTickResult {
  * skip reason for quiet ticks) so operators can grep the server log.
  */
 export async function runImportQueueTick(): Promise<ImportQueueTickResult> {
+  return withDatabaseWork(() => runImportQueueTickWhileActive());
+}
+
+async function runImportQueueTickWhileActive(): Promise<ImportQueueTickResult> {
   // Respect a prior 429 pause before touching the mutex.
   const pausedUntil =
     Number.parseInt(getSetting(SETTING_PAUSED_UNTIL, "0"), 10) || 0;

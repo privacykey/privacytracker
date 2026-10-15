@@ -18,6 +18,7 @@
  */
 
 import path from "node:path";
+import { withDatabaseWork } from "./database-work";
 import db, { dbPath } from "./db";
 import type {
   DbWorkerExecuteRequest,
@@ -370,6 +371,13 @@ function executeInline(
  * first statement error (carrying `failedAtIndex`) on failure.
  */
 export async function runBulkWrite(
+  statements: DbWorkerStatement[],
+  options: { chunkSize?: number } = {}
+): Promise<{ totalChanges: number; durationMs: number }> {
+  return withDatabaseWork(() => runBulkWriteWhileActive(statements, options));
+}
+
+async function runBulkWriteWhileActive(
   statements: DbWorkerStatement[],
   options: { chunkSize?: number } = {}
 ): Promise<{ totalChanges: number; durationMs: number }> {

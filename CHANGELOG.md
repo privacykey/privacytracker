@@ -79,6 +79,10 @@ Going forward, changes are recorded here as they land.
 
 ### Fixed
 
+- Backup restore refuses active App Store, Wayback, policy and import work,
+  including work started while the backup is uploading. Both backends keep
+  the current database intact until those writers finish.
+
 - The Wayback history import no longer records empty history when
   archive.org refuses the connection. After throttling a client for a
   while, archive.org stops answering "too many requests" and refuses
@@ -98,6 +102,9 @@ Going forward, changes are recorded here as they land.
   rows written before this fix keep their old wording.
 
 ### Security
+
+- Update rustls to 0.23.46 in the server and desktop lockfiles for
+  RUSTSEC-2026-0346, RUSTSEC-2026-0347, RUSTSEC-2026-0348 and RUSTSEC-2026-0349.
 
 - Raise `next` to 16.3.8 for six Next.js advisories: GHSA-cjq9-62q9-8jv4
   (high, server-side request forgery in Image Optimization),

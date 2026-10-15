@@ -1206,7 +1206,7 @@ pub fn precheck(
         ("/api/auth/admin-token/logout", &Method::POST) => {
             super::maintenance_writes::logout_precheck(headers)?;
         }
-        // Phase 4, batch 5b: the restore refuses while a sync runs, and
+        // Phase 4, batch 5b: the restore refuses while background work runs, and
         // says so before it reads a body that may be a hundred megabytes.
         ("/api/backup/restore", &Method::POST) => {
             super::backup_writes::restore_precheck(w)?;
@@ -1374,6 +1374,7 @@ pub async fn perform_async(
     actor: &Actor,
     now: i64,
 ) -> Response {
+    let _work = is_async(req.spec).then(|| db.with(|w| super::live_runs::enter_work(w.conn)));
     if super::runner_writes::handles(req.spec) {
         return super::runner_writes::perform(db, ids, now, fetcher, req, actor).await;
     }

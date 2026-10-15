@@ -1077,7 +1077,9 @@ async fn regenerate(
             // instead of running a long policy on for nobody, as Node's
             // regenerate aborts its signal.
             let cancel = Arc::new(AtomicBool::new(false));
+            let work = db.with(|w| super::live_runs::enter_work(w.conn));
             tokio::spawn(async move {
+                let _work = work;
                 let Detached {
                     mut db,
                     mut ids,

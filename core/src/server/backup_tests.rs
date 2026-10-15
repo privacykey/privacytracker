@@ -474,3 +474,104 @@ fn an_export_leaves_out_the_capture_cache_and_keeps_older_addresses() {
     assert!(keys.contains(&"sync_schedule"), "{keys:?}");
     assert!(!keys.contains(&"wayback.captures.1"), "{keys:?}");
 }
+
+/// The body reader signals only after the early guard has passed. Starting
+/// each kind of writer there must still refuse restore, under the DB lock.
+#[test]
+fn restore_rechecks_writers_started_during_upload() {
+    let _env = super::trust::env_lock();
+    std::env::set_var("PRIVACYTRACKER_BIND_HOST", "127.0.0.1");
+    std::env::remove_var("AUDITOR_ADMIN_TOKEN");
+    std::env::remove_var("PRIVACYTRACKER_NETWORK_EXPOSED");
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    for marker in [
+        Some("sync_running"),
+        Some("wayback_import_running"),
+        Some("policy_sync_running"),
+        Some("import_queue_running"),
+        None,
+    ] {
+        let conn = crate::db::open_and_migrate(Path::new(":memory:")).unwrap();
+        conn.execute(
+            "INSERT INTO app_settings(key, value) VALUES ('preserve-me', 'original')",
+            [],
+        )
+        .unwrap();
+        let state = AppState {
+            conn: Arc::new(Mutex::new(conn)),
+            rate_limiter: Arc::new(RateLimiter::new()),
+            started_at: Instant::now(),
+            bound_port: 0,
+        };
+        rt.block_on(async {
+            let (resume, resumed) = tokio::sync::oneshot::channel::<()>();
+            let arrived = Arc::new(tokio::sync::Notify::new());
+            let arrived_body = arrived.clone();
+            let body = Body::from_stream(futures_util::stream::once(async move {
+                arrived_body.notify_one();
+                resumed.await.unwrap();
+                Ok::<_, std::io::Error>(axum::body::Bytes::from_static(b"{}"))
+            }));
+            let request = axum::http::Request::builder()
+                .method(Method::POST)
+                .uri("/api/backup/restore")
+                .body(body)
+                .unwrap();
+            let probe = async {
+                tokio::time::timeout(Duration::from_secs(2), arrived.notified())
+                    .await
+                    .expect("the restore passed its precheck and began reading the upload");
+                let conn = state.db();
+                let guard = if let Some(key) = marker {
+                    conn.execute(
+                        "INSERT INTO app_settings(key, value) VALUES (?1, 'true')",
+                        [key],
+                    )
+                    .unwrap();
+                    None
+                } else {
+                    Some(super::live_runs::enter_work(&conn))
+                };
+                resume.send(()).unwrap();
+                guard
+            };
+            let (response, _guard) = tokio::join!(
+                super::routes_writes::backup_restore_post(
+                    axum::extract::State(state.clone()),
+                    request
+                ),
+                probe
+            );
+            assert_eq!(
+                response.status(),
+                axum::http::StatusCode::CONFLICT,
+                "{marker:?}"
+            );
+            assert_eq!(
+                state
+                    .db()
+                    .query_row(
+                        "SELECT value FROM app_settings WHERE key = 'preserve-me'",
+                        [],
+                        |r| r.get::<_, String>(0)
+                    )
+                    .unwrap(),
+                "original"
+            );
+        });
+    }
+}
+
+#[test]
+fn restore_fails_closed_when_background_state_cannot_be_read() {
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    let w = Writer::new(&conn, None);
+    let response = backup_writes::restore_precheck(&w).unwrap_err();
+    assert_eq!(
+        response.status(),
+        axum::http::StatusCode::INTERNAL_SERVER_ERROR
+    );
+}

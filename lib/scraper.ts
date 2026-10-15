@@ -15,6 +15,7 @@ import {
   type PrivacyTypeSnapshot,
   type SyncTrigger,
 } from "./changelog";
+import { withDatabaseWork } from "./database-work";
 import db from "./db";
 import { runBulkWrite } from "./db-worker-client";
 import type { DbWorkerStatement } from "./db-worker-types";
@@ -346,6 +347,13 @@ export async function searchAppsByName(
   input: Array<string | SearchQuery>,
   options: SearchOptions = {}
 ): Promise<SearchBatch> {
+  return withDatabaseWork(() => searchAppsByNameWhileActive(input, options));
+}
+
+async function searchAppsByNameWhileActive(
+  input: Array<string | SearchQuery>,
+  options: SearchOptions
+): Promise<SearchBatch> {
   const results: SearchResult[] = [];
 
   // Resolve once so every name in the batch hits the same storefront.
@@ -534,6 +542,15 @@ export interface BundleIdLookupBatch {
 export async function lookupAppsByBundleId(
   bundleIds: string[],
   options: SearchOptions = {}
+): Promise<BundleIdLookupBatch> {
+  return withDatabaseWork(() =>
+    lookupAppsByBundleIdWhileActive(bundleIds, options)
+  );
+}
+
+async function lookupAppsByBundleIdWhileActive(
+  bundleIds: string[],
+  options: SearchOptions
 ): Promise<BundleIdLookupBatch> {
   // Normalize + dedupe the input. Lookup is idempotent (same ID twice
   // returns the same record both times) but the dedupe avoids wasting
@@ -841,6 +858,17 @@ export async function scrapeInitialUrls(
 }
 
 export async function fetchAndParseApp(
+  url: string,
+  resync = false,
+  summarizePolicies = false,
+  trigger: SyncTrigger = resync ? "manual" : "import"
+) {
+  return withDatabaseWork(() =>
+    fetchAndParseAppWhileActive(url, resync, summarizePolicies, trigger)
+  );
+}
+
+async function fetchAndParseAppWhileActive(
   url: string,
   resync = false,
   summarizePolicies = false,

@@ -29,8 +29,9 @@ pub(crate) enum Job {
 }
 
 /// One entry per live run, so an overlapping run of the same job keeps the
-/// job live until the last one ends, as Node's count does.
-static LIVE: Mutex<Vec<(usize, Job)>> = Mutex::new(Vec::new());
+/// job live until the last one ends, as Node's count does. `None` records
+/// other asynchronous database work, without changing bulk resume checks.
+static LIVE: Mutex<Vec<(usize, Option<Job>)>> = Mutex::new(Vec::new());
 
 fn server(conn: &Connection) -> usize {
     std::ptr::from_ref(conn).addr()
@@ -39,7 +40,7 @@ fn server(conn: &Connection) -> usize {
 /// A run, live until this drops.
 #[must_use = "the run is live only while this is held"]
 pub(crate) struct LiveRun {
-    entry: (usize, Job),
+    entry: (usize, Option<Job>),
 }
 
 impl Drop for LiveRun {
@@ -56,7 +57,7 @@ impl Drop for LiveRun {
 /// `withLiveBulkRun`: the run of `job` on this connection's server is live
 /// until the returned guard drops.
 pub(crate) fn enter(conn: &Connection, job: Job) -> LiveRun {
-    let entry = (server(conn), job);
+    let entry = (server(conn), Some(job));
     LIVE.lock()
         .unwrap_or_else(PoisonError::into_inner)
         .push(entry);
@@ -66,10 +67,28 @@ pub(crate) fn enter(conn: &Connection, job: Job) -> LiveRun {
 /// `isBulkRunLive`: is a `job` runner executing on this connection's
 /// server?
 pub(crate) fn is_live(conn: &Connection, job: Job) -> bool {
-    let entry = (server(conn), job);
+    let entry = (server(conn), Some(job));
     LIVE.lock()
         .unwrap_or_else(PoisonError::into_inner)
         .contains(&entry)
+}
+
+/// Any asynchronous user-data writer, including work detached from a request.
+/// Acquire under the connection lock before reading data carried across await.
+pub(crate) fn enter_work(conn: &Connection) -> LiveRun {
+    let entry = (server(conn), None);
+    LIVE.lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .push(entry);
+    LiveRun { entry }
+}
+
+pub(crate) fn any_live(conn: &Connection) -> bool {
+    let server = server(conn);
+    LIVE.lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .iter()
+        .any(|entry| entry.0 == server)
 }
 
 #[cfg(test)]

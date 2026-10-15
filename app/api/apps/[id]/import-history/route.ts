@@ -1,3 +1,4 @@
+import { withDatabaseWork } from "@/lib/database-work";
 import {
   readOptionalBoundedJson,
   requestBodyErrorResponse,
@@ -43,6 +44,13 @@ import { isWaybackUnavailableError } from "../../../../../lib/wayback";
  * marker in the detail blob so the activity filter still captures both.
  */
 export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string }> }
+) {
+  return withDatabaseWork(() => importHistory(request, context));
+}
+
+async function importHistory(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {

@@ -226,16 +226,36 @@ fn preview(body: BodyOutcome) -> Response {
     }
 }
 
-/// The 409 `/api/backup/restore` answers while a sync runs — after its
-/// guard and BEFORE it reads the body, so an oversized upload still hears
-/// about the sync rather than its size.
+/// Check before upload and again under the connection lock immediately before
+/// restore. A job can start while the upload is read with that lock released.
 pub(super) fn restore_precheck(w: &crate::scrape::persist::Writer) -> Result<(), Response> {
-    let running = super::settings::get_setting_with(w.conn, "sync_running", "false")
-        .unwrap_or_else(|_| "false".to_string());
-    if running == "true" {
+    for key in [
+        "sync_running",
+        "wayback_import_running",
+        "policy_sync_running",
+        "import_queue_running",
+    ] {
+        let running = super::settings::get_setting_with(w.conn, key, "false").map_err(|_| {
+            json_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to check background work.",
+            )
+        })?;
+        if running == "true" {
+            return Err(json_error(
+                StatusCode::CONFLICT,
+                if key == "sync_running" {
+                    "A sync is currently running. Please wait until it finishes before restoring."
+                } else {
+                    "Background work is currently running. Please wait until it finishes before restoring."
+                },
+            ));
+        }
+    }
+    if super::live_runs::any_live(w.conn) {
         return Err(json_error(
             StatusCode::CONFLICT,
-            "A sync is currently running. Please wait until it finishes before restoring.",
+            "Background work is currently running. Please wait until it finishes before restoring.",
         ));
     }
     Ok(())
@@ -249,6 +269,9 @@ fn restore(
     actor: &Actor,
 ) -> Response {
     if let Some(response) = body_error_response(&body) {
+        return response;
+    }
+    if let Err(response) = restore_precheck(cx.w) {
         return response;
     }
     let refuse = |cx: &mut Cx, action: &str, status: StatusCode, message: &str| {

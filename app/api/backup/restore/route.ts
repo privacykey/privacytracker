@@ -3,11 +3,12 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import {
+  assertRestoreIdle,
+  BackupBusyError,
   BackupFormatError,
   BackupUntrustedError,
   restoreBackup,
 } from "../../../../lib/backup";
-import { getSetting } from "../../../../lib/scheduler";
 import {
   adminTokenRequiredForRequest,
   checkRateLimit,
@@ -27,7 +28,7 @@ const MAX_BACKUP_BYTES = 100 * 1024 * 1024;
  * of the uploaded backup. Defence-in-depth mirrors /api/reset:
  *   - Rate-limited (3 attempts per 10 minutes).
  *   - Requires AUDITOR_ADMIN_TOKEN when configured.
- *   - Refuses to run while a background sync is in flight.
+ *   - Refuses to run while background database work is in flight.
  *   - Records success + failure in audit_log.
  */
 export async function POST(request: Request) {
@@ -70,14 +71,13 @@ export async function POST(request: Request) {
     );
   }
 
-  if (getSetting("sync_running", "false") === "true") {
-    return NextResponse.json(
-      {
-        error:
-          "A sync is currently running. Please wait until it finishes before restoring.",
-      },
-      { status: 409 }
-    );
+  try {
+    assertRestoreIdle();
+  } catch (error) {
+    if (error instanceof BackupBusyError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    throw error;
   }
 
   let payload: unknown;
@@ -123,6 +123,9 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
+    if (error instanceof BackupBusyError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     if (error instanceof BackupUntrustedError) {
       recordAudit({
         action: "backup.restore.untrusted_rejected",

@@ -40,6 +40,7 @@ import type {
   PrivacyCategorySnapshot,
   PrivacyTypeSnapshot,
 } from "./changelog-types";
+import { withDatabaseWork } from "./database-work";
 import db from "./db";
 // extractFromShoebox parses the legacy `shoebox-media-api-cache-apps`
 // script tag (Jan 2021 – Nov 2025). Shared with the live scraper so the
@@ -312,6 +313,13 @@ interface ArchiveAppRow {
  * the rest.
  */
 export async function importAppHistory(
+  app: ArchiveAppRow,
+  options: ImportAppHistoryOptions = {}
+): Promise<ImportAppHistoryResult> {
+  return withDatabaseWork(() => importAppHistoryWhileActive(app, options));
+}
+
+async function importAppHistoryWhileActive(
   app: ArchiveAppRow,
   options: ImportAppHistoryOptions = {}
 ): Promise<ImportAppHistoryResult> {

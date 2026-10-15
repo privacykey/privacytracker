@@ -299,6 +299,7 @@ pub(super) async fn maybe_post_summary(
     fetcher: &dyn Fetcher,
     now: i64,
 ) -> usize {
+    let _work = db.with(|w| super::live_runs::enter_work(w.conn));
     struct Window {
         cfg: Config,
         rows: Vec<Notification>,

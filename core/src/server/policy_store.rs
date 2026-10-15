@@ -165,7 +165,9 @@ fn fire_save_now(
     target: String,
 ) {
     if let (Some(fetcher), Some(mut db)) = (fetcher.shared(), db.detach()) {
+        let work = db.with(|w| super::live_runs::enter_work(w.conn));
         tokio::spawn(async move {
+            let _work = work;
             let result = wayback::save_now(fetcher.as_ref(), &target).await;
             link_capture(db.as_mut(), &super::sync_runner::Live, &version_id, result);
         });
@@ -1429,6 +1431,7 @@ pub(crate) async fn sync_policy_analysis_streamed(
     options: SyncOptions,
     sink: Option<PhaseSink<'_>>,
 ) -> Result<Synced, String> {
+    let _work = db.with(|w| super::live_runs::enter_work(w.conn));
     let app_id = request.app_id.as_str();
     let Some(policy_url) = request.policy_url.as_deref().filter(|u| !u.is_empty()) else {
         db.with(|w| w.run(DELETE_ANALYSIS, vec![json!(app_id)]))?;
@@ -1543,6 +1546,7 @@ pub(crate) async fn run_follow_ups(
     clock: &dyn Clock,
     follow_ups: FollowUps,
 ) {
+    let _work = db.with(|w| super::live_runs::enter_work(w.conn));
     if let Some((version_id, save_now)) = follow_ups.save_now {
         let result = match save_now {
             SaveNow::Landed(result) => result,

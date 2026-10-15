@@ -25,6 +25,7 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { isDatabaseWorkLive } from "./database-work";
 import db from "./db";
 import { recordAudit, sanitizePolicyUrl } from "./security";
 
@@ -455,6 +456,34 @@ export class BackupUntrustedError extends Error {
   }
 }
 
+export class BackupBusyError extends Error {}
+
+/** No await may separate this check from the restore transaction. */
+export function assertRestoreIdle(): void {
+  for (const key of [
+    "sync_running",
+    "wayback_import_running",
+    "policy_sync_running",
+    "import_queue_running",
+  ]) {
+    const row = db
+      .prepare("SELECT value FROM app_settings WHERE key = ?")
+      .get(key) as { value: string } | undefined;
+    if (row?.value === "true") {
+      throw new BackupBusyError(
+        key === "sync_running"
+          ? "A sync is currently running. Please wait until it finishes before restoring."
+          : "Background work is currently running. Please wait until it finishes before restoring."
+      );
+    }
+  }
+  if (isDatabaseWorkLive()) {
+    throw new BackupBusyError(
+      "Background work is currently running. Please wait until it finishes before restoring."
+    );
+  }
+}
+
 /**
  * Apply a backup envelope to the live database, wiping all rows in the
  * tracked tables first. Wrapped in a single transaction with FKs disabled
@@ -469,6 +498,7 @@ export function restoreBackup(
   payload: unknown,
   meta?: { actorIp?: string; userAgent?: string; allowUntrusted?: boolean }
 ): RestoreResult {
+  assertRestoreIdle();
   const envelope = parseEnvelope(payload);
   const summary = summarizeBackup(envelope);
 
