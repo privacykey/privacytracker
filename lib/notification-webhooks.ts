@@ -31,6 +31,8 @@
  * guards that protect /api/scrape protect us here too.
  */
 
+import { withDatabaseWork } from "./database-work";
+
 import db from "./db";
 import { getSetting, setSetting } from "./scheduler";
 import { safeFetch } from "./security";
@@ -224,6 +226,10 @@ export async function postImmediateWebhook(
  * Returns the number of notifications sent (0 = nothing happened).
  */
 export async function maybePostSummaryWebhook(): Promise<number> {
+  return withDatabaseWork(postSummaryWhileActive);
+}
+
+async function postSummaryWhileActive(): Promise<number> {
   const cfg = readWebhookConfig();
   if (!cfg) {
     return 0;

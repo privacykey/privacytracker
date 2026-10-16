@@ -18,6 +18,8 @@
  * modules into chunks.
  */
 
+import { withDatabaseWork } from "./database-work";
+
 export type BulkJob = "policy" | "sync" | "wayback";
 
 const live: Map<BulkJob, number> = ((globalThis as any).__pt_live_bulk_runs ??=
@@ -29,6 +31,13 @@ const live: Map<BulkJob, number> = ((globalThis as any).__pt_live_bulk_runs ??=
  * job keeps the job live until the last one ends.
  */
 export async function withLiveBulkRun<T>(
+  job: BulkJob,
+  body: () => Promise<T>
+): Promise<T> {
+  return withDatabaseWork(() => withLiveBulkRunWhileActive(job, body));
+}
+
+async function withLiveBulkRunWhileActive<T>(
   job: BulkJob,
   body: () => Promise<T>
 ): Promise<T> {

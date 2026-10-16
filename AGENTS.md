@@ -486,6 +486,22 @@ Contract pinned by `tests/app/apps-pagination.test.ts`.
 
 `lib/ai-config.ts` is the single source of truth for providers (`disabled` | `openai` | `anthropic` | `custom`), default base URLs, default models, and per-provider behavior flags (`providerUsesChatCompletions`, `providerLikelyNeedsChunking`, `providerRequiresApiKey`). `custom` targets Ollama or any OpenAI-compatible endpoint. The legacy `ollama` value is normalized to `custom` in `normalizeAiProvider`. All persisted settings live in the `app_settings` key/value table via `lib/scheduler.ts` (`getSetting`/`setSetting`).
 
+### Backup restore and asynchronous writers
+
+Restore refuses active work before reading an upload and again immediately
+before replacing the database. Node's synchronous `restoreBackup` checks
+`assertRestoreIdle`; Rust's final check and restore share the connection lock.
+Both check the four background mutexes and an in-memory registry, so clearing
+a stale mutex cannot hide a still-running writer. Any new asynchronous work
+that carries database state across an await and writes it back must stay in
+`withDatabaseWork` (`lib/database-work.ts`) or hold a `live_runs::enter_work`
+guard (`core/src/server/live_runs.rs`) through its final write. Existing bulk
+runners are registered too. Register detached work before spawning it and
+carry the guard into the task; registering after spawn leaves a restore gap.
+The Rust async route dispatcher covers handlers, but detached tasks, background
+ticks and async GET handlers need their own lifetime. The Node rollback has
+these guards too; they do not change the legacy Wayback import algorithm.
+
 ### Background sync
 
 **The schedule defaults to Manual, except for Monitor.** `POST /api/focus` with the Monitor goal calls `applyMonitorSyncDefault` (`lib/scheduler.ts`, mirrored in `core/src/server/writes.rs` `focus`), which sets `sync_schedule = daily` only when no schedule is stored. A stored `sync_schedule` is the user's choice (only `POST /api/settings` writes it), so an explicit Manual or Weekly is never overridden, and nothing reverts the default when Monitor is turned off. Keep it that way: do not add another writer of `sync_schedule` that is not a user's choice, or the "never chosen" test stops meaning anything. When the default writes, it also stores `sync_schedule_default_at`, and `getSchedulerStatus` (and the Rust `sync_status` / `scheduled_check`) count the schedule from `max(last_auto_sync, sync_schedule_default_at)`: an install that has never synced would otherwise be due at the first tick, 15 s after boot or right after onboarding, re-fetching every app the import just fetched (and, in the E2E suite, reaching the real App Store from any spec that saves a Monitor focus and seeds apps). `lastRun` stays the last real sync.

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import crypto from "node:crypto";
 import { NextResponse } from "next/server";
+import { withDatabaseWork } from "@/lib/database-work";
 import {
   appendManualAppEvent,
   getCurrentManualAppPolicyVersion,
@@ -47,6 +48,10 @@ async function resolveId(context: Ctx): Promise<string | null> {
  * (allowlist, timeouts, byte caps); this endpoint just orchestrates.
  */
 export async function POST(request: Request, context: Ctx) {
+  return withDatabaseWork(() => scrape(request, context));
+}
+
+async function scrape(request: Request, context: Ctx) {
   const actorIp = requestActorIp(request);
   const userAgent = request.headers.get("user-agent");
 

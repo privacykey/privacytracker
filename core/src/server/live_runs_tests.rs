@@ -389,3 +389,31 @@ fn a_policy_run_started_since_boot_is_not_resumed_by_its_own_server() {
 fn a_policy_run_a_previous_process_left_behind_is_still_resumed() {
     left_behind(&CASES[2]);
 }
+
+#[test]
+fn restore_refuses_live_bulk_writers_even_if_the_mutex_is_cleared() {
+    for case in &CASES {
+        let conn = server();
+        let fetcher = HoldFirst::new(case.reply);
+        runtime().block_on(async {
+            let probe = async {
+                fetcher.arrived.notified().await;
+                set_setting(&conn, case.mutex, "false");
+                let conn = conn.lock().unwrap();
+                let w = crate::scrape::persist::Writer::new(&conn, None);
+                let response = super::backup_writes::restore_precheck(&w).unwrap_err();
+                assert_eq!(response.status(), axum::http::StatusCode::CONFLICT);
+                assert_eq!(
+                    conn.query_row("SELECT count(*) FROM apps", [], |r| r.get::<_, i64>(0))
+                        .unwrap(),
+                    2
+                );
+                fetcher.release.notify_one();
+            };
+            tokio::join!(start(case.job, &conn, &fetcher), probe);
+        });
+        let conn = conn.lock().unwrap();
+        let w = crate::scrape::persist::Writer::new(&conn, None);
+        assert!(super::backup_writes::restore_precheck(&w).is_ok());
+    }
+}

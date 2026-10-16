@@ -355,6 +355,7 @@ pub(super) async fn check_for_update(
     now: i64,
     force: bool,
 ) -> CheckResult {
+    let _work = db.with(|w| super::live_runs::enter_work(w.conn));
     enum Gate {
         Skip(CheckResult),
         Go,

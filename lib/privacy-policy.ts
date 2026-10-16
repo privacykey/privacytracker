@@ -12,6 +12,7 @@ import {
   resolveDefaultBaseUrl,
   resolveDefaultModel,
 } from "./ai-config";
+import { withDatabaseWork } from "./database-work";
 import db from "./db";
 import {
   createAiTimeoutNotification,
@@ -838,6 +839,15 @@ export async function syncPrivacyPolicyAnalysis(
   request: PolicyAnalysisRequest,
   options: PolicySyncOptions = {}
 ): Promise<AppPolicyAnalysis | null> {
+  return withDatabaseWork(() =>
+    syncPrivacyPolicyAnalysisWhileActive(request, options)
+  );
+}
+
+async function syncPrivacyPolicyAnalysisWhileActive(
+  request: PolicyAnalysisRequest,
+  options: PolicySyncOptions = {}
+): Promise<AppPolicyAnalysis | null> {
   const phase = options.phase ?? "all";
   const forceResummarise = options.forceResummarise === true;
   const bypassThrottle = options.bypassThrottle === true;
@@ -1468,7 +1478,7 @@ async function fetchAndStorePolicySource(
       // until the event loop clears; next rescrape will re-read whatever we
       // land. We intentionally do not await, and we swallow every error.
       const capturedVersionId = versionId;
-      void (async () => {
+      void withDatabaseWork(async () => {
         try {
           const fresh = await submitToWaybackSaveNow(archiveTarget);
           if (fresh.ok && fresh.snapshot.url) {
@@ -1481,7 +1491,7 @@ async function fetchAndStorePolicySource(
         } catch {
           // Swallowed on purpose - archive failures must never leak.
         }
-      })();
+      });
     }
   }
 

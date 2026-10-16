@@ -1464,6 +1464,7 @@ pub(super) async fn run_import_queue_tick(
     now: i64,
     fetcher: &dyn Fetcher,
 ) -> Result<TickResult, String> {
+    let _work = db.with(|w| super::live_runs::enter_work(w.conn));
     let opened = db.with(|w| open_tick(&mut section(w, ids, now)))?;
     match opened {
         Opened::Skipped(tick) => Ok(tick),

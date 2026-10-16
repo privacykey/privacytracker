@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import { withDatabaseWork } from "@/lib/database-work";
 import { requestBodyErrorResponse } from "@/lib/request-body";
 import { recordActivity } from "../../../../lib/activity";
 import {
@@ -29,6 +30,10 @@ interface SamplePolicyBody {
 }
 
 export async function POST(request: Request) {
+  return withDatabaseWork(() => run(request));
+}
+
+async function run(request: Request) {
   const started = Date.now();
 
   const rate = checkRateLimit({
