@@ -154,6 +154,13 @@ function waybackRows(appId = APP_ID) {
 // Fixed clock: 15 Sep 2021 → grid targets 1 Feb, 15 Mar, 15 Jun 2021.
 const TODAY = new Date(Date.UTC(2021, 8, 15));
 const JUN_1 = "20210601000000";
+// The route tests cannot pass `today`, so their target grid is anchored on
+// the wall clock, stepping back from the current date in whole months. A
+// capture on JUN_1 sits 44 days from a target when the month's day is 15
+// and 45.4 days when it is 16, past the 45-day drift tolerance, so those
+// tests passed on most days and failed on the 16th. The floor is always a
+// target, so a capture on it is never drift-skipped whatever the date.
+const FLOOR_CAPTURE = "20210201000000";
 const MAR_1 = "20210301000000";
 
 test("the oldest imported capture is a baseline, not a diff against today's labels", async () => {
@@ -811,7 +818,7 @@ test("force re-probes a target a neighbouring row already covers", async () => {
 test("the per-app route accepts force and records it", async () => {
   resetTestDb();
   seedTrackedApp({ id: APP_ID, name: "Fixture", url: APP_URL });
-  mockArchive({ captures: { [JUN_1]: ["LOCATION"] } });
+  mockArchive({ captures: { [FLOOR_CAPTURE]: ["LOCATION"] } });
 
   const { POST } = await import("../../app/api/apps/[id]/import-history/route");
   const params = Promise.resolve({ id: APP_ID });
@@ -846,7 +853,7 @@ test("the per-app route accepts force and records it", async () => {
 test("a bodyless per-app POST still runs an unforced import", async () => {
   resetTestDb();
   seedTrackedApp({ id: APP_ID, name: "Fixture", url: APP_URL });
-  mockArchive({ captures: { [JUN_1]: ["LOCATION"] } });
+  mockArchive({ captures: { [FLOOR_CAPTURE]: ["LOCATION"] } });
 
   const { POST } = await import("../../app/api/apps/[id]/import-history/route");
   const res = await POST(
