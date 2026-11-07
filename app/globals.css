@@ -776,7 +776,9 @@ html[data-theme-override="high-contrast"] .nav {
    the same calm selection language as the settings sidebar and the risk
    filter tabs, so the nav stays quieter than the content under it. */
 .nav-link.active {
-  color: var(--blue, #0a84ff);
+  /* The accent pulled 20% toward the text colour: plain --blue on its own
+     12% tint is under 4.5:1 in both modes (axe color-contrast). */
+  color: color-mix(in srgb, var(--blue, #0a84ff) 80%, var(--text));
   background: color-mix(in srgb, var(--blue, #0a84ff) 12%, transparent);
   border-color: transparent;
 }
@@ -9349,7 +9351,9 @@ body.review-rec-print-active .review-rec-print a {
   align-items: center;
   padding: 6px 12px;
   font-size: 12.5px;
-  color: var(--text-2);
+  /* --text, not --text-2: the pill sits on three stacked surfaces in dark
+     mode, where the secondary colour falls under 4.5:1. */
+  color: var(--text);
   cursor: pointer;
   user-select: none;
   background: var(--surface);
@@ -10313,7 +10317,9 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .settings-sidebar-link.is-active {
-  color: var(--blue);
+  /* Same 20% pull toward the text colour as .nav-link.active, for AA on
+     the tint. */
+  color: color-mix(in srgb, var(--blue) 80%, var(--text));
   background: color-mix(in srgb, var(--blue) 9%, transparent);
   border-color: transparent;
 }

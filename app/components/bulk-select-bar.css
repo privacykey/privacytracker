@@ -144,7 +144,9 @@
   background: var(--orange-dim, #fff7ed);
 }
 .bulk-select-action-uninstall {
-  color: var(--red, #b91c1c);
+  /* Pulled 30% toward the text colour: plain --red on the bar's blue tint
+     plus the action's own surface is under 4.5:1 in dark mode. */
+  color: color-mix(in srgb, var(--red, #b91c1c) 70%, var(--text));
 }
 .bulk-select-action-uninstall:hover:not(:disabled) {
   background: var(--red-dim, #fef2f2);
