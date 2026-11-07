@@ -57,7 +57,7 @@ function OverviewRow({
         {app.changeCount > 0 && (
           <span>{t("app_changes", { count: app.changeCount })}</span>
         )}
-        {(canReview || app.decision !== "review") && (
+        {app.decision !== "review" && (
           <span>
             {t(`decision.${app.decision}`)}
             {app.remindAt && app.decision !== "due"

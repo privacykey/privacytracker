@@ -1749,6 +1749,16 @@ html[data-theme-override="high-contrast"] .nav {
   gap: 14px;
 }
 
+.pmap-card .info-tooltip-trigger {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.pmap-card:hover .info-tooltip-trigger,
+.pmap-card:focus-within .info-tooltip-trigger,
+.pmap-card .info-tooltip-trigger.is-open {
+  opacity: 1;
+}
+
 .pmap-card {
   overflow: hidden;
   scroll-margin-top: 80px;
@@ -2033,10 +2043,10 @@ html[data-theme-override="high-contrast"] .nav {
 
 .detail-hero-icon {
   flex-shrink: 0;
-  width: 88px;
-  height: 88px;
+  width: 72px;
+  height: 72px;
   object-fit: cover;
-  border-radius: 20px;
+  border-radius: 17px;
 }
 
 .detail-hero-icon-placeholder {
@@ -19882,6 +19892,7 @@ html[data-theme-override="light"]
   text-decoration: none;
   background: var(--surface-2);
   border: 1px solid var(--border);
+  border-left: 3px solid color-mix(in srgb, var(--rose) 45%, transparent);
   border-radius: 10px;
   transition:
     background 120ms ease,
@@ -27027,16 +27038,13 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 .your-focus-card__enable {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  padding: 6px 10px;
-  font-size: 12.5px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 4px 0;
+  font-size: 13px;
 }
-.your-focus-card__enable.is-on {
-  border-color: color-mix(in srgb, var(--blue, #3b82f6) 32%, var(--border));
+.your-focus-card__enable .your-focus-card__enable-state {
+  order: -1;
 }
 .your-focus-card__enable.is-off {
   opacity: 0.7;
@@ -28025,8 +28033,16 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     ),
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--surface) 82%, #ffffff),
-      color-mix(in srgb, var(--bg-2) 88%, #000000)
+      color-mix(
+        in srgb,
+        var(--blue, #0a84ff) 7%,
+        color-mix(in srgb, var(--surface) 82%, #ffffff)
+      ),
+      color-mix(
+        in srgb,
+        var(--blue, #0a84ff) 4%,
+        color-mix(in srgb, var(--bg-2) 88%, #000000)
+      )
     );
   border-color: color-mix(in srgb, var(--border-strong) 78%, #ffffff);
   box-shadow:

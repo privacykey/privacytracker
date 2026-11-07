@@ -1978,7 +1978,7 @@
     "tile_a11y_label": "包含无障碍标签",
     "filter_accessibility": "无障碍",
     "empty_no_data": "暂无数据。请添加应用以查看数据明细。",
-    "empty_no_changes": "暂未记录任何变化。",
+    "empty_no_changes": "自首次扫描以来没有标签变化。",
     "empty_no_changes_sub": "请重新同步你的应用以开始跟踪。",
     "empty_no_a11y_changes": "最近的更新中没有无障碍标签的变化。",
     "empty_no_privacy_changes": "最近的更新中没有隐私标签的变化。",

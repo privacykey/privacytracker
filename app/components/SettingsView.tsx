@@ -1507,9 +1507,6 @@ export default function SettingsView({
           Settings. Mounts before the "You" heading so it reads as the
           primary control. The legacy intent picker below stays in place
           during PR 3 (existing behaviour preserved); PR 5 removes it. */}
-              <h3 className="settings-group-heading">
-                {tSettings("sidebar.group_you")}
-              </h3>
               {settingsFocusPickerOn && focusCard}
               {desktopAppSectionOn && (
                 <div
@@ -1816,10 +1813,6 @@ export default function SettingsView({
           )}
           {showGroup("sync") && (
             <>
-              <h3 className="settings-group-heading">
-                {tSettings("sidebar.group_data_sync")}
-              </h3>
-
               {/* Sync Schedule */}
               {settingsSyncScheduleOn && (
                 <SyncScheduleSection
@@ -1886,10 +1879,6 @@ export default function SettingsView({
           )}
           {showGroup("policies") && (
             <>
-              <h3 className="settings-group-heading">
-                {tSettings("sidebar.group_policies_ai")}
-              </h3>
-
               {settingsAiEnabledOn && <AiSummariesSection ai={ai} />}
 
               {/*
@@ -1952,10 +1941,6 @@ export default function SettingsView({
 
           {showGroup("admin") && (
             <>
-              <h3 className="settings-group-heading">
-                {tSettings("sidebar.group_admin")}
-              </h3>
-
               {/* Import History — full section on the standalone page, otherwise
           a compact link card in the main Settings view. Keeping the big
           review-and-retry UI on its own page lets the Settings landing
