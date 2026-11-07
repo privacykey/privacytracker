@@ -1702,7 +1702,7 @@ export default function AppGrid({
           )}
           {f.actionsAddApps && (
             <Link
-              className="btn btn-secondary"
+              className="btn btn-ghost"
               data-flag-target="flag.appgrid.actions.add_apps"
               href="/onboard"
             >
@@ -2604,6 +2604,9 @@ export default function AppGrid({
                         >
                           {u > 0 && (
                             <span
+                              aria-label={tGrid("unlinked_chip_title", {
+                                count: u,
+                              })}
                               className="risk-chip risk-chip-unlinked"
                               title={tGrid("unlinked_chip_title", { count: u })}
                             >
@@ -2618,6 +2621,9 @@ export default function AppGrid({
                           )}
                           {l > 0 && (
                             <span
+                              aria-label={tGrid("linked_chip_title", {
+                                count: l,
+                              })}
                               className="risk-chip risk-chip-linked"
                               title={tGrid("linked_chip_title", { count: l })}
                             >
@@ -2632,6 +2638,9 @@ export default function AppGrid({
                           )}
                           {t > 0 && (
                             <span
+                              aria-label={tGrid("track_chip_title", {
+                                count: t,
+                              })}
                               className="risk-chip risk-chip-track"
                               title={tGrid("track_chip_title", { count: t })}
                             >

@@ -3844,9 +3844,9 @@
       "accessibility": "无障碍",
       "ai_policy": "AI 政策",
       "change_history": "变更历史",
-      "categories_badge": "（{count} 个类别）",
-      "features_badge": "（{count} 项功能）",
-      "no_features": "（未声明）",
+      "categories_badge": "{count} 个类别",
+      "features_badge": "{count} 项功能",
+      "no_features": "未声明",
       "policy_summary_ready": "摘要已生成",
       "policy_not_summarised": "未生成摘要",
       "policy_no_link": "无政策链接"
@@ -3914,8 +3914,8 @@
     "policy_change_kicker": "变化内容",
     "whats_new_kicker": "新功能",
     "tab_compare": "对比",
-    "tab_compare_vs": "对比另一款应用",
-    "tab_sync_count": "{count, plural, one {（# 次同步）} other {（# 次同步）}}",
+    "tab_compare_vs": "另一款应用",
+    "tab_sync_count": "{count, plural, one {# 次同步} other {# 次同步}}",
     "policy_phase": {
       "working": "处理中…",
       "fetch": "正在抓取政策",

@@ -650,13 +650,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
 }
 .task-diorama .td-svg {
   display: block;
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   /* Clip to the box (UA default) so the scene — and any future diorama's
      spring overshoot — can never bleed into the adjacent title column. All
      current art sits inside the 56-unit viewBox, so this is a no-op render

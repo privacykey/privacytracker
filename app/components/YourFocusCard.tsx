@@ -393,7 +393,7 @@ export default function YourFocusCard() {
         <div className="your-focus-card__actions">
           <Link
             aria-label={t("adjust")}
-            className="btn btn-primary your-focus-card__adjust"
+            className="btn btn-secondary your-focus-card__adjust"
             href="/dashboard/settings/focus"
           >
             <span aria-hidden="true" className="your-focus-card__adjust-icon">

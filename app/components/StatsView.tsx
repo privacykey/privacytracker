@@ -475,7 +475,9 @@ export default function StatsView({
                 {stats.categoryFrequency.map((c) => {
                   const pct = Math.round((c.appCount / maxCategoryCount) * 100);
                   const color =
-                    CATEGORY_META[c.identifier]?.color ?? "var(--blue)";
+                    // One accent for every bar: the chart ranks counts, and
+                    // the category colours carry no meaning here.
+                    "var(--blue)";
                   const meta = CATEGORY_META[c.identifier];
 
                   // The count sits after the track, not inside the fill:

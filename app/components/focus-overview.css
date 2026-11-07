@@ -117,7 +117,17 @@
   display: grid;
   gap: 4px;
   font-size: 13px;
-  color: var(--text-2);
+  color: var(--text-3);
+}
+.focus-overview-header-link {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--blue);
+  text-decoration: none;
+}
+.focus-overview-header-link:hover {
+  text-decoration: underline;
 }
 .focus-overview-app-actions {
   display: flex;

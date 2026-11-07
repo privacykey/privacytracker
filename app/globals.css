@@ -599,15 +599,15 @@ textarea {
   align-items: center;
   height: var(--nav-h);
   padding: 0 24px;
-  background: rgba(8, 8, 15, 0.7);
+  background: rgba(8, 8, 15, 0.93);
   border-bottom: 1px solid var(--border);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
 }
 
 @media (prefers-color-scheme: light) {
   .nav {
-    background: rgba(242, 242, 247, 0.75);
+    background: rgba(242, 242, 247, 0.93);
   }
 }
 
@@ -617,11 +617,50 @@ textarea {
    matching. Attribute selectors rank higher than media queries at the same
    specificity, so these rules correctly flip the nav regardless of OS mode. */
 html[data-theme-override="light"] .nav {
-  background: rgba(242, 242, 247, 0.75);
+  background: rgba(242, 242, 247, 0.93);
 }
 
 html[data-theme-override="dark"] .nav {
-  background: rgba(8, 8, 15, 0.7);
+  background: rgba(8, 8, 15, 0.93);
+}
+
+/* Light mode lifts its cards with a soft shadow, so an edge reads on the
+   grey page without a stronger border; dark mode keeps the surface step. */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override])
+    :is(
+      .app-card,
+      .stat-card,
+      .stats-panel,
+      .settings-section,
+      .home-section,
+      .home-hero,
+      .pmap-card,
+      .focus-overview,
+      .focus-strip,
+      .profile-replace-section,
+      .verdict-picker,
+      .label-trust
+    ):not(:hover) {
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  }
+}
+html[data-theme-override="light"]
+  :is(
+    .app-card,
+    .stat-card,
+    .stats-panel,
+    .settings-section,
+    .home-section,
+    .home-hero,
+    .pmap-card,
+    .focus-overview,
+    .focus-strip,
+    .profile-replace-section,
+    .verdict-picker,
+    .label-trust
+  ):not(:hover) {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
 }
 
 html[data-theme-override="high-contrast"] .nav {
@@ -1136,6 +1175,17 @@ html[data-theme-override="high-contrast"] .nav {
 .icon-btn:hover {
   color: var(--text);
   background: var(--surface-hover);
+}
+
+/* On an app card the two icon buttons rest in the tertiary colour and
+   come up with the card, so a row of cards does not read as a row of
+   close buttons. */
+.app-card-actions .icon-btn {
+  color: var(--text-3);
+}
+.app-card:hover .app-card-actions .icon-btn,
+.app-card:focus-within .app-card-actions .icon-btn {
+  color: var(--text-2);
 }
 .icon-btn.danger:hover {
   color: var(--red);
@@ -1882,9 +1932,15 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .pmap-preview-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-3);
+  white-space: nowrap;
+  clip: rect(0, 0, 0, 0);
 }
 
 .pmap-card-apps {
@@ -2118,7 +2174,9 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .detail-hero-meta .freshness-badge.fresh {
-  padding: 4px 0;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
 }
 
 /* Hero facts (version, price, age rating, first seen) share one neutral
@@ -3330,6 +3388,19 @@ html[data-theme-override="high-contrast"] .nav {
 .detail-tab.active {
   color: var(--blue);
   border-color: var(--blue);
+}
+
+/* The suffix after a tab's name (a count, a state) is one muted style,
+   set off by a middle dot rather than parentheses. */
+.detail-tab-meta {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.detail-tab-meta::before {
+  margin-right: 6px;
+  content: "·";
 }
 .detail-tab:hover:not(.active) {
   color: var(--text);
@@ -8885,6 +8956,7 @@ body.review-rec-print-active .review-rec-print a {
      much better with the extra width for app name + diff summary. */
   grid-template-columns: 1fr 2fr;
   gap: 20px;
+  align-items: start;
   margin-bottom: 0;
 }
 
@@ -8967,24 +9039,25 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .bar-track {
-  height: 26px;
+  height: 10px;
   overflow: hidden;
-  background: var(--surface-active);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text-3) 14%, transparent);
   border-radius: var(--r-full);
 }
 
 .bar-fill {
   height: 100%;
   border-radius: var(--r-full);
+  opacity: 0.8;
   transition: width 0.6s var(--ease-out-glide);
 }
 
 .bar-count {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -10118,7 +10191,7 @@ body.review-rec-print-active .review-rec-print a {
 
 .settings-content {
   min-width: 0;
-  max-width: 720px;
+  max-width: 960px;
 }
 
 /* Anchor scroll offset — sections sit below the sticky Nav, so when the
@@ -10221,7 +10294,7 @@ body.review-rec-print-active .review-rec-print a {
 
 .settings-sidebar-link.is-active {
   color: var(--blue);
-  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  background: color-mix(in srgb, var(--blue) 9%, transparent);
   border-color: transparent;
 }
 
@@ -10379,24 +10452,6 @@ body.review-rec-print-active .review-rec-print a {
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: -0.01em;
-}
-
-/* The date-format card is a single field, but it is a card among cards,
-   so its label and hint take the section title and subtitle voice. */
-.date-format-picker > .settings-field-label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
-}
-
-.date-format-picker > .settings-field-hint {
-  margin-bottom: 16px;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-2);
 }
 
 .settings-section-subtitle {
@@ -12535,12 +12590,21 @@ body.review-rec-print-active .review-rec-print a {
   scroll-margin-top: 80px;
   background: linear-gradient(
     180deg,
-    rgba(255, 149, 0, 0.12),
+    rgba(255, 149, 0, 0.09),
     rgba(255, 149, 0, 0.02)
   );
-  border: 1px solid rgba(255, 149, 0, 0.3);
+  border: 1px solid rgba(255, 149, 0, 0.24);
   border-radius: var(--r-xl);
-  box-shadow: 0 2px 12px rgba(255, 149, 0, 0.08);
+}
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override]) .change-review-panel {
+    background: rgba(245, 158, 11, 0.07);
+    border-color: rgba(217, 119, 6, 0.3);
+  }
+}
+html[data-theme-override="light"] .change-review-panel {
+  background: rgba(245, 158, 11, 0.07);
+  border-color: rgba(217, 119, 6, 0.3);
 }
 
 .change-review-header {
@@ -12619,11 +12683,18 @@ body.review-rec-print-active .review-rec-print a {
 
 .change-review-event-date {
   margin-bottom: 10px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+}
+
+.change-review-cat-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  vertical-align: -2px;
+  color: var(--text-2);
 }
 
 .change-review-list {
@@ -13590,10 +13661,10 @@ body.review-rec-print-active .review-rec-print a {
   display: inline-flex;
   align-items: center;
   padding: 1px 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.5;
-  color: var(--text-3);
+  color: var(--text-2);
   letter-spacing: 0.02em;
   background: transparent;
   border: 1px solid var(--border);
@@ -19856,8 +19927,6 @@ html[data-theme-override="light"]
   /* Pulled toward --text, as .review-rec-profile-badge does: plain --red
      on its own tint is 3.8:1 in dark mode at this 11px size. */
   color: color-mix(in srgb, var(--red) 70%, var(--text));
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
   background: var(--red-dim, rgba(220, 80, 80, 0.15));
   border-radius: var(--r-full);
 }
@@ -27074,28 +27143,33 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 .date-format-picker {
   margin: 0;
 }
+/* The card's label and hint take the settings card-title and subtitle
+   voice, since it is a card among cards. */
 .date-format-picker .settings-field-label {
   display: block;
-  margin-bottom: 4px;
-  font-size: 13px;
+  margin-bottom: 6px;
+  font-size: 18px;
   font-weight: 600;
+  line-height: 1.35;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 .date-format-picker .settings-field-hint {
-  margin: 0 0 8px;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--text-3);
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-2);
 }
 .date-format-picker-select {
   width: min(420px, 100%);
-  padding: 7px 10px;
+  height: 36px;
+  padding: 0 12px;
   font-family: inherit;
   font-size: 13px;
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
 }
 .date-format-picker .settings-field-status {
   margin: 6px 0 0;
@@ -28087,10 +28161,59 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-title {
+  /* Two lines reserved, so the three tiles' copy starts on one baseline
+     whether or not the title wraps. */
+  min-height: 48px;
   margin-bottom: 10px;
   font-size: 20px;
   line-height: 1.2;
   letter-spacing: 0;
+}
+
+/* In light mode the tile keeps its lift but loses the dark lip and the
+   grey-to-black gradient, which read as an unrelated, disabled control
+   next to the page's white cards. */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override])
+    .focus-purpose-card--onboarding
+    .focus-purpose-option {
+    background:
+      radial-gradient(
+        120% 90% at 50% -18%,
+        color-mix(in srgb, var(--blue, #0066cc) 12%, transparent),
+        transparent 58%
+      ),
+      linear-gradient(180deg, #ffffff, #f4f5f9);
+    border-color: color-mix(
+      in srgb,
+      var(--blue, #0066cc) 16%,
+      var(--border-strong)
+    );
+    box-shadow:
+      inset 0 1px 0 #ffffff,
+      0 12px 24px rgba(16, 24, 40, 0.08),
+      0 1px 0 rgba(16, 24, 40, 0.1);
+  }
+}
+html[data-theme-override="light"]
+  .focus-purpose-card--onboarding
+  .focus-purpose-option {
+  background:
+    radial-gradient(
+      120% 90% at 50% -18%,
+      color-mix(in srgb, var(--blue, #0066cc) 12%, transparent),
+      transparent 58%
+    ),
+    linear-gradient(180deg, #ffffff, #f4f5f9);
+  border-color: color-mix(
+    in srgb,
+    var(--blue, #0066cc) 16%,
+    var(--border-strong)
+  );
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 12px 24px rgba(16, 24, 40, 0.08),
+    0 1px 0 rgba(16, 24, 40, 0.1);
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-copy {

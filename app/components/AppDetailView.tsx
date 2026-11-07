@@ -1445,7 +1445,7 @@ export default function AppDetailView({
           type="button"
         >
           {tDetailTabs("privacy_labels")}
-          <span style={{ marginLeft: 6, fontSize: 12, color: "var(--text-3)" }}>
+          <span className="detail-tab-meta">
             {tDetailTabs("categories_badge", { count: totalCategories })}
           </span>
         </button>
@@ -1470,9 +1470,7 @@ export default function AppDetailView({
               type="button"
             >
               {tDetailTabs("accessibility")}
-              <span
-                style={{ marginLeft: 6, fontSize: 12, color: "var(--text-3)" }}
-              >
+              <span className="detail-tab-meta">
                 {app.hasAccessibilityLabels === 1
                   ? tDetailTabs("features_badge", {
                       count: app.accessibilityFeatures?.length ?? 0,
@@ -1493,9 +1491,7 @@ export default function AppDetailView({
             type="button"
           >
             {tDetailTabs("ai_policy")}
-            <span
-              style={{ marginLeft: 6, fontSize: 12, color: "var(--text-3)" }}
-            >
+            <span className="detail-tab-meta">
               {app.privacyPolicyUrl
                 ? app.policyAnalysis?.summary
                   ? tDetailTabs("policy_summary_ready")
@@ -1515,7 +1511,7 @@ export default function AppDetailView({
           type="button"
         >
           {tDetailTabs("change_history")}
-          <span style={{ marginLeft: 6, fontSize: 12, color: "var(--text-3)" }}>
+          <span className="detail-tab-meta">
             {(() => {
               // The merged changelog includes acknowledgement rows, which
               // would make the "N syncs" label lie. Count snapshots only so
@@ -1539,11 +1535,7 @@ export default function AppDetailView({
             type="button"
           >
             {tDetail("tab_compare")}
-            <span
-              style={{ marginLeft: 6, fontSize: 12, color: "var(--text-3)" }}
-            >
-              {tDetail("tab_compare_vs")}
-            </span>
+            <span className="detail-tab-meta">{tDetail("tab_compare_vs")}</span>
           </button>
         )}
       </div>

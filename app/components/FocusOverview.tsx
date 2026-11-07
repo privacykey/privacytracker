@@ -157,7 +157,7 @@ export function FocusOverview({
           </p>
         </div>
         <Link
-          className="btn btn-secondary"
+          className="focus-overview-header-link"
           href={withScopeParam("/dashboard/apps", scopeParam)}
         >
           {t("all_apps", { count: total })}

@@ -11,7 +11,7 @@ import type {
 } from "../../../lib/changelog-types";
 import { SNOOZE_DAYS_OPTIONS } from "../../../lib/changelog-types";
 import { CATEGORY_META, SEVERITY_CONFIG } from "../../../lib/privacy-meta";
-import { Icon } from "../icons/Icon";
+import { CategoryIcon, Icon } from "../icons/Icon";
 import type { App } from "./types";
 
 // ── Change Review Panel ───────────────────────────────────────────────
@@ -59,9 +59,10 @@ function classifyChange(entry: ChangeEntry): ChangeClassification {
   if (catMatch) {
     const name = catMatch[1].trim();
     categoryLabel = name;
-    for (const meta of Object.values(CATEGORY_META)) {
+    for (const [key, meta] of Object.entries(CATEGORY_META)) {
       if (meta.label.toLowerCase() === name.toLowerCase()) {
-        categoryIcon = meta.icon;
+        // The category key; the row draws it with the shared icon set.
+        categoryIcon = key;
         break;
       }
     }
@@ -113,6 +114,9 @@ function formatEventDate(ts: number) {
   const year = d.getFullYear();
   const hours24 = d.getHours();
   const ampm = hours24 >= 12 ? "pm" : "am";
+  // Sentence case ("8 Oct 2026, 09:35 pm"): the row's eyebrow used to be
+  // transformed to capitals, which made one date on the page look unlike
+  // every other.
   // 12-hour clock with explicit zero-padding so 02:44 pm doesn't flip to
   // " 2:44 pm" depending on the runtime's whitespace handling.
   const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
@@ -616,7 +620,7 @@ function ChangeReviewEvent({
                 <div className="change-review-desc">
                   {cls.categoryIcon && (
                     <span className="change-review-cat-icon">
-                      {cls.categoryIcon}
+                      <CategoryIcon category={cls.categoryIcon} size={15} />
                     </span>
                   )}
                   {entry.description}

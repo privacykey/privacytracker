@@ -486,7 +486,7 @@
       },
       "cleanup": {
         "title": "Clean up my phone",
-        "body": "Spot the apps that take the most and clear out what you don't need — the ones worth a look come first, with a hand to remove them."
+        "body": "Spot the apps that take the most and clear out what you don't need. The ones worth a look come first, with a hand to remove them."
       },
       "help": {
         "title": "Help a friend",
@@ -3844,9 +3844,9 @@
       "accessibility": "Accessibility",
       "ai_policy": "AI Policy",
       "change_history": "Change History",
-      "categories_badge": "({count, plural, one {# category} other {# categories}})",
-      "features_badge": "({count, plural, one {# feature} other {# features}})",
-      "no_features": "(none declared)",
+      "categories_badge": "{count, plural, one {# category} other {# categories}}",
+      "features_badge": "{count, plural, one {# feature} other {# features}}",
+      "no_features": "none declared",
       "policy_summary_ready": "summary ready",
       "policy_not_summarised": "not summarised",
       "policy_no_link": "no policy link"
@@ -3914,8 +3914,8 @@
     "policy_change_kicker": "What changed",
     "whats_new_kicker": "What's New",
     "tab_compare": "Compare",
-    "tab_compare_vs": "vs. another app",
-    "tab_sync_count": "{count, plural, one {(# sync)} other {(# syncs)}}",
+    "tab_compare_vs": "another app",
+    "tab_sync_count": "{count, plural, one {# sync} other {# syncs}}",
     "policy_phase": {
       "working": "Working…",
       "fetch": "Fetching policy",
