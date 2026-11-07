@@ -1979,7 +1979,7 @@
     "filter_accessibility": "Accessibility",
     "empty_no_data": "No data yet. Add apps to see data breakdown.",
     "empty_no_changes": "No label changes since your first scan.",
-    "empty_no_changes_sub": "Re-sync your apps to start tracking.",
+    "empty_no_changes_sub": "New label changes will appear here after your next sync.",
     "empty_no_a11y_changes": "No accessibility label changes in the recent feed.",
     "empty_no_privacy_changes": "No privacy label changes in the recent feed.",
     "empty_no_apps_evaluated": "No apps evaluated yet.",

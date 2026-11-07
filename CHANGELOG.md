@@ -28,6 +28,32 @@ Going forward, changes are recorded here as they land.
 
 ### Changed
 
+- A UI polish pass over the dashboard, apps grid, app detail, privacy
+  map, stats, settings and welcome screens, scored against GitHub, the
+  App Store and the Catalyst demo by three reviewer models. One line-icon
+  set replaces the emoji that stood in for icons in the nav bell, the
+  settings sidebar, the privacy map's category tiles, the focus pills,
+  section headers, the decision cards, the change-review buttons and the
+  stats empty state. Selection in the nav and the settings sidebar is a
+  tint with accent text rather than an outlined box, and Apps stays
+  selected while you are on an app's page. The apps page keeps one
+  filled Add Apps (in the nav); cards say "Synced today" in plain text
+  instead of a green chip, drop the floating sync count and name their
+  count chips for assistive tech. Status badges share one sentence-case
+  voice ("6 mismatches", "2 changes to review"). An app's hero facts
+  (synced, version, price, age rating, first seen) share one neutral
+  chip, dates paint one way from the first render, the change rows draw
+  their category from the icon set with sentence-case dates, and the
+  "What's changed" card spans the column when there is no device panel.
+  Statistics numerals use the text colour, with red only for apps off
+  your profile and orange only for a pending count; the bars take one
+  accent. Settings has one card-title size, a wider column, a plain
+  "What this turns on" list and a styled date-format select. Dark cards
+  sit one surface step above the page with quieter borders; light cards
+  are closer to white with a resting shadow; the nav glass is more
+  opaque; the floating footer pills are translucent and flat at rest.
+  The welcome tiles in light mode lose their dark lip, and a few
+  sentences lose their dashes.
 - An app's History timeline folds runs of quiet checks into one row, so
   the last real change is what you see first. Two or more syncs in a row
   that found the labels as they were, or privacy policy fetches that came

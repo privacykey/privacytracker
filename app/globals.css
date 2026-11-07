@@ -9024,6 +9024,16 @@ body.review-rec-print-active .review-rec-print a {
   align-items: center;
 }
 
+.bar-label-wrap .info-tooltip-trigger {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.bar-row:hover .info-tooltip-trigger,
+.bar-row:focus-within .info-tooltip-trigger,
+.bar-label-wrap .info-tooltip-trigger.is-open {
+  opacity: 1;
+}
+
 .bar-label-wrap {
   display: flex;
   gap: 8px;
@@ -10194,7 +10204,7 @@ body.review-rec-print-active .review-rec-print a {
    its inner max-width so section cards keep their familiar width. */
 .settings-layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   gap: 40px;
   align-items: start;
 }

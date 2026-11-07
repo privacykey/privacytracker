@@ -107,6 +107,9 @@
   min-width: 0;
 }
 .focus-overview-app-name img {
+  /* The stored artwork can be Apple's wide placeholder image; crop it to
+     the square like every other artwork tile does, rather than squash it. */
+  object-fit: cover;
   border-radius: 9px;
 }
 .focus-overview-app-name a {
@@ -172,11 +175,13 @@
   scroll-margin-top: 100px;
 }
 .review-later-controls select {
-  padding: 8px;
+  height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
   color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
 }
 .layout-editor-lock {
   display: flex;
