@@ -1612,103 +1612,103 @@ export default function AppGrid({
                   : tGrid("sync_all")}
             </button>
           )}
-          {f.actionsCustomAppsNav && (
-            <Link
-              className="btn btn-ghost"
-              href="/dashboard/manual-apps"
-              title={tGrid("untracked_title")}
-            >
-              {tGrid("custom_apps")}
-              {manualApps.length > 0 && (
-                <span
-                  aria-label={tGrid("custom_count_aria", {
-                    count: manualApps.length,
-                  })}
-                  className="custom-apps-count"
-                >
-                  {manualApps.length}
-                </span>
-              )}
-            </Link>
-          )}
-          {/* Enters "Compare mode" — plain clicks toggle selection instead of
+          <div
+            aria-label={tGrid("header_group_aria")}
+            className="header-actions-group"
+            role="group"
+          >
+            {f.actionsCustomAppsNav && (
+              <Link
+                className="btn btn-ghost"
+                href="/dashboard/manual-apps"
+                title={tGrid("untracked_title")}
+              >
+                {tGrid("custom_apps")}
+                {manualApps.length > 0 && (
+                  <span
+                    aria-label={tGrid("custom_count_aria", {
+                      count: manualApps.length,
+                    })}
+                    className="custom-apps-count"
+                  >
+                    {manualApps.length}
+                  </span>
+                )}
+              </Link>
+            )}
+            {/* Enters "Compare mode" — plain clicks toggle selection instead of
               navigating. Mirrors the Shift/Cmd-click power-user path so
               touch devices can reach the same feature. */}
-          {f.actionsCompareMode && (
-            <button
-              aria-pressed={compareMode}
-              className={`btn ${compareMode ? "btn-primary" : "btn-ghost"}`}
-              data-tour="compare-button"
-              onClick={() => {
-                if (compareMode) {
-                  clearSelection();
-                } else {
-                  setCompareMode(true);
+            {f.actionsCompareMode && (
+              <button
+                aria-pressed={compareMode}
+                className={`btn ${compareMode ? "btn-primary" : "btn-ghost"}`}
+                data-tour="compare-button"
+                onClick={() => {
+                  if (compareMode) {
+                    clearSelection();
+                  } else {
+                    setCompareMode(true);
+                  }
+                }}
+                title={
+                  compareMode
+                    ? tGrid("compare_title_on")
+                    : tGrid("compare_title_off")
                 }
-              }}
-              title={
-                compareMode
-                  ? tGrid("compare_title_on")
-                  : tGrid("compare_title_off")
-              }
-              type="button"
-            >
-              {compareMode ? tGrid("cancel_compare") : tGrid("compare")}
-            </button>
-          )}
-          {f.reviewQueueEnabled && (
-            <button
-              className={`btn btn-ghost review-queue-mode-toggle ${queueOpen ? "is-active" : ""}`}
-              disabled={apps.length === 0 || fleetIncomplete}
-              onClick={() => {
-                if (pageMode === "select") {
-                  exitSelectMode();
+                type="button"
+              >
+                {compareMode ? tGrid("cancel_compare") : tGrid("compare")}
+              </button>
+            )}
+            {f.reviewQueueEnabled && (
+              <button
+                className={`btn btn-ghost review-queue-mode-toggle ${queueOpen ? "is-active" : ""}`}
+                disabled={apps.length === 0 || fleetIncomplete}
+                onClick={() => {
+                  if (pageMode === "select") {
+                    exitSelectMode();
+                  }
+                  setQueueOpen(true);
+                }}
+                title={
+                  fleetIncomplete && apps.length > 0
+                    ? tGrid("bulk_wait_loading_title")
+                    : tGrid("mode_toggle_queue_title")
                 }
-                setQueueOpen(true);
-              }}
-              title={
-                fleetIncomplete && apps.length > 0
-                  ? tGrid("bulk_wait_loading_title")
-                  : tGrid("mode_toggle_queue_title")
-              }
-              type="button"
-            >
-              {tGrid("mode_toggle_queue")}
-            </button>
-          )}
-          {f.reviewQueueBulkSelect && (
-            <button
-              aria-pressed={pageMode === "select"}
-              className={`btn ${pageMode === "select" ? "btn-primary" : "btn-ghost"}`}
-              disabled={apps.length === 0 || fleetIncomplete}
-              onClick={() => {
-                if (pageMode === "select") {
-                  exitSelectMode();
-                } else {
-                  enterSelectMode();
+                type="button"
+              >
+                {tGrid("mode_toggle_queue")}
+              </button>
+            )}
+            {f.reviewQueueBulkSelect && (
+              <button
+                aria-pressed={pageMode === "select"}
+                className={`btn ${pageMode === "select" ? "btn-primary" : "btn-ghost"}`}
+                disabled={apps.length === 0 || fleetIncomplete}
+                onClick={() => {
+                  if (pageMode === "select") {
+                    exitSelectMode();
+                  } else {
+                    enterSelectMode();
+                  }
+                }}
+                title={
+                  fleetIncomplete && apps.length > 0
+                    ? tGrid("bulk_wait_loading_title")
+                    : tGrid("mode_toggle_select_title")
                 }
-              }}
-              title={
-                fleetIncomplete && apps.length > 0
-                  ? tGrid("bulk_wait_loading_title")
-                  : tGrid("mode_toggle_select_title")
-              }
-              type="button"
-            >
-              {pageMode === "select"
-                ? tGrid("mode_toggle_select_exit")
-                : tGrid("mode_toggle_select")}
-            </button>
-          )}
-          {f.actionsAddApps && (
-            <Link
-              className="btn btn-ghost"
-              data-flag-target="flag.appgrid.actions.add_apps"
-              href="/onboard"
-            >
-              {tGrid("add_apps")}
-            </Link>
-          )}
+                type="button"
+              >
+                {pageMode === "select"
+                  ? tGrid("mode_toggle_select_exit")
+                  : tGrid("mode_toggle_select")}
+              </button>
+            )}
+          </div>
+          {/* The nav carries the one filled Add Apps; a second copy in the
+              header competed with it. `flag.appgrid.actions.add_apps`
+              is kept as a key so stored overrides still parse. */}
         </div>
       </div>
 

@@ -549,12 +549,32 @@ textarea {
    element's implicit role with that value — instead we collapse the
    box with zero block size so it takes no layout space but keeps its
    landmark role in the accessibility tree. */
-.app-banner,
-.app-footer-landmark {
+.app-banner {
   padding: 0;
   margin: 0;
   line-height: 0;
   border: 0;
+}
+
+/* The footer landmark holds the fixed widgets (which take no layout
+   space) and the site footer row, which is in flow at the end of the
+   page: the links used to float over content on every screen. */
+.app-footer-landmark {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1280px;
+  padding: 14px 24px 28px;
+  margin: 0 auto;
+  border-top: 1px solid var(--border);
 }
 
 /* Screen-reader-only utility for text we want announced but not seen. */
@@ -599,15 +619,15 @@ textarea {
   align-items: center;
   height: var(--nav-h);
   padding: 0 24px;
-  background: rgba(8, 8, 15, 0.93);
+  background: rgba(8, 8, 15, 0.97);
   border-bottom: 1px solid var(--border);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  backdrop-filter: blur(20px) saturate(120%);
 }
 
 @media (prefers-color-scheme: light) {
   .nav {
-    background: rgba(242, 242, 247, 0.93);
+    background: rgba(242, 242, 247, 0.97);
   }
 }
 
@@ -617,11 +637,11 @@ textarea {
    matching. Attribute selectors rank higher than media queries at the same
    specificity, so these rules correctly flip the nav regardless of OS mode. */
 html[data-theme-override="light"] .nav {
-  background: rgba(242, 242, 247, 0.93);
+  background: rgba(242, 242, 247, 0.97);
 }
 
 html[data-theme-override="dark"] .nav {
-  background: rgba(8, 8, 15, 0.93);
+  background: rgba(8, 8, 15, 0.97);
 }
 
 /* Light mode lifts its cards with a soft shadow, so an edge reads on the
@@ -1052,7 +1072,7 @@ html[data-theme-override="high-contrast"] .nav {
 ───────────────────────────────────────────────────── */
 .page-container {
   max-width: 1280px;
-  padding: 40px 24px 80px;
+  padding: 40px 24px 48px;
   margin: 0 auto;
 }
 
@@ -1083,6 +1103,33 @@ html[data-theme-override="high-contrast"] .nav {
   flex-shrink: 0;
   gap: 10px;
   align-items: center;
+}
+.header-actions > .btn {
+  box-sizing: border-box;
+  min-height: 40px;
+}
+
+/* The library tools (Custom apps, Compare, Review queue, Select) sit in
+   one segmented secondary group, so the header reads as one outlined
+   action plus one group rather than five same-weight buttons. */
+.header-actions-group {
+  box-sizing: border-box;
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  min-height: 40px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+}
+.header-actions-group > .btn {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.header-actions-group > .btn-ghost:hover {
+  color: var(--text);
+  background: var(--surface-active);
 }
 
 /* ─────────────────────────────────────────────────────
@@ -2189,6 +2236,33 @@ html[data-theme-override="high-contrast"] .nav {
   color: var(--text-2);
   background: var(--surface-2);
   border: 1px solid var(--border);
+}
+
+/* The facts (version, price, age rating, accessibility, first seen) are
+   one muted line separated by middle dots; the status chips (synced,
+   changes to review) keep their pills, so the row reads as two kinds of
+   thing rather than eight pills. */
+.detail-hero-meta .detail-version-pill,
+.detail-hero-meta .detail-price-pill,
+.detail-hero-meta .detail-age-pill,
+.detail-hero-meta .detail-fact-pill,
+.detail-hero-meta .detail-a11y-chip-muted {
+  min-height: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+.detail-hero-meta .detail-price-pill::before,
+.detail-hero-meta .detail-age-pill::before,
+.detail-hero-meta .detail-fact-pill::before,
+.detail-hero-meta .detail-a11y-chip-muted::before {
+  margin-right: 8px;
+  color: var(--text-3);
+  content: "·";
 }
 
 /* Hero facts (version, price, age rating, first seen) share one neutral
@@ -8946,6 +9020,10 @@ body.review-rec-print-active .review-rec-print a {
   letter-spacing: -0.03em;
 }
 
+.stat-card-value.is-zero {
+  color: var(--text-3);
+}
+
 .stat-card-label {
   font-size: 14px;
   font-weight: 600;
@@ -9027,7 +9105,7 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .bar-label-wrap .info-tooltip-trigger {
-  opacity: 0.55;
+  opacity: 0.4;
   transition: opacity 0.15s;
 }
 .bar-row:hover .info-tooltip-trigger,
@@ -12744,11 +12822,11 @@ html[data-theme-override="light"] .change-review-panel {
 }
 
 .change-review-item-added {
-  background: linear-gradient(90deg, rgba(52, 199, 89, 0.08), transparent 60%);
+  background: rgba(52, 199, 89, 0.07);
   border-left-color: var(--green);
 }
 .change-review-item-removed {
-  background: linear-gradient(90deg, rgba(142, 142, 147, 0.1), transparent 60%);
+  background: rgba(142, 142, 147, 0.08);
   border-left-color: var(--text-3);
 }
 .change-review-item-modified {
@@ -15336,33 +15414,14 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 }
 
 /* Footer discoverability hint — fixed bottom-right, unobtrusive. */
+/* Right-hand group of the site footer row (shortcut hint, label
+   definitions, About). It used to be a pill fixed to the bottom-right
+   corner; the controls inside sit flat at rest and fill on hover. */
 .kbd-hint-anchor {
-  position: fixed;
-  right: 12px;
-  bottom: 12px;
-  z-index: 900;
   display: inline-flex;
   gap: 2px;
   align-items: center;
-  padding: 3px 3px 3px 10px;
-  /* The pill floats over page content on every screen, so it is light
-     chrome: a translucent surface with a strong blur keeps what is
-     under it readable, and the controls inside sit flat at rest (the
-     hover fill is the affordance). Resting opacity used to be 0.75,
-     which diluted the --text-2 links inside below 4.5:1; the blur does
-     the quieting instead. */
-  background: color-mix(in srgb, var(--bg-2) 86%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  box-shadow: var(--shadow-sm);
-  opacity: 1;
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  backdrop-filter: blur(14px) saturate(140%);
-  transition: opacity 160ms ease;
-}
-
-.kbd-hint-anchor:hover {
-  opacity: 1;
+  margin-left: auto;
 }
 
 .kbd-hint-button {
@@ -15443,9 +15502,11 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 }
 
 @media (max-width: 640px) {
-  /* Hide the floating hint on narrow viewports — hardware keyboards are
-     unlikely, and the pill would crowd mobile chrome. */
-  .kbd-hint-anchor {
+  /* Hardware keyboards are unlikely on a phone: the shortcut hint goes,
+     the definitions link and About stay. */
+  .kbd-hint-button,
+  .kbd-hint-dismiss,
+  .kbd-hint-anchor > .kbd-hint-divider {
     display: none;
   }
 }
@@ -16318,39 +16379,12 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
    floating footer so the two read as a matched pair, just pinned
    to opposite corners.
    ───────────────────────────────────────────── */
+/* Left-hand group of the site footer row (Privacy policy, Legal,
+   Feedback). It used to be a pill fixed to the bottom-left corner. */
 .site-info-hint-anchor {
-  position: fixed;
-  bottom: 12px;
-  left: 12px;
-  z-index: 900;
   display: inline-flex;
   gap: 2px;
   align-items: center;
-  padding: 3px 6px;
-  /* Same quiet translucent chrome as .kbd-hint-anchor; see there. */
-  background: color-mix(in srgb, var(--bg-2) 86%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  box-shadow: var(--shadow-sm);
-  opacity: 1;
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
-  backdrop-filter: blur(14px) saturate(140%);
-  transition: opacity 160ms ease;
-}
-
-.site-info-hint-anchor:hover {
-  opacity: 1;
-}
-
-/* 2.4.11 Focus Not Obscured: the pill floats over the bottom of the sticky
-   settings sidebar, so a tab-walk can land keyboard focus on a sidebar link
-   directly underneath it. Yield (fade + click-through) while any sidebar
-   link holds visible keyboard focus; the pill returns as soon as focus
-   moves on. Mouse users never trigger :focus-visible, so hover behaviour
-   is unchanged. */
-body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
-  pointer-events: none;
-  opacity: 0;
 }
 
 .site-info-hint-link {
@@ -16385,10 +16419,8 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
 }
 
 @media (max-width: 640px) {
-  /* Mirrors the right-side hint's mobile hide — the bottom corners are
-     already crowded on phones and the pill would overlap mobile chrome. */
-  .site-info-hint-anchor {
-    display: none;
+  .site-footer {
+    padding: 12px 16px 24px;
   }
 }
 
@@ -29547,6 +29579,48 @@ html[data-theme-override="light"]
   gap: 10px;
   justify-content: flex-end;
   margin-top: 18px;
+}
+
+/* On /welcome the action row sticks to the bottom of the viewport while
+   the tiles scroll, so the one primary action is always in reach; the
+   bar is drawn edge to edge inside the card's 48px padding. */
+.focus-purpose-card--onboarding .focus-purpose-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  justify-content: flex-end;
+  padding: 14px 48px 18px;
+  margin: 24px -48px -48px;
+  background: color-mix(in srgb, var(--bg-2) 88%, transparent);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--r-xl) var(--r-xl);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+/* A fade above the bar, so the tiles scroll out under it rather than
+   being cut by a hard edge. */
+.focus-purpose-card--onboarding .focus-purpose-actions::before {
+  position: absolute;
+  top: -36px;
+  right: 0;
+  left: 0;
+  height: 36px;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    color-mix(in srgb, var(--bg-2) 88%, transparent)
+  );
+}
+/* Skip sits beside Next, in the usual order: secondary then primary. */
+.focus-purpose-card--onboarding .focus-purpose-actions .welcome-skip {
+  order: -1;
+  margin-left: 0;
+}
+.focus-purpose-card--onboarding .focus-purpose-actions .btn-primary {
+  min-height: 40px;
+  padding: 10px 22px;
 }
 
 /* "Advanced: fine-tune individual features" disclosure wrapping the

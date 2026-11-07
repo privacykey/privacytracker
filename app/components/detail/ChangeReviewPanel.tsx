@@ -597,8 +597,13 @@ function ChangeReviewEvent({
   const tSeverity = useTranslations("severity");
   return (
     <div className="change-review-event">
-      <div className="change-review-event-date">
-        {formatEventDate(event.scraped_at)}
+      {/* The row shows the date; the full stamp with the time is in the
+          title, so the page's dates all read "8 Oct 2026". */}
+      <div
+        className="change-review-event-date"
+        title={formatEventDate(event.scraped_at)}
+      >
+        {formatEventDate(event.scraped_at).split(", ")[0]}
       </div>
       <ul className="change-review-list">
         {event.changes.map((entry, idx) => {

@@ -51,9 +51,15 @@ Going forward, changes are recorded here as they land.
   "What this turns on" list and a styled date-format select. Dark cards
   sit one surface step above the page with quieter borders; light cards
   are closer to white with a resting shadow; the nav glass is more
-  opaque; the floating footer pills are translucent and flat at rest.
-  The welcome tiles in light mode lose their dark lip, and a few
-  sentences lose their dashes.
+  opaque. The footer links (Privacy policy, Legal, Feedback, the
+  shortcut hint, Apple label definitions, About) are a row at the end of
+  the page instead of two pills floating over the content. The welcome
+  page's Next button sits in a bar that stays at the bottom of the card
+  while the tiles scroll. The apps page keeps Sync All as its one
+  outlined action and groups Custom apps, Compare, Review queue and
+  Select in one segmented control. The check-up steps show one line icon
+  in a tile in place of the small animated scenes. The welcome tiles in
+  light mode lose their dark lip, and a few sentences lose their dashes.
 - An app's History timeline folds runs of quiet checks into one row, so
   the last real change is what you see first. Two or more syncs in a row
   that found the labels as they were, or privacy policy fetches that came

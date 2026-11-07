@@ -13,6 +13,14 @@
   align-items: center;
   justify-content: space-between;
 }
+/* The "All N apps" link sits on the title's line, not between the title
+   and the subtitle. */
+.focus-overview-heading {
+  align-items: flex-start;
+}
+.focus-overview-heading > .focus-overview-header-link {
+  margin-top: 10px;
+}
 .focus-overview h1 {
   margin: 0 0 8px;
   font-size: clamp(24px, 3vw, 32px);
@@ -173,6 +181,10 @@
 .review-later-controls {
   justify-content: flex-start;
   scroll-margin-top: 100px;
+}
+.review-later-controls label {
+  font-size: 14px;
+  font-weight: 500;
 }
 .review-later-controls select {
   height: 36px;

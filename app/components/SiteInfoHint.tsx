@@ -28,8 +28,8 @@ export default function SiteInfoHint() {
   const t = useTranslations("footer");
   return (
     // The parent <footer> in app/layout.tsx already supplies the
-    // contentinfo landmark, so this wrapper is just a styled
-    // positioning anchor — matching KeyboardHint on the right.
+    // contentinfo landmark, so this wrapper is just a styled group inside
+    // the site footer row, beside KeyboardHint.
     <div aria-label={t("site_info_aria")} className="site-info-hint-anchor">
       <Link
         className="site-info-hint-link"

@@ -450,7 +450,10 @@ export default function StatsView({
       <div className="stat-cards">
         {summaryCards.map((c) => (
           <div className="stat-card" key={c.label}>
-            <div className="stat-card-value" style={{ color: c.color }}>
+            <div
+              className={`stat-card-value${c.value === 0 ? " is-zero" : ""}`}
+              style={{ color: c.value === 0 ? undefined : c.color }}
+            >
               {c.value}
             </div>
             <div className="stat-card-label">{c.label}</div>
