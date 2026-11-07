@@ -11,6 +11,7 @@ import type {
 } from "../../../lib/changelog-types";
 import { SNOOZE_DAYS_OPTIONS } from "../../../lib/changelog-types";
 import { CATEGORY_META, SEVERITY_CONFIG } from "../../../lib/privacy-meta";
+import { Icon } from "../icons/Icon";
 import type { App } from "./types";
 
 // ── Change Review Panel ───────────────────────────────────────────────
@@ -477,7 +478,10 @@ export default function ChangeReviewPanel({
                   <span className="spinner-sm" /> {tDetail("review_marking")}
                 </>
               ) : (
-                tDetail("review_mark_done")
+                <>
+                  <Icon name="check" size={14} strokeWidth={2.2} />
+                  {tDetail("review_mark_done")}
+                </>
               )}
             </button>
           )}
@@ -494,7 +498,10 @@ export default function ChangeReviewPanel({
                   <span className="spinner-sm" /> {tDetail("review_dismissing")}
                 </>
               ) : (
-                tDetail("review_dismiss")
+                <>
+                  <Icon name="x" size={14} strokeWidth={2.2} />
+                  {tDetail("review_dismiss")}
+                </>
               )}
             </button>
           )}
@@ -513,7 +520,11 @@ export default function ChangeReviewPanel({
                     <span className="spinner-sm" /> {tDetail("review_snoozing")}
                   </>
                 ) : (
-                  tDetail("review_remind_later")
+                  <>
+                    <Icon name="bell" size={14} />
+                    {tDetail("review_remind_later")}
+                    <Icon name="chevron-down" size={12} strokeWidth={2} />
+                  </>
                 )}
               </button>
               {snoozeMenuOpen && (

@@ -1930,6 +1930,8 @@
   },
   "stats": {
     "page_title": "统计",
+    "export_csv": "导出 CSV",
+    "export_json": "导出 JSON",
     "subs": {
       "most_collected": "有多少个应用在收集每种类型的数据",
       "recent_changes": "检测到的最新隐私标签更新",
@@ -2146,7 +2148,7 @@
     "empty_no_data_post": "，即可在此查看它们的隐私明细。",
     "empty_no_match": "没有匹配结果",
     "sensitive_category_title": "此类别尤为敏感",
-    "preview_hint_tap": "点击查看",
+    "preview_hint_tap": "显示应用",
     "preview_show_all_aria": "显示「{label}」中的全部 {count} 个应用",
     "card_app_count": "{count} 个应用",
     "sensitive_chip": "敏感"
@@ -3001,9 +3003,9 @@
       "all_apps": "所有应用",
       "high_severity": "高风险",
       "by_category": "按类别",
-      "review_kicker": "⚡ 待查看的变化",
-      "stale_kicker": "🕰 过期应用",
-      "activity_kicker": "📡 本周活动",
+      "review_kicker": "待查看的变化",
+      "stale_kicker": "过期应用",
+      "activity_kicker": "本周活动",
       "review_sub": "Apple 更新了 {count} 个跟踪应用上的 {summary}。点击查看变化。",
       "stale_sub_elevated": "这些应用已超过一个月未重新同步。开发者会经常更新隐私声明 — 重新同步可显示自上次查看以来的所有变化。",
       "stale_sub_short": "超过一个月未重新同步 — 它们的隐私标签可能已经改变。",
@@ -3023,11 +3025,11 @@
       "replace_sub": "这些应用超出了你的隐私偏好所允许的范围。打开任意一个查看哪些类别不符，再决定保留、替换还是删除。",
       "replace_mismatch_count": "{count} 项不符",
       "replace_more": "另有 {count} 个，见<link>应用页面</link>（留意警告标记）。",
-      "cleanup_kicker": "🧹 清理候选",
+      "cleanup_kicker": "清理候选",
       "cleanup_sub": "这些应用会跨应用跟踪你，或收集大量与你身份相关联的数据。逐个打开决定保留还是删除。",
-      "family_kicker": "👪 与家人一起检查",
+      "family_kicker": "与家人一起检查",
       "family_sub": "具有强跟踪信号的应用。打开任意一个查看其具体收集了什么 — 适合和孩子一起浏览。",
-      "watchlist_kicker": "👁 你的关注列表",
+      "watchlist_kicker": "你的关注列表",
       "watchlist_sub": "会跨应用跟踪你或收集大量与你身份相关联数据的应用。这只是一份参考清单 — 暂无需操作。"
     },
     "row_meta": {
@@ -3240,9 +3242,9 @@
     "compare_title_on": "取消对比 — 清除当前选择",
     "add_apps": "+ 添加应用",
     "freshness": {
-      "today": "今天",
-      "yesterday": "昨天",
-      "days_ago": "{count} 天前"
+      "today": "今天已同步",
+      "yesterday": "昨天已同步",
+      "days_ago": "{count} 天前同步"
     },
     "sort": {
       "highest_risk": "风险最高",
@@ -3889,11 +3891,11 @@
     "review_sub_with_since": "{events, plural, one {覆盖 # 次同步事件} other {覆盖 # 次同步事件}}，自你上次于 {date} 查看以来",
     "review_sub_no_since": "{events, plural, one {覆盖 # 次同步事件} other {覆盖 # 次同步事件}}",
     "review_marking": "正在标记…",
-    "review_mark_done": "✓ 标记为已查看",
+    "review_mark_done": "标记为已查看",
     "review_dismissing": "正在忽略…",
-    "review_dismiss": "✕ 忽略",
+    "review_dismiss": "忽略",
     "review_snoozing": "正在暂缓…",
-    "review_remind_later": "🔔 稍后提醒 ▾",
+    "review_remind_later": "稍后提醒",
     "policy_kicker": "开发者隐私政策",
     "policy_rescraping": "正在重新抓取…",
     "policy_rescrape": "↻ 重新抓取政策",
@@ -4187,7 +4189,7 @@
     "a11y_profile_key_tier_missing": "· {count} 项缺失",
     "back_to": "← 返回{label}",
     "synced_relative": "同步于{relative}",
-    "changes_to_review": "⚡ {count, plural, one {# 项变化待查看} other {# 项变化待查看}}",
+    "changes_to_review": "{count, plural, one {# 项变化待查看} other {# 项变化待查看}}",
     "released_title": "发布于 {date}",
     "updated_relative": "更新于{relative}",
     "first_seen": "首次发现 {date}",

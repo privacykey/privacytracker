@@ -44,9 +44,9 @@
   --bg-3: #18181f;
 
   /* Surfaces (glassmorphism) */
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-hover: rgba(255, 255, 255, 0.07);
-  --surface-active: rgba(255, 255, 255, 0.1);
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.085);
+  --surface-active: rgba(255, 255, 255, 0.115);
 
   /* Numbered surface ladder. A whole family of styles (app-detail policy
      blocks, settings panels, activity/import rows) was authored against
@@ -67,12 +67,13 @@
      composite *behind* body copy, so a step that darkens a light theme
      silently eats the AA headroom --text-2 needs. See the light block. */
   --surface-1: var(--surface);
-  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-2: rgba(255, 255, 255, 0.075);
   --surface-3: rgba(255, 255, 255, 0.09);
 
-  /* Borders */
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.13);
+  /* Borders: one step quieter than the surfaces, so a card is read by
+     its tone first and its edge second. */
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.11);
   /* --border-1 / --border-2 are live aliases of --border, defined once
      here for the same reason as --surface-1: inline styles were authored
      against the numbered names. Keep new code on --border / --border-strong. */
@@ -202,8 +203,8 @@
     --bg: #f2f2f7;
     --bg-2: #ffffff;
     --bg-3: #e5e5ea;
-    --surface: rgba(255, 255, 255, 0.7);
-    --surface-hover: rgba(255, 255, 255, 0.9);
+    --surface: rgba(255, 255, 255, 0.85);
+    --surface-hover: rgba(255, 255, 255, 0.95);
     --surface-active: rgba(255, 255, 255, 1);
     /* Nested surfaces step *whiter* in light mode, continuing the
        --surface → --surface-hover → --surface-active progression above
@@ -296,8 +297,8 @@ html[data-theme-override="light"] {
   --bg: #f2f2f7;
   --bg-2: #ffffff;
   --bg-3: #e5e5ea;
-  --surface: rgba(255, 255, 255, 0.7);
-  --surface-hover: rgba(255, 255, 255, 0.9);
+  --surface: rgba(255, 255, 255, 0.85);
+  --surface-hover: rgba(255, 255, 255, 0.95);
   --surface-active: rgba(255, 255, 255, 1);
   /* Nested-surface steps — see the @media light block above. */
   --surface-2: rgba(255, 255, 255, 0.9);
@@ -346,15 +347,15 @@ html[data-theme-override="dark"] {
   --bg: #08080f;
   --bg-2: #111118;
   --bg-3: #18181f;
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-hover: rgba(255, 255, 255, 0.07);
-  --surface-active: rgba(255, 255, 255, 0.1);
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.085);
+  --surface-active: rgba(255, 255, 255, 0.115);
   /* Re-pin the nested-surface steps to the dark defaults (same rationale
      as the severity palette re-pin below). */
-  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-2: rgba(255, 255, 255, 0.075);
   --surface-3: rgba(255, 255, 255, 0.09);
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.13);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.11);
   --text: #f0f0f5;
   --text-2: #a0a0b0;
   --text-3: #9a9aa0;
@@ -732,14 +733,17 @@ html[data-theme-override="high-contrast"] .nav {
     color-mix(in srgb, var(--blue, #0a84ff) 35%, transparent);
 }
 
+/* Selection is a tinted surface with accent text, not an outlined box:
+   the same calm selection language as the settings sidebar and the risk
+   filter tabs, so the nav stays quieter than the content under it. */
 .nav-link.active {
-  color: var(--text);
-  background: color-mix(in srgb, var(--blue, #0a84ff) 18%, transparent);
-  border-color: var(--blue, #0a84ff);
+  color: var(--blue, #0a84ff);
+  background: color-mix(in srgb, var(--blue, #0a84ff) 12%, transparent);
+  border-color: transparent;
 }
 
 .nav-link.active:hover {
-  background: color-mix(in srgb, var(--blue, #0a84ff) 26%, transparent);
+  background: color-mix(in srgb, var(--blue, #0a84ff) 18%, transparent);
 }
 
 .nav-right {
@@ -1533,6 +1537,10 @@ html[data-theme-override="high-contrast"] .nav {
   margin-top: 6px;
 }
 
+/* Sync freshness is muted text while it is fine ("Synced today"); only
+   an aging or stale sync earns a tinted chip, because that is the state
+   that asks for something. A green chip for the normal state was one
+   more indicator on a card that already carries five. */
 .freshness-badge {
   padding: 2px 8px;
   font-size: 11px;
@@ -1541,8 +1549,9 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .freshness-badge.fresh {
-  color: var(--green);
-  background: var(--green-dim);
+  padding: 2px 0;
+  color: var(--text-3);
+  background: transparent;
 }
 .freshness-badge.aging {
   color: var(--yellow);
@@ -1570,15 +1579,17 @@ html[data-theme-override="high-contrast"] .nav {
 /* ─────────────────────────────────────────────────────
    Privacy Severity Badges
 ───────────────────────────────────────────────────── */
+/* One badge voice: 12px, semibold, sentence case. Uppercase with tracking
+   is reserved for eyebrow labels (YOUR FOCUS, WHAT'S NEW), so a status
+   badge never competes with the sentence-case pills beside it. */
 .severity-badge {
   display: inline-flex;
   gap: 5px;
   align-items: center;
   padding: 3px 9px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
+  line-height: 1.3;
   border-radius: var(--r-full);
 }
 
@@ -1856,6 +1867,7 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .pmap-preview-more {
+  order: -1;
   font-size: 11px;
   font-weight: 700;
   color: var(--text-2);
@@ -2092,21 +2104,40 @@ html[data-theme-override="high-contrast"] .nav {
 .detail-hero-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   margin-top: 12px;
 }
 
-.detail-version-pill {
+.detail-hero-meta .freshness-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.detail-hero-meta .freshness-badge.fresh {
+  padding: 4px 0;
+}
+
+/* Hero facts (version, price, age rating, first seen) share one neutral
+   chip: 12px/500, muted text, hairline border, 26px tall. Status chips
+   (synced, changes to review, accessibility) keep their tints, so the
+   row reads as facts plus a few states rather than seven treatments. */
+.detail-version-pill,
+.detail-fact-pill {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  min-height: 26px;
   padding: 4px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-feature-settings: "tnum" 1;
   line-height: 1.2;
   color: var(--text-2);
+  white-space: nowrap;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -2132,15 +2163,16 @@ html[data-theme-override="high-contrast"] .nav {
   display: inline-flex;
   gap: 4px;
   align-items: center;
+  min-height: 26px;
   padding: 4px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-feature-settings: "tnum" 1;
   line-height: 1.2;
-  color: var(--text);
+  color: var(--text-2);
   white-space: nowrap;
-  background: color-mix(in srgb, var(--teal) 12%, var(--surface-2));
-  border: 1px solid color-mix(in srgb, var(--teal) 28%, var(--border));
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 999px;
 }
 
@@ -2154,6 +2186,7 @@ html[data-theme-override="high-contrast"] .nav {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  min-height: 26px;
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 600;
@@ -2208,9 +2241,10 @@ html[data-theme-override="high-contrast"] .nav {
   display: inline-flex;
   gap: 4px;
   align-items: center;
+  min-height: 26px;
   padding: 4px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-feature-settings: "tnum" 1;
   line-height: 1.2;
   color: var(--text-2);
@@ -8818,12 +8852,15 @@ body.review-rec-print-active .review-rec-print a {
   transform: translateY(-2px);
 }
 
+/* KPI numerals sit in the text colour; a severity colour is applied
+   inline only where the number is a status (off profile, stale). */
 .stat-card-value {
   margin-bottom: 6px;
-  font-size: 44px;
-  font-weight: 800;
+  font-size: 36px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
 }
 
 .stat-card-label {
@@ -10183,14 +10220,16 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .settings-sidebar-link.is-active {
-  color: var(--text);
-  background: var(--surface);
-  border-color: var(--border-strong);
-  box-shadow: inset 2px 0 0 var(--blue);
+  color: var(--blue);
+  background: color-mix(in srgb, var(--blue) 12%, transparent);
+  border-color: transparent;
 }
 
 .settings-sidebar-icon {
+  display: inline-flex;
   flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
   width: 18px;
   font-size: 13px;
   color: var(--text-3);
@@ -10337,8 +10376,27 @@ body.review-rec-print-active .review-rec-print a {
 .settings-section-title {
   margin-bottom: 6px;
   font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+/* The date-format card is a single field, but it is a card among cards,
+   so its label and hint take the section title and subtitle voice. */
+.date-format-picker > .settings-field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.date-format-picker > .settings-field-hint {
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-2);
 }
 
 .settings-section-subtitle {
@@ -13751,13 +13809,20 @@ body.review-rec-print-active .review-rec-print a {
 
 .home-section-kicker {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-1);
   text-transform: none;
   letter-spacing: 0;
+}
+
+/* The section's icon takes the muted text colour, so the title keeps
+   the weight and the icon reads as a quiet marker beside it. */
+.home-section-kicker-icon {
+  flex-shrink: 0;
+  color: var(--text-2);
 }
 
 .home-section-sub {
@@ -15176,23 +15241,26 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 /* Footer discoverability hint — fixed bottom-right, unobtrusive. */
 .kbd-hint-anchor {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: 12px;
+  bottom: 12px;
   z-index: 900;
   display: inline-flex;
-  gap: 4px;
+  gap: 2px;
   align-items: center;
-  padding: 4px 4px 4px 12px;
-  background: color-mix(in srgb, var(--bg-2) 92%, transparent);
+  padding: 3px 3px 3px 10px;
+  /* The pill floats over page content on every screen, so it is light
+     chrome: a translucent surface with a strong blur keeps what is
+     under it readable, and the controls inside sit flat at rest (the
+     hover fill is the affordance). Resting opacity used to be 0.75,
+     which diluted the --text-2 links inside below 4.5:1; the blur does
+     the quieting instead. */
+  background: color-mix(in srgb, var(--bg-2) 86%, transparent);
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   box-shadow: var(--shadow-sm);
-  /* Resting opacity used to be 0.75, which diluted the --text-2
-     links inside below 4.5:1 — the translucent color-mix background +
-     blur keep the pill visually quiet without failing contrast. */
   opacity: 1;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
   transition: opacity 160ms ease;
 }
 
@@ -15211,11 +15279,10 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   color: var(--text);
   appearance: none;
   cursor: pointer;
-  /* Inverted states: the resting surface now carries what was previously
-     the hover tint so the button is discoverable at rest, and hover
-     promotes it to the stronger "active" fill. Same pattern applied to
-     .kbd-hint-about and .kbd-hint-dismiss below. */
-  background: var(--surface-hover);
+  /* Flat at rest; the hover fill is the affordance. The three controls
+     used to carry the hover tint at rest, which made the pill read as
+     three filled buttons stacked over the page. */
+  background: transparent;
   border: 0;
   border-radius: var(--r-full);
   transition:
@@ -15225,7 +15292,7 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .kbd-hint-button:hover {
   color: var(--text);
-  background: var(--surface-active);
+  background: var(--surface-hover);
 }
 
 .kbd-hint-dismiss {
@@ -15239,7 +15306,7 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   color: var(--text-2);
   appearance: none;
   cursor: pointer;
-  background: var(--surface-hover);
+  background: transparent;
   border: 0;
   border-radius: var(--r-full);
   transition:
@@ -15249,7 +15316,7 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .kbd-hint-dismiss:hover {
   color: var(--text);
-  background: var(--surface-active);
+  background: var(--surface-hover);
 }
 
 /* WCAG 2.2 SC 2.5.8 — the pill's controls paint at ~20–22px tall.
@@ -15303,10 +15370,10 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
-  color: var(--text);
+  color: var(--text-2);
   appearance: none;
   cursor: pointer;
-  background: var(--surface-hover);
+  background: transparent;
   border: 0;
   border-radius: var(--r-full);
   transition:
@@ -15316,7 +15383,7 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .kbd-hint-about:hover {
   color: var(--text);
-  background: var(--surface-active);
+  background: var(--surface-hover);
 }
 
 /* ─────────────────────────────────────────────────────
@@ -16156,23 +16223,21 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
    ───────────────────────────────────────────── */
 .site-info-hint-anchor {
   position: fixed;
-  bottom: 16px;
-  left: 16px;
+  bottom: 12px;
+  left: 12px;
   z-index: 900;
   display: inline-flex;
   gap: 2px;
   align-items: center;
-  padding: 4px 8px;
-  background: color-mix(in srgb, var(--bg-2) 92%, transparent);
+  padding: 3px 6px;
+  /* Same quiet translucent chrome as .kbd-hint-anchor; see there. */
+  background: color-mix(in srgb, var(--bg-2) 86%, transparent);
   border: 1px solid var(--border);
   border-radius: var(--r-full);
   box-shadow: var(--shadow-sm);
-  /* Resting opacity used to be 0.75, which diluted the --text-2
-     links inside below 4.5:1 — the translucent color-mix background +
-     blur keep the pill visually quiet without failing contrast. */
   opacity: 1;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(140%);
   transition: opacity 160ms ease;
 }
 
@@ -19071,9 +19136,9 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  -webkit-line-clamp: 3;
-  font-size: 11.5px;
-  line-height: 1.35;
+  -webkit-line-clamp: 4;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--text-3);
 }
 
@@ -19675,11 +19740,10 @@ html[data-theme-override="light"]
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  padding: 2px 7px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
   border-radius: var(--r-full);
 }
 
@@ -26914,6 +26978,8 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   color: var(--text);
 }
 .your-focus-card__enable-state {
+  display: inline-flex;
+  align-items: center;
   font-size: 10px;
   line-height: 1;
 }
@@ -26923,10 +26989,18 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 .your-focus-card__enable.is-off .your-focus-card__enable-state {
   color: var(--text-3);
 }
+/* The state word stays for assistive tech; the check or cross glyph is
+   the visible signal, so seven chips no longer repeat "on". */
 .your-focus-card__enable-state-label {
-  font-size: 11px;
-  color: var(--text-3);
-  text-transform: lowercase;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
 }
 
 .your-focus-card__footer {

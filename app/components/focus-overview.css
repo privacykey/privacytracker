@@ -30,13 +30,40 @@
 }
 .focus-overview-stats > div {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
+/* Value over label: the number carries the weight, the label recedes,
+   and a zero recedes further so the rows below lead. */
 .focus-overview-stats strong {
   font-size: 32px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.focus-overview-stats strong.is-zero {
+  color: var(--text-3);
+}
+.focus-overview-stats span {
+  font-size: 13px;
+  color: var(--text-2);
 }
 .focus-overview-stats small {
-  color: var(--text-2);
+  color: var(--text-3);
+}
+.focus-overview-app-link {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue);
+  text-decoration: none;
+  border-radius: var(--r-full);
+}
+.focus-overview-app-link:hover {
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
 }
 .focus-overview-apps,
 .focus-overview-apps-more {

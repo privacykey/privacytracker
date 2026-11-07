@@ -13,6 +13,7 @@ import {
 import { scrollPulse } from "../../lib/scroll-pulse";
 import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import InfoTooltip from "./InfoTooltip";
+import { CategoryIcon } from "./icons/Icon";
 import { PageSkeleton } from "./LoadingShell";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 
@@ -349,7 +350,6 @@ function CategoryCard({
 
   const label =
     categoryLabel(tCat, category.identifier) ?? meta?.label ?? category.title;
-  const icon = meta?.icon ?? "📂";
 
   // Intrinsically sensitive categories (Sensitive Info / Location / Identifiers / Health)
   // are flagged beside the app count via a small muted chip that picks up colour on hover.
@@ -373,7 +373,7 @@ function CategoryCard({
       */}
       <div className="pmap-card-header" onClick={() => setExpanded((v) => !v)}>
         <span aria-hidden="true" className="pmap-card-icon">
-          {icon}
+          <CategoryIcon category={category.identifier} size={20} />
         </span>
 
         <span className="pmap-card-title-block">

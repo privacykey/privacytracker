@@ -21,6 +21,7 @@ import {
   useRovingRadioGroup,
 } from "../../lib/use-roving-radiogroup";
 import DataLabelHint from "./DataLabelHint";
+import { CategoryIcon, Icon, PRESET_ICON } from "./icons/Icon";
 
 /**
  * Which severity story the row's hover vignette plays, keyed by the
@@ -224,7 +225,7 @@ export default function PrivacyProfileEditor({
                     aria-hidden="true"
                     className="privacy-profile-preset-icon"
                   >
-                    {meta.icon}
+                    <Icon name={PRESET_ICON[presetKey] ?? "shield"} size={18} />
                   </span>
                   <span className="privacy-profile-preset-text">
                     <span className="privacy-profile-preset-title">
@@ -327,7 +328,7 @@ export default function PrivacyProfileEditor({
             >
               <div className="privacy-profile-row-label">
                 <span aria-hidden className="privacy-profile-row-icon">
-                  {meta.icon}
+                  <CategoryIcon category={key} size={16} />
                 </span>
                 <div className="privacy-profile-row-text">
                   <div className="privacy-profile-row-title">

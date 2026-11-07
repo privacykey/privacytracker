@@ -19,6 +19,7 @@ import {
 } from "../../lib/use-roving-radiogroup";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
 import FeatureToggleRow from "./FeatureToggleRow";
+import { Icon } from "./icons/Icon";
 import PurposeCardScene, { PURPOSE_ICONS } from "./PurposeCardScene";
 
 interface FocusPurposeFormProps {
@@ -327,7 +328,7 @@ export default function FocusPurposeForm({
                 >
                   <div className="method-card-top">
                     <span aria-hidden="true" className="welcome-card-icon">
-                      🍃
+                      <Icon name="leaf" size={22} />
                     </span>
                     <span aria-hidden="true" className="method-card-radio">
                       {minimal ? "✓" : ""}

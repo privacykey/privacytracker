@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useModalFocus } from "../../lib/use-modal-focus";
+import { Icon } from "./icons/Icon";
 
 // AnnotationsSidebar is loaded lazily — it pulls in `marked` (~30kb), so
 // only ship that to App Detail clients when the flag is on. Audience-aware
@@ -941,6 +942,7 @@ export default function AppDetailView({
                 className="severity-badge severity-track change-badge-link"
                 href="#what-changed"
               >
+                <Icon name="zap" size={12} strokeWidth={2} />
                 {tDetail("changes_to_review", {
                   count: reviewState.totalCount,
                 })}
@@ -1033,7 +1035,7 @@ export default function AppDetailView({
                           band: tAgeBand(`labels.${childAgeBand}`),
                         })}
                       >
-                        <span aria-hidden="true">⚠</span>
+                        <Icon name="alert-triangle" size={12} strokeWidth={2} />
                         {tDetail("age_pill_above", { rating: app.ageRating })}
                       </span>
                       <Link
@@ -1057,7 +1059,9 @@ export default function AppDetailView({
                         : tDetail("age_pill_title")
                     }
                   >
-                    {verdict === "within" && <span aria-hidden="true">✓</span>}
+                    {verdict === "within" && (
+                      <Icon name="check" size={12} strokeWidth={2.2} />
+                    )}
                     {tDetail("age_pill", { rating: app.ageRating })}
                   </span>
                 );
@@ -1145,7 +1149,7 @@ export default function AppDetailView({
                 </span>
               )}
 
-            <span style={{ fontSize: 12, color: "var(--text-3)" }}>
+            <span className="detail-fact-pill">
               {tDetail("first_seen", {
                 date: formatDate(app.firstSeen || app.lastSynced),
               })}
@@ -1284,7 +1288,7 @@ export default function AppDetailView({
                       aria-hidden="true"
                       className="detail-hero-actions-icon"
                     >
-                      🗑
+                      <Icon name="trash" size={15} />
                     </span>
                     {tDetail("actions_menu_remove")}
                   </button>
@@ -1596,7 +1600,7 @@ export default function AppDetailView({
                   style={{ padding: "60px 0" }}
                 >
                   <div aria-hidden="true" className="empty-state-icon">
-                    ⚠️
+                    <Icon name="alert-triangle" size={32} />
                   </div>
                   <div className="empty-state-title">
                     {tDetail("no_details_title")}
@@ -1608,7 +1612,7 @@ export default function AppDetailView({
               ) : (
                 <div className="empty-state" style={{ padding: "60px 0" }}>
                   <div aria-hidden="true" className="empty-state-icon">
-                    🛡
+                    <Icon name="shield" size={32} />
                   </div>
                   <div className="empty-state-title">
                     {tDetail("no_labels_title")}

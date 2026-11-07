@@ -1507,6 +1507,9 @@ export default function SettingsView({
           Settings. Mounts before the "You" heading so it reads as the
           primary control. The legacy intent picker below stays in place
           during PR 3 (existing behaviour preserved); PR 5 removes it. */}
+              <h3 className="settings-group-heading">
+                {tSettings("sidebar.group_you")}
+              </h3>
               {settingsFocusPickerOn && focusCard}
               {desktopAppSectionOn && (
                 <div
@@ -1537,9 +1540,6 @@ export default function SettingsView({
                   <DateFormatPicker />
                 </div>
               )}
-              <h3 className="settings-group-heading">
-                {tSettings("sidebar.group_you")}
-              </h3>
               {/* The legacy "Your Focus" intent picker used to render here. It was
           superseded by the YourFocusCard at the top of the page (chip
           strip + Adjust → /dashboard/settings/focus) per

@@ -38,6 +38,7 @@ import {
   useScopeLabel,
   withScopeParam,
 } from "./DeviceScopeProvider";
+import { Icon } from "./icons/Icon";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
 import { useTaskCenter } from "./TaskCenter";
@@ -1575,7 +1576,11 @@ export default function AppGrid({
                 title={tGrid("resync_filter_title", { count: sorted.length })}
                 type="button"
               >
-                {syncingAll ? <span className="spinner" /> : "↻"}
+                {syncingAll ? (
+                  <span className="spinner" />
+                ) : (
+                  <Icon name="refresh" size={14} />
+                )}
                 {syncingAll
                   ? tGrid("syncing")
                   : tGrid("sync_n_apps", { count: sorted.length })}
@@ -1595,7 +1600,11 @@ export default function AppGrid({
               }
               type="button"
             >
-              {syncingAll ? <span className="spinner" /> : "↻"}
+              {syncingAll ? (
+                <span className="spinner" />
+              ) : (
+                <Icon name="refresh" size={14} />
+              )}
               {syncingAll
                 ? tGrid("syncing")
                 : scopeLabel
@@ -1605,7 +1614,7 @@ export default function AppGrid({
           )}
           {f.actionsCustomAppsNav && (
             <Link
-              className="btn btn-secondary"
+              className="btn btn-ghost"
               href="/dashboard/manual-apps"
               title={tGrid("untracked_title")}
             >
@@ -1628,7 +1637,7 @@ export default function AppGrid({
           {f.actionsCompareMode && (
             <button
               aria-pressed={compareMode}
-              className={`btn ${compareMode ? "btn-primary" : "btn-secondary"}`}
+              className={`btn ${compareMode ? "btn-primary" : "btn-ghost"}`}
               data-tour="compare-button"
               onClick={() => {
                 if (compareMode) {
@@ -1649,7 +1658,7 @@ export default function AppGrid({
           )}
           {f.reviewQueueEnabled && (
             <button
-              className={`btn btn-secondary review-queue-mode-toggle ${queueOpen ? "is-active" : ""}`}
+              className={`btn btn-ghost review-queue-mode-toggle ${queueOpen ? "is-active" : ""}`}
               disabled={apps.length === 0 || fleetIncomplete}
               onClick={() => {
                 if (pageMode === "select") {
@@ -1670,7 +1679,7 @@ export default function AppGrid({
           {f.reviewQueueBulkSelect && (
             <button
               aria-pressed={pageMode === "select"}
-              className={`btn ${pageMode === "select" ? "btn-primary" : "btn-secondary"}`}
+              className={`btn ${pageMode === "select" ? "btn-primary" : "btn-ghost"}`}
               disabled={apps.length === 0 || fleetIncomplete}
               onClick={() => {
                 if (pageMode === "select") {
@@ -1693,7 +1702,7 @@ export default function AppGrid({
           )}
           {f.actionsAddApps && (
             <Link
-              className="btn btn-primary"
+              className="btn btn-secondary"
               data-flag-target="flag.appgrid.actions.add_apps"
               href="/onboard"
             >
@@ -2501,9 +2510,15 @@ export default function AppGrid({
                                     className={`app-card-profile-badge match-${badge.tone}`}
                                     title={localisedDescription}
                                   >
-                                    <span aria-hidden>
-                                      {badge.tone === "ok" ? "✓" : "⚠"}
-                                    </span>
+                                    <Icon
+                                      name={
+                                        badge.tone === "ok"
+                                          ? "check"
+                                          : "alert-triangle"
+                                      }
+                                      size={11}
+                                      strokeWidth={2.2}
+                                    />
                                     {localisedLabel}
                                   </span>
                                 );
@@ -2668,20 +2683,11 @@ export default function AppGrid({
                           {syncingIds.has(app.id) ? (
                             <span aria-hidden="true" className="spinner-sm" />
                           ) : (
-                            <span aria-hidden="true">↻</span>
+                            <Icon name="refresh" size={15} />
                           )}
-                          {/*
-                      Notification-style badge showing the cumulative sync
-                      count. Sits absolutely over the top-right corner of the
-                      refresh icon. Only rendered when > 1 so brand-new apps
-                      (which have exactly one sync from onboarding) don't
-                      display a noisy "1" badge.
-                    */}
-                          {app.syncCount > 1 && !syncingIds.has(app.id) && (
-                            <span aria-hidden="true" className="icon-btn-badge">
-                              {app.syncCount}
-                            </span>
-                          )}
+                          {/* The cumulative sync count lives in the button's
+                              title and aria-label; a numeral floating over
+                              the icon read as an unexplained badge. */}
                         </button>
                       )}
                       {f.cardDeleteButton && (
@@ -2699,7 +2705,7 @@ export default function AppGrid({
                           title={tGrid("remove_app_title", { name: app.name })}
                           type="button"
                         >
-                          <span aria-hidden="true">✕</span>
+                          <Icon name="x" size={15} />
                         </button>
                       )}
                     </div>

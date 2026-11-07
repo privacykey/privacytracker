@@ -19,6 +19,7 @@ import PrivacySankey from "./charts/PrivacySankey";
 import PrivacyTimeline from "./charts/PrivacyTimeline";
 import SmallMultiples from "./charts/SmallMultiples";
 import InfoTooltip from "./InfoTooltip";
+import { Icon } from "./icons/Icon";
 import ScopeExportNote from "./ScopeExportNote";
 import Toast from "./Toast";
 
@@ -345,7 +346,7 @@ export default function StatsView({
       label: tStats("tile_apps_label"),
       value: stats.totalApps,
       sub: tStats("tile_apps_sub"),
-      color: "var(--blue)",
+      color: "var(--text)",
     },
     {
       label: tStats("tile_categories_label"),
@@ -353,19 +354,19 @@ export default function StatsView({
       sub: tStats("tile_categories_sub", {
         count: stats.totalUniqueCategories,
       }),
-      color: "var(--orange)",
+      color: "var(--text)",
     },
     {
       label: tStats("tile_changes_label"),
       value: stats.appsWithChanges,
       sub: tStats("tile_changes_sub"),
-      color: stats.appsWithChanges > 0 ? "var(--red)" : "var(--green)",
+      color: stats.appsWithChanges > 0 ? "var(--orange)" : "var(--text)",
     },
     {
       label: tStats("tile_resync_label"),
       value: stats.staleApps,
       sub: tStats("tile_resync_sub"),
-      color: stats.staleApps > 0 ? "var(--yellow)" : "var(--green)",
+      color: stats.staleApps > 0 ? "var(--orange)" : "var(--text)",
     },
     // Privacy-profile mismatch card: only shown when a profile is active, so
     // users without one don't see a permanently-zero "Off Profile" stat.
@@ -381,7 +382,7 @@ export default function StatsView({
                 ? "all apps match your profile"
                 : "exceed your privacy preferences",
             color:
-              stats.appsNotMatchingProfile > 0 ? "var(--red)" : "var(--green)",
+              stats.appsNotMatchingProfile > 0 ? "var(--red)" : "var(--text)",
           },
         ]
       : []),
@@ -395,12 +396,7 @@ export default function StatsView({
             label: tStats("tile_a11y_label"),
             value: `${accessibilityPct}%`,
             sub: `${stats.appsWithAccessibilityLabels} of ${stats.appsEvaluatedForAccessibility} evaluated`,
-            color:
-              accessibilityPct >= 50
-                ? "var(--green)"
-                : accessibilityPct > 0
-                  ? "var(--yellow)"
-                  : "var(--red)",
+            color: "var(--text)",
           },
         ]
       : []),
@@ -432,14 +428,16 @@ export default function StatsView({
             download
             href="/api/export?format=csv"
           >
-            ⬇ Export CSV
+            <Icon name="download" size={14} />
+            {tStats("export_csv")}
           </a>
           <a
             className="btn btn-secondary"
             download
             href="/api/export?format=json"
           >
-            ⬇ Export JSON
+            <Icon name="download" size={14} />
+            {tStats("export_json")}
           </a>
           {/* This page's figures follow the device scope; these
               downloads do not. Say so, rather than letting "3 Apps
@@ -572,7 +570,9 @@ export default function StatsView({
 
           {stats.recentChanges.length === 0 ? (
             <div className="empty-state" style={{ padding: "32px 0" }}>
-              <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+              <div className="empty-state-icon" style={{ marginBottom: 8 }}>
+                <Icon name="check-circle" size={32} />
+              </div>
               <div>{tStats("empty_no_changes")}</div>
               <div style={{ fontSize: 13, marginTop: 4 }}>
                 {tStats("empty_no_changes_sub")}
@@ -580,7 +580,9 @@ export default function StatsView({
             </div>
           ) : visibleChanges.length === 0 ? (
             <div className="empty-state" style={{ padding: "24px 0" }}>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>🔍</div>
+              <div className="empty-state-icon" style={{ marginBottom: 6 }}>
+                <Icon name="search" size={28} />
+              </div>
               {recentChangesFilter === "accessibility" ? (
                 <>
                   <div>{tStats("empty_no_a11y_changes")}</div>
@@ -646,21 +648,23 @@ export default function StatsView({
                       />
                     ) : (
                       <div className="recent-change-icon-placeholder">
-                        {firstType === "ai_timeout"
-                          ? "⏱"
-                          : firstType === "manual_apps_prompt"
-                            ? "🔖"
-                            : firstType === "import_completed"
-                              ? "✓"
-                              : firstType === "wayback_resumed" ||
-                                  firstType === "sync_resumed" ||
-                                  firstType === "policy_resumed"
-                                ? "↻"
-                                : firstType === "wayback_stale_cleared" ||
-                                    firstType === "sync_stale_cleared" ||
-                                    firstType === "policy_stale_cleared"
-                                  ? "⚠"
-                                  : (headline[0] ?? "·")}
+                        {firstType === "ai_timeout" ? (
+                          <Icon name="clock" size={18} />
+                        ) : firstType === "manual_apps_prompt" ? (
+                          <Icon name="bookmark" size={18} />
+                        ) : firstType === "import_completed" ? (
+                          <Icon name="check" size={18} />
+                        ) : firstType === "wayback_resumed" ||
+                          firstType === "sync_resumed" ||
+                          firstType === "policy_resumed" ? (
+                          <Icon name="refresh" size={18} />
+                        ) : firstType === "wayback_stale_cleared" ||
+                          firstType === "sync_stale_cleared" ||
+                          firstType === "policy_stale_cleared" ? (
+                          <Icon name="alert-triangle" size={18} />
+                        ) : (
+                          (headline[0] ?? "·")
+                        )}
                       </div>
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -842,7 +846,11 @@ export default function StatsView({
                   onClick={() => reSyncApp(app.url, app.name, app.id)}
                   type="button"
                 >
-                  {reSyncing === app.id ? <span className="spinner-sm" /> : "↻"}{" "}
+                  {reSyncing === app.id ? (
+                    <span className="spinner-sm" />
+                  ) : (
+                    <Icon name="refresh" size={13} />
+                  )}{" "}
                   Sync
                 </button>
               </div>

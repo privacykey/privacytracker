@@ -41,6 +41,7 @@ import {
   LABEL_TRUST_RESEARCH_URL,
   type LabelTrustReport,
 } from "../../../lib/label-trust";
+import { Icon } from "../icons/Icon";
 import type { App } from "./types";
 import "./label-trust-card.css";
 
@@ -335,7 +336,7 @@ export default function LabelTrustCard({
     >
       <header className="label-trust-header">
         <span aria-hidden="true" className="label-trust-header-glyph">
-          🔍
+          <Icon name="search" size={18} />
         </span>
         <h2 className="label-trust-title" id="label-trust-title">
           {t("title")}

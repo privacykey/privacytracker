@@ -86,7 +86,9 @@ const NAV_LINKS: NavLink[] = [
 // `react-hooks/exhaustive-deps` warning on the `isActive` useCallback
 // — the table is static across renders.
 const NAV_ALIASES: Record<string, string[]> = {
-  "/dashboard/apps": ["/dashboard/review-recommendations"],
+  // An app's detail page lives under /apps/:id, so Apps stays the
+  // selected item while the user is inside one.
+  "/dashboard/apps": ["/dashboard/review-recommendations", "/apps"],
 };
 
 export default function Nav({ appCount, flags }: NavProps) {
