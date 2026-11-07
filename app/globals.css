@@ -12836,7 +12836,7 @@ html[data-theme-override="light"] .change-review-panel {
   border-left-color: var(--red);
 }
 .change-review-item.change-review-sev-linked.change-review-item-added {
-  background: linear-gradient(90deg, rgba(255, 149, 0, 0.12), transparent 60%);
+  background: rgba(255, 149, 0, 0.09);
   border-left-color: var(--orange);
 }
 
@@ -12906,16 +12906,21 @@ html[data-theme-override="light"] .change-review-panel {
   border-radius: 999px;
 }
 
+/* The chip text leans 30% toward the text colour. The chip sits on its own
+   tint inside a tinted row inside the tinted panel, and the pure severity hue
+   drops under 4.5:1 there: axe measured the track chip at 4.26:1 dark and
+   4.37:1 light once the row wash went flat (a gradient wash is unmeasurable,
+   which is what had hidden it). */
 .change-review-sev-chip-track {
-  color: var(--red);
+  color: color-mix(in srgb, var(--red) 70%, var(--text));
   background: var(--red-dim);
 }
 .change-review-sev-chip-linked {
-  color: var(--orange);
+  color: color-mix(in srgb, var(--orange) 70%, var(--text));
   background: var(--orange-dim);
 }
 .change-review-sev-chip-unlinked {
-  color: var(--cream);
+  color: color-mix(in srgb, var(--cream) 70%, var(--text));
   background: var(--cream-dim);
 }
 .change-review-sev-chip-none {
