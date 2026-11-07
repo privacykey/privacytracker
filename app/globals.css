@@ -12692,11 +12692,7 @@ body.review-rec-print-active .review-rec-print a {
   padding: 22px 24px;
   margin: 24px 0;
   scroll-margin-top: 80px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 149, 0, 0.09),
-    rgba(255, 149, 0, 0.02)
-  );
+  background: rgba(255, 149, 0, 0.07);
   border: 1px solid rgba(255, 149, 0, 0.24);
   border-radius: var(--r-xl);
 }
@@ -12836,7 +12832,7 @@ html[data-theme-override="light"] .change-review-panel {
 /* Bump severity colour on the border when the entry touches sensitive data.
    Matches the severity badge and the chip below: track is red, linked orange. */
 .change-review-item.change-review-sev-track.change-review-item-added {
-  background: linear-gradient(90deg, rgba(255, 69, 58, 0.12), transparent 60%);
+  background: rgba(255, 69, 58, 0.09);
   border-left-color: var(--red);
 }
 .change-review-item.change-review-sev-linked.change-review-item-added {
@@ -28064,14 +28060,19 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 .focus-purpose-card--onboarding .focus-purpose-grid {
-  gap: 18px;
-  margin-top: 6px;
+  gap: 16px;
+  margin-top: 4px;
+}
+/* The onboarding card is sized so the tiles, the audience row and the
+   two extras all sit above the action bar at a 900px-tall window. */
+.wizard-card.focus-purpose-card--onboarding {
+  padding-top: 32px;
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option {
   position: relative;
-  min-height: 360px;
-  padding: 24px 22px 22px;
+  min-height: 300px;
+  padding: 18px 20px;
   overflow: hidden;
   background:
     radial-gradient(
@@ -28227,9 +28228,9 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-title {
   /* Two lines reserved, so the three tiles' copy starts on one baseline
      whether or not the title wraps. */
-  min-height: 48px;
-  margin-bottom: 10px;
-  font-size: 20px;
+  min-height: 44px;
+  margin-bottom: 8px;
+  font-size: 18px;
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -28281,13 +28282,14 @@ html[data-theme-override="light"]
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-copy {
-  font-size: 14.5px;
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-top {
   align-items: flex-start;
   min-height: 152px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-radio {
@@ -29589,8 +29591,8 @@ html[data-theme-override="light"]
   bottom: 0;
   z-index: 3;
   justify-content: flex-end;
-  padding: 14px 48px 18px;
-  margin: 24px -48px -48px;
+  padding: 12px 48px 16px;
+  margin: 16px -48px -48px;
   background: color-mix(in srgb, var(--bg-2) 88%, transparent);
   border-top: 1px solid var(--border);
   border-radius: 0 0 var(--r-xl) var(--r-xl);
@@ -29601,10 +29603,10 @@ html[data-theme-override="light"]
    being cut by a hard edge. */
 .focus-purpose-card--onboarding .focus-purpose-actions::before {
   position: absolute;
-  top: -36px;
+  top: -20px;
   right: 0;
   left: 0;
-  height: 36px;
+  height: 20px;
   pointer-events: none;
   content: "";
   background: linear-gradient(
