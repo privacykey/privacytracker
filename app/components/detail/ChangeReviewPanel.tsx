@@ -10,8 +10,10 @@ import type {
   UnacknowledgedChanges,
 } from "../../../lib/changelog-types";
 import { SNOOZE_DAYS_OPTIONS } from "../../../lib/changelog-types";
+import { labelClassFromChangeSeverity } from "../../../lib/label-class";
 import { CATEGORY_META, SEVERITY_CONFIG } from "../../../lib/privacy-meta";
 import { CategoryIcon, Icon } from "../icons/Icon";
+import LabelClassChip from "../LabelClassChip";
 import type { App } from "./types";
 
 // ── Change Review Panel ───────────────────────────────────────────────
@@ -571,21 +573,6 @@ export default function ChangeReviewPanel({
   );
 }
 
-/**
- * Map the `classifyChange` severity class back to the `severity.*` locale
- * namespace key, so the chip renders the localised label while the English
- * `SEVERITY_CONFIG.label` stays the matcher for the (English) server-side
- * change descriptions.
- */
-const SEVERITY_I18N_KEY: Record<
-  Exclude<ChangeClassification["severity"], "none">,
-  string
-> = {
-  track: "data_used_to_track_you",
-  linked: "data_linked_to_you",
-  unlinked: "data_not_linked_to_you",
-};
-
 function ChangeReviewEvent({
   event,
   onViewChange,
@@ -594,7 +581,6 @@ function ChangeReviewEvent({
   onViewChange?: () => void;
 }) {
   const tDetail = useTranslations("app_detail");
-  const tSeverity = useTranslations("severity");
   return (
     <div className="change-review-event">
       {/* The row shows the date; the full stamp with the time is in the
@@ -608,6 +594,10 @@ function ChangeReviewEvent({
       <ul className="change-review-list">
         {event.changes.map((entry, idx) => {
           const cls = classifyChange(entry);
+          // The English `SEVERITY_CONFIG.label` stays the matcher for the
+          // (English) server-side change descriptions; the chip renders
+          // the class in the shared, localised words.
+          const labelClass = labelClassFromChangeSeverity(cls.severity);
           const isPolicyChange = entry.category === "privacy-policy";
           return (
             <li
@@ -630,15 +620,7 @@ function ChangeReviewEvent({
                   )}
                   {entry.description}
                 </div>
-                {cls.severityLabel && (
-                  <span
-                    className={`change-review-sev-chip change-review-sev-chip-${cls.severity}`}
-                  >
-                    {cls.severity === "none"
-                      ? cls.severityLabel
-                      : tSeverity(SEVERITY_I18N_KEY[cls.severity])}
-                  </span>
-                )}
+                {labelClass && <LabelClassChip labelClass={labelClass} />}
                 {entry.details && entry.details.length > 0 && (
                   <div className="change-review-details">
                     {entry.details.join(", ")}

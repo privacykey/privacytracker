@@ -62,12 +62,13 @@ const SEV_COLOR: Record<string, string> = {
   DATA_LINKED_TO_YOU: "var(--orange, #ff9f0a)",
   DATA_USED_TO_TRACK_YOU: "var(--red, #ff453a)",
 };
-/** Severity → translation-key map. The actual labels come from
- *  `stats.charts.swatch_*` so they stay in sync with the heatmap legend. */
+/** Severity → `label_class.*` key, the one vocabulary every surface uses
+ *  for Apple's classes, so the legend, the hover panel and the heatmap
+ *  legend all say the same words. */
 const SEV_LABEL_KEY: Record<string, string> = {
-  DATA_NOT_LINKED_TO_YOU: "swatch_not_linked",
-  DATA_LINKED_TO_YOU: "swatch_linked",
-  DATA_USED_TO_TRACK_YOU: "swatch_track",
+  DATA_NOT_LINKED_TO_YOU: "not_linked",
+  DATA_LINKED_TO_YOU: "linked",
+  DATA_USED_TO_TRACK_YOU: "tracking",
 };
 // "No data" cell fill. Follows the tertiary-background token so empty
 // cells read as quiet background in every theme (light grey on a light
@@ -100,7 +101,7 @@ export default function SmallMultiples({
   labelledBy?: string;
 } = {}) {
   const tCharts = useTranslations("stats.charts");
-  const tTier = useTranslations("privacy_profile_tier_short");
+  const tLabelClass = useTranslations("label_class");
   const [data, setData] = useState<MatrixData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hover, setHover] = useState<HoverState | null>(null);
@@ -269,7 +270,7 @@ export default function SmallMultiples({
                 // needing a separate on-hover popover for the header.
                 const prefTitle = prefOverlay
                   ? pref
-                    ? `\n${tCharts("matrix_pref_line", { label: tTier(pref) })}`
+                    ? `\n${tCharts("matrix_pref_line", { label: tLabelClass(pref) })}`
                     : `\n${tCharts("matrix_no_pref_line")}`
                   : "";
                 return (
@@ -297,7 +298,7 @@ export default function SmallMultiples({
                         `, ${
                           pref
                             ? tCharts("matrix_pref_line", {
-                                label: tTier(pref),
+                                label: tLabelClass(pref),
                               })
                             : tCharts("no_pref_aria")
                         }`}
@@ -452,7 +453,7 @@ export default function SmallMultiples({
                           }}
                           title={
                             sev
-                              ? `${app.name} — ${cat.label}: ${tCharts(SEV_LABEL_KEY[sev])}`
+                              ? `${app.name} — ${cat.label}: ${tLabelClass(SEV_LABEL_KEY[sev])}`
                               : `${app.name} — ${cat.label}: ${tCharts("tooltip_not_collected")}`
                           }
                         >
@@ -461,7 +462,7 @@ export default function SmallMultiples({
                             column headers supply the app and category. */}
                           <span className="sr-only">
                             {sev
-                              ? tCharts(SEV_LABEL_KEY[sev])
+                              ? tLabelClass(SEV_LABEL_KEY[sev])
                               : tCharts("tooltip_not_collected")}
                             {isMismatch &&
                               `, ${tCharts("matrix_exceeds_pref")}`}
@@ -536,7 +537,7 @@ export default function SmallMultiples({
               data-sev="DATA_NOT_LINKED_TO_YOU"
               style={{ backgroundColor: SEV_COLOR.DATA_NOT_LINKED_TO_YOU }}
             />
-            {tTier("not_linked")}
+            {tLabelClass("not_linked")}
           </span>
           <span className="sm-legend-item">
             <span
@@ -544,7 +545,7 @@ export default function SmallMultiples({
               data-sev="DATA_LINKED_TO_YOU"
               style={{ backgroundColor: SEV_COLOR.DATA_LINKED_TO_YOU }}
             />
-            {tTier("linked")}
+            {tLabelClass("linked")}
           </span>
           <span className="sm-legend-item">
             <span
@@ -552,7 +553,7 @@ export default function SmallMultiples({
               data-sev="DATA_USED_TO_TRACK_YOU"
               style={{ backgroundColor: SEV_COLOR.DATA_USED_TO_TRACK_YOU }}
             />
-            {tTier("tracking")}
+            {tLabelClass("tracking")}
           </span>
           {prefOverlay && (
             <span className="sm-legend-item sm-legend-item--mismatch">
@@ -608,7 +609,7 @@ export default function SmallMultiples({
                         }}
                       >
                         {SEV_LABEL_KEY[hover.sev]
-                          ? tCharts(SEV_LABEL_KEY[hover.sev])
+                          ? tLabelClass(SEV_LABEL_KEY[hover.sev])
                           : hover.sev}
                       </span>
                     </div>
@@ -632,7 +633,7 @@ export default function SmallMultiples({
                               style={{ background: PREF_COLOR[pref] }}
                             />
                             {tCharts("tooltip_pref_at_most", {
-                              label: tTier(pref),
+                              label: tLabelClass(pref),
                             })}
                           </>
                         ) : (

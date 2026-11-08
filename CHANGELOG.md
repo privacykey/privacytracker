@@ -102,6 +102,19 @@ Going forward, changes are recorded here as they land.
     reports the label changes it found and when its archived history
     starts; and the timeline says between which two dates a label changed.
   - The Node rollback (`BACKEND=node`) keeps the previous import.
+- Apple's privacy-label classes have one name and one colour everywhere in
+  the app: Tracks you (red), Linked to you (orange), Not linked (cream)
+  and Not collected (neutral), with the full Apple name on hover. One chip
+  shows them: on the app cards it replaces three small glyph-and-number
+  chips with readable ones ("5 linked to you", "2 track you"); the
+  dashboard's higher-risk rows and "Consider replacing" sentences, the
+  review queue cards, the privacy map's section headers, an app's Privacy
+  Labels tab, the change-review panel, the shortlist's mismatch notes and
+  the Compare grid (its cells, its profile column and the Data Not
+  Collected chip) all use it, and the Stats legends and the shared image
+  say the same words. The
+  chips keep their colour at rest and read at 4.5:1 or better on every
+  surface in light, dark and high contrast.
 - Development: the Wayback import's test fixtures now belong to the Rust
   server. CI no longer re-records `history-cases.json` and
   `wayback-runner-cases.json` from Node, the per-app import route's cases

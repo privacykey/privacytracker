@@ -1,0 +1,38 @@
+/* LabelClassChip: the one chip for Apple's privacy-label classes.
+   Shape only. Colour is the `severity-*` rule in globals.css, which is
+   the single place a class gets its colour (see "Severity and category
+   styling" in docs/CSS.md). Two classes in each selector so the chip's
+   size wins over `.severity-badge` whatever order the stylesheets load. */
+
+.severity-badge.label-class-chip {
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px; /* 16 + 2 + 2 = 20px tall */
+  white-space: nowrap;
+}
+
+.severity-badge.label-class-chip .privacy-type-icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* Inline form for sentences and dense rows: 18px tall, 11px text. */
+.severity-badge.label-class-chip-sm {
+  padding: 1px 7px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.severity-badge.label-class-chip-sm .privacy-type-icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* The count numeral: tabular figures so "5 linked to you" and "12 linked
+   to you" keep their digits aligned in a column of cards. */
+.label-class-chip-num {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}

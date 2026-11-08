@@ -622,6 +622,7 @@ export function SocialShareModal({
   // are bundled into a `CanvasLabels` bag passed to the paint helpers.
   const tShare = useTranslations("social_share");
   const tCanvas = useTranslations("social_share.canvas");
+  const tLabelClass = useTranslations("label_class");
 
   // This component is only mounted while open, so open=true. closeOnEscape
   // is false because the existing keydown handler owns both Escape and
@@ -730,10 +731,11 @@ export function SocialShareModal({
       sourceAttribution: tCanvas("source_attribution"),
       fetching: tCanvas("fetching"),
       noLabels: tCanvas("no_labels"),
+      // The image names the classes in the same words as the app.
       tier: {
-        tracking: tCanvas("tier_tracking"),
-        linked: tCanvas("tier_linked"),
-        not_linked: tCanvas("tier_not_linked"),
+        tracking: tLabelClass("tracking"),
+        linked: tLabelClass("linked"),
+        not_linked: tLabelClass("not_linked"),
       },
       kicker: {
         tracking: tCanvas("kicker_tracking"),

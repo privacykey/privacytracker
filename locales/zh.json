@@ -326,7 +326,9 @@
     "data_not_linked_to_you": "未与你关联的数据",
     "data_used_to_track_you_desc": "为定向广告或广告效果衡量而收集并与第三方数据关联的数据。",
     "data_linked_to_you_desc": "通过你的账户、设备或其他细节与你的身份关联收集的数据。",
-    "data_not_linked_to_you_desc": "以不与你的身份关联的方式收集的数据（例如匿名化或聚合的数据）。"
+    "data_not_linked_to_you_desc": "以不与你的身份关联的方式收集的数据（例如匿名化或聚合的数据）。",
+    "data_not_collected": "未收集的数据",
+    "data_not_collected_desc": "开发者声明此应用不收集任何数据。"
   },
   "category": {
     "contact_info": "联系信息",
@@ -2000,9 +2002,6 @@
       "filter_hide_no_categories_title": "隐藏未收集任何隐私类别的应用",
       "prev_page_aria": "上一页应用",
       "next_page_aria": "下一页应用",
-      "swatch_track": "用于跟踪你",
-      "swatch_linked": "与你关联",
-      "swatch_not_linked": "不与你关联",
       "swatch_exceeds_profile": "超出隐私档案",
       "no_pref_aria": "未设置偏好",
       "severity_legend_aria": "严重程度颜色图例",
@@ -2155,6 +2154,7 @@
   },
   "shortlist": {
     "page_title": "候选清单",
+    "match_row_allowed": "你允许 <allow>{allowed}</allow>",
     "subtitle_empty": "你从对比中保存的替代选择会显示在这里。",
     "subtitle_with_counts": "{appsCount} 个应用共 {count} 个替代选择。",
     "download_md": "↓ 下载 .md",
@@ -2312,7 +2312,6 @@
     "shortlist_add": "+ 候选清单",
     "slot_label_tracked": "已跟踪",
     "slot_label_preview": "预览",
-    "chip_no_data_collected": "未收集数据",
     "chip_no_details_provided": "未提供详情",
     "chip_no_details_chip_title_alt": "Apple 显示「未提供详情」 — 开发者尚未提交隐私标签",
     "read_privacy_policy": "阅读隐私政策 ↗",
@@ -2378,9 +2377,6 @@
       "source_attribution": "来源：Apple App Store 隐私标签",
       "fetching": "正在获取隐私数据…",
       "no_labels": "暂无隐私标签",
-      "tier_tracking": "用于追踪",
-      "tier_linked": "与你关联",
-      "tier_not_linked": "未关联",
       "kicker_linked": "关联的类别",
       "kicker_tracking": "追踪的类别",
       "kicker_not_linked": "未关联的类别",
@@ -3016,9 +3012,6 @@
       "cleanup_sub_loved_one": "这些应用会跨应用跟踪对方，或收集大量与其身份相关联的数据。逐个打开，决定给出什么建议。",
       "cleanup_sub_guardian": "这些应用会跨应用跟踪你的孩子，或收集大量与其身份相关联的数据。逐个打开，决定保留还是移除。",
       "watchlist_sub_loved_one": "会跨应用跟踪对方或收集大量与其身份相关联数据的应用。这只是一份参考清单，暂无需操作。",
-      "risk_chip_unlinked": "{count} 项未关联",
-      "risk_chip_linked": "{count} 项关联",
-      "risk_chip_track": "{count} 项追踪",
       "risk_see_all": "查看按风险排序的全部应用 →",
       "review_change_count": "{count} 处变化",
       "replace_kicker": "考虑替换",
@@ -3289,9 +3282,6 @@
     "selected_for_compare_aria": "已选中用于对比（位置 {slot}）",
     "privacy_profile_aria": "隐私档案：{description}",
     "n_categories_aria": "{count} 个类别",
-    "track_chip_title": "{count} 个类别用于在其他应用/网站上追踪你",
-    "linked_chip_title": "{count} 个类别与你的身份关联",
-    "unlinked_chip_title": "{count} 个类别已收集但未与你关联",
     "remove_app_title": "停止跟踪 {name}",
     "remove_app_aria": "停止跟踪 {name}",
     "open_custom_aria": "在自定义应用中打开 {name}",
@@ -3483,10 +3473,7 @@
       "no_categories": "未收集任何隐私类别。",
       "top_categories_label": "收集的主要类别",
       "more_categories": "+ 另外 {count} 项",
-      "no_data": "自定义应用 — 无可用隐私数据。",
-      "chip_tracking": "{count} 项追踪",
-      "chip_linked": "{count} 项关联",
-      "chip_unlinked": "{count} 项未关联"
+      "no_data": "自定义应用 — 无可用隐私数据。"
     },
     "actions": {
       "uninstall": "移除",
@@ -3727,14 +3714,23 @@
     "kind_category": "类别",
     "connections": "{count} 条连接"
   },
-  "privacy_profile_tier_short": {
+  "label_class": {
     "not_collected": "未收集",
     "not_linked": "未关联",
-    "linked": "已关联",
-    "tracking": "追踪"
+    "linked": "与你关联",
+    "tracking": "追踪你",
+    "count_not_collected": "<num>{count}</num> 项未收集",
+    "count_not_linked": "<num>{count}</num> 项未关联",
+    "count_linked": "<num>{count}</num> 项与你关联",
+    "count_tracking": "<num>{count}</num> 项追踪你",
+    "title_count_not_collected": "{count} 个类别未收集",
+    "title_count_not_linked": "{count} 个类别已收集但未与你关联",
+    "title_count_linked": "{count} 个类别与你的身份关联",
+    "title_count_tracking": "{count} 个类别用于在其他应用和网站上追踪你"
   },
   "privacy_profile_mismatch_sentence": {
-    "template": "{category}：{observed}（你最多允许 {allowed}）"
+    "template": "{category}：{observed}（你最多允许 {allowed}）",
+    "template_rich": "{category}：<obs>{observed}</obs>（你最多允许 <allow>{allowed}</allow>）"
   },
   "profile_badge": {
     "no_profile_label": "未设置档案",

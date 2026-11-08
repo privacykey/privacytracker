@@ -37,15 +37,17 @@ export interface TierMeta {
   value: ProfileTier;
 }
 
-// All surfaces read the same four tier words to match Apple's category names:
-// Not collected, Not linked, Linked, Tracking.
+// English fallbacks for the four tiers. Where a tier is shown as a class
+// pill the UI renders `LabelClassChip` (lib/label-class.ts), which reads the
+// localised words under `label_class.*`; these labels remain for the
+// profile editor's tolerance pills and plain-text exports.
 export const TIER_META: Record<ProfileTier, TierMeta> = {
   not_collected: {
     value: "not_collected",
     label: "Not collected",
     shortLabel: "Not collected",
     description: "The app cannot collect this category at all.",
-    severityCls: "severity-none",
+    severityCls: "severity-not-collected",
   },
   not_linked: {
     value: "not_linked",

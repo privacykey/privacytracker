@@ -37,6 +37,7 @@ import {
   type CanonicalAccessibilityFeature,
   resolveAppleArtworkUrl,
 } from "../../lib/accessibility-types";
+import { labelClassFromIdentifier } from "../../lib/label-class";
 import { CATEGORY_META, SEVERITY_CONFIG } from "../../lib/privacy-meta";
 import {
   type PrivacyProfile,
@@ -47,7 +48,7 @@ import {
 } from "../../lib/privacy-profile";
 import type { ShortlistEntry } from "../../lib/shortlist-types";
 import { useModalFocus } from "../../lib/use-modal-focus";
-import PrivacyTypeIcon from "./PrivacyTypeIcon";
+import LabelClassChip from "./LabelClassChip";
 
 // ── Types (match the API shape in /api/compare/route.ts) ───────────────
 interface SlotData {
@@ -2805,13 +2806,7 @@ function ProfilePrefCell({
       }}
       title={meta.description}
     >
-      <span
-        className={`severity-badge ${meta.severityCls}`}
-        style={{ fontSize: 11 }}
-      >
-        <PrivacyTypeIcon tier={allowed} />
-        {meta.shortLabel}
-      </span>
+      <LabelClassChip labelClass={allowed} title={meta.description} />
     </div>
   );
 }
@@ -3024,16 +3019,13 @@ function SlotHeader({
               empty state. The a11y count chip (below) rides in the same row
               even when the privacy side is just 'labeled' / fine. */}
           {isNoData && (
-            // Named like every other label, with the label's own icon. No
+            // Named like every other label, with the shared class chip. No
             // green and no check mark: it is the developer's statement, and
             // the policy link beside it is where the user checks it.
-            <span
-              className="compare-slot-chip compare-slot-chip-declared"
+            <LabelClassChip
+              labelClass="not_collected"
               title={tCompare("no_collection_chip_title")}
-            >
-              <PrivacyTypeIcon identifier="DATA_NOT_COLLECTED" />
-              {tCompare("chip_no_data_collected")}
-            </span>
+            />
           )}
           {isUnfilled && (
             <span
@@ -3091,6 +3083,7 @@ function SeverityCell({
 }) {
   // i18n — translations for chips/aria within this helper.
   const tCompare = useTranslations("compare");
+  const tLabelClass = useTranslations("label_class");
   // The app doesn't collect this category at all. If the user has an opinion
   // on it, mark the cell as "within bounds" (green check) so they can see
   // the app matches even for categories where it's absent.
@@ -3121,12 +3114,9 @@ function SeverityCell({
     );
   }
   const sev = SEVERITY_CONFIG[cell.severity];
-  const color =
-    cell.severity === "DATA_USED_TO_TRACK_YOU"
-      ? "var(--red)"
-      : cell.severity === "DATA_LINKED_TO_YOU"
-        ? "var(--orange)"
-        : "var(--cream)";
+  // The cell names the class with the shared chip; an identifier the chip
+  // does not know falls back to the English meta label.
+  const cellClass = labelClassFromIdentifier(cell.severity);
 
   // Profile-aware decoration — only light up when the user has opinionated
   // on this category. Observed rank comes from the worst tier seen for the
@@ -3137,8 +3127,8 @@ function SeverityCell({
     if (observedTier) {
       const observedRank = TIER_RANK[observedTier];
       const allowedRank = TIER_RANK[allowed];
-      const allowedLabel = TIER_META[allowed].shortLabel.toLowerCase();
-      const observedLabel = TIER_META[observedTier].shortLabel.toLowerCase();
+      const allowedLabel = tLabelClass(allowed).toLowerCase();
+      const observedLabel = tLabelClass(observedTier).toLowerCase();
       if (observedRank > allowedRank) {
         mark = {
           kind: "warn",
@@ -3180,17 +3170,11 @@ function SeverityCell({
           {mark.kind === "ok" ? "✓" : "⚠"}
         </span>
       )}
-      <span
-        aria-hidden="true"
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          background: color,
-          display: "inline-block",
-        }}
-      />
-      <span style={{ fontSize: 12 }}>{sev?.label ?? cell.severity}</span>
+      {cellClass ? (
+        <LabelClassChip labelClass={cellClass} />
+      ) : (
+        <span style={{ fontSize: 12 }}>{sev?.label ?? cell.severity}</span>
+      )}
     </div>
   );
 }

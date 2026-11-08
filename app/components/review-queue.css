@@ -440,35 +440,9 @@
   justify-content: center;
   margin-top: 6px;
 }
-.review-queue-card-chip {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  padding: 4px 10px;
-  font-size: 12px;
-  background: var(--surface-hover, #f3f4f6);
-  border: 1px solid var(--border, #e5e7eb);
-  border-radius: 999px;
-}
-.review-queue-card-chip .privacy-type-icon {
-  width: 14px;
-  height: 14px;
-}
-.review-queue-card-chip-track {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fecaca;
-}
-.review-queue-card-chip-linked {
-  color: #c2410c;
-  background: #fff7ed;
-  border-color: #fed7aa;
-}
-.review-queue-card-chip-unlinked {
-  color: #7a5f2a;
-  background: #fff8e8;
-  border-color: #ead9b8;
-}
+/* The chips in .review-queue-card-chips are the shared LabelClassChip
+   (count form), coloured by the `severity-*` rules in globals.css; the
+   fixed light-palette hexes that used to live here are gone. */
 .review-queue-card-categories-empty {
   font-size: 12px;
   font-style: italic;
