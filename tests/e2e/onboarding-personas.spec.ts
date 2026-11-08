@@ -266,6 +266,13 @@ browserFlow(
     await page.mouse.wheel(0, 4000);
     await page.waitForTimeout(300);
     await expect(next).toBeInViewport();
+
+    // The bar cancels the card's padding to run edge to edge. If the two
+    // disagree at this width, the page scrolls sideways.
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
   }
 );
 

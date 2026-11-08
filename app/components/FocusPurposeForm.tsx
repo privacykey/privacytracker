@@ -187,6 +187,9 @@ export default function FocusPurposeForm({
     await onSubmit(currentSelection());
   }
 
+  const footerContent =
+    typeof footer === "function" ? footer(currentSelection()) : footer;
+
   return (
     <div className="wizard-outer">
       <div
@@ -384,6 +387,11 @@ export default function FocusPurposeForm({
           <FeatureToggleRow />
         )}
 
+        {/* On /welcome the action bar is sticky and flush with the card's
+            bottom edge, so it has to be the card's last child: its negative
+            bottom margin pulls whatever follows it underneath. */}
+        {mode === "onboarding" && footerContent}
+
         {error && (
           <div aria-live="assertive" className="welcome-error" role="alert">
             {error}
@@ -412,7 +420,7 @@ export default function FocusPurposeForm({
           {extraActions}
         </div>
 
-        {typeof footer === "function" ? footer(currentSelection()) : footer}
+        {mode !== "onboarding" && footerContent}
       </div>
     </div>
   );

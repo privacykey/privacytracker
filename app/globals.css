@@ -29494,20 +29494,42 @@ html[data-theme-override="light"]
 }
 
 /* On /welcome the action row sticks to the bottom of the viewport while
-   the tiles scroll, so the one primary action is always in reach; the
-   bar is drawn edge to edge inside the card's 48px padding. */
+   the tiles scroll, so the one primary action is always in reach. The
+   bar runs edge to edge by cancelling the card's padding, so these
+   track the .wizard-card padding and radius at each width. It must stay
+   the card's last child: its negative bottom margin pulls whatever
+   follows it underneath. */
+.focus-purpose-card--onboarding {
+  --wizard-pad-x: 48px;
+  --wizard-pad-bottom: 48px;
+  --wizard-radius: var(--r-xl);
+}
+@media (max-width: 640px) {
+  .focus-purpose-card--onboarding {
+    --wizard-pad-x: 20px;
+    --wizard-pad-bottom: 28px;
+  }
+}
+@media (max-width: 480px) {
+  .focus-purpose-card--onboarding {
+    --wizard-pad-x: 16px;
+    --wizard-pad-bottom: 22px;
+    --wizard-radius: var(--r-lg);
+  }
+}
 .focus-purpose-card--onboarding .focus-purpose-actions {
   position: sticky;
   bottom: 0;
   z-index: 3;
   justify-content: flex-end;
-  padding: 12px 48px 16px;
-  margin: 16px -48px -48px;
-  background: color-mix(in srgb, var(--bg-2) 88%, transparent);
+  padding: 12px var(--wizard-pad-x) 16px;
+  margin: 16px calc(-1 * var(--wizard-pad-x))
+    calc(-1 * var(--wizard-pad-bottom));
+  /* Opaque on purpose: under a translucent, blurred bar the row scrolling
+     beneath it showed through as a grey smear. */
+  background: var(--bg-2);
   border-top: 1px solid var(--border);
-  border-radius: 0 0 var(--r-xl) var(--r-xl);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  border-radius: 0 0 var(--wizard-radius) var(--wizard-radius);
 }
 /* A fade above the bar, so the tiles scroll out under it rather than
    being cut by a hard edge. */
@@ -29519,11 +29541,15 @@ html[data-theme-override="light"]
   height: 20px;
   pointer-events: none;
   content: "";
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    color-mix(in srgb, var(--bg-2) 88%, transparent)
-  );
+  background: linear-gradient(to bottom, transparent, var(--bg-2));
+}
+/* The sample-data link and the footnote sit above the bar, centred. */
+.focus-purpose-card--onboarding .welcome-tertiary {
+  margin-top: 18px;
+  text-align: center;
+}
+.focus-purpose-card--onboarding .welcome-tertiary + .welcome-footnote {
+  margin-top: 8px;
 }
 /* Skip sits beside Next, in the usual order: secondary then primary. */
 .focus-purpose-card--onboarding .focus-purpose-actions .welcome-skip {
@@ -29871,18 +29897,14 @@ html[data-theme-override="light"]
   }
 
   /* Keep the primary action reachable without scrolling to the end of
-     the form. The card scrolls under it; the blurred backdrop keeps
-     the button legible over whatever passes beneath. */
+     the form. The card scrolls under it. */
   .focus-purpose-card--onboarding .focus-purpose-actions {
     position: sticky;
     bottom: 0;
     z-index: 5;
-    padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+    padding: 12px var(--wizard-pad-x) max(12px, env(safe-area-inset-bottom));
     margin-top: 12px;
-    background: color-mix(in srgb, var(--bg-2) 92%, transparent);
     border-top: 1px solid var(--border);
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
   }
 
   .profile-recommend-header {
