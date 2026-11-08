@@ -31,7 +31,7 @@ ARG PNPM_VERSION=11.18.0
 # with; the binary it builds is static, so the runtime needs no libraries
 # of its own.
 ARG RUST_IMAGE=rust:1.96.1-alpine3.24@sha256:a41f7740f8b45d45795624eec13a8b42263cc700f19f7e4e86e04d3dda08a479
-ARG ALPINE_IMAGE=alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6
+ARG ALPINE_IMAGE=alpine:3.24.4@sha256:93b41ef40b1677fce8fcc64ff4af09daddfacf5040afde618bc46c1e2d1cc7d4
 # cargo-auditable writes the binary's dependency list into the binary, so
 # the image scan and the SBOM see the Rust crates the way they saw
 # node_modules. Without it, a vulnerable crate would pass the scan unseen.

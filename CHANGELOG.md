@@ -117,6 +117,8 @@ Going forward, changes are recorded here as they land.
   plugin's optional `zip` feature (RUSTSEC-2026-0367, RUSTSEC-2026-0368,
   RUSTSEC-2026-0369, RUSTSEC-2026-0429). It was compiled only for Windows,
   and only macOS builds ship.
+- Move the Docker image's runtime to Alpine 3.24.4, which carries `musl`
+  1.2.6-r3 for CVE-2026-107891 and `zlib` 1.3.2-r1 for CVE-2026-85091.
 - Update rustls to 0.23.46 in the server and desktop lockfiles for
   RUSTSEC-2026-0346, RUSTSEC-2026-0347, RUSTSEC-2026-0348 and RUSTSEC-2026-0349.
 
