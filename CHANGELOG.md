@@ -103,6 +103,20 @@ Going forward, changes are recorded here as they land.
 
 ### Security
 
+- Raise `next` to 16.4.5 for GHSA-2464-fhr4-w9xw and GHSA-673q-mjm6-r5xr
+  (critical, unauthenticated remote code execution) and GHSA-p3m5-59mp-jv5r
+  (high, denial of service through Server Actions), `dompurify` to 3.4.17
+  for GHSA-cg2g-xh64-v4q7, GHSA-mrv2-3pqr-j5jr and GHSA-c6gr-qvv4-5v3f, and
+  `undici` to 7.30.2 for eight advisories fixed in 7.30.1. Next.js's server
+  and `undici` run only in the Docker image's Node rollback
+  (`BACKEND=node`) and in development.
+- Update rustls-webpki to 0.103.16 and webpki-roots to 1.0.11 in the server
+  and desktop lockfiles, and webpki-root-certs to 1.0.11 in the desktop
+  lockfile (RUSTSEC-2026-0381, RUSTSEC-2026-0382, RUSTSEC-2026-0383).
+- Remove the `zip` crate from the desktop lockfile by turning off the updater
+  plugin's optional `zip` feature (RUSTSEC-2026-0367, RUSTSEC-2026-0368,
+  RUSTSEC-2026-0369, RUSTSEC-2026-0429). It was compiled only for Windows,
+  and only macOS builds ship.
 - Update rustls to 0.23.46 in the server and desktop lockfiles for
   RUSTSEC-2026-0346, RUSTSEC-2026-0347, RUSTSEC-2026-0348 and RUSTSEC-2026-0349.
 
