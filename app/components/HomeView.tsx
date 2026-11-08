@@ -43,11 +43,7 @@ import {
 } from "../../lib/dashboard-layout";
 import { categoryLabel as i18nCategoryLabel } from "../../lib/i18n-meta";
 import type { PrimaryPurpose } from "../../lib/onboarding-purpose";
-import {
-  type AppMismatchSummary,
-  describeWorstMismatchLocalised,
-  TIER_META,
-} from "../../lib/privacy-profile";
+import type { AppMismatchSummary } from "../../lib/privacy-profile";
 import {
   DASHBOARD_RELATIVE_TIERS,
   formatRelativeTime,
@@ -76,7 +72,7 @@ import { DashboardLayoutLock } from "./DashboardLayoutLock";
 import { withScopeParam } from "./DeviceScopeProvider";
 import { FocusGoalLabels, FocusOverview } from "./FocusOverview";
 import { CategoryIcon, Icon, type IconName } from "./icons/Icon";
-import PrivacyTypeIcon from "./PrivacyTypeIcon";
+import LabelClassChip from "./LabelClassChip";
 import { useTaskCenter } from "./TaskCenter";
 import Toast from "./Toast";
 
@@ -1813,7 +1809,7 @@ function ConsiderReplacingSection({
   apps: AppMismatchSummary[];
 }) {
   const tCategory = useTranslations("category");
-  const tTier = useTranslations("privacy_profile_tier_short");
+  const tLabelClass = useTranslations("label_class");
   const tMismatch = useTranslations("privacy_profile_mismatch_sentence");
   const tBadge = useTranslations("profile_badge");
   const tSections = useTranslations("dashboard.sections");
@@ -1841,21 +1837,25 @@ function ConsiderReplacingSection({
       <div className="profile-replace-list">
         {visible.map((entry) => {
           const top = entry.mismatch.mismatches[0];
-          // Fallback description in the (practically impossible) case where
-          // the mismatch array is empty — we only surface apps with count>0,
-          // so the localised mismatch helper should rarely return null.
-          const desc =
-            describeWorstMismatchLocalised(
-              entry.mismatch,
-              (key) => i18nCategoryLabel(tCategory, key),
-              (key) => tTier(key),
-              (key, values) => tMismatch(key, values)
-            ) ??
-            tBadge("mismatches_description", { count: entry.mismatch.count });
-          // The tier chip colour mirrors the worst observed tier. We reuse
-          // the existing severity-* classes from globals.css (via TIER_META)
-          // so the palette stays consistent with every other privacy surface.
-          const tierCls = top ? TIER_META[top.observed].severityCls : "";
+          // The sentence names the worst observed class and the user's
+          // ceiling with the shared chip, so both read in the same words
+          // and colours as every other surface. The count fallback covers
+          // the (practically impossible) empty mismatch array: only apps
+          // with count > 0 are surfaced here.
+          const desc = top
+            ? tMismatch.rich("template_rich", {
+                category:
+                  i18nCategoryLabel(tCategory, top.category) ?? top.category,
+                observed: tLabelClass(top.observed),
+                allowed: tLabelClass(top.allowed),
+                obs: () => (
+                  <LabelClassChip labelClass={top.observed} size="sm" />
+                ),
+                allow: () => (
+                  <LabelClassChip labelClass={top.allowed} size="sm" />
+                ),
+              })
+            : tBadge("mismatches_description", { count: entry.mismatch.count });
           const topCategory = top?.category ?? null;
           return (
             <Link
@@ -1883,11 +1883,6 @@ function ConsiderReplacingSection({
                 <div className="profile-replace-row-name">{entry.appName}</div>
                 <div className="profile-replace-row-desc">{desc}</div>
               </div>
-              {tierCls && (
-                <span aria-hidden className={`risk-chip ${tierCls}`}>
-                  {top ? <PrivacyTypeIcon tier={top.observed} /> : null}
-                </span>
-              )}
               <span className="profile-replace-row-count">
                 {tSections("replace_mismatch_count", {
                   count: entry.mismatch.count,
@@ -1998,24 +1993,19 @@ function RiskSection({
               <div className="home-row-title">{app.name}</div>
               <div className="home-row-sub">
                 {app.unlinkedCount > 0 && (
-                  <span className="home-row-chip home-row-chip-unlinked">
-                    <PrivacyTypeIcon tier="not_linked" />
-                    {tSections("risk_chip_unlinked", {
-                      count: app.unlinkedCount,
-                    })}
-                  </span>
+                  <LabelClassChip
+                    count={app.unlinkedCount}
+                    labelClass="not_linked"
+                  />
                 )}
                 {app.linkedCount > 0 && (
-                  <span className="home-row-chip home-row-chip-linked">
-                    <PrivacyTypeIcon tier="linked" />
-                    {tSections("risk_chip_linked", { count: app.linkedCount })}
-                  </span>
+                  <LabelClassChip count={app.linkedCount} labelClass="linked" />
                 )}
                 {app.trackCount > 0 && (
-                  <span className="home-row-chip home-row-chip-track">
-                    <PrivacyTypeIcon tier="tracking" />
-                    {tSections("risk_chip_track", { count: app.trackCount })}
-                  </span>
+                  <LabelClassChip
+                    count={app.trackCount}
+                    labelClass="tracking"
+                  />
                 )}
               </div>
             </div>

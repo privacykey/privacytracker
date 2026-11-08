@@ -18,6 +18,7 @@ import {
 import DataLabelHint from "../DataLabelHint";
 import InfoTooltip from "../InfoTooltip";
 import { CategoryIcon, Icon } from "../icons/Icon";
+import LabelClassChip from "../LabelClassChip";
 import PrivacyTypeIcon from "../PrivacyTypeIcon";
 import type { PrivacyType } from "./types";
 
@@ -49,7 +50,7 @@ export default function PrivacyTypeSection({
   // tooltip, all resolve through their shared locale namespaces; the
   // English meta maps stay as fallbacks for unknown identifiers.
   const tSeverity = useTranslations("severity");
-  const tTierShort = useTranslations("privacy_profile_tier_short");
+  const tLabelClass = useTranslations("label_class");
   const [open, setOpen] = useState(true); // default open
   const sev = SEVERITY_CONFIG[privacyType.identifier];
   const sevLabel =
@@ -114,10 +115,16 @@ export default function PrivacyTypeSection({
               }}
               type="button"
             >
-              <span className={`severity-badge ${sev?.cls ?? "severity-none"}`}>
-                <PrivacyTypeIcon identifier={privacyType.identifier} />
-                {sevLabel}
-              </span>
+              {typeTier ? (
+                <LabelClassChip labelClass={typeTier} />
+              ) : (
+                <span
+                  className={`severity-badge ${sev?.cls ?? "severity-none"}`}
+                >
+                  <PrivacyTypeIcon identifier={privacyType.identifier} />
+                  {sevLabel}
+                </span>
+              )}
             </button>
             {sevDescription && <InfoTooltip text={sevDescription} />}
           </div>
@@ -195,8 +202,8 @@ export default function PrivacyTypeSection({
                 if (!allowed) {
                   return;
                 }
-                const observedLabel = tTierShort(typeTier).toLowerCase();
-                const allowedLabel = tTierShort(allowed).toLowerCase();
+                const observedLabel = tLabelClass(typeTier).toLowerCase();
+                const allowedLabel = tLabelClass(allowed).toLowerCase();
                 return tDetail("mismatch_title", {
                   label: localisedLabel,
                   observed: observedLabel,

@@ -168,6 +168,8 @@ function buildFootprintFromCells(
 export default function PrivacyHeatmap() {
   const tCharts = useTranslations("stats.charts");
   const tA11y = useTranslations("chart_a11y");
+  // Legend words are the shared class vocabulary (`label_class.*`).
+  const tLabelClass = useTranslations("label_class");
   const [data, setData] = useState<MatrixData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<PrivacyProfile | null>(null);
@@ -620,7 +622,7 @@ export default function PrivacyHeatmap() {
               shapesMode ? SEV_PATTERN.DATA_NOT_LINKED_TO_YOU : undefined
             )}
           />
-          {tCharts("swatch_not_linked")}
+          {tLabelClass("not_linked")}
         </span>
         <span>
           <span
@@ -629,7 +631,7 @@ export default function PrivacyHeatmap() {
               shapesMode ? SEV_PATTERN.DATA_LINKED_TO_YOU : undefined
             )}
           />
-          {tCharts("swatch_linked")}
+          {tLabelClass("linked")}
         </span>
         <span>
           <span
@@ -638,7 +640,7 @@ export default function PrivacyHeatmap() {
               shapesMode ? SEV_PATTERN.DATA_USED_TO_TRACK_YOU : undefined
             )}
           />
-          {tCharts("swatch_track")}
+          {tLabelClass("tracking")}
         </span>
         {/* Mismatch swatch mirrors the inset white border drawn on the
             actual cells so users can tie the legend back to what they see. */}

@@ -97,13 +97,10 @@
     "Fetching privacy labels…",
     "Doesn’t match your profile",
     "Open in App Store ↗",
-    "you allow",
     "Developer has not linked a privacy policy on the App Store page."
   ],
   "app/components/StatsView.tsx": [
     "total sync",
-    "⬇ Export CSV",
-    "⬇ Export JSON",
     "Switch back to All to see privacy labels and other events.",
     "Switch back to All to see accessibility, wayback imports and other events.",
     "How many of your tracked apps claim each accessibility feature, out of",

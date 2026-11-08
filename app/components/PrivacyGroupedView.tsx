@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { categoryLabel, severityLabel } from "../../lib/i18n-meta";
+import { labelClassFromIdentifier } from "../../lib/label-class";
 import {
   CATEGORY_META,
   SEVERITY_CONFIG,
@@ -14,6 +15,7 @@ import { scrollPulse } from "../../lib/scroll-pulse";
 import { useDeviceScope, withScopeParam } from "./DeviceScopeProvider";
 import InfoTooltip from "./InfoTooltip";
 import { CategoryIcon } from "./icons/Icon";
+import LabelClassChip from "./LabelClassChip";
 import { PageSkeleton } from "./LoadingShell";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 
@@ -255,6 +257,10 @@ function PrivacySection({
   const tSev = useTranslations("severity");
   const config = SEVERITY_CONFIG[group.identifier];
   const cls = config?.cls ?? "severity-none";
+  // The header is the shared class chip (short name, full Apple name on
+  // hover); the badge below is only the fallback for an identifier the
+  // chip does not know.
+  const labelClass = labelClassFromIdentifier(group.identifier);
   const label =
     severityLabel(tSev, group.identifier) ?? config?.label ?? group.title;
   const totalApps = new Set(
@@ -280,10 +286,14 @@ function PrivacySection({
     <section className="privacy-section">
       <div className="pmap-section-header">
         <div className="pmap-section-header-main">
-          <span className={`severity-badge ${cls}`}>
-            <PrivacyTypeIcon identifier={group.identifier} />
-            {label}
-          </span>
+          {labelClass ? (
+            <LabelClassChip labelClass={labelClass} />
+          ) : (
+            <span className={`severity-badge ${cls}`}>
+              <PrivacyTypeIcon identifier={group.identifier} />
+              {label}
+            </span>
+          )}
           {config?.description && <InfoTooltip text={config.description} />}
         </div>
         <span className="pmap-section-count">

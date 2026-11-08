@@ -39,7 +39,7 @@ import {
   withScopeParam,
 } from "./DeviceScopeProvider";
 import { Icon } from "./icons/Icon";
-import PrivacyTypeIcon from "./PrivacyTypeIcon";
+import LabelClassChip from "./LabelClassChip";
 import ReviewQueue from "./ReviewQueue";
 import { useTaskCenter } from "./TaskCenter";
 import Toast from "./Toast";
@@ -2603,55 +2603,13 @@ export default function AppGrid({
                           className="risk-chip-row"
                         >
                           {u > 0 && (
-                            <span
-                              aria-label={tGrid("unlinked_chip_title", {
-                                count: u,
-                              })}
-                              className="risk-chip risk-chip-unlinked"
-                              title={tGrid("unlinked_chip_title", { count: u })}
-                            >
-                              <span
-                                aria-hidden="true"
-                                className="risk-chip-icon"
-                              >
-                                <PrivacyTypeIcon tier="not_linked" />
-                              </span>
-                              <span className="risk-chip-count">{u}</span>
-                            </span>
+                            <LabelClassChip count={u} labelClass="not_linked" />
                           )}
                           {l > 0 && (
-                            <span
-                              aria-label={tGrid("linked_chip_title", {
-                                count: l,
-                              })}
-                              className="risk-chip risk-chip-linked"
-                              title={tGrid("linked_chip_title", { count: l })}
-                            >
-                              <span
-                                aria-hidden="true"
-                                className="risk-chip-icon"
-                              >
-                                <PrivacyTypeIcon tier="linked" />
-                              </span>
-                              <span className="risk-chip-count">{l}</span>
-                            </span>
+                            <LabelClassChip count={l} labelClass="linked" />
                           )}
                           {t > 0 && (
-                            <span
-                              aria-label={tGrid("track_chip_title", {
-                                count: t,
-                              })}
-                              className="risk-chip risk-chip-track"
-                              title={tGrid("track_chip_title", { count: t })}
-                            >
-                              <span
-                                aria-hidden="true"
-                                className="risk-chip-icon"
-                              >
-                                <PrivacyTypeIcon tier="tracking" />
-                              </span>
-                              <span className="risk-chip-count">{t}</span>
-                            </span>
+                            <LabelClassChip count={t} labelClass="tracking" />
                           )}
                         </div>
                       )}

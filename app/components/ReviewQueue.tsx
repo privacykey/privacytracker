@@ -31,7 +31,7 @@ import type { AppProfileBadge } from "../../lib/privacy-profile";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import { useRovingRadioGroup } from "../../lib/use-roving-radiogroup";
 import type { VerdictValue } from "../../lib/verdict-types";
-import PrivacyTypeIcon from "./PrivacyTypeIcon";
+import LabelClassChip from "./LabelClassChip";
 import VerdictPill from "./VerdictPill";
 // Co-located CSS — Turbopack tracks this reliably alongside the
 // component; bundling into the 26k-line globals.css was leaving stale
@@ -1534,24 +1534,9 @@ function CategoryChips({
       aria-label={t("card.top_categories_label")}
       className="review-queue-card-chips"
     >
-      {unl > 0 && (
-        <span className="review-queue-card-chip review-queue-card-chip-unlinked">
-          <PrivacyTypeIcon tier="not_linked" />
-          {t("card.chip_unlinked", { count: unl })}
-        </span>
-      )}
-      {lnk > 0 && (
-        <span className="review-queue-card-chip review-queue-card-chip-linked">
-          <PrivacyTypeIcon tier="linked" />
-          {t("card.chip_linked", { count: lnk })}
-        </span>
-      )}
-      {trk > 0 && (
-        <span className="review-queue-card-chip review-queue-card-chip-track">
-          <PrivacyTypeIcon tier="tracking" />
-          {t("card.chip_tracking", { count: trk })}
-        </span>
-      )}
+      {unl > 0 && <LabelClassChip count={unl} labelClass="not_linked" />}
+      {lnk > 0 && <LabelClassChip count={lnk} labelClass="linked" />}
+      {trk > 0 && <LabelClassChip count={trk} labelClass="tracking" />}
     </div>
   );
 }

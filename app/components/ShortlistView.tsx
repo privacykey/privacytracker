@@ -47,7 +47,6 @@ import type {
 } from "../../lib/privacy-profile";
 import {
   computeProfileMismatch,
-  describeWorstMismatchLocalised,
   summariseBadge,
   TIER_META,
   TIER_RANK,
@@ -56,6 +55,7 @@ import {
 import type { ShortlistEntry, ShortlistGroup } from "../../lib/shortlist-types";
 import { useModalFocus } from "../../lib/use-modal-focus";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
+import LabelClassChip from "./LabelClassChip";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ScopeExportNote from "./ScopeExportNote";
 import { SocialShareModal } from "./SocialShareModal";
@@ -1781,9 +1781,8 @@ function ShortlistMismatchBanner({
   mismatch: ProfileMismatchResult;
 }) {
   const tCategory = useTranslations("category");
-  const tTier = useTranslations("privacy_profile_tier_short");
+  const tLabelClass = useTranslations("label_class");
   const tMismatch = useTranslations("privacy_profile_mismatch_sentence");
-  const tBadge = useTranslations("profile_badge");
   const top = mismatch.mismatches[0];
   // Defensive: server only attaches profileMismatch when count > 0, so `top`
   // should never be nullish here — but guard anyway so a stale-data edge case
@@ -1792,13 +1791,15 @@ function ShortlistMismatchBanner({
     return null;
   }
 
-  const headline =
-    describeWorstMismatchLocalised(
-      mismatch,
-      (key) => i18nCategoryLabel(tCategory, key),
-      (key) => tTier(key),
-      (key, values) => tMismatch(key, values)
-    ) ?? tBadge("mismatches_description", { count: mismatch.count });
+  // Both classes in the sentence are the shared chip, so the banner reads
+  // in the same words and colours as the dashboard and the app cards.
+  const headline = tMismatch.rich("template_rich", {
+    category: i18nCategoryLabel(tCategory, top.category) ?? top.category,
+    observed: tLabelClass(top.observed),
+    allowed: tLabelClass(top.allowed),
+    obs: () => <LabelClassChip labelClass={top.observed} size="sm" />,
+    allow: () => <LabelClassChip labelClass={top.allowed} size="sm" />,
+  });
   const tierCls = TIER_META[top.observed].severityCls;
 
   const remainder = mismatch.count - 1;
@@ -2002,6 +2003,7 @@ function PreviewBody({
 }) {
   const tShortlist = useTranslations("shortlist");
   const tBadge = useTranslations("profile_badge");
+  const tLabelClass = useTranslations("label_class");
   const hasLabels = preview.privacyTypes.length > 0;
   const policyUrl = preview.privacyPolicyUrl || "";
 
@@ -2051,8 +2053,6 @@ function PreviewBody({
                     const catLabel =
                       CATEGORY_META[m.category]?.label ?? m.category;
                     const catIcon = CATEGORY_META[m.category]?.icon ?? "•";
-                    const observed = TIER_META[m.observed];
-                    const allowed = TIER_META[m.allowed];
                     return (
                       <li className="shortlist-match-row" key={m.category}>
                         <span
@@ -2065,11 +2065,7 @@ function PreviewBody({
                           {catLabel}
                         </span>
                         <span className="shortlist-match-tiers">
-                          <span
-                            className={`shortlist-match-tier ${observed.severityCls}`}
-                          >
-                            {observed.shortLabel}
-                          </span>
+                          <LabelClassChip labelClass={m.observed} size="sm" />
                           <span
                             aria-hidden="true"
                             className="shortlist-match-arrow"
@@ -2077,7 +2073,15 @@ function PreviewBody({
                             ›
                           </span>
                           <span className="shortlist-match-tier shortlist-match-tier-allowed">
-                            you allow {allowed.shortLabel.toLowerCase()}
+                            {tShortlist.rich("match_row_allowed", {
+                              allowed: tLabelClass(m.allowed),
+                              allow: () => (
+                                <LabelClassChip
+                                  labelClass={m.allowed}
+                                  size="sm"
+                                />
+                              ),
+                            })}
                           </span>
                         </span>
                       </li>
