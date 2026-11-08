@@ -20,7 +20,14 @@ tauri = { version = "2", features = ["tray-icon", "macos-private-api"] }
 tauri-plugin-shell = "2"
 # Updater is wired up so we don't have to add it later. The release CI signs
 # update manifests with an ed25519 key whose public half ships in tauri.conf.json.
-tauri-plugin-updater = "2"
+#
+# The plugin's default `zip` feature is off on purpose. It adds the `zip` crate
+# (Windows only) and tar/flate2 on Linux; macOS, the only platform that ships,
+# unpacks its .app.tar.gz without it. Our 4.x `zip` has RustSec advisories that
+# only zip 9 fixes, and the plugin reaches zip 9 only from 2.14.1, which needs
+# tauri >= 2.12. Turn the feature back on, on that plugin version, if a Windows
+# or Linux build ever ships; update_guard.rs refuses installs there until then.
+tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls"] }
 # update_guard.rs reads the version out of a downloaded update before it is
 # installed: flate2 + tar unpack the signed .app.tar.gz, plist reads the
 # bundle's Info.plist, semver compares it with the running version. All

@@ -5079,7 +5079,7 @@ builds and now also stages the site with `scripts/stage-site.mjs --into
 /app/site` (the same allowlist the desktop bundle stages). `rust` adds a
 toolchain stage (`rust:1.96.1-alpine3.24`, pinned by digest like the Node
 image) that compiles `pt-core` statically for musl with `cargo auditable`,
-and a runtime on `alpine:3.24.2` holding the binary, the staged site, the
+and a runtime on `alpine:3.24.4` holding the binary, the staged site, the
 notices and `tzdata`, and nothing else. `node` is the previous runner stage,
 byte for byte, kept as the rollback until 1.0. The Rust image is 56 MB; the
 Node one is 1.36 GB.
