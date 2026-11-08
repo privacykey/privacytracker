@@ -258,6 +258,11 @@
   gap: 16px;
   align-items: start;
 }
+/* With no "Installed on" side panel the review panel takes the whole
+   column, instead of leaving a third of the page empty beside it. */
+.what-changed-grid:not(:has(> :nth-child(2))) {
+  grid-template-columns: 1fr;
+}
 @media (max-width: 900px) {
   .what-changed-grid {
     grid-template-columns: 1fr;

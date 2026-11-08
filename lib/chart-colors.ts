@@ -37,7 +37,7 @@ export const DARK_CHART_COLORS = {
   // exactly the dark --text-2 / --text-3 values, so dark mode is
   // unchanged). `text` is the base for low-alpha derived chrome via
   // withAlpha (radar split bands, heatmap hover glow).
-  border: "rgba(255, 255, 255, 0.07)",
+  border: "rgba(255, 255, 255, 0.06)",
   cream: "#d8c7a3",
   cyan: "#64d2ff",
   green: "#30d158",

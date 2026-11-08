@@ -21,6 +21,7 @@ import {
   type RelativeTranslator,
 } from "../../lib/relative-time";
 import { useResolvedFlag } from "../../lib/use-flag-bundle";
+import { Icon } from "./icons/Icon";
 
 interface NotifEntry {
   app_id: string;
@@ -450,7 +451,7 @@ export default function NotificationBell({
         ref={bellBtnRef}
         type="button"
       >
-        <span aria-hidden="true">🔔</span>
+        <Icon name="bell" size={18} />
         {visibleUnread > 0 && (
           <span aria-hidden="true" className="notif-badge">
             {visibleUnread > 9 ? "9+" : visibleUnread}

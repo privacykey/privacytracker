@@ -11,6 +11,7 @@ import type { FocusOverviewApp, FocusOverviewData } from "@/lib/focus-review";
 import { useFlagValues } from "@/lib/use-flag-bundle";
 import { withScopeParam } from "./DeviceScopeProvider";
 import type { FocusSummary } from "./HomeView";
+import { Icon } from "./icons/Icon";
 import "./focus-overview.css";
 
 const FLAGS = [
@@ -56,7 +57,7 @@ function OverviewRow({
         {app.changeCount > 0 && (
           <span>{t("app_changes", { count: app.changeCount })}</span>
         )}
-        {(canReview || app.decision !== "review") && (
+        {app.decision !== "review" && (
           <span>
             {t(`decision.${app.decision}`)}
             {app.remindAt && app.decision !== "due"
@@ -89,10 +90,11 @@ function OverviewRow({
         </Link>
       ) : (
         <Link
-          className="btn btn-ghost btn-sm"
+          className="focus-overview-app-link"
           href={`/apps/${encodeURIComponent(app.id)}${canReview ? "#verdict-picker-heading" : ""}`}
         >
           {t(canReview ? "review_app" : "view_app")}
+          <Icon name="arrow-right" size={14} strokeWidth={2} />
         </Link>
       )}
     </li>
@@ -155,7 +157,7 @@ export function FocusOverview({
           </p>
         </div>
         <Link
-          className="btn btn-secondary"
+          className="focus-overview-header-link"
           href={withScopeParam("/dashboard/apps", scopeParam)}
         >
           {t("all_apps", { count: total })}
@@ -163,11 +165,15 @@ export function FocusOverview({
       </header>
       <div className="focus-overview-stats">
         <div>
-          <strong>{total}</strong>
+          <strong className={total === 0 ? "is-zero" : undefined}>
+            {total}
+          </strong>
           <span>{t("tracked_apps")}</span>
         </div>
         <div>
-          <strong>{data.pendingChanges}</strong>
+          <strong className={data.pendingChanges === 0 ? "is-zero" : undefined}>
+            {data.pendingChanges}
+          </strong>
           <span>{t("pending")}</span>
           {data.newChanges !== null && (
             <small>{t("since_visit", { count: data.newChanges })}</small>
@@ -175,7 +181,11 @@ export function FocusOverview({
         </div>
         {focus?.cleanup && (
           <div>
-            <strong>{data.replacementCount}</strong>
+            <strong
+              className={data.replacementCount === 0 ? "is-zero" : undefined}
+            >
+              {data.replacementCount}
+            </strong>
             <span>{t("replacement_plans")}</span>
           </div>
         )}

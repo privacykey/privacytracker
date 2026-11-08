@@ -17,6 +17,7 @@ import {
 } from "../../../lib/privacy-profile";
 import DataLabelHint from "../DataLabelHint";
 import InfoTooltip from "../InfoTooltip";
+import { CategoryIcon, Icon } from "../icons/Icon";
 import PrivacyTypeIcon from "../PrivacyTypeIcon";
 import type { PrivacyType } from "./types";
 
@@ -237,12 +238,12 @@ export default function PrivacyTypeSection({
                         aria-label={tDetail("actions.exceeds_profile_aria")}
                         className="category-card-mismatch-flag"
                       >
-                        ⚠
+                        <Icon name="alert-triangle" size={12} strokeWidth={2} />
                       </span>
                     )}
                     <div className="category-card-header">
                       <span className="category-card-icon">
-                        {meta?.icon ?? "📂"}
+                        <CategoryIcon category={cat.identifier} size={18} />
                       </span>
                       <span aria-hidden="true" className="category-card-arrow">
                         →

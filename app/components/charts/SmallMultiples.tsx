@@ -598,7 +598,15 @@ export default function SmallMultiples({
                         className="sm-tooltip-dot"
                         style={{ background: SEV_COLOR[hover.sev] }}
                       />
-                      <span style={{ color: SEV_COLOR[hover.sev] }}>
+                      {/* The label is the severity colour pulled 30% toward
+                          the text colour: the pure hue on the tooltip's
+                          stacked surfaces is under 4.5:1 in dark mode. The
+                          dot beside it keeps the pure colour. */}
+                      <span
+                        style={{
+                          color: `color-mix(in srgb, ${SEV_COLOR[hover.sev]} 70%, var(--text))`,
+                        }}
+                      >
                         {SEV_LABEL_KEY[hover.sev]
                           ? tCharts(SEV_LABEL_KEY[hover.sev])
                           : hover.sev}

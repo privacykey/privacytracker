@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useResolvedFlag } from "../../lib/use-flag-bundle";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
+import { Icon, type IconName } from "./icons/Icon";
 import { groupForSection, isSettingsGroup } from "./settings/section-groups";
 
 /**
@@ -30,7 +31,7 @@ interface SectionLink {
    *  `label` field above. The static label is still kept as a fallback /
    *  documentation hint so the table reads naturally. */
   i18nKey?: string;
-  icon: string; // single emoji; cheap visual anchor without pulling in an icon lib
+  icon: IconName; // from the shared line-icon set (app/components/icons)
   id: string;
   label: string;
 }
@@ -51,24 +52,29 @@ const SECTION_GROUPS: SectionGroup[] = [
     label: "You",
     i18nGroupKey: "group_you",
     links: [
-      { id: "focus", label: "Your Focus", icon: "🎯", i18nKey: "your_focus" },
-      { id: "language", label: "Language", icon: "🌐", i18nKey: "language" },
+      {
+        id: "focus",
+        label: "Your Focus",
+        icon: "target",
+        i18nKey: "your_focus",
+      },
+      { id: "language", label: "Language", icon: "globe", i18nKey: "language" },
       {
         id: "privacy-profile",
         label: "Privacy Profile",
-        icon: "🛡",
+        icon: "shield",
         i18nKey: "privacy_profile",
       },
       {
         id: "accessibility-profile",
         label: "Accessibility Profile",
-        icon: "♿",
+        icon: "accessibility",
         i18nKey: "accessibility_profile",
       },
       {
         id: "notifications",
         label: "Notifications",
-        icon: "🔔",
+        icon: "bell",
         i18nKey: "notifications",
       },
     ],
@@ -80,19 +86,19 @@ const SECTION_GROUPS: SectionGroup[] = [
       {
         id: "sync-schedule",
         label: "Sync Schedule",
-        icon: "⏱",
+        icon: "clock",
         i18nKey: "sync_schedule",
       },
       {
         id: "region",
         label: "App Store Region",
-        icon: "🌐",
+        icon: "globe",
         i18nKey: "app_store_region",
       },
       {
         id: "sync-status",
         label: "App Store Sync",
-        icon: "↻",
+        icon: "refresh",
         i18nKey: "app_store_sync_status",
       },
     ],
@@ -104,25 +110,25 @@ const SECTION_GROUPS: SectionGroup[] = [
       {
         id: "ai-summaries",
         label: "AI Policy Summaries",
-        icon: "✨",
+        icon: "sparkles",
         i18nKey: "ai_summaries",
       },
       {
         id: "privacy-policies-bulk",
         label: "Privacy Policies",
-        icon: "📄",
+        icon: "file-text",
         i18nKey: "privacy_policies",
       },
       {
         id: "policy-alerts",
         label: "Policy Change Alerts",
-        icon: "📣",
+        icon: "megaphone",
         i18nKey: "policy_change_alerts",
       },
       {
         id: "policy-scrape-throttle",
         label: "Policy Scrape Throttle",
-        icon: "🐢",
+        icon: "hourglass",
         i18nKey: "policy_scrape_throttle",
       },
     ],
@@ -134,43 +140,43 @@ const SECTION_GROUPS: SectionGroup[] = [
       {
         id: "import-history",
         label: "Import History",
-        icon: "📥",
+        icon: "inbox",
         i18nKey: "import_history",
       },
       {
         id: "deployment-diagnostics",
         label: "Deployment Diagnostics",
-        icon: "📡",
+        icon: "radio",
         i18nKey: "deployment_diagnostics",
       },
       {
         id: "backup",
         label: "Backup & Restore",
-        icon: "💾",
+        icon: "hard-drive",
         i18nKey: "backup_restore",
       },
       {
         id: "wayback-import",
         label: "Historical Import",
-        icon: "🕰",
+        icon: "history",
         i18nKey: "historical_import",
       },
       {
         id: "export-data",
         label: "Export Data",
-        icon: "⬇",
+        icon: "download",
         i18nKey: "export_data",
       },
       {
         id: "companion",
         label: "Companion",
-        icon: "📱",
+        icon: "smartphone",
         i18nKey: "companion",
       },
       {
         id: "developer",
         label: "Developer Options",
-        icon: "⚙",
+        icon: "settings",
         i18nKey: "developer_options",
       },
       // Destructive entry — kept last in the group (and the whole sidebar),
@@ -180,7 +186,7 @@ const SECTION_GROUPS: SectionGroup[] = [
       {
         id: "reset",
         label: "Reset App",
-        icon: "⚠",
+        icon: "alert-triangle",
         i18nKey: "reset_app",
         dangerZone: true,
       },
@@ -400,17 +406,16 @@ export default function SettingsSidebar() {
                   onSameGroupClick={handleClick}
                 >
                   {/* The accessibility-profile entry renders the
-                      figure-in-circle SVG instead of the wheelchair
-                      pictogram so it picks up the same vocabulary as
-                      every other accessibility surface in the app
-                      (footer trigger, detail chip, focus modifier
-                      chip). Every other link still uses its emoji
-                      string. */}
+                      figure-in-circle SVG so it picks up the same
+                      vocabulary as every other accessibility surface in
+                      the app (footer trigger, detail chip, focus modifier
+                      chip). Every other link draws from the shared line
+                      set, so the column reads as one icon family. */}
                   <span aria-hidden="true" className="settings-sidebar-icon">
                     {link.id === "accessibility-profile" ? (
                       <AccessibilityFigureGlyph size={16} />
                     ) : (
-                      link.icon
+                      <Icon name={link.icon} size={16} />
                     )}
                   </span>
                   <span className="settings-sidebar-label">

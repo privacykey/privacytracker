@@ -13,6 +13,14 @@
   align-items: center;
   justify-content: space-between;
 }
+/* The "All N apps" link sits on the title's line, not between the title
+   and the subtitle. */
+.focus-overview-heading {
+  align-items: flex-start;
+}
+.focus-overview-heading > .focus-overview-header-link {
+  margin-top: 10px;
+}
 .focus-overview h1 {
   margin: 0 0 8px;
   font-size: clamp(24px, 3vw, 32px);
@@ -30,13 +38,40 @@
 }
 .focus-overview-stats > div {
   display: grid;
-  gap: 5px;
+  gap: 4px;
 }
+/* Value over label: the number carries the weight, the label recedes,
+   and a zero recedes further so the rows below lead. */
 .focus-overview-stats strong {
   font-size: 32px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.focus-overview-stats strong.is-zero {
+  color: var(--text-3);
+}
+.focus-overview-stats span {
+  font-size: 13px;
+  color: var(--text-2);
 }
 .focus-overview-stats small {
-  color: var(--text-2);
+  color: var(--text-3);
+}
+.focus-overview-app-link {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--blue);
+  text-decoration: none;
+  border-radius: var(--r-full);
+}
+.focus-overview-app-link:hover {
+  background: color-mix(in srgb, var(--blue) 10%, transparent);
 }
 .focus-overview-apps,
 .focus-overview-apps-more {
@@ -80,6 +115,9 @@
   min-width: 0;
 }
 .focus-overview-app-name img {
+  /* The stored artwork can be Apple's wide placeholder image; crop it to
+     the square like every other artwork tile does, rather than squash it. */
+  object-fit: cover;
   border-radius: 9px;
 }
 .focus-overview-app-name a {
@@ -90,7 +128,17 @@
   display: grid;
   gap: 4px;
   font-size: 13px;
-  color: var(--text-2);
+  color: var(--text-3);
+}
+.focus-overview-header-link {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--blue);
+  text-decoration: none;
+}
+.focus-overview-header-link:hover {
+  text-decoration: underline;
 }
 .focus-overview-app-actions {
   display: flex;
@@ -134,12 +182,18 @@
   justify-content: flex-start;
   scroll-margin-top: 100px;
 }
+.review-later-controls label {
+  font-size: 14px;
+  font-weight: 500;
+}
 .review-later-controls select {
-  padding: 8px;
+  height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
   color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
 }
 .layout-editor-lock {
   display: flex;

@@ -125,7 +125,7 @@ export default function DateFormatPicker() {
                 first effect tick. See the `mounted` declaration above
                 for the hydration-mismatch reasoning. */}
             {t(`modes.${m}`)}
-            {mounted ? ` — ${describeDateFormat(m)}` : ""}
+            {mounted ? `: ${describeDateFormat(m)}` : ""}
           </option>
         ))}
       </select>

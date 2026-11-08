@@ -34,12 +34,14 @@ export function broadcastDateFormat(next: DateFormatMode): void {
 }
 
 export function useDateFormat(): DateFormatMode {
-  // Seed with 'iso' to eliminate hydration mismatches: 'auto' routes through
-  // Intl.DateTimeFormat which resolves to Node's runtime locale on the server
-  // and the browser's locale on the client, so even matching `mode` values can
-  // produce different formatted output. ISO is locale-independent. The
-  // useEffect below swaps in the real preference after first paint.
-  const [mode, setMode] = useState<DateFormatMode>("iso");
+  // Seed with the cached preference when one mount has already fetched it,
+  // otherwise the default. Every page is a client-fetching shell, so no date
+  // is server-rendered and the seed never has to be locale-independent; it
+  // used to be 'iso', which painted "2026-11-07" for a beat before the fetch
+  // swapped in the preference and made the same date read two ways.
+  const [mode, setMode] = useState<DateFormatMode>(
+    () => cachedMode ?? DATE_FORMAT_DEFAULT
+  );
 
   useEffect(() => {
     let live = true;

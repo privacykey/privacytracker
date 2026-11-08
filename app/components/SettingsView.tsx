@@ -1537,9 +1537,6 @@ export default function SettingsView({
                   <DateFormatPicker />
                 </div>
               )}
-              <h3 className="settings-group-heading">
-                {tSettings("sidebar.group_you")}
-              </h3>
               {/* The legacy "Your Focus" intent picker used to render here. It was
           superseded by the YourFocusCard at the top of the page (chip
           strip + Adjust → /dashboard/settings/focus) per
@@ -1816,10 +1813,6 @@ export default function SettingsView({
           )}
           {showGroup("sync") && (
             <>
-              <h3 className="settings-group-heading">
-                {tSettings("sidebar.group_data_sync")}
-              </h3>
-
               {/* Sync Schedule */}
               {settingsSyncScheduleOn && (
                 <SyncScheduleSection
@@ -1886,10 +1879,6 @@ export default function SettingsView({
           )}
           {showGroup("policies") && (
             <>
-              <h3 className="settings-group-heading">
-                {tSettings("sidebar.group_policies_ai")}
-              </h3>
-
               {settingsAiEnabledOn && <AiSummariesSection ai={ai} />}
 
               {/*
@@ -1952,10 +1941,6 @@ export default function SettingsView({
 
           {showGroup("admin") && (
             <>
-              <h3 className="settings-group-heading">
-                {tSettings("sidebar.group_admin")}
-              </h3>
-
               {/* Import History — full section on the standalone page, otherwise
           a compact link card in the main Settings view. Keeping the big
           review-and-retry UI on its own page lets the Settings landing

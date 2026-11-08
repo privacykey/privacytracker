@@ -49,8 +49,8 @@ export default function KeyboardHint() {
 
   return (
     // The parent <footer> in app/layout.tsx already supplies the
-    // contentinfo landmark, so this wrapper is just a styled
-    // positioning anchor — no redundant ARIA role here.
+    // contentinfo landmark, so this wrapper is just a styled group inside
+    // the site footer row, with no redundant ARIA role.
     <div className="kbd-hint-anchor">
       {!dismissed && (
         <>

@@ -44,9 +44,9 @@
   --bg-3: #18181f;
 
   /* Surfaces (glassmorphism) */
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-hover: rgba(255, 255, 255, 0.07);
-  --surface-active: rgba(255, 255, 255, 0.1);
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.085);
+  --surface-active: rgba(255, 255, 255, 0.115);
 
   /* Numbered surface ladder. A whole family of styles (app-detail policy
      blocks, settings panels, activity/import rows) was authored against
@@ -67,12 +67,13 @@
      composite *behind* body copy, so a step that darkens a light theme
      silently eats the AA headroom --text-2 needs. See the light block. */
   --surface-1: var(--surface);
-  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-2: rgba(255, 255, 255, 0.075);
   --surface-3: rgba(255, 255, 255, 0.09);
 
-  /* Borders */
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.13);
+  /* Borders: one step quieter than the surfaces, so a card is read by
+     its tone first and its edge second. */
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.11);
   /* --border-1 / --border-2 are live aliases of --border, defined once
      here for the same reason as --surface-1: inline styles were authored
      against the numbered names. Keep new code on --border / --border-strong. */
@@ -202,8 +203,8 @@
     --bg: #f2f2f7;
     --bg-2: #ffffff;
     --bg-3: #e5e5ea;
-    --surface: rgba(255, 255, 255, 0.7);
-    --surface-hover: rgba(255, 255, 255, 0.9);
+    --surface: rgba(255, 255, 255, 0.85);
+    --surface-hover: rgba(255, 255, 255, 0.95);
     --surface-active: rgba(255, 255, 255, 1);
     /* Nested surfaces step *whiter* in light mode, continuing the
        --surface → --surface-hover → --surface-active progression above
@@ -296,8 +297,8 @@ html[data-theme-override="light"] {
   --bg: #f2f2f7;
   --bg-2: #ffffff;
   --bg-3: #e5e5ea;
-  --surface: rgba(255, 255, 255, 0.7);
-  --surface-hover: rgba(255, 255, 255, 0.9);
+  --surface: rgba(255, 255, 255, 0.85);
+  --surface-hover: rgba(255, 255, 255, 0.95);
   --surface-active: rgba(255, 255, 255, 1);
   /* Nested-surface steps — see the @media light block above. */
   --surface-2: rgba(255, 255, 255, 0.9);
@@ -346,15 +347,15 @@ html[data-theme-override="dark"] {
   --bg: #08080f;
   --bg-2: #111118;
   --bg-3: #18181f;
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-hover: rgba(255, 255, 255, 0.07);
-  --surface-active: rgba(255, 255, 255, 0.1);
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.085);
+  --surface-active: rgba(255, 255, 255, 0.115);
   /* Re-pin the nested-surface steps to the dark defaults (same rationale
      as the severity palette re-pin below). */
-  --surface-2: rgba(255, 255, 255, 0.06);
+  --surface-2: rgba(255, 255, 255, 0.075);
   --surface-3: rgba(255, 255, 255, 0.09);
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.13);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.11);
   --text: #f0f0f5;
   --text-2: #a0a0b0;
   --text-3: #9a9aa0;
@@ -548,12 +549,32 @@ textarea {
    element's implicit role with that value — instead we collapse the
    box with zero block size so it takes no layout space but keeps its
    landmark role in the accessibility tree. */
-.app-banner,
-.app-footer-landmark {
+.app-banner {
   padding: 0;
   margin: 0;
   line-height: 0;
   border: 0;
+}
+
+/* The footer landmark holds the fixed widgets (which take no layout
+   space) and the site footer row, which is in flow at the end of the
+   page: the links used to float over content on every screen. */
+.app-footer-landmark {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1280px;
+  padding: 14px 24px 28px;
+  margin: 0 auto;
+  border-top: 1px solid var(--border);
 }
 
 /* Screen-reader-only utility for text we want announced but not seen. */
@@ -598,15 +619,15 @@ textarea {
   align-items: center;
   height: var(--nav-h);
   padding: 0 24px;
-  background: rgba(8, 8, 15, 0.7);
+  background: rgba(8, 8, 15, 0.97);
   border-bottom: 1px solid var(--border);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+  backdrop-filter: blur(20px) saturate(120%);
 }
 
 @media (prefers-color-scheme: light) {
   .nav {
-    background: rgba(242, 242, 247, 0.75);
+    background: rgba(242, 242, 247, 0.97);
   }
 }
 
@@ -616,11 +637,50 @@ textarea {
    matching. Attribute selectors rank higher than media queries at the same
    specificity, so these rules correctly flip the nav regardless of OS mode. */
 html[data-theme-override="light"] .nav {
-  background: rgba(242, 242, 247, 0.75);
+  background: rgba(242, 242, 247, 0.97);
 }
 
 html[data-theme-override="dark"] .nav {
-  background: rgba(8, 8, 15, 0.7);
+  background: rgba(8, 8, 15, 0.97);
+}
+
+/* Light mode lifts its cards with a soft shadow, so an edge reads on the
+   grey page without a stronger border; dark mode keeps the surface step. */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override])
+    :is(
+      .app-card,
+      .stat-card,
+      .stats-panel,
+      .settings-section,
+      .home-section,
+      .home-hero,
+      .pmap-card,
+      .focus-overview,
+      .focus-strip,
+      .profile-replace-section,
+      .verdict-picker,
+      .label-trust
+    ):not(:hover) {
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  }
+}
+html[data-theme-override="light"]
+  :is(
+    .app-card,
+    .stat-card,
+    .stats-panel,
+    .settings-section,
+    .home-section,
+    .home-hero,
+    .pmap-card,
+    .focus-overview,
+    .focus-strip,
+    .profile-replace-section,
+    .verdict-picker,
+    .label-trust
+  ):not(:hover) {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
 }
 
 html[data-theme-override="high-contrast"] .nav {
@@ -732,14 +792,19 @@ html[data-theme-override="high-contrast"] .nav {
     color-mix(in srgb, var(--blue, #0a84ff) 35%, transparent);
 }
 
+/* Selection is a tinted surface with accent text, not an outlined box:
+   the same calm selection language as the settings sidebar and the risk
+   filter tabs, so the nav stays quieter than the content under it. */
 .nav-link.active {
-  color: var(--text);
-  background: color-mix(in srgb, var(--blue, #0a84ff) 18%, transparent);
-  border-color: var(--blue, #0a84ff);
+  /* The accent pulled 20% toward the text colour: plain --blue on its own
+     12% tint is under 4.5:1 in both modes (axe color-contrast). */
+  color: color-mix(in srgb, var(--blue, #0a84ff) 80%, var(--text));
+  background: color-mix(in srgb, var(--blue, #0a84ff) 12%, transparent);
+  border-color: transparent;
 }
 
 .nav-link.active:hover {
-  background: color-mix(in srgb, var(--blue, #0a84ff) 26%, transparent);
+  background: color-mix(in srgb, var(--blue, #0a84ff) 18%, transparent);
 }
 
 .nav-right {
@@ -1007,7 +1072,7 @@ html[data-theme-override="high-contrast"] .nav {
 ───────────────────────────────────────────────────── */
 .page-container {
   max-width: 1280px;
-  padding: 40px 24px 80px;
+  padding: 40px 24px 48px;
   margin: 0 auto;
 }
 
@@ -1038,6 +1103,33 @@ html[data-theme-override="high-contrast"] .nav {
   flex-shrink: 0;
   gap: 10px;
   align-items: center;
+}
+.header-actions > .btn {
+  box-sizing: border-box;
+  min-height: 40px;
+}
+
+/* The library tools (Custom apps, Compare, Review queue, Select) sit in
+   one segmented secondary group, so the header reads as one outlined
+   action plus one group rather than five same-weight buttons. */
+.header-actions-group {
+  box-sizing: border-box;
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  min-height: 40px;
+  padding: 3px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+}
+.header-actions-group > .btn {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.header-actions-group > .btn-ghost:hover {
+  color: var(--text);
+  background: var(--surface-active);
 }
 
 /* ─────────────────────────────────────────────────────
@@ -1132,6 +1224,17 @@ html[data-theme-override="high-contrast"] .nav {
 .icon-btn:hover {
   color: var(--text);
   background: var(--surface-hover);
+}
+
+/* On an app card the two icon buttons rest in the tertiary colour and
+   come up with the card, so a row of cards does not read as a row of
+   close buttons. */
+.app-card-actions .icon-btn {
+  color: var(--text-3);
+}
+.app-card:hover .app-card-actions .icon-btn,
+.app-card:focus-within .app-card-actions .icon-btn {
+  color: var(--text-2);
 }
 .icon-btn.danger:hover {
   color: var(--red);
@@ -1533,6 +1636,10 @@ html[data-theme-override="high-contrast"] .nav {
   margin-top: 6px;
 }
 
+/* Sync freshness is muted text while it is fine ("Synced today"); only
+   an aging or stale sync earns a tinted chip, because that is the state
+   that asks for something. A green chip for the normal state was one
+   more indicator on a card that already carries five. */
 .freshness-badge {
   padding: 2px 8px;
   font-size: 11px;
@@ -1541,8 +1648,9 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .freshness-badge.fresh {
-  color: var(--green);
-  background: var(--green-dim);
+  padding: 2px 0;
+  color: var(--text-3);
+  background: transparent;
 }
 .freshness-badge.aging {
   color: var(--yellow);
@@ -1570,15 +1678,17 @@ html[data-theme-override="high-contrast"] .nav {
 /* ─────────────────────────────────────────────────────
    Privacy Severity Badges
 ───────────────────────────────────────────────────── */
+/* One badge voice: 12px, semibold, sentence case. Uppercase with tracking
+   is reserved for eyebrow labels (YOUR FOCUS, WHAT'S NEW), so a status
+   badge never competes with the sentence-case pills beside it. */
 .severity-badge {
   display: inline-flex;
   gap: 5px;
   align-items: center;
   padding: 3px 9px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
+  line-height: 1.3;
   border-radius: var(--r-full);
 }
 
@@ -1686,6 +1796,16 @@ html[data-theme-override="high-contrast"] .nav {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 14px;
+}
+
+.pmap-card .info-tooltip-trigger {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+.pmap-card:hover .info-tooltip-trigger,
+.pmap-card:focus-within .info-tooltip-trigger,
+.pmap-card .info-tooltip-trigger.is-open {
+  opacity: 1;
 }
 
 .pmap-card {
@@ -1856,6 +1976,7 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .pmap-preview-more {
+  order: -1;
   font-size: 11px;
   font-weight: 700;
   color: var(--text-2);
@@ -1870,9 +1991,15 @@ html[data-theme-override="high-contrast"] .nav {
 }
 
 .pmap-preview-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-3);
+  white-space: nowrap;
+  clip: rect(0, 0, 0, 0);
 }
 
 .pmap-card-apps {
@@ -1965,10 +2092,10 @@ html[data-theme-override="high-contrast"] .nav {
 
 .detail-hero-icon {
   flex-shrink: 0;
-  width: 88px;
-  height: 88px;
+  width: 72px;
+  height: 72px;
   object-fit: cover;
-  border-radius: 20px;
+  border-radius: 17px;
 }
 
 .detail-hero-icon-placeholder {
@@ -2092,21 +2219,69 @@ html[data-theme-override="high-contrast"] .nav {
 .detail-hero-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   margin-top: 12px;
 }
 
-.detail-version-pill {
+.detail-hero-meta .freshness-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+.detail-hero-meta .freshness-badge.fresh {
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+/* The facts (version, price, age rating, accessibility, first seen) are
+   one muted line separated by middle dots; the status chips (synced,
+   changes to review) keep their pills, so the row reads as two kinds of
+   thing rather than eight pills. */
+.detail-hero-meta .detail-version-pill,
+.detail-hero-meta .detail-price-pill,
+.detail-hero-meta .detail-age-pill,
+.detail-hero-meta .detail-fact-pill,
+.detail-hero-meta .detail-a11y-chip-muted {
+  min-height: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+.detail-hero-meta .detail-price-pill::before,
+.detail-hero-meta .detail-age-pill::before,
+.detail-hero-meta .detail-fact-pill::before,
+.detail-hero-meta .detail-a11y-chip-muted::before {
+  margin-right: 8px;
+  color: var(--text-3);
+  content: "·";
+}
+
+/* Hero facts (version, price, age rating, first seen) share one neutral
+   chip: 12px/500, muted text, hairline border, 26px tall. Status chips
+   (synced, changes to review, accessibility) keep their tints, so the
+   row reads as facts plus a few states rather than seven treatments. */
+.detail-version-pill,
+.detail-fact-pill {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  min-height: 26px;
   padding: 4px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-feature-settings: "tnum" 1;
   line-height: 1.2;
   color: var(--text-2);
+  white-space: nowrap;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -2132,15 +2307,16 @@ html[data-theme-override="high-contrast"] .nav {
   display: inline-flex;
   gap: 4px;
   align-items: center;
+  min-height: 26px;
   padding: 4px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-feature-settings: "tnum" 1;
   line-height: 1.2;
-  color: var(--text);
+  color: var(--text-2);
   white-space: nowrap;
-  background: color-mix(in srgb, var(--teal) 12%, var(--surface-2));
-  border: 1px solid color-mix(in srgb, var(--teal) 28%, var(--border));
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 999px;
 }
 
@@ -2154,6 +2330,7 @@ html[data-theme-override="high-contrast"] .nav {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  min-height: 26px;
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 600;
@@ -2208,9 +2385,10 @@ html[data-theme-override="high-contrast"] .nav {
   display: inline-flex;
   gap: 4px;
   align-items: center;
+  min-height: 26px;
   padding: 4px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   font-feature-settings: "tnum" 1;
   line-height: 1.2;
   color: var(--text-2);
@@ -3296,6 +3474,19 @@ html[data-theme-override="high-contrast"] .nav {
 .detail-tab.active {
   color: var(--blue);
   border-color: var(--blue);
+}
+
+/* The suffix after a tab's name (a count, a state) is one muted style,
+   set off by a middle dot rather than parentheses. */
+.detail-tab-meta {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-3);
+}
+.detail-tab-meta::before {
+  margin-right: 6px;
+  content: "·";
 }
 .detail-tab:hover:not(.active) {
   color: var(--text);
@@ -8818,12 +9009,19 @@ body.review-rec-print-active .review-rec-print a {
   transform: translateY(-2px);
 }
 
+/* KPI numerals sit in the text colour; a severity colour is applied
+   inline only where the number is a status (off profile, stale). */
 .stat-card-value {
   margin-bottom: 6px;
-  font-size: 44px;
-  font-weight: 800;
+  font-size: 36px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
+}
+
+.stat-card-value.is-zero {
+  color: var(--text-3);
 }
 
 .stat-card-label {
@@ -8848,6 +9046,7 @@ body.review-rec-print-active .review-rec-print a {
      much better with the extra width for app name + diff summary. */
   grid-template-columns: 1fr 2fr;
   gap: 20px;
+  align-items: start;
   margin-bottom: 0;
 }
 
@@ -8905,6 +9104,16 @@ body.review-rec-print-active .review-rec-print a {
   align-items: center;
 }
 
+.bar-label-wrap .info-tooltip-trigger {
+  opacity: 0.4;
+  transition: opacity 0.15s;
+}
+.bar-row:hover .info-tooltip-trigger,
+.bar-row:focus-within .info-tooltip-trigger,
+.bar-label-wrap .info-tooltip-trigger.is-open {
+  opacity: 1;
+}
+
 .bar-label-wrap {
   display: flex;
   gap: 8px;
@@ -8930,24 +9139,25 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .bar-track {
-  height: 26px;
+  height: 10px;
   overflow: hidden;
-  background: var(--surface-active);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text-3) 14%, transparent);
   border-radius: var(--r-full);
 }
 
 .bar-fill {
   height: 100%;
   border-radius: var(--r-full);
+  opacity: 0.8;
   transition: width 0.6s var(--ease-out-glide);
 }
 
 .bar-count {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -9219,7 +9429,9 @@ body.review-rec-print-active .review-rec-print a {
   align-items: center;
   padding: 6px 12px;
   font-size: 12.5px;
-  color: var(--text-2);
+  /* --text, not --text-2: the pill sits on three stacked surfaces in dark
+     mode, where the secondary colour falls under 4.5:1. */
+  color: var(--text);
   cursor: pointer;
   user-select: none;
   background: var(--surface);
@@ -10074,14 +10286,14 @@ body.review-rec-print-active .review-rec-print a {
    its inner max-width so section cards keep their familiar width. */
 .settings-layout {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   gap: 40px;
   align-items: start;
 }
 
 .settings-content {
   min-width: 0;
-  max-width: 720px;
+  max-width: 960px;
 }
 
 /* Anchor scroll offset — sections sit below the sticky Nav, so when the
@@ -10183,14 +10395,18 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .settings-sidebar-link.is-active {
-  color: var(--text);
-  background: var(--surface);
-  border-color: var(--border-strong);
-  box-shadow: inset 2px 0 0 var(--blue);
+  /* Same 20% pull toward the text colour as .nav-link.active, for AA on
+     the tint. */
+  color: color-mix(in srgb, var(--blue) 80%, var(--text));
+  background: color-mix(in srgb, var(--blue) 9%, transparent);
+  border-color: transparent;
 }
 
 .settings-sidebar-icon {
+  display: inline-flex;
   flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
   width: 18px;
   font-size: 13px;
   color: var(--text-3);
@@ -10337,8 +10553,9 @@ body.review-rec-print-active .review-rec-print a {
 .settings-section-title {
   margin-bottom: 6px;
   font-size: 18px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
 }
 
 .settings-section-subtitle {
@@ -12475,14 +12692,19 @@ body.review-rec-print-active .review-rec-print a {
   padding: 22px 24px;
   margin: 24px 0;
   scroll-margin-top: 80px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 149, 0, 0.12),
-    rgba(255, 149, 0, 0.02)
-  );
-  border: 1px solid rgba(255, 149, 0, 0.3);
+  background: rgba(255, 149, 0, 0.07);
+  border: 1px solid rgba(255, 149, 0, 0.24);
   border-radius: var(--r-xl);
-  box-shadow: 0 2px 12px rgba(255, 149, 0, 0.08);
+}
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override]) .change-review-panel {
+    background: rgba(245, 158, 11, 0.07);
+    border-color: rgba(217, 119, 6, 0.3);
+  }
+}
+html[data-theme-override="light"] .change-review-panel {
+  background: rgba(245, 158, 11, 0.07);
+  border-color: rgba(217, 119, 6, 0.3);
 }
 
 .change-review-header {
@@ -12561,11 +12783,18 @@ body.review-rec-print-active .review-rec-print a {
 
 .change-review-event-date {
   margin-bottom: 10px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+}
+
+.change-review-cat-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  vertical-align: -2px;
+  color: var(--text-2);
 }
 
 .change-review-list {
@@ -12589,11 +12818,11 @@ body.review-rec-print-active .review-rec-print a {
 }
 
 .change-review-item-added {
-  background: linear-gradient(90deg, rgba(52, 199, 89, 0.08), transparent 60%);
+  background: rgba(52, 199, 89, 0.07);
   border-left-color: var(--green);
 }
 .change-review-item-removed {
-  background: linear-gradient(90deg, rgba(142, 142, 147, 0.1), transparent 60%);
+  background: rgba(142, 142, 147, 0.08);
   border-left-color: var(--text-3);
 }
 .change-review-item-modified {
@@ -12603,11 +12832,11 @@ body.review-rec-print-active .review-rec-print a {
 /* Bump severity colour on the border when the entry touches sensitive data.
    Matches the severity badge and the chip below: track is red, linked orange. */
 .change-review-item.change-review-sev-track.change-review-item-added {
-  background: linear-gradient(90deg, rgba(255, 69, 58, 0.12), transparent 60%);
+  background: rgba(255, 69, 58, 0.09);
   border-left-color: var(--red);
 }
 .change-review-item.change-review-sev-linked.change-review-item-added {
-  background: linear-gradient(90deg, rgba(255, 149, 0, 0.12), transparent 60%);
+  background: rgba(255, 149, 0, 0.09);
   border-left-color: var(--orange);
 }
 
@@ -12677,16 +12906,21 @@ body.review-rec-print-active .review-rec-print a {
   border-radius: 999px;
 }
 
+/* The chip text leans 30% toward the text colour. The chip sits on its own
+   tint inside a tinted row inside the tinted panel, and the pure severity hue
+   drops under 4.5:1 there: axe measured the track chip at 4.26:1 dark and
+   4.37:1 light once the row wash went flat (a gradient wash is unmeasurable,
+   which is what had hidden it). */
 .change-review-sev-chip-track {
-  color: var(--red);
+  color: color-mix(in srgb, var(--red) 70%, var(--text));
   background: var(--red-dim);
 }
 .change-review-sev-chip-linked {
-  color: var(--orange);
+  color: color-mix(in srgb, var(--orange) 70%, var(--text));
   background: var(--orange-dim);
 }
 .change-review-sev-chip-unlinked {
-  color: var(--cream);
+  color: color-mix(in srgb, var(--cream) 70%, var(--text));
   background: var(--cream-dim);
 }
 .change-review-sev-chip-none {
@@ -13532,10 +13766,10 @@ body.review-rec-print-active .review-rec-print a {
   display: inline-flex;
   align-items: center;
   padding: 1px 6px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.5;
-  color: var(--text-3);
+  color: var(--text-2);
   letter-spacing: 0.02em;
   background: transparent;
   border: 1px solid var(--border);
@@ -13751,13 +13985,20 @@ body.review-rec-print-active .review-rec-print a {
 
 .home-section-kicker {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-1);
   text-transform: none;
   letter-spacing: 0;
+}
+
+/* The section's icon takes the muted text colour, so the title keeps
+   the weight and the icon reads as a quiet marker beside it. */
+.home-section-kicker-icon {
+  flex-shrink: 0;
+  color: var(--text-2);
 }
 
 .home-section-sub {
@@ -15174,30 +15415,14 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 }
 
 /* Footer discoverability hint — fixed bottom-right, unobtrusive. */
+/* Right-hand group of the site footer row (shortcut hint, label
+   definitions, About). It used to be a pill fixed to the bottom-right
+   corner; the controls inside sit flat at rest and fill on hover. */
 .kbd-hint-anchor {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 900;
   display: inline-flex;
-  gap: 4px;
+  gap: 2px;
   align-items: center;
-  padding: 4px 4px 4px 12px;
-  background: color-mix(in srgb, var(--bg-2) 92%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  box-shadow: var(--shadow-sm);
-  /* Resting opacity used to be 0.75, which diluted the --text-2
-     links inside below 4.5:1 — the translucent color-mix background +
-     blur keep the pill visually quiet without failing contrast. */
-  opacity: 1;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  transition: opacity 160ms ease;
-}
-
-.kbd-hint-anchor:hover {
-  opacity: 1;
+  margin-left: auto;
 }
 
 .kbd-hint-button {
@@ -15211,11 +15436,10 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   color: var(--text);
   appearance: none;
   cursor: pointer;
-  /* Inverted states: the resting surface now carries what was previously
-     the hover tint so the button is discoverable at rest, and hover
-     promotes it to the stronger "active" fill. Same pattern applied to
-     .kbd-hint-about and .kbd-hint-dismiss below. */
-  background: var(--surface-hover);
+  /* Flat at rest; the hover fill is the affordance. The three controls
+     used to carry the hover tint at rest, which made the pill read as
+     three filled buttons stacked over the page. */
+  background: transparent;
   border: 0;
   border-radius: var(--r-full);
   transition:
@@ -15225,7 +15449,7 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .kbd-hint-button:hover {
   color: var(--text);
-  background: var(--surface-active);
+  background: var(--surface-hover);
 }
 
 .kbd-hint-dismiss {
@@ -15239,7 +15463,7 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   color: var(--text-2);
   appearance: none;
   cursor: pointer;
-  background: var(--surface-hover);
+  background: transparent;
   border: 0;
   border-radius: var(--r-full);
   transition:
@@ -15249,7 +15473,7 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .kbd-hint-dismiss:hover {
   color: var(--text);
-  background: var(--surface-active);
+  background: var(--surface-hover);
 }
 
 /* WCAG 2.2 SC 2.5.8 — the pill's controls paint at ~20–22px tall.
@@ -15279,9 +15503,11 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 }
 
 @media (max-width: 640px) {
-  /* Hide the floating hint on narrow viewports — hardware keyboards are
-     unlikely, and the pill would crowd mobile chrome. */
-  .kbd-hint-anchor {
+  /* Hardware keyboards are unlikely on a phone: the shortcut hint goes,
+     the definitions link and About stay. */
+  .kbd-hint-button,
+  .kbd-hint-dismiss,
+  .kbd-hint-anchor > .kbd-hint-divider {
     display: none;
   }
 }
@@ -15303,10 +15529,10 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
-  color: var(--text);
+  color: var(--text-2);
   appearance: none;
   cursor: pointer;
-  background: var(--surface-hover);
+  background: transparent;
   border: 0;
   border-radius: var(--r-full);
   transition:
@@ -15316,7 +15542,7 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
 
 .kbd-hint-about:hover {
   color: var(--text);
-  background: var(--surface-active);
+  background: var(--surface-hover);
 }
 
 /* ─────────────────────────────────────────────────────
@@ -16154,41 +16380,12 @@ html[data-theme-override="light"] .risk-filter-tab-unknown.active {
    floating footer so the two read as a matched pair, just pinned
    to opposite corners.
    ───────────────────────────────────────────── */
+/* Left-hand group of the site footer row (Privacy policy, Legal,
+   Feedback). It used to be a pill fixed to the bottom-left corner. */
 .site-info-hint-anchor {
-  position: fixed;
-  bottom: 16px;
-  left: 16px;
-  z-index: 900;
   display: inline-flex;
   gap: 2px;
   align-items: center;
-  padding: 4px 8px;
-  background: color-mix(in srgb, var(--bg-2) 92%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--r-full);
-  box-shadow: var(--shadow-sm);
-  /* Resting opacity used to be 0.75, which diluted the --text-2
-     links inside below 4.5:1 — the translucent color-mix background +
-     blur keep the pill visually quiet without failing contrast. */
-  opacity: 1;
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
-  transition: opacity 160ms ease;
-}
-
-.site-info-hint-anchor:hover {
-  opacity: 1;
-}
-
-/* 2.4.11 Focus Not Obscured: the pill floats over the bottom of the sticky
-   settings sidebar, so a tab-walk can land keyboard focus on a sidebar link
-   directly underneath it. Yield (fade + click-through) while any sidebar
-   link holds visible keyboard focus; the pill returns as soon as focus
-   moves on. Mouse users never trigger :focus-visible, so hover behaviour
-   is unchanged. */
-body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
-  pointer-events: none;
-  opacity: 0;
 }
 
 .site-info-hint-link {
@@ -16223,10 +16420,8 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
 }
 
 @media (max-width: 640px) {
-  /* Mirrors the right-side hint's mobile hide — the bottom corners are
-     already crowded on phones and the pill would overlap mobile chrome. */
-  .site-info-hint-anchor {
-    display: none;
+  .site-footer {
+    padding: 12px 16px 24px;
   }
 }
 
@@ -19071,9 +19266,9 @@ body:has(.settings-sidebar-link:focus-visible) .site-info-hint-anchor {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  -webkit-line-clamp: 3;
-  font-size: 11.5px;
-  line-height: 1.35;
+  -webkit-line-clamp: 4;
+  font-size: 12px;
+  line-height: 1.4;
   color: var(--text-3);
 }
 
@@ -19675,11 +19870,10 @@ html[data-theme-override="light"]
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  padding: 2px 7px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
   border-radius: var(--r-full);
 }
 
@@ -19747,6 +19941,7 @@ html[data-theme-override="light"]
   text-decoration: none;
   background: var(--surface-2);
   border: 1px solid var(--border);
+  border-left: 3px solid color-mix(in srgb, var(--rose) 45%, transparent);
   border-radius: 10px;
   transition:
     background 120ms ease,
@@ -19792,8 +19987,6 @@ html[data-theme-override="light"]
   /* Pulled toward --text, as .review-rec-profile-badge does: plain --red
      on its own tint is 3.8:1 in dark mode at this 11px size. */
   color: color-mix(in srgb, var(--red) 70%, var(--text));
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
   background: var(--red-dim, rgba(220, 80, 80, 0.15));
   border-radius: var(--r-full);
 }
@@ -26894,16 +27087,13 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 .your-focus-card__enable {
   display: inline-flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
-  padding: 6px 10px;
-  font-size: 12.5px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 4px 0;
+  font-size: 13px;
 }
-.your-focus-card__enable.is-on {
-  border-color: color-mix(in srgb, var(--blue, #3b82f6) 32%, var(--border));
+.your-focus-card__enable .your-focus-card__enable-state {
+  order: -1;
 }
 .your-focus-card__enable.is-off {
   opacity: 0.7;
@@ -26914,6 +27104,8 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   color: var(--text);
 }
 .your-focus-card__enable-state {
+  display: inline-flex;
+  align-items: center;
   font-size: 10px;
   line-height: 1;
 }
@@ -26923,10 +27115,18 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 .your-focus-card__enable.is-off .your-focus-card__enable-state {
   color: var(--text-3);
 }
+/* The state word stays for assistive tech; the check or cross glyph is
+   the visible signal, so seven chips no longer repeat "on". */
 .your-focus-card__enable-state-label {
-  font-size: 11px;
-  color: var(--text-3);
-  text-transform: lowercase;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
 }
 
 .your-focus-card__footer {
@@ -27000,28 +27200,33 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 .date-format-picker {
   margin: 0;
 }
+/* The card's label and hint take the settings card-title and subtitle
+   voice, since it is a card among cards. */
 .date-format-picker .settings-field-label {
   display: block;
-  margin-bottom: 4px;
-  font-size: 13px;
+  margin-bottom: 6px;
+  font-size: 18px;
   font-weight: 600;
+  line-height: 1.35;
   color: var(--text);
+  letter-spacing: -0.01em;
 }
 .date-format-picker .settings-field-hint {
-  margin: 0 0 8px;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--text-3);
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-2);
 }
 .date-format-picker-select {
   width: min(420px, 100%);
-  padding: 7px 10px;
+  height: 36px;
+  padding: 0 12px;
   font-family: inherit;
   font-size: 13px;
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-sm);
 }
 .date-format-picker .settings-field-status {
   margin: 6px 0 0;
@@ -27860,14 +28065,19 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 .focus-purpose-card--onboarding .focus-purpose-grid {
-  gap: 18px;
-  margin-top: 6px;
+  gap: 16px;
+  margin-top: 4px;
+}
+/* The onboarding card is sized so the tiles, the audience row and the
+   two extras all sit above the action bar at a 900px-tall window. */
+.wizard-card.focus-purpose-card--onboarding {
+  padding-top: 32px;
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option {
   position: relative;
-  min-height: 360px;
-  padding: 24px 22px 22px;
+  min-height: 300px;
+  padding: 18px 20px;
   overflow: hidden;
   background:
     radial-gradient(
@@ -27877,8 +28087,16 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
     ),
     linear-gradient(
       180deg,
-      color-mix(in srgb, var(--surface) 82%, #ffffff),
-      color-mix(in srgb, var(--bg-2) 88%, #000000)
+      color-mix(
+        in srgb,
+        var(--blue, #0a84ff) 7%,
+        color-mix(in srgb, var(--surface) 82%, #ffffff)
+      ),
+      color-mix(
+        in srgb,
+        var(--blue, #0a84ff) 4%,
+        color-mix(in srgb, var(--bg-2) 88%, #000000)
+      )
     );
   border-color: color-mix(in srgb, var(--border-strong) 78%, #ffffff);
   box-shadow:
@@ -28013,20 +28231,70 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-title {
-  margin-bottom: 10px;
-  font-size: 20px;
+  /* Two lines reserved, so the three tiles' copy starts on one baseline
+     whether or not the title wraps. */
+  min-height: 44px;
+  margin-bottom: 8px;
+  font-size: 18px;
   line-height: 1.2;
   letter-spacing: 0;
 }
 
+/* In light mode the tile keeps its lift but loses the dark lip and the
+   grey-to-black gradient, which read as an unrelated, disabled control
+   next to the page's white cards. */
+@media (prefers-color-scheme: light) {
+  html:not([data-theme-override])
+    .focus-purpose-card--onboarding
+    .focus-purpose-option {
+    background:
+      radial-gradient(
+        120% 90% at 50% -18%,
+        color-mix(in srgb, var(--blue, #0066cc) 12%, transparent),
+        transparent 58%
+      ),
+      linear-gradient(180deg, #ffffff, #f4f5f9);
+    border-color: color-mix(
+      in srgb,
+      var(--blue, #0066cc) 16%,
+      var(--border-strong)
+    );
+    box-shadow:
+      inset 0 1px 0 #ffffff,
+      0 12px 24px rgba(16, 24, 40, 0.08),
+      0 1px 0 rgba(16, 24, 40, 0.1);
+  }
+}
+html[data-theme-override="light"]
+  .focus-purpose-card--onboarding
+  .focus-purpose-option {
+  background:
+    radial-gradient(
+      120% 90% at 50% -18%,
+      color-mix(in srgb, var(--blue, #0066cc) 12%, transparent),
+      transparent 58%
+    ),
+    linear-gradient(180deg, #ffffff, #f4f5f9);
+  border-color: color-mix(
+    in srgb,
+    var(--blue, #0066cc) 16%,
+    var(--border-strong)
+  );
+  box-shadow:
+    inset 0 1px 0 #ffffff,
+    0 12px 24px rgba(16, 24, 40, 0.08),
+    0 1px 0 rgba(16, 24, 40, 0.1);
+}
+
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-copy {
-  font-size: 14.5px;
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-top {
   align-items: flex-start;
   min-height: 152px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .focus-purpose-card--onboarding .focus-purpose-option .method-card-radio {
@@ -29320,6 +29588,74 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   margin-top: 18px;
 }
 
+/* On /welcome the action row sticks to the bottom of the viewport while
+   the tiles scroll, so the one primary action is always in reach. The
+   bar runs edge to edge by cancelling the card's padding, so these
+   track the .wizard-card padding and radius at each width. It must stay
+   the card's last child: its negative bottom margin pulls whatever
+   follows it underneath. */
+.focus-purpose-card--onboarding {
+  --wizard-pad-x: 48px;
+  --wizard-pad-bottom: 48px;
+  --wizard-radius: var(--r-xl);
+}
+@media (max-width: 640px) {
+  .focus-purpose-card--onboarding {
+    --wizard-pad-x: 20px;
+    --wizard-pad-bottom: 28px;
+  }
+}
+@media (max-width: 480px) {
+  .focus-purpose-card--onboarding {
+    --wizard-pad-x: 16px;
+    --wizard-pad-bottom: 22px;
+    --wizard-radius: var(--r-lg);
+  }
+}
+.focus-purpose-card--onboarding .focus-purpose-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  justify-content: flex-end;
+  padding: 12px var(--wizard-pad-x) 16px;
+  margin: 16px calc(-1 * var(--wizard-pad-x))
+    calc(-1 * var(--wizard-pad-bottom));
+  /* Opaque on purpose: under a translucent, blurred bar the row scrolling
+     beneath it showed through as a grey smear. */
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--wizard-radius) var(--wizard-radius);
+}
+/* A fade above the bar, so the tiles scroll out under it rather than
+   being cut by a hard edge. */
+.focus-purpose-card--onboarding .focus-purpose-actions::before {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  left: 0;
+  height: 20px;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(to bottom, transparent, var(--bg-2));
+}
+/* The sample-data link and the footnote sit above the bar, centred. */
+.focus-purpose-card--onboarding .welcome-tertiary {
+  margin-top: 18px;
+  text-align: center;
+}
+.focus-purpose-card--onboarding .welcome-tertiary + .welcome-footnote {
+  margin-top: 8px;
+}
+/* Skip sits beside Next, in the usual order: secondary then primary. */
+.focus-purpose-card--onboarding .focus-purpose-actions .welcome-skip {
+  order: -1;
+  margin-left: 0;
+}
+.focus-purpose-card--onboarding .focus-purpose-actions .btn-primary {
+  min-height: 40px;
+  padding: 10px 22px;
+}
+
 /* "Advanced: fine-tune individual features" disclosure wrapping the
    per-feature toggles during onboarding. Collapsed by default — the
    goal tiles above already set sensible values, and six always-open
@@ -29656,18 +29992,14 @@ html[data-theme-override="high-contrast"] .a11y-quick-trigger-dot {
   }
 
   /* Keep the primary action reachable without scrolling to the end of
-     the form. The card scrolls under it; the blurred backdrop keeps
-     the button legible over whatever passes beneath. */
+     the form. The card scrolls under it. */
   .focus-purpose-card--onboarding .focus-purpose-actions {
     position: sticky;
     bottom: 0;
     z-index: 5;
-    padding: 12px 0 max(12px, env(safe-area-inset-bottom));
+    padding: 12px var(--wizard-pad-x) max(12px, env(safe-area-inset-bottom));
     margin-top: 12px;
-    background: color-mix(in srgb, var(--bg-2) 92%, transparent);
     border-top: 1px solid var(--border);
-    -webkit-backdrop-filter: blur(8px);
-    backdrop-filter: blur(8px);
   }
 
   .profile-recommend-header {

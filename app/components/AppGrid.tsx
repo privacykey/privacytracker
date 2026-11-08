@@ -38,6 +38,7 @@ import {
   useScopeLabel,
   withScopeParam,
 } from "./DeviceScopeProvider";
+import { Icon } from "./icons/Icon";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import ReviewQueue from "./ReviewQueue";
 import { useTaskCenter } from "./TaskCenter";
@@ -1575,7 +1576,11 @@ export default function AppGrid({
                 title={tGrid("resync_filter_title", { count: sorted.length })}
                 type="button"
               >
-                {syncingAll ? <span className="spinner" /> : "↻"}
+                {syncingAll ? (
+                  <span className="spinner" />
+                ) : (
+                  <Icon name="refresh" size={14} />
+                )}
                 {syncingAll
                   ? tGrid("syncing")
                   : tGrid("sync_n_apps", { count: sorted.length })}
@@ -1595,7 +1600,11 @@ export default function AppGrid({
               }
               type="button"
             >
-              {syncingAll ? <span className="spinner" /> : "↻"}
+              {syncingAll ? (
+                <span className="spinner" />
+              ) : (
+                <Icon name="refresh" size={14} />
+              )}
               {syncingAll
                 ? tGrid("syncing")
                 : scopeLabel
@@ -1603,103 +1612,103 @@ export default function AppGrid({
                   : tGrid("sync_all")}
             </button>
           )}
-          {f.actionsCustomAppsNav && (
-            <Link
-              className="btn btn-secondary"
-              href="/dashboard/manual-apps"
-              title={tGrid("untracked_title")}
-            >
-              {tGrid("custom_apps")}
-              {manualApps.length > 0 && (
-                <span
-                  aria-label={tGrid("custom_count_aria", {
-                    count: manualApps.length,
-                  })}
-                  className="custom-apps-count"
-                >
-                  {manualApps.length}
-                </span>
-              )}
-            </Link>
-          )}
-          {/* Enters "Compare mode" — plain clicks toggle selection instead of
+          <div
+            aria-label={tGrid("header_group_aria")}
+            className="header-actions-group"
+            role="group"
+          >
+            {f.actionsCustomAppsNav && (
+              <Link
+                className="btn btn-ghost"
+                href="/dashboard/manual-apps"
+                title={tGrid("untracked_title")}
+              >
+                {tGrid("custom_apps")}
+                {manualApps.length > 0 && (
+                  <span
+                    aria-label={tGrid("custom_count_aria", {
+                      count: manualApps.length,
+                    })}
+                    className="custom-apps-count"
+                  >
+                    {manualApps.length}
+                  </span>
+                )}
+              </Link>
+            )}
+            {/* Enters "Compare mode" — plain clicks toggle selection instead of
               navigating. Mirrors the Shift/Cmd-click power-user path so
               touch devices can reach the same feature. */}
-          {f.actionsCompareMode && (
-            <button
-              aria-pressed={compareMode}
-              className={`btn ${compareMode ? "btn-primary" : "btn-secondary"}`}
-              data-tour="compare-button"
-              onClick={() => {
-                if (compareMode) {
-                  clearSelection();
-                } else {
-                  setCompareMode(true);
+            {f.actionsCompareMode && (
+              <button
+                aria-pressed={compareMode}
+                className={`btn ${compareMode ? "btn-primary" : "btn-ghost"}`}
+                data-tour="compare-button"
+                onClick={() => {
+                  if (compareMode) {
+                    clearSelection();
+                  } else {
+                    setCompareMode(true);
+                  }
+                }}
+                title={
+                  compareMode
+                    ? tGrid("compare_title_on")
+                    : tGrid("compare_title_off")
                 }
-              }}
-              title={
-                compareMode
-                  ? tGrid("compare_title_on")
-                  : tGrid("compare_title_off")
-              }
-              type="button"
-            >
-              {compareMode ? tGrid("cancel_compare") : tGrid("compare")}
-            </button>
-          )}
-          {f.reviewQueueEnabled && (
-            <button
-              className={`btn btn-secondary review-queue-mode-toggle ${queueOpen ? "is-active" : ""}`}
-              disabled={apps.length === 0 || fleetIncomplete}
-              onClick={() => {
-                if (pageMode === "select") {
-                  exitSelectMode();
+                type="button"
+              >
+                {compareMode ? tGrid("cancel_compare") : tGrid("compare")}
+              </button>
+            )}
+            {f.reviewQueueEnabled && (
+              <button
+                className={`btn btn-ghost review-queue-mode-toggle ${queueOpen ? "is-active" : ""}`}
+                disabled={apps.length === 0 || fleetIncomplete}
+                onClick={() => {
+                  if (pageMode === "select") {
+                    exitSelectMode();
+                  }
+                  setQueueOpen(true);
+                }}
+                title={
+                  fleetIncomplete && apps.length > 0
+                    ? tGrid("bulk_wait_loading_title")
+                    : tGrid("mode_toggle_queue_title")
                 }
-                setQueueOpen(true);
-              }}
-              title={
-                fleetIncomplete && apps.length > 0
-                  ? tGrid("bulk_wait_loading_title")
-                  : tGrid("mode_toggle_queue_title")
-              }
-              type="button"
-            >
-              {tGrid("mode_toggle_queue")}
-            </button>
-          )}
-          {f.reviewQueueBulkSelect && (
-            <button
-              aria-pressed={pageMode === "select"}
-              className={`btn ${pageMode === "select" ? "btn-primary" : "btn-secondary"}`}
-              disabled={apps.length === 0 || fleetIncomplete}
-              onClick={() => {
-                if (pageMode === "select") {
-                  exitSelectMode();
-                } else {
-                  enterSelectMode();
+                type="button"
+              >
+                {tGrid("mode_toggle_queue")}
+              </button>
+            )}
+            {f.reviewQueueBulkSelect && (
+              <button
+                aria-pressed={pageMode === "select"}
+                className={`btn ${pageMode === "select" ? "btn-primary" : "btn-ghost"}`}
+                disabled={apps.length === 0 || fleetIncomplete}
+                onClick={() => {
+                  if (pageMode === "select") {
+                    exitSelectMode();
+                  } else {
+                    enterSelectMode();
+                  }
+                }}
+                title={
+                  fleetIncomplete && apps.length > 0
+                    ? tGrid("bulk_wait_loading_title")
+                    : tGrid("mode_toggle_select_title")
                 }
-              }}
-              title={
-                fleetIncomplete && apps.length > 0
-                  ? tGrid("bulk_wait_loading_title")
-                  : tGrid("mode_toggle_select_title")
-              }
-              type="button"
-            >
-              {pageMode === "select"
-                ? tGrid("mode_toggle_select_exit")
-                : tGrid("mode_toggle_select")}
-            </button>
-          )}
-          {f.actionsAddApps && (
-            <Link
-              className="btn btn-primary"
-              data-flag-target="flag.appgrid.actions.add_apps"
-              href="/onboard"
-            >
-              {tGrid("add_apps")}
-            </Link>
-          )}
+                type="button"
+              >
+                {pageMode === "select"
+                  ? tGrid("mode_toggle_select_exit")
+                  : tGrid("mode_toggle_select")}
+              </button>
+            )}
+          </div>
+          {/* The nav carries the one filled Add Apps; a second copy in the
+              header competed with it. `flag.appgrid.actions.add_apps`
+              is kept as a key so stored overrides still parse. */}
         </div>
       </div>
 
@@ -2501,9 +2510,15 @@ export default function AppGrid({
                                     className={`app-card-profile-badge match-${badge.tone}`}
                                     title={localisedDescription}
                                   >
-                                    <span aria-hidden>
-                                      {badge.tone === "ok" ? "✓" : "⚠"}
-                                    </span>
+                                    <Icon
+                                      name={
+                                        badge.tone === "ok"
+                                          ? "check"
+                                          : "alert-triangle"
+                                      }
+                                      size={11}
+                                      strokeWidth={2.2}
+                                    />
                                     {localisedLabel}
                                   </span>
                                 );
@@ -2589,6 +2604,9 @@ export default function AppGrid({
                         >
                           {u > 0 && (
                             <span
+                              aria-label={tGrid("unlinked_chip_title", {
+                                count: u,
+                              })}
                               className="risk-chip risk-chip-unlinked"
                               title={tGrid("unlinked_chip_title", { count: u })}
                             >
@@ -2603,6 +2621,9 @@ export default function AppGrid({
                           )}
                           {l > 0 && (
                             <span
+                              aria-label={tGrid("linked_chip_title", {
+                                count: l,
+                              })}
                               className="risk-chip risk-chip-linked"
                               title={tGrid("linked_chip_title", { count: l })}
                             >
@@ -2617,6 +2638,9 @@ export default function AppGrid({
                           )}
                           {t > 0 && (
                             <span
+                              aria-label={tGrid("track_chip_title", {
+                                count: t,
+                              })}
                               className="risk-chip risk-chip-track"
                               title={tGrid("track_chip_title", { count: t })}
                             >
@@ -2668,20 +2692,11 @@ export default function AppGrid({
                           {syncingIds.has(app.id) ? (
                             <span aria-hidden="true" className="spinner-sm" />
                           ) : (
-                            <span aria-hidden="true">↻</span>
+                            <Icon name="refresh" size={15} />
                           )}
-                          {/*
-                      Notification-style badge showing the cumulative sync
-                      count. Sits absolutely over the top-right corner of the
-                      refresh icon. Only rendered when > 1 so brand-new apps
-                      (which have exactly one sync from onboarding) don't
-                      display a noisy "1" badge.
-                    */}
-                          {app.syncCount > 1 && !syncingIds.has(app.id) && (
-                            <span aria-hidden="true" className="icon-btn-badge">
-                              {app.syncCount}
-                            </span>
-                          )}
+                          {/* The cumulative sync count lives in the button's
+                              title and aria-label; a numeral floating over
+                              the icon read as an unexplained badge. */}
                         </button>
                       )}
                       {f.cardDeleteButton && (
@@ -2699,7 +2714,7 @@ export default function AppGrid({
                           title={tGrid("remove_app_title", { name: app.name })}
                           type="button"
                         >
-                          <span aria-hidden="true">✕</span>
+                          <Icon name="x" size={15} />
                         </button>
                       )}
                     </div>

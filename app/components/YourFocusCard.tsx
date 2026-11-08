@@ -35,25 +35,26 @@ import type { Audience } from "@/lib/feature-flag-rules";
 import { describePurpose } from "@/lib/onboarding-purpose";
 import { useFlagValues } from "@/lib/use-flag-bundle";
 import AccessibilityFigureGlyph from "./AccessibilityFigureGlyph";
+import { Icon, type IconName } from "./icons/Icon";
 
-const AUDIENCE_ICONS: Record<"self" | "loved_one" | "guardian", string> = {
-  self: "👤",
-  loved_one: "🤝",
-  guardian: "🛡️",
+const AUDIENCE_ICONS: Record<"self" | "loved_one" | "guardian", IconName> = {
+  self: "user",
+  loved_one: "users",
+  guardian: "shield",
 };
 // Accessibility isn't here — the modifier chip renders an
 // `<AccessibilityFigureGlyph />` SVG instead of a single emoji.
-const GOAL_ICONS: Record<string, string> = {
-  monitor: "🔍",
-  cleanup: "🧹",
-  minimal: "📋",
+const GOAL_ICONS: Record<string, IconName> = {
+  monitor: "search",
+  cleanup: "brush",
+  minimal: "clipboard",
 };
 // /welcome primary-purpose icons — shown in place of the goal chips when
 // the focus maps to a single purpose card.
-const PURPOSE_ICONS: Record<string, string> = {
-  monitor: "🔍",
-  cleanup: "🧹",
-  help: "🧭",
+const PURPOSE_ICONS: Record<string, IconName> = {
+  monitor: "search",
+  cleanup: "brush",
+  help: "compass",
 };
 
 const CARD_FLAG_KEYS = [
@@ -298,7 +299,7 @@ export default function YourFocusCard() {
           href="/help/focus"
           title={t("help_link")}
         >
-          (?)
+          <Icon name="info" size={18} />
         </Link>
       </header>
 
@@ -308,7 +309,7 @@ export default function YourFocusCard() {
       <div className="your-focus-card__chips" role="list">
         <span className="chip chip--audience" role="listitem">
           <span aria-hidden="true" className="chip-icon">
-            {AUDIENCE_ICONS[focus.audience]}
+            <Icon name={AUDIENCE_ICONS[focus.audience]} size={14} />
           </span>
           <span className="chip-label">{audienceChip}</span>
         </span>
@@ -316,7 +317,7 @@ export default function YourFocusCard() {
           goalChips.map(({ key, label }) => (
             <span className="chip chip--goal" key={key} role="listitem">
               <span aria-hidden="true" className="chip-icon">
-                {GOAL_ICONS[key] ?? ""}
+                {GOAL_ICONS[key] && <Icon name={GOAL_ICONS[key]} size={14} />}
               </span>
               <span className="chip-label">{label}</span>
             </span>
@@ -324,7 +325,9 @@ export default function YourFocusCard() {
         ) : (
           <span className="chip chip--purpose" role="listitem">
             <span aria-hidden="true" className="chip-icon">
-              {PURPOSE_ICONS[purpose.primary] ?? ""}
+              {PURPOSE_ICONS[purpose.primary] && (
+                <Icon name={PURPOSE_ICONS[purpose.primary]} size={14} />
+              )}
             </span>
             <span className="chip-label">
               {tPurpose(`primary.${purpose.primary}.title`)}
@@ -372,7 +375,11 @@ export default function YourFocusCard() {
                 aria-hidden="true"
                 className="your-focus-card__enable-state"
               >
-                {row.on ? "●" : "○"}
+                <Icon
+                  name={row.on ? "check" : "x"}
+                  size={12}
+                  strokeWidth={2.4}
+                />
               </span>
               <span className="your-focus-card__enable-state-label">
                 {row.on ? t("enable_chip_on") : t("enable_chip_off")}
@@ -386,11 +393,11 @@ export default function YourFocusCard() {
         <div className="your-focus-card__actions">
           <Link
             aria-label={t("adjust")}
-            className="btn btn-primary your-focus-card__adjust"
+            className="btn btn-secondary your-focus-card__adjust"
             href="/dashboard/settings/focus"
           >
             <span aria-hidden="true" className="your-focus-card__adjust-icon">
-              ✏️
+              <Icon name="pencil" size={14} />
             </span>
             <span>{t("adjust")}</span>
           </Link>

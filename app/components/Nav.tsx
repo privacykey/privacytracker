@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { readAppCount } from "@/lib/app-count";
 import {
   A11Y_QUICK_PANEL_SELECTOR,
   isA11yQuickTogglesOpen,
@@ -86,10 +87,33 @@ const NAV_LINKS: NavLink[] = [
 // `react-hooks/exhaustive-deps` warning on the `isActive` useCallback
 // — the table is static across renders.
 const NAV_ALIASES: Record<string, string[]> = {
-  "/dashboard/apps": ["/dashboard/review-recommendations"],
+  // An app's detail page lives under /apps/:id, so Apps stays the
+  // selected item while the user is inside one.
+  "/dashboard/apps": ["/dashboard/review-recommendations", "/apps"],
 };
 
-export default function Nav({ appCount, flags }: NavProps) {
+export default function Nav({ appCount: appCountProp, flags }: NavProps) {
+  // Pages whose loader already knows the count pass it in; every other
+  // route reads it once, so the badge, and the nav's layout, are the
+  // same on every page. A failed read leaves the badge off, as before.
+  const [fetchedCount, setFetchedCount] = useState<number | undefined>();
+  useEffect(() => {
+    if (appCountProp !== undefined) {
+      return;
+    }
+    let live = true;
+    readAppCount()
+      .then((total) => {
+        if (live) {
+          setFetchedCount(total);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [appCountProp]);
+  const appCount = appCountProp ?? fetchedCount;
   // i18n: nav-link labels, brand name, button copy, and ARIA text all
   // pull from the `nav` namespace. The translation function is stable
   // across renders (next-intl memoises by namespace), so it's safe to

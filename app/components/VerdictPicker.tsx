@@ -31,6 +31,7 @@ import {
   VERDICT_ORDER,
   type VerdictValue,
 } from "../../lib/verdict-types";
+import { VerdictIcon } from "./icons/Icon";
 import { ReviewNextStep } from "./ReviewNextStep";
 
 interface Props {
@@ -460,7 +461,7 @@ export default function VerdictPicker({
               type="button"
             >
               <span aria-hidden="true" className="verdict-picker-chip-icon">
-                {meta.icon}
+                <VerdictIcon size={14} strokeWidth={2} verdict={meta.value} />
               </span>
               <span className="verdict-picker-chip-label">{optionLabel}</span>
             </button>
@@ -499,7 +500,7 @@ export default function VerdictPicker({
                 key={rec.id}
               >
                 <span aria-hidden="true" className="verdict-pill-icon">
-                  {meta.icon}
+                  <VerdictIcon size={14} strokeWidth={2} verdict={meta.value} />
                 </span>
                 <div className="verdict-picker-imported-body">
                   <div className="verdict-picker-imported-label">
@@ -587,7 +588,7 @@ export default function VerdictPicker({
           className={`verdict-picker-summary verdict-picker-summary-${meta.cls}`}
         >
           <span aria-hidden="true" className="verdict-picker-summary-icon">
-            {meta.icon}
+            <VerdictIcon size={14} strokeWidth={2} verdict={meta.value} />
           </span>
           <span className="verdict-picker-summary-label">
             {tPicker("summary_label")}
@@ -664,7 +665,7 @@ export default function VerdictPicker({
             aria-hidden="true"
             className="verdict-picker-reason-chosen-icon"
           >
-            {meta.icon}
+            <VerdictIcon size={14} strokeWidth={2} verdict={meta.value} />
           </span>
           <span className="verdict-picker-reason-chosen-label">
             {tPicker.rich("reason_chosen_label", {
@@ -786,7 +787,7 @@ export default function VerdictPicker({
               type="button"
             >
               <span aria-hidden="true" className="verdict-picker-option-icon">
-                {meta.icon}
+                <VerdictIcon size={14} strokeWidth={2} verdict={meta.value} />
               </span>
               <span className="verdict-picker-option-label">{optionLabel}</span>
               <span className="verdict-picker-option-desc">{optionDesc}</span>

@@ -43,7 +43,6 @@ import {
 } from "../../lib/dashboard-layout";
 import { categoryLabel as i18nCategoryLabel } from "../../lib/i18n-meta";
 import type { PrimaryPurpose } from "../../lib/onboarding-purpose";
-import { CATEGORY_META } from "../../lib/privacy-meta";
 import {
   type AppMismatchSummary,
   describeWorstMismatchLocalised,
@@ -76,6 +75,7 @@ import BackgroundModeCallout from "./BackgroundModeCallout";
 import { DashboardLayoutLock } from "./DashboardLayoutLock";
 import { withScopeParam } from "./DeviceScopeProvider";
 import { FocusGoalLabels, FocusOverview } from "./FocusOverview";
+import { CategoryIcon, Icon, type IconName } from "./icons/Icon";
 import PrivacyTypeIcon from "./PrivacyTypeIcon";
 import { useTaskCenter } from "./TaskCenter";
 import Toast from "./Toast";
@@ -1216,12 +1216,12 @@ function LayoutEditorFooterLink() {
 
 // /welcome purpose icons for the strip. Includes `custom` (a strip can
 // surface an advanced focus that maps to no single purpose card).
-const FOCUS_STRIP_ICONS: Record<PrimaryPurpose, string> = {
-  monitor: "🔍",
-  cleanup: "🧹",
-  help: "🧭",
-  guardian: "👪",
-  custom: "⚙️",
+const FOCUS_STRIP_ICONS: Record<PrimaryPurpose, IconName> = {
+  monitor: "search",
+  cleanup: "brush",
+  help: "compass",
+  guardian: "users",
+  custom: "settings",
 };
 
 function FocusStrip({
@@ -1239,7 +1239,7 @@ function FocusStrip({
   return (
     <div className="focus-strip" data-tour="focus-card" role="note">
       <span aria-hidden="true" className="focus-strip-icon">
-        {FOCUS_STRIP_ICONS[purpose]}
+        <Icon name={FOCUS_STRIP_ICONS[purpose]} size={18} />
       </span>
       <div className="focus-strip-body">
         <div className="focus-strip-label">{t("label")}</div>
@@ -1459,7 +1459,7 @@ function ManualAppsBanner({
   return (
     <div className="manual-apps-banner" role="note">
       <div aria-hidden="true" className="manual-apps-banner-icon">
-        🔖
+        <Icon name="bookmark" size={20} />
       </div>
       <div className="manual-apps-banner-body">
         <div className="manual-apps-banner-title">{t("title")}</div>
@@ -1607,7 +1607,7 @@ function Hero({
         aria-hidden="true"
         className="home-hero-icon home-hero-icon-attention"
       >
-        ⚡
+        <Icon name="zap" size={22} />
       </div>
       <div className="home-hero-body">
         <h1 className="home-hero-title">
@@ -1723,6 +1723,7 @@ function ReviewSection({
       <div className="home-section-header">
         <h2 className="home-section-title">
           <span className="home-section-kicker">
+            <Icon className="home-section-kicker-icon" name="zap" size={16} />
             {tSections("review_kicker")}
           </span>
         </h2>
@@ -1827,7 +1828,7 @@ function ConsiderReplacingSection({
   return (
     <section className="home-section profile-replace-section" id={id}>
       <div className="profile-replace-section-title">
-        <span aria-hidden>🛡</span>
+        <Icon className="home-section-kicker-icon" name="shield" size={16} />
         {tSections("replace_kicker")}
         <span className="home-section-count" style={{ marginLeft: 6 }}>
           {tSections("watchlist_count", { count: apps.length })}
@@ -1855,9 +1856,7 @@ function ConsiderReplacingSection({
           // the existing severity-* classes from globals.css (via TIER_META)
           // so the palette stays consistent with every other privacy surface.
           const tierCls = top ? TIER_META[top.observed].severityCls : "";
-          const topCategory = top
-            ? (CATEGORY_META[top.category]?.icon ?? "•")
-            : "•";
+          const topCategory = top?.category ?? null;
           return (
             <Link
               className="profile-replace-row"
@@ -1877,7 +1876,7 @@ function ConsiderReplacingSection({
                 />
               ) : (
                 <div aria-hidden className="profile-replace-row-icon">
-                  <span style={{ fontSize: 22 }}>{topCategory}</span>
+                  <CategoryIcon category={topCategory} size={20} />
                 </div>
               )}
               <div className="profile-replace-row-body">
@@ -1968,7 +1967,20 @@ function RiskSection({
     >
       <div className="home-section-header">
         <h2 className="home-section-title">
-          <span className="home-section-kicker">{kicker}</span>
+          <span className="home-section-kicker">
+            <Icon
+              className="home-section-kicker-icon"
+              name={
+                variant === "cleanup"
+                  ? "brush"
+                  : variant === "family"
+                    ? "users"
+                    : "eye"
+              }
+              size={16}
+            />
+            {kicker}
+          </span>
           <span className="home-section-count">{count}</span>
         </h2>
         <p className="home-section-sub">{sub}</p>
@@ -2058,6 +2070,11 @@ function StaleSection({
       <div className="home-section-header">
         <h2 className="home-section-title">
           <span className="home-section-kicker">
+            <Icon
+              className="home-section-kicker-icon"
+              name="history"
+              size={16}
+            />
             {tSections("stale_kicker")}
           </span>
         </h2>
@@ -2120,6 +2137,11 @@ function ActivitySection({ activity }: { activity: RecentActivityEntry[] }) {
       <div className="home-section-header">
         <h2 className="home-section-title">
           <span className="home-section-kicker">
+            <Icon
+              className="home-section-kicker-icon"
+              name="activity"
+              size={16}
+            />
             {tSections("activity_kicker")}
           </span>
         </h2>

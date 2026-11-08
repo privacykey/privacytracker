@@ -1,5 +1,6 @@
 "use client";
 
+import { VerdictIcon } from "./icons/Icon";
 /**
  * Compact read-only verdict pill for grid cards and app-detail headers.
  * For the editable picker, see VerdictPicker.tsx.
@@ -49,7 +50,7 @@ export default function VerdictPill({
       title={tooltip}
     >
       <span aria-hidden="true" className="verdict-pill-icon">
-        {meta.icon}
+        <VerdictIcon size={12} strokeWidth={2.2} verdict={meta.value} />
       </span>
       {!iconOnly && <span className="verdict-pill-label">{shortLabel}</span>}
       {sourceName && !iconOnly && (

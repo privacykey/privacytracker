@@ -215,9 +215,17 @@ function ChromeBody({
               {on("flag.global.accessibility_toggles") && (
                 <AccessibilityQuickToggles />
               )}
-              {on("flag.global.keyboard_shortcuts") && <KeyboardHint />}
-              {/* Bottom-LEFT pill — Privacy policy / Legal links. */}
-              {on("flag.global.site_info_hint") && <SiteInfoHint />}
+              {/* The site footer row: Privacy policy / Legal / Feedback on
+                the left, the shortcut hint, label definitions and About on
+                the right. In flow at the end of the page, so it never
+                covers content. */}
+              {(on("flag.global.keyboard_shortcuts") ||
+                on("flag.global.site_info_hint")) && (
+                <div className="site-footer">
+                  {on("flag.global.site_info_hint") && <SiteInfoHint />}
+                  {on("flag.global.keyboard_shortcuts") && <KeyboardHint />}
+                </div>
+              )}
             </footer>
           </ImportQueueProvider>
         </QueuedSearchProvider>

@@ -11,6 +11,7 @@ import type {
 } from "../../../lib/changelog-types";
 import { SNOOZE_DAYS_OPTIONS } from "../../../lib/changelog-types";
 import { CATEGORY_META, SEVERITY_CONFIG } from "../../../lib/privacy-meta";
+import { CategoryIcon, Icon } from "../icons/Icon";
 import type { App } from "./types";
 
 // ── Change Review Panel ───────────────────────────────────────────────
@@ -58,9 +59,10 @@ function classifyChange(entry: ChangeEntry): ChangeClassification {
   if (catMatch) {
     const name = catMatch[1].trim();
     categoryLabel = name;
-    for (const meta of Object.values(CATEGORY_META)) {
+    for (const [key, meta] of Object.entries(CATEGORY_META)) {
       if (meta.label.toLowerCase() === name.toLowerCase()) {
-        categoryIcon = meta.icon;
+        // The category key; the row draws it with the shared icon set.
+        categoryIcon = key;
         break;
       }
     }
@@ -112,6 +114,9 @@ function formatEventDate(ts: number) {
   const year = d.getFullYear();
   const hours24 = d.getHours();
   const ampm = hours24 >= 12 ? "pm" : "am";
+  // Sentence case ("8 Oct 2026, 09:35 pm"): the row's eyebrow used to be
+  // transformed to capitals, which made one date on the page look unlike
+  // every other.
   // 12-hour clock with explicit zero-padding so 02:44 pm doesn't flip to
   // " 2:44 pm" depending on the runtime's whitespace handling.
   const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
@@ -477,7 +482,10 @@ export default function ChangeReviewPanel({
                   <span className="spinner-sm" /> {tDetail("review_marking")}
                 </>
               ) : (
-                tDetail("review_mark_done")
+                <>
+                  <Icon name="check" size={14} strokeWidth={2.2} />
+                  {tDetail("review_mark_done")}
+                </>
               )}
             </button>
           )}
@@ -494,7 +502,10 @@ export default function ChangeReviewPanel({
                   <span className="spinner-sm" /> {tDetail("review_dismissing")}
                 </>
               ) : (
-                tDetail("review_dismiss")
+                <>
+                  <Icon name="x" size={14} strokeWidth={2.2} />
+                  {tDetail("review_dismiss")}
+                </>
               )}
             </button>
           )}
@@ -513,7 +524,11 @@ export default function ChangeReviewPanel({
                     <span className="spinner-sm" /> {tDetail("review_snoozing")}
                   </>
                 ) : (
-                  tDetail("review_remind_later")
+                  <>
+                    <Icon name="bell" size={14} />
+                    {tDetail("review_remind_later")}
+                    <Icon name="chevron-down" size={12} strokeWidth={2} />
+                  </>
                 )}
               </button>
               {snoozeMenuOpen && (
@@ -582,8 +597,13 @@ function ChangeReviewEvent({
   const tSeverity = useTranslations("severity");
   return (
     <div className="change-review-event">
-      <div className="change-review-event-date">
-        {formatEventDate(event.scraped_at)}
+      {/* The row shows the date; the full stamp with the time is in the
+          title, so the page's dates all read "8 Oct 2026". */}
+      <div
+        className="change-review-event-date"
+        title={formatEventDate(event.scraped_at)}
+      >
+        {formatEventDate(event.scraped_at).split(", ")[0]}
       </div>
       <ul className="change-review-list">
         {event.changes.map((entry, idx) => {
@@ -605,7 +625,7 @@ function ChangeReviewEvent({
                 <div className="change-review-desc">
                   {cls.categoryIcon && (
                     <span className="change-review-cat-icon">
-                      {cls.categoryIcon}
+                      <CategoryIcon category={cls.categoryIcon} size={15} />
                     </span>
                   )}
                   {entry.description}
