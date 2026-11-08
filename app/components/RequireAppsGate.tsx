@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { readAppCount } from "@/lib/app-count";
 import LoaderError from "./LoaderError";
 import { PageSkeleton } from "./LoadingShell";
 
@@ -41,16 +42,10 @@ export default function RequireAppsGate({
   useEffect(() => {
     let live = true;
     setState("checking");
-    fetch("/api/apps?limit=1")
-      .then((res) =>
-        res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))
-      )
-      .then(({ total }: { total: number }) => {
+    readAppCount()
+      .then((total) => {
         if (!live) {
           return;
-        }
-        if (typeof total !== "number") {
-          throw new Error("Invalid apps count");
         }
         if (total > 0) {
           setState("ready");

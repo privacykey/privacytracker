@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { readAppCount } from "@/lib/app-count";
 import {
   A11Y_QUICK_PANEL_SELECTOR,
   isA11yQuickTogglesOpen,
@@ -101,11 +102,10 @@ export default function Nav({ appCount: appCountProp, flags }: NavProps) {
       return;
     }
     let live = true;
-    fetch("/api/apps?limit=1")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((body: { total?: number } | null) => {
-        if (live && typeof body?.total === "number") {
-          setFetchedCount(body.total);
+    readAppCount()
+      .then((total) => {
+        if (live) {
+          setFetchedCount(total);
         }
       })
       .catch(() => {});
